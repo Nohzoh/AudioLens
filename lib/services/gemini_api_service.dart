@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import '../utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 import 'ai_service.dart';
 import 'remote_config_service.dart';
@@ -103,12 +104,14 @@ class GeminiApiService implements AIService {
           response = resp;
           _lastUsedModel = model;
           attempts.add('✓ $model');
+          AppLogger.ai('Model succeeded: $model');
           break;
         } else if (resp.statusCode == 429 || resp.statusCode == 404 || resp.statusCode == 503) {
           final err = jsonDecode(resp.body);
           final msg = err['error']?['message'] as String? ?? 'HTTP ${resp.statusCode}';
           final short = msg.length > 80 ? msg.substring(0, 80) : msg;
           attempts.add('✗ $model (${resp.statusCode}): $short');
+          AppLogger.ai('Model failed: $model (${resp.statusCode}): $short');
           continue;
         } else {
           final err = jsonDecode(resp.body);
