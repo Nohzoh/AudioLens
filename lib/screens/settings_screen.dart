@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'logs_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_guide_service.dart';
 import '../services/remote_config_service.dart';
@@ -221,6 +222,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 (context as Element).markNeedsBuild();
               }
             },
+          ),
+
+          const SizedBox(height: 32),
+
+          // Developer tools
+          _SectionHeader('Outils'),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.terminal, size: 16),
+            label: const Text('Voir les logs'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+            ),
+            onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const LogsScreen())),
           ),
 
           const SizedBox(height: 32),
