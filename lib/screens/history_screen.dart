@@ -467,9 +467,15 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                     // Save upgraded audio
                                     final tmpDir = await getTemporaryDirectory();
                                     final wavPath = '\${tmpDir.path}/gemini_tts_output.wav';
-                                    if (File(wavPath).existsSync() && widget.entry.id != null) {
+                                    final wavFile = File(wavPath);
+                                    debugPrint('[AudioLens] WAV exists: \${wavFile.existsSync()}, path: \$wavPath');
+                                    debugPrint('[AudioLens] entry.id: \${widget.entry.id}');
+                                    if (wavFile.existsSync() && widget.entry.id != null) {
                                       await history.saveAudioPath(
                                         widget.entry.id!, wavPath, ttsModel: 'gemini-tts');
+                                      debugPrint('[AudioLens] saveAudioPath called successfully');
+                                    } else {
+                                      debugPrint('[AudioLens] saveAudioPath skipped - file missing or no id');
                                     }
                                     setState(() => _isPlaying = true);
                                   } catch (_) {
