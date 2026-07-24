@@ -1,9 +1,12 @@
 import 'dart:io';
+import '../utils/app_logger.dart';
 import 'package:flutter/material.dart';
+import '../utils/app_logger.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
+import '../utils/app_logger.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -468,14 +471,14 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                     final tmpDir = await getTemporaryDirectory();
                                     final wavPath = '\${tmpDir.path}/gemini_tts_output.wav';
                                     final wavFile = File(wavPath);
-                                    debugPrint('[AudioLens] WAV exists: \${wavFile.existsSync()}, path: \$wavPath');
-                                    debugPrint('[AudioLens] entry.id: \${widget.entry.id}');
+                                    AppLogger.info('WAV exists: \${wavFile.existsSync()}, path: \$wavPath');
+                                    AppLogger.info('entry.id: \${widget.entry.id}');
                                     if (wavFile.existsSync() && widget.entry.id != null) {
                                       await history.saveAudioPath(
                                         widget.entry.id!, wavPath, ttsModel: 'gemini-tts');
-                                      debugPrint('[AudioLens] saveAudioPath called successfully');
+                                      AppLogger.info('saveAudioPath called successfully');
                                     } else {
-                                      debugPrint('[AudioLens] saveAudioPath skipped - file missing or no id');
+                                      AppLogger.info('saveAudioPath skipped - file missing or no id');
                                     }
                                     setState(() => _isPlaying = true);
                                   } catch (_) {
