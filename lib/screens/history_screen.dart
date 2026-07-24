@@ -181,6 +181,15 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   bool _isPlaying = false;
   bool _isUpgrading = false;
 
+  /// Always read the latest version from the service (not the stale widget.entry)
+  HistoryEntry _liveEntry(BuildContext context) {
+    final history = context.read<HistoryService>();
+    return history.entries.firstWhere(
+      (e) => e.id == widget.entry.id,
+      orElse: () => widget.entry,
+    );
+  }
+
   // Use AudioGuideService TTS so same voice as first analysis
   _getTts(BuildContext context) {
     final guide = context.read<AudioGuideService>();
@@ -215,9 +224,10 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       setState(() => _isPlaying = false);
     } else {
       setState(() => _isPlaying = true);
-      if (widget.entry.hasAudio) {
+      final live = _liveEntry(context);
+      if (live.hasAudio) {
         // Use cached audio — no TTS regeneration needed
-        await _playCachedAudio(widget.entry.audioPath!);
+        await _playCachedAudio(live.audioPath!);
       } else {
         // No cache — generate with TTS
         final tts = _getTts(context);
@@ -429,7 +439,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                       const SizedBox(height: 20),
 
                       // Upgrade TTS button
-                      if (widget.entry.hasLowQualityTts)
+                      if (_liveEntry(context).hasLowQualityTts)
                         Consumer<AudioGuideService>(
                           builder: (context, guide, _) {
                             if (guide.geminiTtsService == null) return const SizedBox.shrink();
