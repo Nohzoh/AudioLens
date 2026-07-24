@@ -1,5 +1,7 @@
 import 'dart:io';
+import '../utils/app_logger.dart';
 import 'package:flutter/material.dart';
+import '../utils/app_logger.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:gal/gal.dart';
@@ -127,12 +129,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) setState(() => _permissionStatus = guide.lastLocationStatus);
 
     // Debug: trace metadata values
-    debugPrint('[AudioLens] result: ${result?.title}');
-    debugPrint('[AudioLens] aiModel: ${guide.actualAiModel} / ${guide.lastAiModel}');
-    debugPrint('[AudioLens] gpsSource: ${guide.lastGpsSource}');
-    debugPrint('[AudioLens] gpsLat: ${guide.lastGpsLatitude}');
-    debugPrint('[AudioLens] wikipedia: ${guide.lastWikipediaUsed}');
-    debugPrint('[AudioLens] duration: ${guide.lastAnalysisDurationMs}');
+    AppLogger.info('result: ${result?.title}');
+    AppLogger.info('aiModel: ${guide.actualAiModel} / ${guide.lastAiModel}');
+    AppLogger.info('gpsSource: ${guide.lastGpsSource}');
+    AppLogger.info('gpsLat: ${guide.lastGpsLatitude}');
+    AppLogger.info('wikipedia: ${guide.lastWikipediaUsed}');
+    AppLogger.info('duration: ${guide.lastAnalysisDurationMs}');
 
     if (result != null) {
       await history.completeEntry(
