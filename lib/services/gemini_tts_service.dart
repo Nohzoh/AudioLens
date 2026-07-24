@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import '../utils/app_logger.dart';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -53,6 +54,7 @@ class GeminiTtsService {
 
     if (response.statusCode != 200) {
       final error = jsonDecode(response.body);
+      AppLogger.error('Gemini TTS error: ${response.statusCode}');
       throw Exception(
         'Gemini TTS erreur ${response.statusCode}: '
         '${error['error']?['message'] ?? response.body}',
@@ -76,6 +78,7 @@ class GeminiTtsService {
     final wavPath = p.join(tmpDir.path, 'gemini_tts_output.wav');
     await File(wavPath).writeAsBytes(wavBytes);
 
+    AppLogger.tts('Gemini TTS generated ${pcmBytes.length} bytes, playing...');
     _isPlaying = true;
     const channel = MethodChannel('com.audioguide/audio_player');
     channel.invokeMethod('playWav', {'path': wavPath}).then((_) {
