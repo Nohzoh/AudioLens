@@ -12,6 +12,8 @@ class GeminiTtsService {
   final String apiKey;
   Function()? onComplete;
   bool _isPlaying = false;
+  String? _lastWavPath;
+  String? get lastWavPath => _lastWavPath;
 
   bool get isPlaying => _isPlaying;
 
@@ -77,6 +79,7 @@ class GeminiTtsService {
     final tmpDir = await getTemporaryDirectory();
     final wavPath = p.join(tmpDir.path, 'gemini_tts_output.wav');
     await File(wavPath).writeAsBytes(wavBytes);
+    _lastWavPath = wavPath;
 
     AppLogger.tts('Gemini TTS generated ${pcmBytes.length} bytes, playing...');
     _isPlaying = true;
