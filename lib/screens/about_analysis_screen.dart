@@ -14,7 +14,7 @@ class AboutAnalysisScreen extends StatelessWidget {
   HistoryEntry _live(BuildContext context) {
     final history = context.watch<HistoryService>();
     return history.entries.firstWhere(
-      (e) => e.id == live.id,
+      (e) => e.id == entry.id,
       orElse: () => entry,
     );
   }
@@ -201,3 +201,4 @@ class _Row extends StatelessWidget {
     );
   }
 }
+
