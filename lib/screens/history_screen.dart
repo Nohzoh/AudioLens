@@ -477,7 +477,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                     } else {
                                       AppLogger.error('saveAudioPath skipped: lastPath=$lastPath id=${widget.entry.id}');
                                     }
-                                    }
                                     setState(() => _isPlaying = true);
                                   } catch (_) {
                                     setState(() => _isPlaying = false);
