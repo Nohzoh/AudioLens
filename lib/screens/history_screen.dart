@@ -24,7 +24,6 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final live = _liveEntry(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historique'),
@@ -82,7 +81,6 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final live = _liveEntry(context);
     final dateStr = DateFormat('d MMM yyyy · HH:mm', 'fr_FR')
         .format(entry.createdAt);
 
@@ -190,7 +188,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   HistoryEntry _liveEntry(BuildContext context) {
     final history = context.read<HistoryService>();
     return history.entries.firstWhere(
-      (e) => e.id == live.id,
+      (e) => e.id == widget.entry.id,
       orElse: () => widget.entry,
     );
   }
@@ -263,7 +261,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     );
 
     if (confirmed == true && context.mounted) {
-      await context.read<HistoryService>().deleteEntry(live.id!);
+      await context.read<HistoryService>().deleteEntry(widget.entry.id!);
       if (context.mounted) Navigator.pop(context);
     }
   }
@@ -523,3 +521,4 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     );
   }
 }
+
