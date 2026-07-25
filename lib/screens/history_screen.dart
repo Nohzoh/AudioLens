@@ -24,6 +24,7 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final live = _liveEntry(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historique'),
@@ -81,6 +82,7 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final live = _liveEntry(context);
     final dateStr = DateFormat('d MMM yyyy · HH:mm', 'fr_FR')
         .format(entry.createdAt);
 
@@ -188,7 +190,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   HistoryEntry _liveEntry(BuildContext context) {
     final history = context.read<HistoryService>();
     return history.entries.firstWhere(
-      (e) => e.id == widget.entry.id,
+      (e) => e.id == live.id,
       orElse: () => widget.entry,
     );
   }
@@ -235,7 +237,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         // No cache — generate with TTS
         final tts = _getTts(context);
         tts.onComplete = () => setState(() => _isPlaying = false);
-        await tts.speak(widget.entry.script);
+        await tts.speak(live.script);
       }
     }
   }
@@ -261,7 +263,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     );
 
     if (confirmed == true && context.mounted) {
-      await context.read<HistoryService>().deleteEntry(widget.entry.id!);
+      await context.read<HistoryService>().deleteEntry(live.id!);
       if (context.mounted) Navigator.pop(context);
     }
   }
@@ -269,16 +271,17 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final live = _liveEntry(context);
     final dateStr = DateFormat('EEEE d MMMM yyyy · HH:mm', 'fr_FR')
-        .format(widget.entry.createdAt);
+        .format(live.createdAt);
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
           // Full image background
-          if (File(widget.entry.imagePath).existsSync())
-            Image.file(File(widget.entry.imagePath), fit: BoxFit.cover),
+          if (File(live.imagePath).existsSync())
+            Image.file(File(live.imagePath), fit: BoxFit.cover),
 
           // Gradient overlay
           Container(
@@ -345,14 +348,14 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
                       // Title
                       Text(
-                        widget.entry.title,
+                        live.title,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
 
-                      if (widget.entry.locationName != null) ...[
+                      if (live.locationName != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -360,7 +363,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                 color: Colors.white54, size: 14),
                             const SizedBox(width: 4),
                             Text(
-                              widget.entry.locationName!,
+                              live.locationName!,
                               style: const TextStyle(color: Colors.white54),
                             ),
                           ],
@@ -377,7 +380,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           InkWell(
                             onTap: () async {
                               try {
-                                await Gal.putImage(widget.entry.imagePath);
+                                await Gal.putImage(live.imagePath);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -400,7 +403,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           // Copy button
                           InkWell(
                             onTap: () {
-                              Clipboard.setData(ClipboardData(text: widget.entry.script));
+                              Clipboard.setData(ClipboardData(text: live.script));
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Texte copié'),
@@ -431,7 +434,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                               color: Colors.white.withOpacity(0.1)),
                         ),
                         child: Text(
-                          widget.entry.script,
+                          live.script,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: Colors.white.withOpacity(0.85),
                             height: 1.6,
@@ -466,16 +469,16 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                     final tts = guide.geminiTtsService!;
                                     tts.onComplete = () => setState(() => _isPlaying = false);
                                     // Generate audio first, then play
-                                    await tts.speak(widget.entry.script);
+                                    await tts.speak(live.script);
                                     // Save upgraded audio
                                     final lastPath = tts.lastWavPath;
-                                    AppLogger.tts('upgrade lastAudioPath: $lastPath, entry.id: ${widget.entry.id}');
-                                    if (lastPath != null && widget.entry.id != null) {
+                                    AppLogger.tts('upgrade lastAudioPath: $lastPath, entry.id: ${live.id}');
+                                    if (lastPath != null && live.id != null) {
                                       await history.saveAudioPath(
-                                        widget.entry.id!, lastPath, ttsModel: 'gemini-tts');
+                                        live.id!, lastPath, ttsModel: 'gemini-tts');
                                       AppLogger.tts('saveAudioPath OK');
                                     } else {
-                                      AppLogger.error('saveAudioPath skipped: lastPath=$lastPath id=${widget.entry.id}');
+                                      AppLogger.error('saveAudioPath skipped: lastPath=$lastPath id=${live.id}');
                                     }
                                     setState(() => _isPlaying = true);
                                   } catch (_) {
