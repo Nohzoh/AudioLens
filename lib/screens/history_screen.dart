@@ -468,17 +468,15 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                     // Generate audio first, then play
                                     await tts.speak(widget.entry.script);
                                     // Save upgraded audio
-                                    final tmpDir = await getTemporaryDirectory();
-                                    final wavPath = '\${tmpDir.path}/gemini_tts_output.wav';
-                                    final wavFile = File(wavPath);
-                                    AppLogger.info('WAV exists: \${wavFile.existsSync()}, path: \$wavPath');
-                                    AppLogger.info('entry.id: \${widget.entry.id}');
-                                    if (wavFile.existsSync() && widget.entry.id != null) {
+                                    final lastPath = guide.lastAudioPath;
+                                    AppLogger.tts('upgrade lastAudioPath: $lastPath, entry.id: ${widget.entry.id}');
+                                    if (lastPath != null && widget.entry.id != null) {
                                       await history.saveAudioPath(
-                                        widget.entry.id!, wavPath, ttsModel: 'gemini-tts');
-                                      AppLogger.info('saveAudioPath called successfully');
+                                        widget.entry.id!, lastPath, ttsModel: 'gemini-tts');
+                                      AppLogger.tts('saveAudioPath OK');
                                     } else {
-                                      AppLogger.info('saveAudioPath skipped - file missing or no id');
+                                      AppLogger.error('saveAudioPath skipped: lastPath=$lastPath id=${widget.entry.id}');
+                                    }
                                     }
                                     setState(() => _isPlaying = true);
                                   } catch (_) {
