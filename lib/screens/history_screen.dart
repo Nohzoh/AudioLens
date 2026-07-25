@@ -468,7 +468,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                     // Generate audio first, then play
                                     await tts.speak(widget.entry.script);
                                     // Save upgraded audio
-                                    final lastPath = guide.lastAudioPath;
+                                    final lastPath = tts.lastWavPath;
                                     AppLogger.tts('upgrade lastAudioPath: $lastPath, entry.id: ${widget.entry.id}');
                                     if (lastPath != null && widget.entry.id != null) {
                                       await history.saveAudioPath(
