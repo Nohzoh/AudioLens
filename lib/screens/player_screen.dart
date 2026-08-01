@@ -97,6 +97,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               Navigator.pop(context);
                             },
                           ),
+                          const Spacer(),
+                          if (guide.state == GuideState.speaking || guide.state == GuideState.paused)
+                            IconButton(
+                              icon: const Icon(Icons.cancel_outlined, color: Colors.white70),
+                              tooltip: 'Annuler',
+                              onPressed: () async {
+                                await guide.cancelCurrentAction();
+                                if (context.mounted) Navigator.pop(context);
+                              },
+                            ),
                         ],
                       ),
                     ),
@@ -340,9 +350,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             IconButton(
                               icon: const Icon(Icons.stop_circle_outlined,
                                   color: Colors.white70, size: 36),
-                              onPressed: () {
-                                guide.stop();
-                                Navigator.pop(context);
+                              onPressed: () async {
+                                await guide.cancelCurrentAction();
+                                if (context.mounted) Navigator.pop(context);
                               },
                             ),
                           ],

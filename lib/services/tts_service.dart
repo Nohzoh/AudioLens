@@ -11,6 +11,8 @@ class TtsService {
   sherpa.OfflineTts? _tts;
   bool _initialized = false;
   bool _isPlaying = false;
+  bool _cancelRequested = false;
+  int _generationToken = 0;
   Function()? onComplete;
 
   // Sentence-level progress: 0.0 to 1.0
@@ -118,6 +120,10 @@ class TtsService {
   }
 
   Future<void> speak(String text) async {
+    _cancelRequested = false;
+    _generationToken += 1;
+    final token = _generationToken;
+
     if (!_initialized) await initialize();
     final tts = _tts;
     if (tts == null) return;
@@ -127,56 +133,66 @@ class TtsService {
     final sentences = _splitSentences(text);
     final totalChars = text.length;
 
-    // Generate full audio in background
     final tmpDir = await getTemporaryDirectory();
     final wavPath = p.join(tmpDir.path, 'tts_output.wav');
 
-    final sampleRate = await _generateInBackground(tts, text, wavPath);
+    try {
+      final sampleRate = await _generateInBackground(tts, text, wavPath);
+      if (_cancelRequested || token != _generationToken) {
+        _isPlaying = false;
+        return;
+      }
 
-    // Estimate duration per sentence proportional to char count
-    // We'll get real duration from the WAV file
-    final wavFile = File(wavPath);
-    final wavBytes = await wavFile.readAsBytes();
-    // WAV: data size at offset 40 (4 bytes LE), sample rate at 24
-    final dataSize = wavBytes.buffer.asByteData().getUint32(40, Endian.little);
-    final sr = wavBytes.buffer.asByteData().getUint32(24, Endian.little);
-    final totalDurationMs = (dataSize / (sr * 2) * 1000).round();
+      final wavFile = File(wavPath);
+      if (!await wavFile.exists()) {
+        _isPlaying = false;
+        return;
+      }
 
-    // Start playback (non-blocking)
-    const channel = MethodChannel('com.audioguide/audio_player');
-    channel.invokeMethod('playWav', {'path': wavPath}).then((_) {
+      final wavBytes = await wavFile.readAsBytes();
+      final dataSize = wavBytes.buffer.asByteData().getUint32(40, Endian.little);
+      final sr = wavBytes.buffer.asByteData().getUint32(24, Endian.little);
+      final totalDurationMs = (dataSize / (sr * 2) * 1000).round();
+
+      const channel = MethodChannel('com.audioguide/audio_player');
+      channel.invokeMethod('playWav', {'path': wavPath}).then((_) {
+        if (_cancelRequested || token != _generationToken) {
+          _isPlaying = false;
+          return;
+        }
+        _isPlaying = false;
+        onComplete?.call();
+      });
+
+      _driveSentenceProgress(sentences, totalChars, totalDurationMs, token);
+    } catch (_) {
       _isPlaying = false;
-      onComplete?.call();
-    });
-
-    // Drive sentence-level progress while audio plays
-    _driveSentenceProgress(sentences, totalChars, totalDurationMs);
+      rethrow;
+    }
   }
 
   void _driveSentenceProgress(
-      List<String> sentences, int totalChars, int totalDurationMs) async {
+      List<String> sentences, int totalChars, int totalDurationMs, int token) async {
     if (sentences.isEmpty || totalDurationMs <= 0) return;
 
-    int elapsed = 0;
     int charsSoFar = 0;
 
     for (int i = 0; i < sentences.length; i++) {
-      if (!_isPlaying) break;
+      if (!_isPlaying || _cancelRequested || token != _generationToken) break;
 
-      // Report progress at start of each sentence
       final progress = charsSoFar / totalChars;
       onProgress?.call(progress.clamp(0.0, 1.0));
 
-      // Wait proportional to this sentence's char count
       final sentenceChars = sentences[i].length;
       final sentenceDuration = (sentenceChars / totalChars * totalDurationMs).round();
 
       await Future.delayed(Duration(milliseconds: sentenceDuration));
-      charsSoFar += sentenceChars + 1; // +1 for space
+      charsSoFar += sentenceChars + 1;
     }
 
-    // Final progress
-    if (_isPlaying) onProgress?.call(1.0);
+    if (_isPlaying && !_cancelRequested && token == _generationToken) {
+      onProgress?.call(1.0);
+    }
   }
 
   static Future<int> _generateInBackground(
@@ -204,12 +220,16 @@ class TtsService {
   }
 
   Future<void> stop() async {
+    _cancelRequested = true;
+    _generationToken += 1;
     const channel = MethodChannel('com.audioguide/audio_player');
     await channel.invokeMethod('stop');
     _isPlaying = false;
   }
 
   void dispose() {
+    _cancelRequested = true;
+    _generationToken += 1;
     _tts?.free();
     _tts = null;
     _initialized = false;

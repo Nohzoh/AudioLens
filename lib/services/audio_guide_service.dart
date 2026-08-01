@@ -1,5 +1,6 @@
 import 'dart:io';
 import '../utils/app_logger.dart';
+import '../models/guide_error.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
@@ -103,6 +104,7 @@ class AudioGuideService extends ChangeNotifier {
   double _stepProgress = 0.0;
   int _currentStep = 0;
   bool _simulating = false;
+  bool _analysisInProgress = false;
 
   GuideState get state => _state;
   AudioGuideResult? get lastResult => _lastResult;
@@ -225,6 +227,13 @@ class AudioGuideService extends ChangeNotifier {
   }
 
   Future<AudioGuideResult?> analyzeAndPlay(File imageFile) async {
+    if (_analysisInProgress) {
+      _errorMessage = 'Une analyse est déjà en cours.';
+      _state = GuideState.error;
+      notifyListeners();
+      return null;
+    }
+
     final service = _currentService;
     if (service == null) {
       _state = GuideState.error;
@@ -232,6 +241,8 @@ class AudioGuideService extends ChangeNotifier {
       notifyListeners();
       return null;
     }
+
+    _analysisInProgress = true;
 
     try {
       _lastResult = null;
@@ -258,10 +269,15 @@ class AudioGuideService extends ChangeNotifier {
       _lastGpsLatitude = locationResult.info?.latitude;
       _lastGpsLongitude = locationResult.info?.longitude;
       _lastGpsAddress = locationResult.info?.contextForPrompt;
+      _lastLocationStatus = locationResult.status;
+      if (locationResult.info == null || locationResult.status != LocationPermissionStatus.granted) {
+        _lastGpsLatitude = null;
+        _lastGpsLongitude = null;
+        _lastGpsAddress = null;
+        _lastGpsSource = 'none';
+      }
       _gpsDurations.add(DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
       if (_gpsDurations.length > 5) _gpsDurations.removeAt(0);
-      _lastLocationStatus = locationResult.status;
-
       // Wikipedia enrichment
       String? wikiContext;
       if (locationResult.info != null) {
@@ -293,10 +309,30 @@ class AudioGuideService extends ChangeNotifier {
 
       _lastAiModel = _providerName; // will be refined after analysis
       final analyzeStart = DateTime.now();
-      _lastResult = await service.analyzeImage(
-        imageFile,
-        locationContext: fullContext.isNotEmpty ? fullContext : null,
-      );
+      try {
+        _lastResult = await service.analyzeImage(
+          imageFile,
+          locationContext: fullContext.isNotEmpty ? fullContext : null,
+        );
+      } catch (analysisError) {
+        final message = _sanitizeError(analysisError.toString());
+        if (_activeProvider == AIProvider.geminiApi && _nanoAvailable) {
+          AppLogger.error('Cloud analysis failed, trying local fallback: $message');
+          _activeProvider = AIProvider.geminiNano;
+          _updateProviderName();
+          final localService = _currentService;
+          if (localService != null) {
+            _lastResult = await localService.analyzeImage(
+              imageFile,
+              locationContext: fullContext.isNotEmpty ? fullContext : null,
+            );
+          } else {
+            throw GuideError(GuideErrorKind.ai, 'Analyse IA impossible. $message');
+          }
+        } else {
+          throw GuideError(GuideErrorKind.ai, 'Analyse IA impossible. $message');
+        }
+      }
       final analysisDuration = DateTime.now().difference(analyzeStart).inMilliseconds;
       _lastAnalysisDurationMs = analysisDuration;
       _analyzeDurations.add(analysisDuration / 1000.0);
@@ -323,14 +359,22 @@ class AudioGuideService extends ChangeNotifier {
           await geminiTts.speak(_lastResult!.script);
           _lastTtsModel = 'gemini-tts';
         } catch (ttsError) {
-          // Gemini TTS failed — fall back to Piper
-          debugPrint('Gemini TTS failed, falling back to Piper: \$ttsError');
-          await _ttsService.speak(_lastResult!.script);
-          _lastTtsModel = 'piper';
+          AppLogger.error('Gemini TTS failed, falling back to Piper: ${ttsError.toString()}');
+          try {
+            await _ttsService.speak(_lastResult!.script);
+            _lastTtsModel = 'piper';
+          } catch (fallbackError) {
+            _lastTtsModel = 'piper';
+            throw GuideError(GuideErrorKind.tts, 'La lecture audio a échoué. ${_sanitizeError(fallbackError.toString())}');
+          }
         }
       } else {
-        await _ttsService.speak(_lastResult!.script);
-        _lastTtsModel = 'piper';
+        try {
+          await _ttsService.speak(_lastResult!.script);
+          _lastTtsModel = 'piper';
+        } catch (ttsError) {
+          throw GuideError(GuideErrorKind.tts, 'La lecture audio a échoué. ${_sanitizeError(ttsError.toString())}');
+        }
       }
       // Cache the generated audio for replay without re-generating
       _lastAudioPath = await _getLastWavPath();
@@ -350,6 +394,8 @@ class AudioGuideService extends ChangeNotifier {
       _errorMessage = _sanitizeError(e.toString());
       notifyListeners();
       return null;
+    } finally {
+      _analysisInProgress = false;
     }
   }
 
@@ -379,7 +425,6 @@ class AudioGuideService extends ChangeNotifier {
       }
       _state = GuideState.paused;
     } else if (_state == GuideState.paused) {
-      // Resume: replay from cached audio if available
       const channel = MethodChannel('com.audioguide/audio_player');
       await channel.invokeMethod('play');
       _state = GuideState.speaking;
@@ -387,11 +432,16 @@ class AudioGuideService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> stop() async {
+  Future<void> cancelCurrentAction() async {
     _stopProgressSimulation();
+    _errorMessage = null;
     await _ttsService.stop();
     _state = GuideState.idle;
     notifyListeners();
+  }
+
+  Future<void> stop() async {
+    await cancelCurrentAction();
   }
 
   Future<String?> _getLastWavPath() async {
@@ -418,6 +468,7 @@ class AudioGuideService extends ChangeNotifier {
   @override
   void dispose() {
     _simulating = false;
+    _analysisInProgress = false;
     _ttsService.dispose();
     super.dispose();
   }

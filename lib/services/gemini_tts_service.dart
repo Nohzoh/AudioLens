@@ -58,8 +58,8 @@ class GeminiTtsService {
       final error = jsonDecode(response.body);
       AppLogger.error('Gemini TTS error: ${response.statusCode}');
       throw Exception(
-        'Gemini TTS erreur ${response.statusCode}: '
-        '${error['error']?['message'] ?? response.body}',
+        'La synthèse vocale a échoué (${response.statusCode}). '
+        'Vous pouvez réessayer ou utiliser une autre voix/option.',
       );
     }
 

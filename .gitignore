@@ -6,9 +6,24 @@
 .pub-cache/
 .pub/
 build/
+coverage/
+*.lcov
 *.iml
 *.ipr
 *.iws
+
+# Test/runtime artifacts
+/test/.dart_tool/
+/test/.packages/
+/.dart_tool/
+
+# Logs and local state
+*.log
+*.tmp
+*.temp
+
+# VS Code
+.vscode/
 
 # Android
 **/android/**/gradle-wrapper.jar
