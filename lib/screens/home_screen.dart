@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/audio_guide_service.dart';
-import '../services/settings_service.dart';
 import '../services/history_service.dart';
 import '../services/location_service.dart';
 import 'player_screen.dart';
@@ -52,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _pickImage(ImageSource source) async {
     _lastSource = source;
+    final history = context.read<HistoryService>();
     final picker = ImagePicker();
     final xFile = await picker.pickImage(
       source: source,
