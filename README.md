@@ -1,4 +1,4 @@
-# 🎧 Audio Guide
+# 🎧 AudioLens
 
 Une application mobile d'audio guide alimentée par l'IA. Prenez une photo d'un lieu et obtenez instantanément une explication audio.
 

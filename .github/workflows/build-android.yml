@@ -61,7 +61,7 @@ jobs:
       # Required because android/ folder is not committed (only Flutter code is versioned)
       # This ensures we always build with latest Flutter Android embedding (v2) and clean state
       - name: Bootstrap Flutter project
-        run: flutter create --project-name audio_guide --org com.audioguide --platforms android . 2>&1 | head -20 || true
+        run: flutter create --project-name audiolens --org com.audiolens --platforms android . 2>&1 | head -20 || true
 
       - name: Show pubspec after bootstrap
         run: head -30 pubspec.yaml

@@ -1,4 +1,4 @@
-# Agent Instructions for Audio Guide
+# Agent Instructions for AudioLens
 
 ## Project Context
 This is a **Flutter mobile app** for AI-powered audio guides. The app:
