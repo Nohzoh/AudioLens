@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/history_service.dart';
+import '../services/settings_service.dart';
+import '../widgets/kofi_button.dart';
 
 class AboutAnalysisScreen extends StatelessWidget {
   final HistoryEntry entry;
@@ -29,6 +31,13 @@ class AboutAnalysisScreen extends StatelessWidget {
         title: const Text('À propos de cette analyse'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => KofiButton(
+              show: settings.showKofiButton,
+            ),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),

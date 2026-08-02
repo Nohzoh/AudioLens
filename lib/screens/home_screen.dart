@@ -7,6 +7,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/location_service.dart';
+import '../services/settings_service.dart';
+import '../widgets/kofi_button.dart';
 import 'player_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
@@ -217,6 +219,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           fontWeight: FontWeight.bold),
                     ),
                     const Spacer(),
+                    Consumer<SettingsService>(
+                      builder: (context, settings, _) => KofiButton(
+                        show: settings.showKofiButton,
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.history),
                       onPressed: () => Navigator.push(context,

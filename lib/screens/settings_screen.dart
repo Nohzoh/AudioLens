@@ -3,6 +3,8 @@ import 'logs_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_guide_service.dart';
 import '../services/remote_config_service.dart';
+import '../services/settings_service.dart';
+import '../widgets/kofi_button.dart';
 import '../utils/build_info.dart';
 import 'package:intl/intl.dart';
 
@@ -64,6 +66,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Paramètres'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => KofiButton(
+              show: settings.showKofiButton,
+            ),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -248,6 +257,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             onPressed: () => Navigator.push(
                 context, MaterialPageRoute(builder: (_) => const LogsScreen())),
+          ),
+          const SizedBox(height: 16),
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => SwitchListTile(
+              title: const Text('Afficher le bouton de soutien'),
+              subtitle: const Text('Bouton Ko-fi dans l\'interface'),
+              value: settings.showKofiButton,
+              onChanged: (value) => settings.setShowKofiButton(value),
+            ),
           ),
 
           const SizedBox(height: 32),

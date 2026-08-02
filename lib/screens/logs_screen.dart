@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../utils/app_logger.dart';
+import '../services/settings_service.dart';
+import '../widgets/kofi_button.dart';
 
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});
@@ -60,6 +63,11 @@ class _LogsScreenState extends State<LogsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => KofiButton(
+              show: settings.showKofiButton,
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.copy),
             tooltip: 'Copier tout',

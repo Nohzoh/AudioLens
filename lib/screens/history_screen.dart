@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
+import '../services/settings_service.dart';
+import '../widgets/kofi_button.dart';
 import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
 
@@ -22,6 +24,13 @@ class HistoryScreen extends StatelessWidget {
         title: const Text('Historique'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => KofiButton(
+              show: settings.showKofiButton,
+            ),
+          ),
+        ],
       ),
       body: Consumer<HistoryService>(
         builder: (context, history, _) {

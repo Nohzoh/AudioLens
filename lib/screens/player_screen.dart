@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
+import '../services/settings_service.dart';
+import '../widgets/kofi_button.dart';
 
 class PlayerScreen extends StatefulWidget {
   final File imageFile;
@@ -98,6 +100,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             },
                           ),
                           const Spacer(),
+                          Consumer<SettingsService>(
+                            builder: (context, settings, _) => KofiButton(
+                              show: settings.showKofiButton,
+                              iconColor: Colors.white70,
+                            ),
+                          ),
                           if (guide.state == GuideState.speaking || guide.state == GuideState.paused)
                             IconButton(
                               icon: const Icon(Icons.cancel_outlined, color: Colors.white70),
