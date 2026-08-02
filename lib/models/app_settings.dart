@@ -97,18 +97,8 @@ final List<LocalModel> availableModels = [
 
 final List<CloudProvider> availableProviders = [
   CloudProvider(
-    name: 'Anthropic (Claude)',
-    logoAsset: 'assets/images/anthropic.png',
-    apiKeyHint: 'sk-ant-...',
-  ),
-  CloudProvider(
     name: 'Google (Gemini)',
     logoAsset: 'assets/images/google.png',
     apiKeyHint: 'AIza...',
-  ),
-  CloudProvider(
-    name: 'OpenAI (ChatGPT)',
-    logoAsset: 'assets/images/openai.png',
-    apiKeyHint: 'sk-...',
   ),
 ];

@@ -18,7 +18,7 @@ void main() async {
   await settings.init();
 
   final guide = AudioGuideService();
-  await guide.init(settings.geminiApiKey.isNotEmpty ? settings.geminiApiKey : null);
+  await guide.init();
 
   final history = HistoryService();
   await history.init();

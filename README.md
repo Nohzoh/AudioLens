@@ -8,7 +8,7 @@ Une application mobile d'audio guide alimentée par l'IA. Prenez une photo d'un 
 - 🤖 Analyse par IA (locale ou cloud)
 - 🔊 Génération audio du commentaire
 - 📱 Fonctionne hors-ligne (avec modèles locaux)
-- ☁️ Support multi-fournisseurs (Anthropic, Google, OpenAI)
+- ☁️ Support **Gemini API** (Google)
 
 ## Architecture
 
@@ -17,8 +17,8 @@ Photo → Vision Model → LLM (script) → TTS → Audio
 ```
 
 ### Modes disponibles
-- **☁️ Cloud** : Utilise votre compte Anthropic, Google ou OpenAI
-- **📱 Local** : Modèles embarqués, fonctionne sans internet
+- **☁️ Cloud** : Utilise votre compte **Google (Gemini API)**
+- **📱 Local** : Modèles embarqués (Gemini Nano), fonctionne sans internet
 - **⚡ Hybride** : Cloud si disponible, local sinon
 
 ## Build

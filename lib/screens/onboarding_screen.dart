@@ -68,13 +68,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Row(children: [
                       const Text('🔑', style: TextStyle(fontSize: 20)),
                       const SizedBox(width: 8),
-                      Text('Clé API Anthropic',
+                      Text('Clé API Gemini',
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ]),
                     const SizedBox(height: 8),
                     Text(
-                      'Obtenez votre clé sur console.anthropic.com\nRubrique "API Keys"',
+                      'Obtenez une clé gratuite sur aistudio.google.com\nRubrique "API Keys"',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
@@ -87,7 +87,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 controller: _controller,
                 obscureText: true,
                 decoration: InputDecoration(
-                  hintText: 'sk-ant-...',
+                  hintText: 'AIza...',
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHigh,
                   border: OutlineInputBorder(

@@ -135,7 +135,7 @@ class AudioGuideService extends ChangeNotifier {
     return null;
   }
 
-  Future<void> init(String? anthropicApiKey) async {
+  Future<void> init() async {
     await _loadPreferences();
 
     _nanoAvailable = await _nanoService.isAvailable();
@@ -152,7 +152,6 @@ class AudioGuideService extends ChangeNotifier {
     if (_activeProvider == AIProvider.geminiNano && !_nanoAvailable) {
       if (_geminiApiKey?.isNotEmpty == true) {
         _activeProvider = AIProvider.geminiApi;
-      } else if (anthropicApiKey?.isNotEmpty == true) {
       }
     }
 
