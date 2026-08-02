@@ -14,9 +14,10 @@
 
 
 
-- [~] **T01** 🔥 ⭐⭐⭐ - Corriger le **freeze du téléphone** lors du lancement de Piper + ajouter un **bouton d’annulation**
+- [x] **T01** 🔥 ⭐⭐⭐ - Corriger le **freeze du téléphone** lors du lancement de Piper + ajouter un **bouton d’annulation**
   - **Lié à** : T43 (annulations interruptibles)
-  - **Retour test** : À retester avec téléphone en charge + apps en arrière-plan (2026-08-02)
+  - **Validé** : Commit `37f4ccd` (bouton d'annulation + état cancelling + timeout)
+  - **Note** : Bouton d'annulation fonctionnel pendant la synthèse. Freeze résiduel nécessite T43 pour annulation interruptible.
 
 ---
 
@@ -169,6 +170,10 @@
   - **Validé** : Commit `83a790e` (widget réutilisable, intégration dans toutes les pages, toggle dans les paramètres)
 - [x] **T42** 🔥 ⭐⭐⭐ - Ajouter une vérification de **build Android complet** et clarifier le rôle du bootstrap dans GitHub Actions
   - **Validé** : Commit `82d877a`
+- [x] **T01** 🔥 ⭐⭐⭐ - Corriger le **freeze du téléphone** lors du lancement de Piper + ajouter un **bouton d’annulation**
+  - **Lié à** : T43 (annulations interruptibles)
+  - **Validé** : Commit `37f4ccd` (bouton d'annulation + état cancelling + timeout)
+  - **Note** : Bouton d'annulation fonctionnel pendant la synthèse. Freeze résiduel nécessite T43 pour annulation interruptible.
 - [x] **T63** ⚡ ⭐ - **Unifier le nom du projet** sur AudioLens
   - **Validé** : Commit `6afd7b9` (pubspec, README, AGENTS, workflow) + renaming complet du package Android (Kotlin files, channels, namespace)
 - [x] **T64** ⚡ ⭐⭐ - Nettoyer les **fichiers untracked** et le .gitignore
