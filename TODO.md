@@ -145,7 +145,8 @@
 - [ ] **T35** - **Prioriser les tâches** par impact / effort (tableau ROI ?)
 - [ ] **T36** - **Suivre l’avancement** des implémentations (tableau Kanban ?)
 - [ ] **T37** - Ajouter une **baseline de couverture de tests** et la conserver
-- [ ] **T38** - Ajouter un **bouton Ko-fi** pour accepter des soutiens volontaires
+- [x] **T38** - Ajouter un **bouton Ko-fi** pour accepter des soutiens volontaires
+  - **Validé** : Commit `83a790e` (2026-08-02)
 
 ---
 
@@ -175,6 +176,8 @@
   - **Validé** : Commit `82d877a`
 - [x] **T63** ⚡ ⭐ - **Unifier le nom du projet** sur AudioLens
   - **Validé** : Commit `6afd7b9` (pubspec, README, AGENTS, workflow) + renaming complet du package Android (Kotlin files, channels, namespace)
+- [x] **T38** 🌱 ⭐ - Ajouter un **bouton Ko-fi** pour accepter des soutiens volontaires
+  - **Validé** : Commit `83a790e` (widget réutilisable, intégration dans toutes les pages, toggle dans les paramètres)
 
 ---
 
