@@ -55,7 +55,6 @@ class GeminiTtsService {
     ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
       AppLogger.error('Gemini TTS error: ${response.statusCode}');
       throw Exception(
         'La synthèse vocale a échoué (${response.statusCode}). '

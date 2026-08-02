@@ -137,7 +137,7 @@ class TtsService {
     final wavPath = p.join(tmpDir.path, 'tts_output.wav');
 
     try {
-      final sampleRate = await _generateInBackground(tts, text, wavPath);
+      await _generateInBackground(tts, text, wavPath);
       if (_cancelRequested || token != _generationToken) {
         _isPlaying = false;
         return;

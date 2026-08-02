@@ -69,8 +69,6 @@ class GeminiApiService implements AIService {
     final List<String> attempts = [];
 
     for (final model in modelsToTry) {
-      final url =
-          '${cfg.geminiApiUrl}/models/$model:generateContent?key=***';
       final fullUrl =
           '${cfg.geminiApiUrl}/models/$model:generateContent?key=$apiKey';
 

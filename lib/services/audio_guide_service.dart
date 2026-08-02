@@ -13,7 +13,6 @@ import 'gemini_tts_service.dart';
 import 'location_service.dart';
 import 'exif_location_service.dart';
 import 'wikipedia_service.dart';
-import 'history_service.dart';
 import 'remote_config_service.dart';
 
 enum GuideState { idle, locating, analyzing, synthesizing, speaking, paused, error }

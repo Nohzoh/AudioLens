@@ -1,10 +1,8 @@
 import 'dart:io';
 import '../utils/app_logger.dart';
 import 'package:flutter/material.dart';
-import '../utils/app_logger.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:gal/gal.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/audio_guide_service.dart';
 import '../services/settings_service.dart';
@@ -54,9 +52,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _pickImage(ImageSource source) async {
     _lastSource = source;
-    final guide = context.read<AudioGuideService>();
-    final history = context.read<HistoryService>();
-
     final picker = ImagePicker();
     final xFile = await picker.pickImage(
       source: source,
@@ -98,9 +93,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _retryAnalysis(HistoryEntry entry) async {
-    final guide = context.read<AudioGuideService>();
-    final history = context.read<HistoryService>();
-
     final imageFile = File(entry.imagePath);
     if (!imageFile.existsSync()) {
       ScaffoldMessenger.of(context).showSnackBar(

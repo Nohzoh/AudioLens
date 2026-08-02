@@ -1,23 +1,15 @@
 import 'dart:io';
 import '../utils/app_logger.dart';
 import 'package:flutter/material.dart';
-import '../utils/app_logger.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter/material.dart';
-import '../utils/app_logger.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:provider/provider.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
-import 'package:provider/provider.dart';
-import '../services/audio_guide_service.dart';
-import '../services/tts_service.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});

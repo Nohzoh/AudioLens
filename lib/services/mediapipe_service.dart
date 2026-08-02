@@ -1,14 +1,12 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'ai_service.dart';
 
 const _channel = MethodChannel('com.audioguide/mediapipe');
 
 const _modelUrl =
     'https://huggingface.co/litert-community/Gemma3-1B-IT-INT4/resolve/main/gemma3-1b-it-int4.task';
-const _modelFileName = 'gemma3-1b-multimodal.task';
 
 class MediaPipeService implements AIService {
   bool _initialized = false;
