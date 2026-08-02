@@ -15,7 +15,7 @@ import 'exif_location_service.dart';
 import 'wikipedia_service.dart';
 import 'remote_config_service.dart';
 
-enum GuideState { idle, locating, analyzing, synthesizing, speaking, paused, error }
+enum GuideState { idle, locating, analyzing, synthesizing, speaking, paused, cancelling, error }
 enum AIProvider { geminiNano, geminiApi }
 
 class PipelineProgress {
@@ -225,7 +225,7 @@ class AudioGuideService extends ChangeNotifier {
   }
 
   Future<AudioGuideResult?> analyzeAndPlay(File imageFile) async {
-    if (_analysisInProgress) {
+    if (_analysisInProgress || _state == GuideState.cancelling) {
       _errorMessage = 'Une analyse est déjà en cours.';
       _state = GuideState.error;
       notifyListeners();
@@ -433,7 +433,17 @@ class AudioGuideService extends ChangeNotifier {
   Future<void> cancelCurrentAction() async {
     _stopProgressSimulation();
     _errorMessage = null;
-    await _ttsService.stop();
+    _analysisInProgress = false;
+    _state = GuideState.cancelling;
+    notifyListeners();
+    
+    // Try to stop TTS with a timeout to prevent hanging
+    try {
+      await _ttsService.stop().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Timeout reached, TTS is still running in background but we can proceed
+    }
+    
     _state = GuideState.idle;
     notifyListeners();
   }

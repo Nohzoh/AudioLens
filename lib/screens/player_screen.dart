@@ -106,7 +106,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               iconColor: Colors.white70,
                             ),
                           ),
-                          if (guide.state == GuideState.speaking || guide.state == GuideState.paused)
+                          if (guide.state == GuideState.cancelling)
+                            const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white70,
+                              ),
+                            )
+                          else if (guide.state == GuideState.speaking || guide.state == GuideState.paused || guide.state == GuideState.synthesizing)
                             IconButton(
                               icon: const Icon(Icons.cancel_outlined, color: Colors.white70),
                               tooltip: 'Annuler',
