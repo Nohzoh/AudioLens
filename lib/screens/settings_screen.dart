@@ -3,6 +3,7 @@ import 'logs_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_guide_service.dart';
 import '../services/remote_config_service.dart';
+import '../utils/build_info.dart';
 import 'package:intl/intl.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -117,9 +118,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: Icon(_obscure
-                        ? Icons.visibility_off
-                        : Icons.visibility),
+                    icon: Icon(
+                        _obscure ? Icons.visibility_off : Icons.visibility),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                   if (_apiKeyController.text.isNotEmpty)
@@ -174,7 +174,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      fromRemote ? 'Config chargée depuis GitHub' : 'Config par défaut (hors ligne)',
+                      fromRemote
+                          ? 'Config chargée depuis GitHub'
+                          : 'Config par défaut (hors ligne)',
                       style: TextStyle(
                         color: fromRemote ? Colors.greenAccent : Colors.orange,
                         fontSize: 12,
@@ -185,17 +187,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Mise à jour : ${DateFormat("dd/MM/yyyy à HH:mm").format(loadedAt)}',
-                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 11),
                     ),
                   ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Build : ${formatBuildDate(buildDate)}',
+                    style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  ),
                   const Divider(height: 20, color: Colors.white12),
                   _ConfigRow('Modèle IA', cfg.geminiModel),
                   _ConfigRow('Fallbacks', cfg.geminiModelFallbacks.join(', ')),
                   _ConfigRow('Modèle TTS', cfg.geminiTtsModel),
                   _ConfigRow('Voix TTS', cfg.geminiTtsVoice),
                   _ConfigRow('Tokens max', cfg.geminiMaxTokens.toString()),
-                  _ConfigRow('Thinking budget', cfg.geminiThinkingBudget.toString()),
-                  _ConfigRow('Rayon Wikipedia', '${cfg.wikipediaRadiusMeters}m'),
+                  _ConfigRow(
+                      'Thinking budget', cfg.geminiThinkingBudget.toString()),
+                  _ConfigRow(
+                      'Rayon Wikipedia', '${cfg.wikipediaRadiusMeters}m'),
                   _ConfigRow('Vitesse TTS', cfg.ttsSpeed.toString()),
                 ],
               ),
@@ -213,7 +223,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await RemoteConfigService.forceRefresh();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(
+                  SnackBar(
+                      content: Text(
                     RemoteConfigService.loadedFromRemote
                         ? 'Config mise à jour depuis GitHub'
                         : 'Impossible de joindre GitHub, config par défaut',
@@ -235,8 +246,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 44),
             ),
-            onPressed: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const LogsScreen())),
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const LogsScreen())),
           ),
 
           const SizedBox(height: 32),
@@ -252,7 +263,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  const Icon(Icons.info_outline, size: 16, color: Colors.white54),
+                  const Icon(Icons.info_outline,
+                      size: 16, color: Colors.white54),
                   const SizedBox(width: 8),
                   Text('À propos de Gemini API',
                       style: theme.textTheme.labelMedium),
@@ -264,7 +276,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   '• Textes 2× plus longs et précis\n'
                   '• Nécessite une connexion internet\n'
                   '• Clé stockée uniquement sur cet appareil',
-                  style: TextStyle(color: Colors.white54, fontSize: 13, height: 1.6),
+                  style: TextStyle(
+                      color: Colors.white54, fontSize: 13, height: 1.6),
                 ),
               ],
             ),
@@ -319,9 +332,7 @@ class _ProviderCard extends StatelessWidget {
             : theme.colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isActive
-              ? theme.colorScheme.primary
-              : Colors.transparent,
+          color: isActive ? theme.colorScheme.primary : Colors.transparent,
           width: 1.5,
         ),
       ),
@@ -351,7 +362,8 @@ class _ProviderCard extends StatelessWidget {
         trailing: isActive
             ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
             : isAvailable
-                ? const Icon(Icons.radio_button_unchecked, color: Colors.white38)
+                ? const Icon(Icons.radio_button_unchecked,
+                    color: Colors.white38)
                 : const Icon(Icons.lock_outline, color: Colors.white24),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

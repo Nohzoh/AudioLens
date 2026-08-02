@@ -176,7 +176,10 @@ jobs:
 
       - name: Build APK (debug)
         run: |
-          flutter build apk --debug 2>&1 | tee build_output.txt
+          BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          flutter build apk --debug \
+            --dart-define=BUILD_DATE="$BUILD_DATE" \
+            2>&1 | tee build_output.txt
           exit ${PIPESTATUS[0]}
 
       - name: Show errors on failure

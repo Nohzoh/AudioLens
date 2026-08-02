@@ -13,6 +13,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
+import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_guide_service.dart';
@@ -81,8 +82,8 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateStr = DateFormat('d MMM yyyy · HH:mm', 'fr_FR')
-        .format(entry.createdAt);
+    final dateStr =
+        DateFormat('d MMM yyyy · HH:mm', 'fr_FR').format(entry.createdAt);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -270,8 +271,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final live = _liveEntry(context);
-    final dateStr = DateFormat('EEEE d MMMM yyyy · HH:mm', 'fr_FR')
-        .format(live.createdAt);
+    final dateStr =
+        DateFormat('EEEE d MMMM yyyy · HH:mm', 'fr_FR').format(live.createdAt);
 
     return Scaffold(
       body: Stack(
@@ -302,22 +303,23 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
               children: [
                 // Top bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back,
-                            color: Colors.white),
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Spacer(),
                       IconButton(
                         icon: const Icon(Icons.info_outline,
                             color: Colors.white54),
-                        onPressed: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) =>
-                              AboutAnalysisScreen(entry: widget.entry))),
+                        onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    AboutAnalysisScreen(entry: widget.entry))),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline,
@@ -335,181 +337,227 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                      // Date
-                      Text(
-                        dateStr,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.white54,
+                        // Date
+                        Text(
+                          dateStr,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.white54,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
+                        const SizedBox(height: 8),
 
-                      // Title
-                      Text(
-                        live.title,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                        // Title
+                        Text(
+                          live.title,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
 
-                      if (live.locationName != null) ...[
-                        const SizedBox(height: 4),
+                        if (live.locationName != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on,
+                                  color: Colors.white54, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                live.locationName!,
+                                style: const TextStyle(color: Colors.white54),
+                              ),
+                            ],
+                          ),
+                        ],
+
+                        const SizedBox(height: 16),
+
+                        // Action buttons
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            const Icon(Icons.location_on,
-                                color: Colors.white54, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              live.locationName!,
-                              style: const TextStyle(color: Colors.white54),
+                            // Save to gallery
+                            InkWell(
+                              onTap: () async {
+                                try {
+                                  await Gal.putImage(live.imagePath);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            'Photo sauvegardée dans la galerie'),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                } catch (_) {}
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 4, horizontal: 8),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.save_alt,
+                                          size: 14, color: Colors.white54),
+                                      SizedBox(width: 4),
+                                      Text('Sauvegarder',
+                                          style: TextStyle(
+                                              color: Colors.white54,
+                                              fontSize: 12)),
+                                    ]),
+                              ),
+                            ),
+                            // Copy button
+                            InkWell(
+                              onTap: () {
+                                Clipboard.setData(
+                                    ClipboardData(text: live.script));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Texte copié'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 4, horizontal: 8),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.copy,
+                                          size: 14, color: Colors.white54),
+                                      SizedBox(width: 4),
+                                      Text('Copier',
+                                          style: TextStyle(
+                                              color: Colors.white54,
+                                              fontSize: 12)),
+                                    ]),
+                              ),
                             ),
                           ],
                         ),
-                      ],
+                        const SizedBox(height: 8),
 
-                      const SizedBox(height: 16),
-
-                      // Action buttons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          // Save to gallery
-                          InkWell(
-                            onTap: () async {
-                              try {
-                                await Gal.putImage(live.imagePath);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Photo sauvegardée dans la galerie'),
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
-                              } catch (_) {}
-                            },
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                Icon(Icons.save_alt, size: 14, color: Colors.white54),
-                                SizedBox(width: 4),
-                                Text('Sauvegarder', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                              ]),
+                        // Script
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: Text(
+                            live.script,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.white.withOpacity(0.85),
+                              height: 1.6,
                             ),
                           ),
-                          // Copy button
-                          InkWell(
-                            onTap: () {
-                              Clipboard.setData(ClipboardData(text: live.script));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Texte copié'),
-                                  duration: Duration(seconds: 2),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Upgrade TTS button
+                        if (_liveEntry(context).hasLowQualityTts)
+                          Consumer<AudioGuideService>(
+                            builder: (context, guide, _) {
+                              if (guide.geminiTtsService == null)
+                                return const SizedBox.shrink();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: OutlinedButton.icon(
+                                  icon: _isUpgrading
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.amber))
+                                      : const Icon(Icons.auto_awesome,
+                                          size: 16),
+                                  label: Text(_isUpgrading
+                                      ? 'Génération en cours...'
+                                      : 'Améliorer la voix'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.amber,
+                                    side: const BorderSide(color: Colors.amber),
+                                    minimumSize:
+                                        const Size(double.infinity, 40),
+                                  ),
+                                  onPressed: _isUpgrading
+                                      ? null
+                                      : () async {
+                                          final history =
+                                              context.read<HistoryService>();
+                                          setState(() => _isUpgrading = true);
+                                          try {
+                                            final tts = guide.geminiTtsService!;
+                                            tts.onComplete = () => setState(
+                                                () => _isPlaying = false);
+                                            // Generate audio first, then play
+                                            await tts.speak(live.script);
+                                            // Save upgraded audio
+                                            final lastPath = tts.lastWavPath;
+                                            AppLogger.tts(
+                                                'upgrade lastAudioPath: $lastPath, entry.id: ${live.id}');
+                                            if (lastPath != null &&
+                                                live.id != null) {
+                                              await history.saveAudioPath(
+                                                  live.id!, lastPath,
+                                                  ttsModel: 'gemini-tts');
+                                              AppLogger.tts('saveAudioPath OK');
+                                            } else {
+                                              AppLogger.error(
+                                                  'saveAudioPath skipped: lastPath=$lastPath id=${live.id}');
+                                            }
+                                            setState(() => _isPlaying = true);
+                                          } catch (error) {
+                                            setState(() => _isPlaying = false);
+                                            if (context.mounted) {
+                                              final message =
+                                                  formatVoiceUpgradeErrorMessage(
+                                                      error);
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(message),
+                                                  duration: const Duration(
+                                                      seconds: 4),
+                                                  backgroundColor:
+                                                      Colors.orange.shade800,
+                                                ),
+                                              );
+                                            }
+                                          } finally {
+                                            setState(
+                                                () => _isUpgrading = false);
+                                          }
+                                        },
                                 ),
                               );
                             },
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                Icon(Icons.copy, size: 14, color: Colors.white54),
-                                SizedBox(width: 4),
-                                Text('Copier', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                              ]),
-                            ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
 
-                      // Script
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: Colors.white.withOpacity(0.1)),
-                        ),
-                        child: Text(
-                          live.script,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.white.withOpacity(0.85),
-                            height: 1.6,
+                        // Play button
+                        FilledButton.icon(
+                          onPressed: _toggleAudio,
+                          icon:
+                              Icon(_isPlaying ? Icons.stop : Icons.play_arrow),
+                          label: Text(_isPlaying
+                              ? 'Arrêter'
+                              : 'Écouter le commentaire'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 52),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 20),
-
-                      // Upgrade TTS button
-                      if (_liveEntry(context).hasLowQualityTts)
-                        Consumer<AudioGuideService>(
-                          builder: (context, guide, _) {
-                            if (guide.geminiTtsService == null) return const SizedBox.shrink();
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: OutlinedButton.icon(
-                                icon: _isUpgrading
-                                    ? const SizedBox(width: 14, height: 14,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber))
-                                    : const Icon(Icons.auto_awesome, size: 16),
-                                label: Text(_isUpgrading ? 'Génération en cours...' : 'Améliorer la voix'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.amber,
-                                  side: const BorderSide(color: Colors.amber),
-                                  minimumSize: const Size(double.infinity, 40),
-                                ),
-                                onPressed: _isUpgrading ? null : () async {
-                                  final history = context.read<HistoryService>();
-                                  setState(() => _isUpgrading = true);
-                                  try {
-                                    final tts = guide.geminiTtsService!;
-                                    tts.onComplete = () => setState(() => _isPlaying = false);
-                                    // Generate audio first, then play
-                                    await tts.speak(live.script);
-                                    // Save upgraded audio
-                                    final lastPath = tts.lastWavPath;
-                                    AppLogger.tts('upgrade lastAudioPath: $lastPath, entry.id: ${live.id}');
-                                    if (lastPath != null && live.id != null) {
-                                      await history.saveAudioPath(
-                                        live.id!, lastPath, ttsModel: 'gemini-tts');
-                                      AppLogger.tts('saveAudioPath OK');
-                                    } else {
-                                      AppLogger.error('saveAudioPath skipped: lastPath=$lastPath id=${live.id}');
-                                    }
-                                    setState(() => _isPlaying = true);
-                                  } catch (_) {
-                                    setState(() => _isPlaying = false);
-                                  } finally {
-                                    setState(() => _isUpgrading = false);
-                                  }
-                                },
-                              ),
-                            );
-                          },
-                        ),
-
-                      // Play button
-                      FilledButton.icon(
-                        onPressed: _toggleAudio,
-                        icon: Icon(_isPlaying
-                            ? Icons.stop
-                            : Icons.play_arrow),
-                        label: Text(_isPlaying
-                            ? 'Arrêter'
-                            : 'Écouter le commentaire'),
-                        style: FilledButton.styleFrom(
-                          minimumSize:
-                              const Size(double.infinity, 52),
-                          shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(14)),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-                    ],
+                        const SizedBox(height: 12),
+                      ],
                     ),
                   ),
                 ),
@@ -521,4 +569,3 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     );
   }
 }
-
