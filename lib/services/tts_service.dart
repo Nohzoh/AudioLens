@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
+import '../utils/cancel_token.dart';
 import 'remote_config_service.dart';
 
 class TtsService {
@@ -119,12 +120,23 @@ class TtsService {
     return parts.where((s) => s.trim().isNotEmpty).toList();
   }
 
-  Future<void> speak(String text) async {
+  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+    // Check cancellation before starting
+    if (cancelToken?.isCancelled ?? false) {
+      return;
+    }
+
     _cancelRequested = false;
     _generationToken += 1;
     final token = _generationToken;
 
     if (!_initialized) await initialize();
+    
+    // Check cancellation after initialization
+    if (cancelToken?.isCancelled ?? false) {
+      return;
+    }
+    
     final tts = _tts;
     if (tts == null) return;
 
@@ -138,7 +150,9 @@ class TtsService {
 
     try {
       await _generateInBackground(tts, text, wavPath);
-      if (_cancelRequested || token != _generationToken) {
+      
+      // Check both internal and external cancellation
+      if (_cancelRequested || token != _generationToken || (cancelToken?.isCancelled ?? false)) {
         _isPlaying = false;
         return;
       }

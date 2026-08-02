@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import '../utils/app_logger.dart';
+import '../utils/cancel_token.dart';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -19,7 +20,12 @@ class GeminiTtsService {
 
   GeminiTtsService({required this.apiKey});
 
-  Future<void> speak(String text) async {
+  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+    // Check cancellation before starting
+    if (cancelToken?.isCancelled ?? false) {
+      return;
+    }
+
     final cfg = RemoteConfigService.current;
 
     // Add audio guide style instruction to the TTS prompt

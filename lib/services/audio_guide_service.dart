@@ -1,5 +1,6 @@
 import 'dart:io';
 import '../utils/app_logger.dart';
+import '../utils/cancel_token.dart';
 import '../models/guide_error.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -85,6 +86,10 @@ class AudioGuideService extends ChangeNotifier {
   String _providerName = '';
   File? _lastImageFile;
   LocationPermissionStatus _lastLocationStatus = LocationPermissionStatus.granted;
+  
+  // Cancellation support
+  final CancelToken _cancelToken = CancelToken();
+  CancelToken get cancelToken => _cancelToken;
 
   // Provider management
   AIProvider _activeProvider = AIProvider.geminiNano;
@@ -241,6 +246,7 @@ class AudioGuideService extends ChangeNotifier {
     }
 
     _analysisInProgress = true;
+    _cancelToken.reset(); // Reset cancellation for new analysis
 
     try {
       _lastResult = null;
@@ -250,6 +256,14 @@ class AudioGuideService extends ChangeNotifier {
       _lastImageFile = imageFile;
       _errorMessage = null;
       notifyListeners();
+
+      // Check for cancellation before starting
+      if (_cancelToken.isCancelled) {
+        _state = GuideState.idle;
+        _analysisInProgress = false;
+        notifyListeners();
+        return null;
+      }
 
       final gpsStart = DateTime.now();
       // Check EXIF GPS first — if image has coordinates, use those
@@ -295,6 +309,14 @@ class AudioGuideService extends ChangeNotifier {
         locationResult.info?.contextForPrompt,
         wikiContext,
       ].where((s) => s != null && s.isNotEmpty).join('\n\n');
+
+      // Check cancellation before AI analysis
+      if (_cancelToken.isCancelled) {
+        _state = GuideState.idle;
+        _analysisInProgress = false;
+        notifyListeners();
+        return null;
+      }
 
       _state = GuideState.analyzing;
       _currentStep = 1;
@@ -345,6 +367,14 @@ class AudioGuideService extends ChangeNotifier {
         );
       }
 
+      // Check cancellation before TTS synthesis
+      if (_cancelToken.isCancelled) {
+        _state = GuideState.idle;
+        _analysisInProgress = false;
+        notifyListeners();
+        return null;
+      }
+
       _state = GuideState.synthesizing;
       _currentStep = 2;
       _stepProgress = -1.0;
@@ -354,12 +384,12 @@ class AudioGuideService extends ChangeNotifier {
       if (geminiTts != null) {
         try {
           geminiTts.onComplete = _ttsService.onComplete;
-          await geminiTts.speak(_lastResult!.script);
+          await geminiTts.speak(_lastResult!.script, cancelToken: _cancelToken);
           _lastTtsModel = 'gemini-tts';
         } catch (ttsError) {
           AppLogger.error('Gemini TTS failed, falling back to Piper: ${ttsError.toString()}');
           try {
-            await _ttsService.speak(_lastResult!.script);
+            await _ttsService.speak(_lastResult!.script, cancelToken: _cancelToken);
             _lastTtsModel = 'piper';
           } catch (fallbackError) {
             _lastTtsModel = 'piper';
@@ -368,7 +398,7 @@ class AudioGuideService extends ChangeNotifier {
         }
       } else {
         try {
-          await _ttsService.speak(_lastResult!.script);
+          await _ttsService.speak(_lastResult!.script, cancelToken: _cancelToken);
           _lastTtsModel = 'piper';
         } catch (ttsError) {
           throw GuideError(GuideErrorKind.tts, 'La lecture audio a échoué. ${_sanitizeError(ttsError.toString())}');
@@ -434,6 +464,10 @@ class AudioGuideService extends ChangeNotifier {
     _stopProgressSimulation();
     _errorMessage = null;
     _analysisInProgress = false;
+    
+    // Cancel all ongoing operations
+    _cancelToken.cancel();
+    
     _state = GuideState.cancelling;
     notifyListeners();
     
@@ -443,6 +477,9 @@ class AudioGuideService extends ChangeNotifier {
     } catch (_) {
       // Timeout reached, TTS is still running in background but we can proceed
     }
+    
+    // Reset the token for next operation
+    _cancelToken.reset();
     
     _state = GuideState.idle;
     notifyListeners();
