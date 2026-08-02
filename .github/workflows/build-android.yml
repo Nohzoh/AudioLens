@@ -57,6 +57,9 @@ jobs:
           flutter-version: '3.32.2'
           channel: 'stable'
 
+      # Bootstrap: Re-generate Android project files (not versioned in repo)
+      # Required because android/ folder is not committed (only Flutter code is versioned)
+      # This ensures we always build with latest Flutter Android embedding (v2) and clean state
       - name: Bootstrap Flutter project
         run: flutter create --project-name audio_guide --org com.audioguide --platforms android . 2>&1 | head -20 || true
 
@@ -189,6 +192,22 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           [ -f build_output.txt ] && tail -150 build_output.txt >> $GITHUB_STEP_SUMMARY || echo "No build output file" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify APK exists and is valid
+        run: |
+          APK_PATH="build/app/outputs/flutter-apk/app-debug.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "::error::APK not found at $APK_PATH"
+            exit 1
+          fi
+          # Check APK is not empty
+          if [ ! -s "$APK_PATH" ]; then
+            echo "::error::APK is empty"
+            exit 1
+          fi
+          # Show APK info
+          aapt dump badging "$APK_PATH" | grep -E "package:|version|sdkVersion" || true
+          echo "✅ APK build verified: $APK_PATH ($(stat -f%z "$APK_PATH" 2>/dev/null || stat -c%s "$APK_PATH") bytes)"
 
       - name: Upload APK
         if: success()
