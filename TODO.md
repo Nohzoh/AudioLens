@@ -43,11 +43,6 @@
   - Mettre à jour `main.dart`, `pubspec.yaml`, `README.md`, assets
   - **Recommandation** : Garder **"Audio Guide"** (plus clair)
 
-- [x] **T64** ⚡ ⭐⭐ - Nettoyer les **fichiers untracked** et le .gitignore
-  - **Validé** : Commit `2e3d404` (nettoyage des untracked files)
-
-- [x] **T65** ⚡ ⭐⭐ - Nettoyer tous les **imports inutilisés** et variables mortes
-  - **Validé** : Commit `e176b62` (7 fichiers nettoyés, 0 warnings)
 - [ ] **T66** ⚡ ⭐ - Remplacer tous les **.withOpacity()** par **.withValues()**
   - Fichiers concernés : `history_screen.dart`, `home_screen.dart`, `player_screen.dart`, `onboarding_screen.dart`, `settings_screen.dart`, widgets/*
 
@@ -145,8 +140,6 @@
 - [ ] **T35** - **Prioriser les tâches** par impact / effort (tableau ROI ?)
 - [ ] **T36** - **Suivre l’avancement** des implémentations (tableau Kanban ?)
 - [ ] **T37** - Ajouter une **baseline de couverture de tests** et la conserver
-- [x] **T38** - Ajouter un **bouton Ko-fi** pour accepter des soutiens volontaires
-  - **Validé** : Commit `83a790e` (2026-08-02)
 
 ---
 
@@ -172,12 +165,16 @@
   - **Validé** : Inclus dans T60 (commit `0f13e76`)
 - [x] **T62** ⚡ ⭐⭐⭐⭐ - **Compléter les modèles locaux** ou supprimer les écrans inutilisés
   - **Validé** : Commit `c37a3f1`
+- [x] **T38** 🌱 ⭐ - Ajouter un **bouton Ko-fi** pour accepter des soutiens volontaires
+  - **Validé** : Commit `83a790e` (widget réutilisable, intégration dans toutes les pages, toggle dans les paramètres)
 - [x] **T42** 🔥 ⭐⭐⭐ - Ajouter une vérification de **build Android complet** et clarifier le rôle du bootstrap dans GitHub Actions
   - **Validé** : Commit `82d877a`
 - [x] **T63** ⚡ ⭐ - **Unifier le nom du projet** sur AudioLens
   - **Validé** : Commit `6afd7b9` (pubspec, README, AGENTS, workflow) + renaming complet du package Android (Kotlin files, channels, namespace)
-- [x] **T38** 🌱 ⭐ - Ajouter un **bouton Ko-fi** pour accepter des soutiens volontaires
-  - **Validé** : Commit `83a790e` (widget réutilisable, intégration dans toutes les pages, toggle dans les paramètres)
+- [x] **T64** ⚡ ⭐⭐ - Nettoyer les **fichiers untracked** et le .gitignore
+  - **Validé** : Commit `2e3d404` (nettoyage des untracked files)
+- [x] **T65** ⚡ ⭐⭐ - Nettoyer tous les **imports inutilisés** et variables mortes
+  - **Validé** : Commit `e176b62` (7 fichiers nettoyés, 0 warnings)
 
 ---
 
