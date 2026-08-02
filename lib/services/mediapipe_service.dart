@@ -71,12 +71,13 @@ class MediaPipeService implements AIService {
   }
 
   @override
-  Future<AudioGuideResult> analyzeImage(File imageFile) async {
+  Future<AudioGuideResult> analyzeImage(File imageFile, {String? locationContext}) async {
     if (!_initialized) await initialize();
 
     try {
       final response = await _channel.invokeMethod<String>('analyzeImage', {
         'imagePath': imageFile.path,
+        if (locationContext != null) 'locationContext': locationContext,
       });
 
       final text = response ?? '';
