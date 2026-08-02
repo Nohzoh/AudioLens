@@ -27,9 +27,10 @@
 - [ ] **T41** ⚡ ⭐ - Synchroniser le **README** avec le produit actuel
   - **Contenu à mettre à jour** : Gemini Nano/API, TTS Gemini/Piper, état Android, architecture
 
-- [ ] **T43** ⚡ ⭐⭐⭐ - Rendre les **annulations vraiment interruptibles** (appels HTTP, étapes longues du pipeline)
+- [x] **T43** ⚡ ⭐⭐⭐ - Rendre les **annulations vraiment interruptibles** (appels HTTP, étapes longues du pipeline)
   - **Lié à** : T01 (freeze Piper)
-  - **Cible** : Bouton visible et fonctionnel pendant la synthèse Piper
+  - **Validé** : Commit `4a9b211` (CancelToken system, checks avant chaque étape, passage aux services TTS)
+  - **Note** : Annulations basées sur checks avant chaque étape. HTTP natif non supporté (nécessite package dio).
 
 - [ ] **T46** ⚡ ⭐⭐⭐ - Ajouter des **tests de fallback** IA/TTS/GPS
   - **Cas à couvrir** : Modèle Gemini principal → fallback, Gemini TTS → Piper, GPS refusé
@@ -173,7 +174,11 @@
 - [x] **T01** 🔥 ⭐⭐⭐ - Corriger le **freeze du téléphone** lors du lancement de Piper + ajouter un **bouton d’annulation**
   - **Lié à** : T43 (annulations interruptibles)
   - **Validé** : Commit `37f4ccd` (bouton d'annulation + état cancelling + timeout)
-  - **Note** : Bouton d'annulation fonctionnel pendant la synthèse. Freeze résiduel nécessite T43 pour annulation interruptible.
+  - **Note** : Bouton d'annulation fonctionnel pendant la synthèse. Freeze résiduel nécessite T43.
+- [x] **T43** ⚡ ⭐⭐⭐ - Rendre les **annulations vraiment interruptibles** (appels HTTP, étapes longues du pipeline)
+  - **Lié à** : T01 (freeze Piper)
+  - **Validé** : Commit `4a9b211` (CancelToken system, checks avant chaque étape, passage aux services TTS)
+  - **Note** : Annulations basées sur checks avant chaque étape. HTTP natif non supporté (nécessite package dio).
 - [x] **T63** ⚡ ⭐ - **Unifier le nom du projet** sur AudioLens
   - **Validé** : Commit `6afd7b9` (pubspec, README, AGENTS, workflow) + renaming complet du package Android (Kotlin files, channels, namespace)
 - [x] **T64** ⚡ ⭐⭐ - Nettoyer les **fichiers untracked** et le .gitignore
