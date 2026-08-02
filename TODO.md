@@ -78,6 +78,12 @@
 - [ ] **T45** 📈 ⭐⭐ - Définir une **politique de rétention** pour images, WAV, caches, fichiers temporaires
   - **Lié à** : T11 (nettoyer fichiers temporaires → intégré ici)
 
+- [ ] **T70** 📈 ⭐⭐ - Migrer vers **dio** pour des requêtes HTTP cancellables
+  - **Lié à** : T43 (annulations interruptibles)
+  - **Pourquoi** : Le package `http` ne supporte pas l'annulation native. `dio` offre `cancel()` sur les requêtes
+  - **Services concernés** : GeminiApiService, GeminiTtsService
+  - **Impact** : Permettra une vraie interruptibilité des appels cloud
+
 ---
 
 ## 🌱 Bas impact / Long terme
