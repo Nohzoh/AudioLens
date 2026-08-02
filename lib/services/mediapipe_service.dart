@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'ai_service.dart';
 
-const _channel = MethodChannel('com.audioguide/mediapipe');
+const _channel = MethodChannel('audio_guide/mediapipe');
 
 const _modelUrl =
     'https://huggingface.co/litert-community/Gemma3-1B-IT-INT4/resolve/main/gemma3-1b-it-int4.task';

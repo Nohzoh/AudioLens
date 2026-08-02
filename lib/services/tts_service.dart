@@ -154,7 +154,7 @@ class TtsService {
       final sr = wavBytes.buffer.asByteData().getUint32(24, Endian.little);
       final totalDurationMs = (dataSize / (sr * 2) * 1000).round();
 
-      const channel = MethodChannel('com.audioguide/audio_player');
+      const channel = MethodChannel('audio_guide/audio_player');
       channel.invokeMethod('playWav', {'path': wavPath}).then((_) {
         if (_cancelRequested || token != _generationToken) {
           _isPlaying = false;
@@ -214,7 +214,7 @@ class TtsService {
   }
 
   Future<void> pause() async {
-    const channel = MethodChannel('com.audioguide/audio_player');
+    const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('pause');
     _isPlaying = false;
   }
@@ -222,7 +222,7 @@ class TtsService {
   Future<void> stop() async {
     _cancelRequested = true;
     _generationToken += 1;
-    const channel = MethodChannel('com.audioguide/audio_player');
+    const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('stop');
     _isPlaying = false;
   }

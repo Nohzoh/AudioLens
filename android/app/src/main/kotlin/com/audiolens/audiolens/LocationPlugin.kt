@@ -1,4 +1,4 @@
-package com.audioguide.audio_guide
+package com.audiolens.audiolens
 
 import android.Manifest
 import android.app.Activity
@@ -33,7 +33,7 @@ class LocationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler,
     private val scope = CoroutineScope(Dispatchers.IO)
 
     companion object {
-        const val CHANNEL = "com.audioguide/location"
+        const val CHANNEL = "audio_guide/location"
         const val PERMISSION_REQUEST_CODE = 1001
     }
 

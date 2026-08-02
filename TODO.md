@@ -174,7 +174,7 @@
 - [x] **T42** 🔥 ⭐⭐⭐ - Ajouter une vérification de **build Android complet** et clarifier le rôle du bootstrap dans GitHub Actions
   - **Validé** : Commit `82d877a`
 - [x] **T63** ⚡ ⭐ - **Unifier le nom du projet** sur AudioLens
-  - **Validé** : Commit `6afd7b9` (pubspec, README, AGENTS, workflow)
+  - **Validé** : Commit `6afd7b9` (pubspec, README, AGENTS, workflow) + renaming complet du package Android (Kotlin files, channels, namespace)
 
 ---
 
@@ -195,7 +195,7 @@
   - ✅ **T42 validée** : Bootstrap documenté + vérification APK ajoutée (commit `82d877a`)
 
 - **2026-08-02 (T63)**
-  - ✅ **T63 validée** : Nom du projet aligné sur AudioLens (commit `6afd7b9`)
+  - ✅ **T63 validée** : Nom du projet aligné sur AudioLens (commit `6afd7b9`) + renaming complet du package Android (Kotlin files, MethodChannels, namespace, applicationId)
 
 - **2026-08-02 (T65)**
   - ✅ **T65 validée** : Imports et variables inutilisés nettoyés (commit `e176b62`)

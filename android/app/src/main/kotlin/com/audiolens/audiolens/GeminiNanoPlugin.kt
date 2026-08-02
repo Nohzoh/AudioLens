@@ -1,4 +1,4 @@
-package com.audioguide.audio_guide
+package com.audiolens.audiolens
 
 import android.content.Context
 import android.graphics.BitmapFactory
@@ -24,7 +24,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     companion object {
-        const val CHANNEL = "com.audioguide/gemini_nano"
+        const val CHANNEL = "audio_guide/gemini_nano"
 
         fun buildSeg1Prompt(locationContext: String?): String {
             val loc = if (!locationContext.isNullOrBlank()) " (prise a : $locationContext)" else ""

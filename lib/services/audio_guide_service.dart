@@ -423,7 +423,7 @@ class AudioGuideService extends ChangeNotifier {
       }
       _state = GuideState.paused;
     } else if (_state == GuideState.paused) {
-      const channel = MethodChannel('com.audioguide/audio_player');
+      const channel = MethodChannel('audio_guide/audio_player');
       await channel.invokeMethod('play');
       _state = GuideState.speaking;
     }

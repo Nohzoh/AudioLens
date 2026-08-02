@@ -194,7 +194,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
   // Play cached audio file directly without re-generating TTS
   Future<void> _playCachedAudio(String path) async {
-    const channel = MethodChannel('com.audioguide/audio_player');
+    const channel = MethodChannel('audio_guide/audio_player');
     channel.invokeMethod('playWav', {'path': path}).then((_) {
       setState(() => _isPlaying = false);
     });
@@ -208,7 +208,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   void dispose() {
     // Stop playback when leaving screen
-    const channel = MethodChannel('com.audioguide/audio_player');
+    const channel = MethodChannel('audio_guide/audio_player');
     channel.invokeMethod('stop');
     super.dispose();
   }

@@ -1,4 +1,4 @@
-package com.audioguide.audio_guide
+package com.audiolens.audiolens
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

@@ -82,7 +82,7 @@ class GeminiTtsService {
 
     AppLogger.tts('Gemini TTS generated ${pcmBytes.length} bytes, playing...');
     _isPlaying = true;
-    const channel = MethodChannel('com.audioguide/audio_player');
+    const channel = MethodChannel('audio_guide/audio_player');
     channel.invokeMethod('playWav', {'path': wavPath}).then((_) {
       _isPlaying = false;
       onComplete?.call();
@@ -120,13 +120,13 @@ class GeminiTtsService {
   }
 
   Future<void> pause() async {
-    const channel = MethodChannel('com.audioguide/audio_player');
+    const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('pause');
     _isPlaying = false;
   }
 
   Future<void> stop() async {
-    const channel = MethodChannel('com.audioguide/audio_player');
+    const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('stop');
     _isPlaying = false;
   }

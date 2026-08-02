@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'ai_service.dart';
 
-const _channel = MethodChannel('com.audioguide/gemini_nano');
+const _channel = MethodChannel('audio_guide/gemini_nano');
 
 class GeminiNanoService implements AIService {
   bool _initialized = false;

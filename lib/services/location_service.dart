@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
-const _channel = MethodChannel('com.audioguide/location');
+const _channel = MethodChannel('audio_guide/location');
 
 enum LocationPermissionStatus { granted, denied, deniedForever, serviceDisabled }
 

@@ -1,4 +1,4 @@
-package com.audioguide.audio_guide
+package com.audiolens.audiolens
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -23,7 +23,7 @@ class MediaPipePlugin : FlutterPlugin, MethodCallHandler {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     companion object {
-        const val CHANNEL = "com.audioguide/mediapipe"
+        const val CHANNEL = "audio_guide/mediapipe"
         const val PROMPT = """<start_of_turn>user
 You are an expert audio guide. Analyze this image and write a short audio commentary in French.
 3-4 sentences, warm and informative tone, as if speaking to a tourist.

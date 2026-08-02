@@ -1,4 +1,4 @@
-package com.audioguide.audio_guide
+package com.audiolens.audiolens
 
 import android.media.MediaPlayer
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -16,7 +16,7 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel = MethodChannel(binding.binaryMessenger, "com.audioguide/audio_player")
+        channel = MethodChannel(binding.binaryMessenger, "audio_guide/audio_player")
         channel.setMethodCallHandler(this)
     }
 
