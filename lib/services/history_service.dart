@@ -26,6 +26,8 @@ class HistoryEntry {
   final double? gpsLatitude;
   final double? gpsLongitude;
   final String? gpsAddress;
+  final bool aiFallback; // un modèle de secours a été utilisé pour l'analyse
+  final bool ttsFallback; // Gemini TTS a échoué → repli sur Piper
 
   const HistoryEntry({
     this.id,
@@ -47,6 +49,8 @@ class HistoryEntry {
     this.gpsLatitude,
     this.gpsLongitude,
     this.gpsAddress,
+    this.aiFallback = false,
+    this.ttsFallback = false,
   });
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
@@ -79,6 +83,8 @@ class HistoryEntry {
     'gpsLatitude': gpsLatitude,
     'gpsLongitude': gpsLongitude,
     'gpsAddress': gpsAddress,
+    'aiFallback': aiFallback ? 1 : 0,
+    'ttsFallback': ttsFallback ? 1 : 0,
   };
 
   factory HistoryEntry.fromMap(Map<String, dynamic> map) => HistoryEntry(
@@ -100,6 +106,8 @@ class HistoryEntry {
     gpsLatitude: map['gpsLatitude'] as double?,
     gpsLongitude: map['gpsLongitude'] as double?,
     gpsAddress: map['gpsAddress'] as String?,
+    aiFallback: (map['aiFallback'] as int? ?? 0) == 1,
+    ttsFallback: (map['ttsFallback'] as int? ?? 0) == 1,
     status: AnalysisStatus.values.firstWhere(
       (s) => s.name == (map['status'] as String? ?? 'complete'),
       orElse: () => AnalysisStatus.complete,
@@ -123,6 +131,8 @@ class HistoryEntry {
     double? gpsLatitude,
     double? gpsLongitude,
     String? gpsAddress,
+    bool? aiFallback,
+    bool? ttsFallback,
   }) => HistoryEntry(
     id: id,
     imagePath: imagePath,
@@ -143,6 +153,8 @@ class HistoryEntry {
     gpsLatitude: gpsLatitude ?? this.gpsLatitude,
     gpsLongitude: gpsLongitude ?? this.gpsLongitude,
     gpsAddress: gpsAddress ?? this.gpsAddress,
+    aiFallback: aiFallback ?? this.aiFallback,
+    ttsFallback: ttsFallback ?? this.ttsFallback,
   );
 }
 
@@ -156,7 +168,7 @@ class HistoryService extends ChangeNotifier {
     final dbPath = await getDatabasesPath();
     _db = await openDatabase(
       join(dbPath, 'audio_guide_history.db'),
-      version: 5,
+      version: 6,
       onCreate: (db, version) {
         return db.execute('''
           CREATE TABLE history(
@@ -178,6 +190,8 @@ class HistoryService extends ChangeNotifier {
             gpsLatitude REAL,
             gpsLongitude REAL,
             gpsAddress TEXT,
+            aiFallback INTEGER NOT NULL DEFAULT 0,
+            ttsFallback INTEGER NOT NULL DEFAULT 0,
             createdAt TEXT NOT NULL
           )
         ''');
@@ -207,6 +221,10 @@ class HistoryService extends ChangeNotifier {
           ]) {
             await db.execute(col);
           }
+        }
+        if (oldVersion < 6) {
+          await db.execute('ALTER TABLE history ADD COLUMN aiFallback INTEGER NOT NULL DEFAULT 0');
+          await db.execute('ALTER TABLE history ADD COLUMN ttsFallback INTEGER NOT NULL DEFAULT 0');
         }
       },
     );
@@ -258,6 +276,8 @@ class HistoryService extends ChangeNotifier {
     double? gpsLatitude,
     double? gpsLongitude,
     String? gpsAddress,
+    bool aiFallback = false,
+    bool ttsFallback = false,
   }) async {
     // Delete stale audio file if it exists
     final existing = _entries.firstWhere((e) => e.id == entryId,
@@ -286,6 +306,8 @@ class HistoryService extends ChangeNotifier {
         'gpsLatitude': gpsLatitude,
         'gpsLongitude': gpsLongitude,
         'gpsAddress': gpsAddress,
+        'aiFallback': aiFallback ? 1 : 0,
+        'ttsFallback': ttsFallback ? 1 : 0,
       },
       where: 'id = ?',
       whereArgs: [entryId],
@@ -301,6 +323,15 @@ class HistoryService extends ChangeNotifier {
         audioPath: null, // cleared — will regenerate on next listen
         createdAt: _entries[idx].createdAt,
         status: AnalysisStatus.complete,
+        aiModel: aiModel,
+        gpsSource: gpsSource,
+        wikipediaUsed: wikipediaUsed,
+        analysisDurationMs: analysisDurationMs,
+        gpsLatitude: gpsLatitude,
+        gpsLongitude: gpsLongitude,
+        gpsAddress: gpsAddress,
+        aiFallback: aiFallback,
+        ttsFallback: ttsFallback,
       );
       notifyListeners();
     }
@@ -353,7 +384,7 @@ class HistoryService extends ChangeNotifier {
   }
 
   /// Save generated audio file path for an entry
-  Future<void> saveAudioPath(int entryId, String sourcePath, {String? ttsModel}) async {
+  Future<void> saveAudioPath(int entryId, String sourcePath, {String? ttsModel, bool? ttsFallback}) async {
     // Copy WAV to permanent storage
     final dir = await getApplicationDocumentsDirectory();
     final audioDir = Directory('${dir.path}/history_audio');
@@ -366,7 +397,11 @@ class HistoryService extends ChangeNotifier {
     // Update DB
     await _db!.update(
       'history',
-      {'audioPath': destPath, if (ttsModel != null) 'ttsModel': ttsModel},
+      {
+        'audioPath': destPath,
+        if (ttsModel != null) 'ttsModel': ttsModel,
+        if (ttsFallback != null) 'ttsFallback': ttsFallback ? 1 : 0,
+      },
       where: 'id = ?',
       whereArgs: [entryId],
     );
@@ -374,7 +409,8 @@ class HistoryService extends ChangeNotifier {
     // Update in-memory
     final idx = _entries.indexWhere((e) => e.id == entryId);
     if (idx != -1) {
-      _entries[idx] = _entries[idx].copyWith(audioPath: destPath, ttsModel: ttsModel);
+      _entries[idx] = _entries[idx]
+          .copyWith(audioPath: destPath, ttsModel: ttsModel, ttsFallback: ttsFallback);
       notifyListeners();
     }
   }

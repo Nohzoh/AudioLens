@@ -36,7 +36,6 @@ flutter:
   assets:
     - assets/images/
     - assets/tts/
-    - assets/tts/
     - assets/tts/espeak-ng-data/
     - assets/tts/espeak-ng-data/lang/
     - assets/tts/espeak-ng-data/lang/aav/

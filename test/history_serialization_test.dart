@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:audio_guide/services/history_service.dart';
+import 'package:audiolens/services/history_service.dart';
 
 void main() {
   test('HistoryEntry round-trips status and optional fields', () {
@@ -19,6 +19,8 @@ void main() {
       gpsLatitude: 45.76,
       gpsLongitude: 4.84,
       gpsAddress: 'Lyon',
+      aiFallback: true,
+      ttsFallback: true,
     );
 
     final map = original.toMap();
@@ -31,5 +33,21 @@ void main() {
     expect(restored.wikipediaUsed, isTrue);
     expect(restored.gpsLatitude, 45.76);
     expect(restored.gpsAddress, 'Lyon');
+    expect(restored.aiFallback, isTrue);
+    expect(restored.ttsFallback, isTrue);
+  });
+
+  test('HistoryEntry defaults fallback flags to false', () {
+    final entry = HistoryEntry(
+      imagePath: '/tmp/photo.jpg',
+      title: 'Titre',
+      script: 'Script',
+      createdAt: DateTime.utc(2024, 1, 1),
+    );
+
+    final restored = HistoryEntry.fromMap(entry.toMap());
+
+    expect(restored.aiFallback, isFalse);
+    expect(restored.ttsFallback, isFalse);
   });
 }

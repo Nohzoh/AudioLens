@@ -69,6 +69,11 @@ class AboutAnalysisScreen extends StatelessWidget {
             _Row('Modèle IA', live.aiModel ?? 'Inconnu'),
             _Row('Modèle TTS', live.ttsModel ?? 'Inconnu'),
             _Row('Source image', _sourceLabel(live.analysisSource)),
+            if (live.aiFallback)
+              _Row('Fallback IA',
+                  'Utilisé : ${live.aiModel ?? "modèle de secours"}'),
+            if (live.ttsFallback)
+              const _Row('Fallback TTS', 'Piper (Gemini TTS indisponible)'),
           ]),
 
           _Section(title: 'GÉOLOCALISATION', children: [
@@ -121,6 +126,8 @@ Created: ${live.createdAt.toIso8601String()}
 Analyzed: ${live.analyzedAt?.toIso8601String() ?? 'unknown'}
 AI Model: ${live.aiModel ?? 'unknown'}
 TTS Model: ${live.ttsModel ?? 'unknown'}
+AI Fallback: ${live.aiFallback}
+TTS Fallback: ${live.ttsFallback}
 Analysis source: ${live.analysisSource ?? 'unknown'}
 GPS source: ${live.gpsSource ?? 'unknown'}
 GPS: ${live.gpsLatitude ?? 'null'}, ${live.gpsLongitude ?? 'null'}

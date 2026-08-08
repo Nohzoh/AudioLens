@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:audio_guide/models/guide_error.dart';
+import 'package:audiolens/models/guide_error.dart';
 
 void main() {
   test('GuideError exposes a clear kind and message', () {

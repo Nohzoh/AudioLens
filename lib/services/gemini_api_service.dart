@@ -11,8 +11,10 @@ class GeminiApiService implements AIService {
   List<String> _lastAttempts = [];
   List<String> get lastAttempts => _lastAttempts;
   final String apiKey;
+  final http.Client? _client;
 
-  GeminiApiService({required this.apiKey});
+  /// [client] allows injecting a mock HTTP client in tests (fallback logic).
+  GeminiApiService({required this.apiKey, http.Client? client}) : _client = client;
 
   @override
   String get displayName => 'Gemini API';
@@ -73,7 +75,7 @@ class GeminiApiService implements AIService {
           '${cfg.geminiApiUrl}/models/$model:generateContent?key=$apiKey';
 
       try {
-        final resp = await http.post(
+        final resp = await _post(
           Uri.parse(fullUrl),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
@@ -105,15 +107,15 @@ class GeminiApiService implements AIService {
           AppLogger.ai('Model succeeded: $model');
           break;
         } else if (resp.statusCode == 429 || resp.statusCode == 404 || resp.statusCode == 503) {
-          final err = jsonDecode(resp.body);
-          final msg = err['error']?['message'] as String? ?? 'HTTP ${resp.statusCode}';
+          final err = _tryDecode(resp);
+          final msg = err?['error']?['message'] as String? ?? 'HTTP ${resp.statusCode}';
           final short = msg.length > 80 ? msg.substring(0, 80) : msg;
           attempts.add('✗ $model (${resp.statusCode}): $short');
           AppLogger.ai('Model failed: $model (${resp.statusCode}): $short');
           continue;
         } else {
-          final err = jsonDecode(resp.body);
-          final msg = err['error']?['message'] ?? resp.body;
+          final err = _tryDecode(resp);
+          final msg = (err?['error']?['message'] as String?) ?? resp.body;
           attempts.add('✗ $model (${resp.statusCode}): $msg');
           throw Exception(
             'Gemini API erreur ${resp.statusCode} sur $model:\n$msg',
@@ -163,6 +165,32 @@ class GeminiApiService implements AIService {
 
     return AudioGuideResult(title: title, script: script);
   }
+
+  Future<http.Response> _post(
+    Uri uri, {
+    required Map<String, String> headers,
+    required String body,
+  }) {
+    final client = _client;
+    if (client != null) {
+      return client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 30));
+    }
+    return http.post(uri, headers: headers, body: body)
+        .timeout(const Duration(seconds: 30));
+  }
+
+  /// Safely decodes an error body: API error pages are not always JSON.
+  static Map<String, dynamic>? _tryDecode(http.Response resp) {
+    try {
+      final decoded = jsonDecode(resp.body);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   String _cleanMarkdown(String text) {
     var result = text
         .replaceAll(RegExp(r'\*{1,3}'), '')

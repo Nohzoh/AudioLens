@@ -1,4 +1,4 @@
-# Todo list - Audio Guide
+# Todo list - AudioLens
 
 ---
 
@@ -9,48 +9,17 @@
 
 ---
 
-## 🔥 Critique / Blocant
+## 🔥 Critique / Bloquant
 *Doit être traité avant toute nouvelle fonctionnalité*
 
-
-
-- [x] **T01** 🔥 ⭐⭐⭐ - Corriger le **freeze du téléphone** lors du lancement de Piper + ajouter un **bouton d’annulation**
-  - **Lié à** : T43 (annulations interruptibles)
-  - **Validé** : Commit `37f4ccd` (bouton d'annulation + état cancelling + timeout)
-  - **Note** : Bouton d'annulation fonctionnel pendant la synthèse. Freeze résiduel nécessite T43 pour annulation interruptible.
+*Aucune tâche critique en cours.*
 
 ---
 
 ## ⚡ Haut impact / Court terme
 *À traiter dans les 1-2 semaines*
 
-- [ ] **T41** ⚡ ⭐ - Synchroniser le **README** avec le produit actuel
-  - **Contenu à mettre à jour** : Gemini Nano/API, TTS Gemini/Piper, état Android, architecture
-
-- [x] **T43** ⚡ ⭐⭐⭐ - Rendre les **annulations vraiment interruptibles** (appels HTTP, étapes longues du pipeline)
-  - **Lié à** : T01 (freeze Piper)
-  - **Validé** : Commit `4a9b211` (CancelToken system, checks avant chaque étape, passage aux services TTS)
-  - **Note** : Annulations basées sur checks avant chaque étape. HTTP natif non supporté (nécessite package dio).
-
-- [ ] **T46** ⚡ ⭐⭐⭐ - Ajouter des **tests de fallback** IA/TTS/GPS
-  - **Cas à couvrir** : Modèle Gemini principal → fallback, Gemini TTS → Piper, GPS refusé
-  - **Dépend de** : T02, T03 (déjà terminés)
-
-- [ ] **T47** ⚡ ⭐⭐ - Ajouter une **fiche technique d’analyse**
-  - **Contenu** : Modèle utilisé, fallback, GPS, Wikipedia, durée, source
-  - **Dépend de** : T46
-
-- [ ] **T63** ⚡ ⭐ - **Unifier le nom du projet**
-  - Choisir entre "AudioLens" ou "Audio Guide"
-  - Mettre à jour `main.dart`, `pubspec.yaml`, `README.md`, assets
-  - **Recommandation** : Garder **"Audio Guide"** (plus clair)
-
-- [ ] **T66** ⚡ ⭐ - Remplacer tous les **.withOpacity()** par **.withValues()**
-  - Fichiers concernés : `history_screen.dart`, `home_screen.dart`, `player_screen.dart`, `onboarding_screen.dart`, `settings_screen.dart`, widgets/*
-
-- [ ] **T66** ⚡ ⭐ - Nettoyer la **configuration des assets** dans pubspec.yaml
-  - Supprimer les doublons (`assets/tts/` apparaît 2 fois)
-  - Vérifier que tous les assets existent
+*Aucune tâche en cours.*
 
 ---
 
@@ -58,15 +27,16 @@
 *À traiter dans les 1-2 mois*
 
 - [ ] **T06** 📈 ⭐⭐⭐⭐ - **Refactoriser l’architecture** et nettoyer le code legacy
-  - **Fusion de** : T06 (clarifier pipeline) + T08 (nettoyer doublons)
+  - **Fusion de** : clarifier le pipeline + nettoyer les doublons (ex-T08)
   - **Cible** : Pipeline IA/GPS/TTS modulaire, responsabilités séparées (screens/services/persistence)
+  - **À faire aussi** : nettoyer le code mort dans `app_settings.dart` (`LocalModel`, `availableModels`, `logoAsset` → `assets/images/google.png` introuvable)
 
 - [ ] **T07** 📈 ⭐⭐⭐ - **Centraliser la configuration** (IA, TTS, GPS, etc.)
   - **Où** : `RemoteConfigService` ou nouveau fichier dédié
   - **Objectif** : Éviter la duplication des constants
 
 - [ ] **T09** 📈 ⭐⭐⭐ - Améliorer la **robustesse du stockage local** et des migrations
-  - **Fusion de** : T09 (robustesse) + T44 (tests migrations SQLite)
+  - **Fusion de** : robustesse du stockage + tests de migrations SQLite (ex-T44)
   - **À faire** : Transactions SQLite, rollbacks, tests sur anciennes versions de la base
 
 - [ ] **T10** 📈 ⭐⭐ - **Sécuriser le stockage des clés API** avec flutter_secure_storage
@@ -76,13 +46,24 @@
   - **Cible** : Aucune clé en clair dans `SharedPreferences`
 
 - [ ] **T45** 📈 ⭐⭐ - Définir une **politique de rétention** pour images, WAV, caches, fichiers temporaires
-  - **Lié à** : T11 (nettoyer fichiers temporaires → intégré ici)
+  - **Intègre** : le nettoyage des fichiers temporaires (ex-T11)
 
 - [ ] **T70** 📈 ⭐⭐ - Migrer vers **dio** pour des requêtes HTTP cancellables
   - **Lié à** : T43 (annulations interruptibles)
   - **Pourquoi** : Le package `http` ne supporte pas l'annulation native. `dio` offre `cancel()` sur les requêtes
   - **Services concernés** : GeminiApiService, GeminiTtsService
   - **Impact** : Permettra une vraie interruptibilité des appels cloud
+
+- [ ] **T72** 📈 ⭐ - Ajouter un **disclaimer "contenu généré par IA"** (transparence AI Act UE)
+  - **Contexte** : Le script et la voix sont **tous deux générés par IA** ; la réglementation européenne (AI Act) renforce la transparence sur les contenus IA
+  - **Cible** : Mention claire dans l'appli (ex. écran "À propos de cette analyse", onboarding, ou bas de la fiche d'analyse)
+  - **Note** : Open source → possiblement non obligatoire, mais recommandé
+  - **Libellé type** : "Script et voix générés par IA"
+
+- [ ] **T73** 📈 ⭐ - Remplacer l'**icône Ko-fi** (cœur) par la **tasse de café standard**
+  - **Contexte** : Le bouton de soutien (T38) utilise `Icons.favorite_border` (cœur), peu compréhensible
+  - **Cible** : Icône tasse de café standard dans `lib/widgets/kofi_button.dart`
+  - **Note** : Widget réutilisable (intégré dans 6 écrans) — un seul endroit à modifier
 
 ---
 
@@ -107,7 +88,7 @@
 - [ ] **T19** 🌱 ⭐⭐ - Ajouter le **partage/export** du texte ou de l’audio
 
 - [ ] **T20** 🌱 ⭐⭐⭐ - **Améliorer l’expérience hors ligne**
-  - **Fusion de** : T20 (reprise/cache) + T52 (badge + explication des fonctions disponibles/indisponibles)
+  - **Fusion de** : reprise/cache + badge/explication des fonctions disponibles/indisponibles (ex-T52)
 
 - [ ] **T21** 🌱 ⭐⭐ - Ajouter des **interactions plus riches** dans l’écran de lecture
 
@@ -191,10 +172,40 @@
   - **Validé** : Commit `2e3d404` (nettoyage des untracked files)
 - [x] **T65** ⚡ ⭐⭐ - Nettoyer tous les **imports inutilisés** et variables mortes
   - **Validé** : Commit `e176b62` (7 fichiers nettoyés, 0 warnings)
+- [x] **T41** ⚡ ⭐ - Synchroniser le **README** avec le produit actuel
+  - **Contenu à mettre à jour** : Gemini Nano/API, TTS Gemini/Piper, état Android, architecture
+  - **Validé** : 2026-08-08 (README réécrit : pipeline EXIF/GPS → Wikipedia → IA → TTS, fournisseurs IA, TTS, plateforme, config)
+- [x] **T66** ⚡ ⭐ - Remplacer tous les **.withOpacity()** par **.withValues()**
+  - Fichiers concernés : `history_screen.dart`, `home_screen.dart`, `player_screen.dart`, `onboarding_screen.dart`, `settings_screen.dart`, widgets/*
+  - **Validé** : 2026-08-08 (20 occurrences remplacées dans 7 fichiers)
+- [x] **T71** ⚡ ⭐ - Nettoyer la **configuration des assets** dans pubspec.yaml
+  - Supprimer les doublons (`assets/tts/` apparaissait 2 fois)
+  - Vérifier que tous les assets existent
+  - **Validé** : 2026-08-08 (doublon supprimé, existence vérifiée)
+  - **Note** : `assets/images/google.png` référencé dans `app_settings.dart` mais absent (code mort, à nettoyer dans T06)
+- [x] **T47** ⚡ ⭐⭐ - Ajouter une **fiche technique d’analyse**
+  - **Contenu** : Modèle utilisé, fallback, GPS, Wikipedia, durée, source
+  - **Dépend de** : T46 (tests de fallback, toujours à faire)
+  - **Validé** : 2026-08-08 (indication de fallback IA/TTS ajoutée à l'écran "À propos", persistance dans `HistoryEntry` + migration DB v6, tests de sérialisation couverts)
+- [x] **T46** ⚡ ⭐⭐⭐ - Ajouter des **tests de fallback** IA/TTS/GPS
+  - **Cas à couvrir** : Modèle Gemini principal → fallback, Gemini TTS → Piper, GPS refusé
+  - **Validé** : 2026-08-08 (15 nouveaux tests : fallback de modèles Gemini via `MockClient`, orchestration TTS→Piper / Cloud→Nano / GPS refusé, parsing EXIF GPS)
+  - **Note** : Injection HTTP (`GeminiApiService(client:)`) et de services (`AudioGuideService(ttsService:, geminiTtsService:, geminiApiService:, nanoService:)`) ajoutées, rétro-compatibles, sans nouvelle dépendance
 
 ---
 
 ## 📊 Retours de tests
+
+- **2026-08-08 (T41 / T66 / T71 / T47 / T46)**
+  - ✅ **T41 validée** : README synchronisé avec le produit actuel (pipeline EXIF/GPS → Wikipedia → IA → TTS)
+  - ✅ **T66 validée** : `.withOpacity()` → `.withValues()` (20 occurrences dans 7 fichiers)
+  - ✅ **T71 validée** : Doublon `assets/tts/` supprimé, tous les assets déclarés existent
+  - ✅ **T47 validée** : Indication de fallback IA/TTS dans la fiche d'analyse (persistée en DB v6)
+  - ✅ **T46 validée** : Tests de fallback IA/TTS/GPS (15 tests, voir section Terminé)
+  - ✅ **Validation finale** : `flutter analyze` → 0 erreur ; `flutter test` → 26 tests passés (2026-08-08)
+  - 🐛 **Bug corrigé** : imports de tests restés sur `package:audio_guide/` après le renommage en `audiolens` (T63) → `flutter test` échouait à la compilation (6 fichiers corrigés)
+  - ⚠️ **À noter** : `assets/images/google.png` référencé mais absent (code mort, à nettoyer dans T06)
+  - ⚠️ **À noter** : `test/widget_test.dart` (template cassé, référence `MyApp` inexistant) supprimé
 
 - **2026-08-02**
   - ✅ **T05 validée** : Message d’erreur clair lors de l’amélioration de voix.

@@ -34,7 +34,17 @@ class PipelineProgress {
 }
 
 class AudioGuideService extends ChangeNotifier {
-  final TtsService _ttsService = TtsService();
+  AudioGuideService({
+    TtsService? ttsService,
+    GeminiTtsService? geminiTtsService,
+    GeminiApiService? geminiApiService,
+    GeminiNanoService? nanoService,
+  })  : _ttsService = ttsService ?? TtsService(),
+        _nanoService = nanoService ?? GeminiNanoService(),
+        _geminiTtsService = geminiTtsService,
+        _geminiApiService = geminiApiService;
+
+  final TtsService _ttsService;
   TtsService get ttsService => _ttsService;
   GeminiTtsService? _geminiTtsService;
   GeminiTtsService? get geminiTtsService => _geminiTtsService;
@@ -78,7 +88,7 @@ class AudioGuideService extends ChangeNotifier {
   }
   bool get ttsWasFallback => _lastTtsModel == 'piper' && _geminiTtsService != null;
 
-  final GeminiNanoService _nanoService = GeminiNanoService();
+  final GeminiNanoService _nanoService;
 
   GuideState _state = GuideState.idle;
   AudioGuideResult? _lastResult;

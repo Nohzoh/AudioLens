@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:audio_guide/services/location_service.dart';
+import 'package:audiolens/services/location_service.dart';
 
 void main() {
   test('LocationInfo.contextForPrompt includes available address parts', () {

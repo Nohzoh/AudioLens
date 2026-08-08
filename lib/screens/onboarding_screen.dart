@@ -52,7 +52,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Text(
                 'Prenez une photo d\'un lieu,\nobtenez une explication audio instantanée.',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ).animate(delay: 200.ms).fadeIn(),
               const SizedBox(height: 48),
@@ -76,7 +76,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Text(
                       'Obtenez une clé gratuite sur aistudio.google.com\nRubrique "API Keys"',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -117,7 +117,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   '🔒 Clé stockée uniquement sur votre téléphone',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.4),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
                 ),
               ),

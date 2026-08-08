@@ -290,8 +290,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.3),
-                  Colors.black.withOpacity(0.95),
+                  Colors.black.withValues(alpha: 0.3),
+                  Colors.black.withValues(alpha: 0.95),
                 ],
                 stops: const [0.3, 1.0],
               ),
@@ -445,15 +445,15 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: Colors.white.withOpacity(0.1)),
+                                color: Colors.white.withValues(alpha: 0.1)),
                           ),
                           child: Text(
                             live.script,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withValues(alpha: 0.85),
                               height: 1.6,
                             ),
                           ),
@@ -508,7 +508,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                                 live.id != null) {
                                               await history.saveAudioPath(
                                                   live.id!, lastPath,
-                                                  ttsModel: 'gemini-tts');
+                                                  ttsModel: 'gemini-tts',
+                                                  ttsFallback: false);
                                               AppLogger.tts('saveAudioPath OK');
                                             } else {
                                               AppLogger.error(

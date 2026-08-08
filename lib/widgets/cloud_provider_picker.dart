@@ -59,7 +59,7 @@ class _CloudProviderPickerPageState extends State<CloudProviderPickerPage> {
           Text(
             'Entrez au moins une clé. Elles sont stockées uniquement sur votre téléphone.',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 32),

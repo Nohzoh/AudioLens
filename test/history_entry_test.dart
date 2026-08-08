@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:audio_guide/services/history_service.dart';
+import 'package:audiolens/services/history_service.dart';
 
 void main() {
   test('HistoryEntry exposes derived flags and estimate', () {

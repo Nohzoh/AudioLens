@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:audio_guide/utils/user_message_utils.dart';
+import 'package:audiolens/utils/user_message_utils.dart';
 
 void main() {
   test('formats Gemini 429 errors into a clear user-facing message', () {

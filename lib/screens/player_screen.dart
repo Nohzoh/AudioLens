@@ -77,7 +77,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.95),
+                      Colors.black.withValues(alpha: 0.95),
                     ],
                     stops: const [0.25, 0.75],
                   ),
@@ -297,7 +297,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xDD1a0000),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -637,9 +637,9 @@ class _FallbackBanner extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
