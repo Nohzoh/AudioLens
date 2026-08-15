@@ -38,10 +38,15 @@ class LocationContext {
   final String? promptContext;
 }
 
-/// Resolves the photo's location (EXIF GPS first, then real-time GPS),
-/// identifies a nearby point of interest, and enriches it with Wikipedia
-/// articles (T06 — extracted from AudioGuideService.analyzeAndPlay; T74 —
-/// added POI lookup + name-based Wikipedia search).
+/// Resolves a location context — either from a photo (EXIF GPS first, then
+/// real-time GPS) or from already-known coordinates — and enriches it with
+/// a nearby point of interest and Wikipedia articles.
+///
+/// T06 — extracted from AudioGuideService.analyzeAndPlay.
+/// T74 — added POI lookup + name-based Wikipedia search.
+/// T78 — split GPS resolution from enrichment (POI/Wikipedia/reverse
+/// geocoding) so a deferred capture can supply coordinates already known
+/// from capture time, without repeating the GPS step.
 class LocationContextResolver {
   LocationContextResolver({PoiService? poiService, http.Client? httpClient})
       : _poiService = poiService ?? PoiService(client: httpClient),
@@ -55,13 +60,30 @@ class LocationContextResolver {
     LocationResult locationResult;
     String source;
     if (exifCoords != null) {
-      locationResult = await LocationService.fromCoordinates(exifCoords.lat, exifCoords.lon);
+      locationResult = await LocationService.fromCoordinates(exifCoords.lat, exifCoords.lon, client: _httpClient);
       source = 'exif';
     } else {
-      locationResult = await LocationService.getCurrentLocation();
+      locationResult = await LocationService.getCurrentLocation(client: _httpClient);
       source = locationResult.status == LocationPermissionStatus.granted ? 'realtime' : 'none';
     }
+    return _enrich(locationResult, source);
+  }
 
+  /// Resolves from coordinates already known (e.g. saved at capture time by
+  /// a deferred/offline capture) instead of reading them from a photo.
+  /// Reverse geocoding, POI lookup, and Wikipedia enrichment all happen
+  /// now, at call time — this is the network-heavy part T78's deferred
+  /// capture defers until the user explicitly launches the analysis.
+  Future<LocationContext> resolveFromCoordinates({
+    required double lat,
+    required double lon,
+    required String source,
+  }) async {
+    final locationResult = await LocationService.fromCoordinates(lat, lon, client: _httpClient);
+    return _enrich(locationResult, source);
+  }
+
+  Future<LocationContext> _enrich(LocationResult locationResult, String source) async {
     var latitude = locationResult.info?.latitude;
     var longitude = locationResult.info?.longitude;
     var address = locationResult.info?.contextForPrompt;

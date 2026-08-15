@@ -237,7 +237,17 @@ class AudioGuideService extends ChangeNotifier {
   /// false, the pipeline stops after analysis with state
   /// [GuideState.scriptReady] — audio can be generated later via
   /// [generateAudioForScript].
-  Future<AudioGuideResult?> analyzeAndPlay(File imageFile, {bool generateAudio = true}) async {
+  ///
+  /// [knownCoordinates] resolves location from already-known coordinates
+  /// (T78 — a deferred capture's saved GPS fix) instead of re-reading GPS
+  /// from [imageFile]; use this to launch the analysis for a captured
+  /// entry using the location it was captured at, not the device's
+  /// current location.
+  Future<AudioGuideResult?> analyzeAndPlay(
+    File imageFile, {
+    bool generateAudio = true,
+    ({double lat, double lon, String source})? knownCoordinates,
+  }) async {
     if (_analysisInProgress || _state == GuideState.cancelling) {
       _errorMessage = 'Une analyse est déjà en cours.';
       _state = GuideState.error;
@@ -274,7 +284,13 @@ class AudioGuideService extends ChangeNotifier {
       }
 
       final gpsStart = DateTime.now();
-      final locationContext = await _locationResolver.resolve(imageFile);
+      final locationContext = knownCoordinates != null
+          ? await _locationResolver.resolveFromCoordinates(
+              lat: knownCoordinates.lat,
+              lon: knownCoordinates.lon,
+              source: knownCoordinates.source,
+            )
+          : await _locationResolver.resolve(imageFile);
       _lastGpsSource = locationContext.source;
       _lastGpsLatitude = locationContext.latitude;
       _lastGpsLongitude = locationContext.longitude;

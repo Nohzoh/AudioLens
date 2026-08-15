@@ -4,7 +4,15 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
-enum AnalysisStatus { complete, pending, failed }
+enum AnalysisStatus {
+  complete,
+  pending,
+  failed,
+
+  /// Photo + raw GPS captured, analysis not started yet (T78) — distinct
+  /// from [pending], which means an analysis is currently in progress.
+  captured,
+}
 
 class HistoryEntry {
   final int? id;
@@ -55,6 +63,7 @@ class HistoryEntry {
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
   bool get isPending => status == AnalysisStatus.pending;
+  bool get isCaptured => status == AnalysisStatus.captured;
   bool get hasLowQualityTts => ttsModel == "piper" && audioPath != null;
   String get audioDurationEstimate {
     if (wordCount == null) return '';
@@ -256,6 +265,45 @@ class HistoryService extends ChangeNotifier {
       script: '',
       createdAt: entry.createdAt,
       status: AnalysisStatus.pending,
+    );
+    _entries.insert(0, withId);
+    notifyListeners();
+    return withId;
+  }
+
+  /// Add a captured entry: photo + raw GPS saved, no analysis run yet
+  /// (T78 — deferred capture, e.g. to save data until back on wifi).
+  /// [gpsLatitude]/[gpsLongitude] are the raw coordinates only — no
+  /// reverse geocoding/Wikipedia/AI has run, so there's no address or
+  /// city yet; those are resolved when the analysis is later launched.
+  Future<HistoryEntry> addCapturedEntry({
+    required String imagePath,
+    double? gpsLatitude,
+    double? gpsLongitude,
+    String? gpsSource,
+  }) async {
+    final permanentPath = await _copyImageToPermanentStorage(imagePath);
+    final entry = HistoryEntry(
+      imagePath: permanentPath,
+      title: 'Capturé — analyse à lancer',
+      script: '',
+      createdAt: DateTime.now(),
+      status: AnalysisStatus.captured,
+      gpsLatitude: gpsLatitude,
+      gpsLongitude: gpsLongitude,
+      gpsSource: gpsSource,
+    );
+    final id = await _db!.insert('history', entry.toMap());
+    final withId = HistoryEntry(
+      id: id,
+      imagePath: permanentPath,
+      title: entry.title,
+      script: '',
+      createdAt: entry.createdAt,
+      status: AnalysisStatus.captured,
+      gpsLatitude: gpsLatitude,
+      gpsLongitude: gpsLongitude,
+      gpsSource: gpsSource,
     );
     _entries.insert(0, withId);
     notifyListeners();
