@@ -61,13 +61,6 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
   - **À faire** : sélecteur de style dans les paramètres (et/ou onboarding), transmission du style au prompt IA (`gemini_api_service.dart` + `gemini_nano_service.dart`), persistance via `SettingsService`
   - **Lié à** : T48 (variantes de ton) — envisager une fusion pour éviter le doublon
 
-- [ ] **T76** 📈 ⭐⭐⭐⭐ - **Découper le script en morceaux** pour démarrer la lecture audio plus vite
-  - **Ajouté** : 2026-08-15
-  - **Contexte** : ~30s (parfois plus) d'attente entre l'affichage du texte et le début de la lecture audio. `GeminiTtsService.speak()` synthétise **tout le script en un seul appel HTTP bloquant** avant de jouer quoi que ce soit (`gemini_tts_service.dart:36-95`) ; `TtsService` (Piper) a un problème similaire malgré son découpage en phrases interne (`_splitSentences`), qui ne sert aujourd'hui qu'au calcul de progression, pas à un démarrage anticipé
-  - **Piste** : découper le script (phrases/paragraphes), synthétiser le 1er morceau, lancer sa lecture immédiatement, synthétiser la suite pendant la lecture, enchaîner. Le channel natif `audio_guide/audio_player` (`AudioPlayerPlugin.kt`) résout déjà `playWav` seulement à la fin de la lecture — l'enchaînement séquentiel semble faisable **côté Dart sans changement natif** (produire le morceau suivant pendant que le précédent joue)
-  - **Points d'attention** : découpage aux frontières de phrases pour rester naturel à l'oreille ; `CancelToken` doit rester efficace au milieu de la séquence ; le flag `stepProgress = -1.0` (indéterminé) sur l'étape `synthesizing` pourrait devenir une vraie progression (morceau N/M)
-  - **Cible** : `gemini_tts_service.dart`, `tts_service.dart`, `tts_orchestrator.dart`
-
 ---
 
 ## 🌱 Bas impact / Long terme
