@@ -19,7 +19,7 @@ import 'guide_progress_estimator.dart';
 import 'location_context_resolver.dart';
 import 'tts_orchestrator.dart';
 
-enum GuideState { idle, locating, analyzing, synthesizing, speaking, paused, cancelling, error }
+enum GuideState { idle, locating, analyzing, synthesizing, speaking, paused, cancelling, error, scriptReady }
 enum AIProvider { geminiNano, geminiApi }
 
 class PipelineProgress {
@@ -232,7 +232,12 @@ class AudioGuideService extends ChangeNotifier {
     );
   }
 
-  Future<AudioGuideResult?> analyzeAndPlay(File imageFile) async {
+  /// Analyzes [imageFile] and, unless [generateAudio] is false (T16),
+  /// synthesizes and plays the resulting script. When [generateAudio] is
+  /// false, the pipeline stops after analysis with state
+  /// [GuideState.scriptReady] — audio can be generated later via
+  /// [generateAudioForScript].
+  Future<AudioGuideResult?> analyzeAndPlay(File imageFile, {bool generateAudio = true}) async {
     if (_analysisInProgress || _state == GuideState.cancelling) {
       _errorMessage = 'Une analyse est déjà en cours.';
       _state = GuideState.error;
@@ -344,32 +349,82 @@ class AudioGuideService extends ChangeNotifier {
         return null;
       }
 
-      _state = GuideState.synthesizing;
-      _currentStep = 2;
-      _progressEstimator.stepProgress = -1.0;
-      notifyListeners();
-
-      _lastTtsModel = await _ttsOrchestrator.speak(
-        _lastResult!.script,
-        cancelToken: _cancelToken,
-        geminiTts: _geminiTtsService,
-      );
-
-      // Cache the generated audio for replay without re-generating
-      _lastAudioPath = await _getLastWavPath();
+      if (generateAudio) {
+        await _synthesizeAndPlay(_lastResult!.script);
+      } else {
+        _lastAudioPath = null;
+        _state = GuideState.scriptReady;
+        _progressEstimator.stepProgress = 1.0;
+        notifyListeners();
+      }
 
       await _preferencesStore.saveTimings(
         _progressEstimator.gpsDurations,
         _progressEstimator.analyzeDurations,
       );
 
-      _state = GuideState.speaking;
-      _progressEstimator.stepProgress = 1.0;
-      notifyListeners();
-
       return _lastResult;
     } catch (e) {
       _progressEstimator.stop();
+      _state = GuideState.error;
+      _errorMessage = sanitizeError(e.toString());
+      notifyListeners();
+      return null;
+    } finally {
+      _analysisInProgress = false;
+    }
+  }
+
+  /// Synthesizes [script] (cloud TTS with Piper fallback) and plays it,
+  /// driving the synthesizing -> speaking state transition.
+  Future<void> _synthesizeAndPlay(String script) async {
+    _state = GuideState.synthesizing;
+    _currentStep = 2;
+    _progressEstimator.stepProgress = -1.0;
+    notifyListeners();
+
+    _lastTtsModel = await _ttsOrchestrator.speak(
+      script,
+      cancelToken: _cancelToken,
+      geminiTts: _geminiTtsService,
+    );
+
+    // Cache the generated audio for replay without re-generating
+    _lastAudioPath = await _getLastWavPath();
+
+    _state = GuideState.speaking;
+    _progressEstimator.stepProgress = 1.0;
+    notifyListeners();
+  }
+
+  /// Generates and plays audio for an already-analyzed script (T16) —
+  /// e.g. an entry created with [analyzeAndPlay]'s `generateAudio: false`,
+  /// or any other script-only history entry. Skips GPS/Wikipedia/AI
+  /// entirely; only runs the TTS step.
+  Future<AudioGuideResult?> generateAudioForScript({
+    required String title,
+    required String script,
+    String? locationName,
+  }) async {
+    if (_analysisInProgress || _state == GuideState.cancelling) {
+      _errorMessage = 'Une opération est déjà en cours.';
+      _state = GuideState.error;
+      notifyListeners();
+      return null;
+    }
+
+    _analysisInProgress = true;
+    _cancelToken.reset();
+
+    try {
+      _lastResult = AudioGuideResult(title: title, script: script, locationName: locationName);
+      _errorMessage = null;
+      notifyListeners();
+
+      await _synthesizeAndPlay(script);
+
+      return _lastResult;
+    } catch (e) {
       _state = GuideState.error;
       _errorMessage = sanitizeError(e.toString());
       notifyListeners();

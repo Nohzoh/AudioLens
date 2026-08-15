@@ -618,6 +618,11 @@ class _StateLabel extends StatelessWidget {
           SizedBox(width: 8),
           Text('En pause', style: TextStyle(color: Colors.white54)),
         ]),
+      GuideState.scriptReady => const Row(children: [
+          Icon(Icons.text_snippet_outlined, color: Colors.white54, size: 16),
+          SizedBox(width: 8),
+          Text('Script prêt (sans audio)', style: TextStyle(color: Colors.white54)),
+        ]),
       _ => const SizedBox.shrink(),
     };
   }
