@@ -63,6 +63,14 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 - [ ] **T45** 📈 ⭐⭐ - Définir une **politique de rétention** pour images, WAV, caches, fichiers temporaires
   - **Intègre** : le nettoyage des fichiers temporaires (ex-T11)
 
+- [ ] **T83** 📈 ⭐⭐ - **Accélérer le build CI Android** (~6-8 min par run aujourd'hui)
+  - **Ajouté** : 2026-08-15 (observé en surveillant les runs T79/T80/T81)
+  - **Pistes, par impact estimé** :
+    - **Aucun cache entre les runs** : Gradle (`~/.gradle`), le SDK/NDK Android et le pub cache Flutter sont retéléchargés et reconstruits à froid à chaque push (`android/` n'est pas committé, cf. bootstrap dans `build-android.yml`). `actions/cache` sur `~/.gradle`, et l'option de cache intégrée de `subosito/flutter-action` pour le SDK Flutter/pub, sont le levier le plus probable
+    - **Build multi-architecture inutile** : `flutter build apk` compile pour arm64, armeabi, x86 **et** x86_64 par défaut ; x86/x86_64 ne servent qu'à l'émulateur. `sherpa_onnx` a du vrai code natif par ABI à compiler/lier — restreindre aux ABI réels (`--target-platform android-arm,android-arm64` ou `--split-per-abi`) réduirait le travail natif et la taille de l'APK
+    - **Deux versions de NDK installées** (`ndk;27.0.12077973` et `ndk;26.3.11579264`) alors qu'un seul (27) semble utilisé par les plugins (confirmé via build local) — à vérifier si la 26 est encore nécessaire
+  - **Non vérifié** : pas mesuré concrètement l'effet de chaque piste, à valider avant/après sur un run réel
+
 - [ ] **T70** 📈 ⭐⭐ - Migrer vers **dio** pour des requêtes HTTP cancellables
   - **Lié à** : T43 (annulations interruptibles)
   - **Pourquoi** : Le package `http` ne supporte pas l'annulation native. `dio` offre `cancel()` sur les requêtes
