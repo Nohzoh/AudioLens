@@ -113,16 +113,6 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 
 - [ ] **T15** 🌱 ⭐ - Permettre la **configuration de la vitesse de lecture**
 
-- [ ] **T16** 🌱 ⭐⭐⭐ - Ajouter un **mode sans TTS** (localisation + analyse + génération du script uniquement), avec **génération audio à la demande** ensuite
-  - **Contexte** : demande utilisateur — un réglage pour désactiver la génération audio automatique après l'analyse, avec possibilité de demander la synthèse audio plus tard depuis une entrée "script seul" de l'historique
-  - **Bonne nouvelle** : le modèle de données le permet déjà sans migration — `HistoryEntry.audioPath` est nullable et `hasAudio` teste déjà `audioPath != null` (`history_service.dart`)
-  - **À faire** :
-    - Réglage dans `SettingsService` (persistance `SharedPreferences`, sur le modèle de `showKofiButton`)
-    - `AudioGuideService.analyzeAndPlay` : si le réglage est actif, s'arrêter après l'étape `analyzing` (skip `TtsOrchestrator.speak`), état final différent de `speaking` (ex. `scriptReady`)
-    - Écran historique (`history_screen.dart`) : affichage distinct pour une entrée sans `audioPath`, bouton "Générer l'audio" qui relance uniquement l'étape TTS (`TtsOrchestrator` + `script` déjà en base) sur le script existant, sans refaire GPS/Wikipedia/IA
-  - **Lié à** : T13 (re-demande d'une analyse échouée) et T50 (relancer avec nouveau style/voix) — mécanique de "relance partielle" voisine, à regarder ensemble
-  - **Note (2026-08-15)** : `HistoryService` a déjà le pattern `pending`/`failed`/`addPendingEntry`/`completeEntry` — bonne base à réutiliser plutôt qu'un nouveau mécanisme
-
 - [ ] **T17** 🌱 ⭐⭐ - Ajouter un **mode d’analyse plus détaillé ou plus court**
 
 - [ ] **T18** 🌱 ⭐⭐⭐ - Permettre le **choix de langue/style de voix**

@@ -11,6 +11,16 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 
 ## ✅ Terminé
 
+- [x] **T16** 🌱 ⭐⭐⭐ - Ajouter un **mode sans TTS**, avec **génération audio à la demande** ensuite
+  - **Validé** : 2026-08-15 (PR #7, commit `896bb2b`)
+  - **Contexte** : demande utilisateur — réglage pour désactiver la génération audio automatique après l'analyse, avec possibilité de demander la synthèse audio plus tard depuis une entrée "script seul" de l'historique
+  - **Ce qui a été fait** :
+    - `SettingsService.autoGenerateAudio` (défaut `true`), toggle dans les paramètres sur le modèle de `showKofiButton`
+    - `AudioGuideService.analyzeAndPlay(imageFile, generateAudio: false)` s'arrête après l'analyse IA, état `GuideState.scriptReady` (nouveau) au lieu de `speaking` — aucune migration DB nécessaire, `HistoryEntry.audioPath` était déjà nullable
+    - `AudioGuideService.generateAudioForScript()` (nouveau) : relance uniquement l'étape TTS (`TtsOrchestrator`, donc fallback cloud → Piper) sur un script déjà connu, sans refaire GPS/Wikipedia/IA
+    - `history_screen.dart` : indicateur "Script seul" sur les entrées sans audio, bouton "Générer l'audio" qui persiste désormais le résultat via `HistoryService.saveAudioPath` (l'ancien comportement — génération à la volée sans sauvegarde ni fallback — a été remplacé)
+  - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 62/62 (7 nouveaux : `script_only_mode_test.dart`)
+
 - [x] **T74** 📈 ⭐⭐⭐ - Améliorer la **détection des lieux et de leur histoire**
   - **Validé** : 2026-08-15 (PR #5, commit `3592327`)
   - **Contexte** : Test réel (bowling de la Matène, 2026-08-12) — l'appli n'a pas évoqué le tournage des *Tontons flingueurs* : le lieu n'avait pas d'article Wikipedia géolocalisé dans le rayon de 200 m, et le nom du commerce (POI) n'était jamais récupéré
