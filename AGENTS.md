@@ -11,6 +11,23 @@ This is a **Flutter mobile app** for AI-powered audio guides. The app:
 
 ---
 
+## Git Workflow
+
+`main` is protected (2026-08-15): no direct pushes, even for admins. All
+changes go through a branch + PR. Both `Test` (flutter analyze + flutter
+test) and `Build Android APK` must pass before merging.
+
+```
+git checkout -b <branch-name>
+# ... commit changes ...
+git push -u origin <branch-name>
+gh pr create --title "..." --body "..."
+# wait for both checks to go green, then:
+gh pr merge <number> --merge --delete-branch
+```
+
+---
+
 ## Global Guidelines for All Agents
 
 ### Code Quality
