@@ -11,6 +11,10 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 
 ## ✅ Terminé
 
+- [x] **T13** 🌱 ⭐⭐ - Permettre la **re-demande d'une ancienne analyse échouée** depuis l'historique
+  - **Validé** : 2026-08-16 (déjà fait, constaté lors de la revue de tâches)
+  - **Constat** : déjà couvert par T78 — `history_screen.dart` : `_HistoryCard.onTap` relance l'analyse (`_retryAnalysis`) quand l'entrée est `pending` ou `failed`. Pas de code écrit pour cette tâche, simple clôture
+
 - [x] **T69** 🌱 ⭐⭐ - **Documenter l'architecture** et les flux
   - **Validé** : 2026-08-16 (PR #12)
   - **Ce qui a été fait** : `ARCHITECTURE.md` — diagramme du pipeline principal (photo → localisation → IA → TTS → audio, avec les branches capture différée T78 et script seul T16), diagramme de résolution de localisation (EXIF/GPS → reverse geocoding → POI → Wikipedia), tableau de persistance, tableau des canaux natifs, diagramme écrans → services. Écrit après T74/T76/T78/T16 pour refléter le pipeline réel, pas sa forme d'avant ces refontes. `README.md` renvoie vers ce fichier au lieu de dupliquer
@@ -40,6 +44,7 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
     - `lib/utils/analysis_runner.dart` (nouveau) : séquence "analyser + persister en historique" extraite et partagée entre les deux écrans
   - **Bonus** : `LocationService` n'avait aucune injection de client HTTP (contrairement à tous les autres services réseau du projet) — ajoutée, nécessaire pour pouvoir vérifier ce changement par un vrai test plutôt qu'à l'inspection
   - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 65/65 (3 nouveaux : `deferred_capture_test.dart`)
+  - **T20 retirée (2026-08-16)** : "Améliorer l'expérience hors ligne" (reprise/cache + badge fonctions dispo/indispo) était devenue obsolète — couverte par ce qui précède (capture différée hors-ligne, statuts visuels par entrée)
 
 - [x] **T16** 🌱 ⭐⭐⭐ - Ajouter un **mode sans TTS**, avec **génération audio à la demande** ensuite
   - **Validé** : 2026-08-15 (PR #7, commit `896bb2b`)
