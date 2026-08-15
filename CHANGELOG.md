@@ -11,6 +11,17 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 
 ## ✅ Terminé
 
+- [x] **T74** 📈 ⭐⭐⭐ - Améliorer la **détection des lieux et de leur histoire**
+  - **Validé** : 2026-08-15 (PR #5, commit `3592327`)
+  - **Contexte** : Test réel (bowling de la Matène, 2026-08-12) — l'appli n'a pas évoqué le tournage des *Tontons flingueurs* : le lieu n'avait pas d'article Wikipedia géolocalisé dans le rayon de 200 m, et le nom du commerce (POI) n'était jamais récupéré
+  - **Ce qui a été fait** :
+    - `PoiService` (nouveau) : recherche Overpass API des POI taggés (leisure/tourism/historic/amenity) proches, sélectionne le plus proche par distance de Haversine
+    - `WikipediaService.searchByName` (nouveau) : recherche full-text par nom + ville, fusionnée avec le géosearch existant (`WikipediaService.merge`), fallback fr → en si le français ne trouve rien
+    - Prompt `gemini_api_service.dart` : incite explicitement le modèle à utiliser le lieu identifié/l'adresse pour cerner l'endroit réel et chercher des faits marquants (tournages, événements, personnalités) plutôt que de décrire seulement ce qui est visible
+    - **Bug corrigé au passage** : `wikipedia_radius_meters`/`max_results`/`extract_chars` de `RemoteConfigService` étaient récupérés mais jamais réellement transmis à `WikipediaService.searchNearby` (l'appel utilisait ses propres valeurs par défaut) — câblés ; rayon par défaut relevé 200 m → 500 m (l'augmenter via `config.json` n'avait auparavant aucun effet, la valeur n'était jamais lue)
+  - **Note** : `location_service.dart`/`audio_guide_service.dart` non touchés — la cible d'origine datait d'avant le refactor T06 ; un `PoiService` dédié s'intègre mieux dans cette architecture, et aucun nouveau champ persisté/affiché n'était nécessaire pour corriger le bug réel (l'IA ne mentionnait jamais le lieu)
+  - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 55/55 (11 nouveaux : `poi_service_test.dart`, `wikipedia_service_test.dart`)
+
 - [x] **T79** 🔥 ⭐⭐ - La CI distribue un **APK debug**, pas release
   - **Validé** : 2026-08-15 (commits `4011b5e`, `9d9ff11`, `88c196d` — run CI vert [31897372162](https://github.com/Nohzoh/audio-guide/actions/runs/31897372162))
   - **Ce qui a été fait** : `flutter build apk --release` (au lieu de `--debug`) ; vérification CI que l'APK final n'est pas `debuggable` (via `aapt dump badging`)
