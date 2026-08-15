@@ -11,6 +11,18 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 
 ## ✅ Terminé
 
+- [x] **T78** 🌱 ⭐⭐⭐⭐ - **Capture différée** : photo + GPS maintenant, analyse (cloud) plus tard
+  - **Validé** : 2026-08-16 (PR #9, commit `33c0673`)
+  - **Contexte** : demande utilisateur — économiser sa conso data sans se rabattre sur les modèles locaux (qualité moindre) : capturer photo + position tout de suite, lancer l'analyse cloud plus tard (ex. une fois sur wifi)
+  - **Ce qui a été fait** :
+    - `AnalysisStatus.captured` (nouveau) : photo + GPS brut enregistrés, analyse non lancée — aucune migration DB (`status` déjà en TEXT, colonnes GPS déjà existantes)
+    - `LocationService.getCurrentRawCoordinates()` : fix GPS sans reverse geocoding — capture vraiment hors-ligne (le fix GPS lui-même n'a pas besoin de réseau ; `getCurrentLocation()` couplait jusque-là systématiquement le fix à un appel Nominatim)
+    - `LocationContextResolver` scindé en résolution de coordonnées (`resolve()` depuis une photo, ou `resolveFromCoordinates()` depuis des coordonnées déjà connues) + enrichissement partagé (`_enrich` : reverse geocoding + POI + Wikipedia) — l'enrichissement tourne maintenant au moment de "lancer l'analyse", avec les coordonnées capturées à l'époque, pas la position actuelle de l'appareil
+    - `home_screen.dart` : option "Capturer sans analyser" ; `history_screen.dart` : les entrées capturées ont maintenant un statut visuel et déclenchent l'analyse au tap avec les coordonnées stockées (cet écran ne gérait auparavant aucun tap pending/failed/captured — seule la grille de `home_screen.dart` le faisait ; les deux sont maintenant cohérents)
+    - `lib/utils/analysis_runner.dart` (nouveau) : séquence "analyser + persister en historique" extraite et partagée entre les deux écrans
+  - **Bonus** : `LocationService` n'avait aucune injection de client HTTP (contrairement à tous les autres services réseau du projet) — ajoutée, nécessaire pour pouvoir vérifier ce changement par un vrai test plutôt qu'à l'inspection
+  - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 65/65 (3 nouveaux : `deferred_capture_test.dart`)
+
 - [x] **T16** 🌱 ⭐⭐⭐ - Ajouter un **mode sans TTS**, avec **génération audio à la demande** ensuite
   - **Validé** : 2026-08-15 (PR #7, commit `896bb2b`)
   - **Contexte** : demande utilisateur — réglage pour désactiver la génération audio automatique après l'analyse, avec possibilité de demander la synthèse audio plus tard depuis une entrée "script seul" de l'historique
