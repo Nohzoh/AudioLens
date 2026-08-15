@@ -29,7 +29,11 @@
 - [ ] **T06** 📈 ⭐⭐⭐⭐ - **Refactoriser l’architecture** et nettoyer le code legacy
   - **Fusion de** : clarifier le pipeline + nettoyer les doublons (ex-T08)
   - **Cible** : Pipeline IA/GPS/TTS modulaire, responsabilités séparées (screens/services/persistence)
-  - **À faire aussi** : nettoyer le code mort dans `app_settings.dart` (`LocalModel`, `availableModels`, `logoAsset` → `assets/images/google.png` introuvable)
+  - **En cours — 2026-08-12** :
+    - ✅ Code mort supprimé : `app_settings.dart` (`LocalModel`, `availableModels`, `logoAsset`), `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart` (restes T60/T62)
+    - ✅ Getter mort `aiModelAttempts` supprimé de `audio_guide_service.dart`
+    - ✅ User-Agent dédupliqué dans `lib/services/network_config.dart`
+  - **Reste à faire** : modulaire le pipeline IA/GPS/TTS (extraction de la persistence prefs/timing hors de `audio_guide_service.dart`), clarifier les responsabilités screens/services
 
 - [ ] **T07** 📈 ⭐⭐⭐ - **Centraliser la configuration** (IA, TTS, GPS, etc.)
   - **Où** : `RemoteConfigService` ou nouveau fichier dédié
@@ -38,12 +42,6 @@
 - [ ] **T09** 📈 ⭐⭐⭐ - Améliorer la **robustesse du stockage local** et des migrations
   - **Fusion de** : robustesse du stockage + tests de migrations SQLite (ex-T44)
   - **À faire** : Transactions SQLite, rollbacks, tests sur anciennes versions de la base
-
-- [ ] **T10** 📈 ⭐⭐ - **Sécuriser le stockage des clés API** avec flutter_secure_storage
-  - Remplacer `SharedPreferences` pour `gemini_api_key`
-  - Ajouter la dépendance `flutter_secure_storage`
-  - Migrer les clés existantes
-  - **Cible** : Aucune clé en clair dans `SharedPreferences`
 
 - [ ] **T45** 📈 ⭐⭐ - Définir une **politique de rétention** pour images, WAV, caches, fichiers temporaires
   - **Intègre** : le nettoyage des fichiers temporaires (ex-T11)
@@ -54,16 +52,18 @@
   - **Services concernés** : GeminiApiService, GeminiTtsService
   - **Impact** : Permettra une vraie interruptibilité des appels cloud
 
-- [ ] **T72** 📈 ⭐ - Ajouter un **disclaimer "contenu généré par IA"** (transparence AI Act UE)
-  - **Contexte** : Le script et la voix sont **tous deux générés par IA** ; la réglementation européenne (AI Act) renforce la transparence sur les contenus IA
-  - **Cible** : Mention claire dans l'appli (ex. écran "À propos de cette analyse", onboarding, ou bas de la fiche d'analyse)
-  - **Note** : Open source → possiblement non obligatoire, mais recommandé
-  - **Libellé type** : "Script et voix générés par IA"
+- [ ] **T74** 📈 ⭐⭐⭐ - Améliorer la **détection des lieux et de leur histoire**
+  - **Contexte** : Test réel (bowling de la Matène, 2026-08-12) — l'appli n'a pas évoqué le tournage des *Tontons flingueurs* : le lieu n'a pas d'article Wikipedia géolocalisé dans le rayon de 200 m, et le nom du commerce (POI) n'est jamais récupéré
+  - **À faire** :
+    - Récupérer le **nom du lieu** (POI OpenStreetMap via Overpass/Nominatim : `leisure=bowling_alley`, `tourism=*`, `historic=*`, `amenity=*`) et l'ajouter au contexte GPS
+    - Wikipedia : rayon plus large (via `config.json`), recherche **full-text par nom de lieu + ville** en plus du geosearch, fallback fr → en
+    - Prompt IA : inciter à identifier le lieu réel via l'adresse/les enseignes et à chercher les faits marquants (films, événements, personnalités)
+  - **Cible** : `wikipedia_service.dart`, `location_service.dart`, `audio_guide_service.dart`, prompt `gemini_api_service.dart`
 
-- [ ] **T73** 📈 ⭐ - Remplacer l'**icône Ko-fi** (cœur) par la **tasse de café standard**
-  - **Contexte** : Le bouton de soutien (T38) utilise `Icons.favorite_border` (cœur), peu compréhensible
-  - **Cible** : Icône tasse de café standard dans `lib/widgets/kofi_button.dart`
-  - **Note** : Widget réutilisable (intégré dans 6 écrans) — un seul endroit à modifier
+- [ ] **T75** 📈 ⭐⭐ - Ajouter une **option de style de script** (suggestion d'un ami)
+  - **Exemples** : style "académique/historique" vs style qui met en avant les **anecdotes et le storytelling**
+  - **À faire** : sélecteur de style dans les paramètres (et/ou onboarding), transmission du style au prompt IA (`gemini_api_service.dart` + `gemini_nano_service.dart`), persistance via `SettingsService`
+  - **Lié à** : T48 (variantes de ton) — envisager une fusion pour éviter le doublon
 
 ---
 
@@ -192,9 +192,32 @@
   - **Validé** : 2026-08-08 (15 nouveaux tests : fallback de modèles Gemini via `MockClient`, orchestration TTS→Piper / Cloud→Nano / GPS refusé, parsing EXIF GPS)
   - **Note** : Injection HTTP (`GeminiApiService(client:)`) et de services (`AudioGuideService(ttsService:, geminiTtsService:, geminiApiService:, nanoService:)`) ajoutées, rétro-compatibles, sans nouvelle dépendance
 
+- [x] **T72** 📈 ⭐ - Ajouter un **disclaimer "contenu généré par IA"** (transparence AI Act UE)
+  - **Validé** : 2026-08-12 (bandeau `_AiGeneratedBanner` en haut de l'écran "À propos de cette analyse" dans `about_analysis_screen.dart`)
+  - **Note** : Libellé "Contenu généré par IA : le script de cette analyse et sa voix ont été créés automatiquement par un modèle d'intelligence artificielle."
+
+- [x] **T73** 📈 ⭐ - Remplacer l'**icône Ko-fi** (cœur) par la **tasse de café standard**
+  - **Validé** : 2026-08-12 (`Icons.favorite_border` → `Icons.local_cafe_outlined` dans `lib/widgets/kofi_button.dart`)
+
+- [x] **T10** 📈 ⭐⭐ - **Sécuriser le stockage des clés API** avec flutter_secure_storage
+  - **Validé** : 2026-08-12 (nouveau `lib/services/secure_key_storage.dart` : stockage Android Keystore/iOS Keychain chiffré, migration one-shot depuis `SharedPreferences`, repli propre ; `settings_service.dart` + `audio_guide_service.dart` branchés ; 4 tests de migration ajoutés)
+  - **Cible atteinte** : Aucune clé en clair dans `SharedPreferences` (supprimée après migration)
+
 ---
 
 ## 📊 Retours de tests
+
+- **2026-08-12 (T06 — 1re tranche)**
+  - ✅ **T06 (partiel)** : code mort supprimé (`app_settings.dart`, `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart`), getter `aiModelAttempts` retiré, User-Agent centralisé dans `network_config.dart`
+  - ✅ **Validation finale** : `flutter test` → 30 tests passés, 2026-08-12
+  - ⚠️ **Reste T06** : modularisation du pipeline IA/GPS/TTS + extraction de la persistence prefs hors de `audio_guide_service.dart`
+
+- **2026-08-12 (T72 / T73 / T10)**
+  - ✅ **T72 validée** : Disclaimer "contenu généré par IA" ajouté à la fiche d'analyse (AI Act)
+  - ✅ **T73 validée** : Icône Ko-fi remplacée par la tasse de café (`Icons.local_cafe_outlined`)
+  - ✅ **T10 validée** : Clé API Gemini stockée via `flutter_secure_storage` (Keystore/Keychain), migration one-shot depuis SharedPreferences, repli dégradé si stockage sécurisé indisponible
+  - ✅ **Validation finale** : `flutter test` → 30 tests passés (26 existants + 4 nouveaux `secure_key_storage_test.dart`), 2026-08-12
+  - ⚠️ **À noter** : T74 (détection des lieux) créée suite au test réel du bowling de la Matène ; T75 (style de script) créée suite à une suggestion extérieure
 
 - **2026-08-08 (T41 / T66 / T71 / T47 / T46)**
   - ✅ **T41 validée** : README synchronisé avec le produit actuel (pipeline EXIF/GPS → Wikipedia → IA → TTS)
