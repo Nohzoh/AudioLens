@@ -203,10 +203,17 @@ jobs:
             echo "::error::APK is empty"
             exit 1
           fi
+          # aapt isn't on PATH on this runner — locate it in the installed
+          # build-tools instead of silently no-op'ing the checks below.
+          AAPT="$(find "$ANDROID_HOME" -name aapt -type f 2>/dev/null | head -1)"
+          if [ -z "$AAPT" ]; then
+            echo "::error::aapt not found under \$ANDROID_HOME — cannot verify the APK is non-debuggable"
+            exit 1
+          fi
           # Show APK info
-          aapt dump badging "$APK_PATH" | grep -E "package:|version|sdkVersion" || true
+          "$AAPT" dump badging "$APK_PATH" | grep -E "package:|version|sdkVersion"
           # T79: a release build must not be debuggable
-          if aapt dump badging "$APK_PATH" | grep -qi "application-debuggable"; then
+          if "$AAPT" dump badging "$APK_PATH" | grep -qi "application-debuggable"; then
             echo "::error::APK is flagged as debuggable — this must not ship to users"
             exit 1
           fi
