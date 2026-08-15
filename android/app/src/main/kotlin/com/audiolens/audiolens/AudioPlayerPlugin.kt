@@ -15,6 +15,13 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private var mediaPlayer: MediaPlayer? = null
     private val scope = CoroutineScope(Dispatchers.IO)
 
+    // The Dart side of a "playWav" call awaits its result to know when
+    // playback finished (T76 — chunked TTS sequencing relies on this).
+    // Without tracking it here, calling "stop" while a "playWav" is still
+    // in flight would leave that call's Dart-side await hanging forever,
+    // since MediaPipe.stop() alone never completes it.
+    private var pendingPlayResult: MethodChannel.Result? = null
+
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, "audio_guide/audio_player")
         channel.setMethodCallHandler(this)
@@ -24,6 +31,11 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         channel.setMethodCallHandler(null)
         mediaPlayer?.release()
         mediaPlayer = null
+    }
+
+    private fun resolvePendingPlay() {
+        pendingPlayResult?.success(null)
+        pendingPlayResult = null
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -38,23 +50,27 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     try {
                         mediaPlayer?.stop()
                         mediaPlayer?.release()
+                        withContext(Dispatchers.Main) { resolvePendingPlay() }
+                        pendingPlayResult = result
                         mediaPlayer = MediaPlayer().apply {
                             setDataSource(path)
                             prepare()
                             start()
                             setOnCompletionListener {
-                                scope.launch(Dispatchers.Main) { result.success(null) }
+                                scope.launch(Dispatchers.Main) { resolvePendingPlay() }
                             }
                             setOnErrorListener { _, _, _ ->
                                 scope.launch(Dispatchers.Main) {
-                                    result.error("PLAYBACK_ERROR", "Playback failed", null)
+                                    pendingPlayResult?.error("PLAYBACK_ERROR", "Playback failed", null)
+                                    pendingPlayResult = null
                                 }
                                 true
                             }
                         }
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
-                            result.error("PLAYBACK_ERROR", e.message, null)
+                            pendingPlayResult?.error("PLAYBACK_ERROR", e.message, null)
+                            pendingPlayResult = null
                         }
                     }
                 }
@@ -63,7 +79,9 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "play" -> { mediaPlayer?.start(); result.success(null) }
             "stop" -> {
                 mediaPlayer?.stop(); mediaPlayer?.release()
-                mediaPlayer = null; result.success(null)
+                mediaPlayer = null
+                resolvePendingPlay()
+                result.success(null)
             }
             else -> result.notImplemented()
         }

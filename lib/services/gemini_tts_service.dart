@@ -26,6 +26,23 @@ class GeminiTtsService {
       return;
     }
 
+    final tmpDir = await getTemporaryDirectory();
+    final wavPath = p.join(tmpDir.path, 'gemini_tts_output.wav');
+    await synthesizeToFile(text, wavPath);
+
+    AppLogger.tts('Gemini TTS playing $wavPath...');
+    _isPlaying = true;
+    const channel = MethodChannel('audio_guide/audio_player');
+    channel.invokeMethod('playWav', {'path': wavPath}).then((_) {
+      _isPlaying = false;
+      onComplete?.call();
+    });
+  }
+
+  /// Synthesizes [text] and writes the resulting WAV to [outputPath],
+  /// without playing it (T76 — chunked playback synthesizes the next
+  /// chunk while the previous one is still playing).
+  Future<void> synthesizeToFile(String text, String outputPath) async {
     final cfg = RemoteConfigService.current;
 
     // Add audio guide style instruction to the TTS prompt
@@ -80,23 +97,43 @@ class GeminiTtsService {
     final pcmBytes = base64Decode(audioData);
     final wavBytes = _pcmToWav(pcmBytes, sampleRate: 24000);
 
-    // Write to temp file and play
-    final tmpDir = await getTemporaryDirectory();
-    final wavPath = p.join(tmpDir.path, 'gemini_tts_output.wav');
-    await File(wavPath).writeAsBytes(wavBytes);
-    _lastWavPath = wavPath;
+    await File(outputPath).writeAsBytes(wavBytes);
+    _lastWavPath = outputPath;
+    AppLogger.tts('Gemini TTS generated ${pcmBytes.length} bytes -> $outputPath');
+  }
 
-    AppLogger.tts('Gemini TTS generated ${pcmBytes.length} bytes, playing...');
+  /// Plays an already-synthesized WAV file, awaiting playback completion
+  /// (T76). Unlike [speak], this genuinely waits — needed to sequence
+  /// chunks one after another. [notifyComplete] should be false for every
+  /// chunk but the last, so [onComplete] fires only once, when the whole
+  /// script has actually finished playing.
+  Future<void> playFile(String path, {bool notifyComplete = true}) async {
     _isPlaying = true;
     const channel = MethodChannel('audio_guide/audio_player');
-    channel.invokeMethod('playWav', {'path': wavPath}).then((_) {
+    try {
+      await channel.invokeMethod('playWav', {'path': path});
+    } finally {
       _isPlaying = false;
-      onComplete?.call();
-    });
+    }
+    if (notifyComplete) onComplete?.call();
+  }
+
+  /// Concatenates WAV files produced by [synthesizeToFile] (same PCM
+  /// format) into a single file at [outputPath] (T76 — after chunked
+  /// playback finishes, so the result can still be cached like a normal
+  /// single-shot synthesis).
+  static Future<void> concatenateWavFiles(List<String> paths, String outputPath) async {
+    final pcmParts = <int>[];
+    for (final path in paths) {
+      final bytes = await File(path).readAsBytes();
+      if (bytes.length > 44) pcmParts.addAll(bytes.sublist(44));
+    }
+    final wavBytes = _pcmToWav(Uint8List.fromList(pcmParts), sampleRate: 24000);
+    await File(outputPath).writeAsBytes(wavBytes);
   }
 
   /// Wraps raw PCM 16-bit mono data in a WAV header
-  Uint8List _pcmToWav(Uint8List pcm, {int sampleRate = 24000}) {
+  static Uint8List _pcmToWav(Uint8List pcm, {int sampleRate = 24000}) {
     final dataSize = pcm.length;
     final buffer = ByteData(44 + dataSize);
 

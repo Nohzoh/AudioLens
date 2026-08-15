@@ -17,11 +17,19 @@ This is a **Flutter mobile app** for AI-powered audio guides. The app:
 changes go through a branch + PR. Both `Test` (flutter analyze + flutter
 test) and `Build Android APK` must pass before merging.
 
+When the work closes a TODO.md task, update TODO.md (remove the entry) and
+CHANGELOG.md (add it under "Terminé", with what was actually verified) in
+the **same PR** as the code — as a follow-up commit once the PR number is
+known, so the changelog entry can reference it. This halves PR/CI-run count
+versus a separate docs-only PR per task (2026-08-16).
+
 ```
 git checkout -b <branch-name>
-# ... commit changes ...
+# ... commit the code change(s) ...
 git push -u origin <branch-name>
 gh pr create --title "..." --body "..."
+# if this closes a TODO task: update TODO.md + CHANGELOG.md now,
+# referencing the PR number, commit + push to the same branch
 # wait for both checks to go green, then:
 gh pr merge <number> --merge --delete-branch
 ```

@@ -11,6 +11,20 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 
 ## ✅ Terminé
 
+- [x] **T76** 📈 ⭐⭐⭐⭐ - **Découper le script en morceaux** pour démarrer la lecture audio plus vite
+  - **Validé** : 2026-08-16 (PR #11, commit `4c8dd93`)
+  - **Contexte** : ~30s (parfois plus) d'attente entre l'affichage du texte et le début de la lecture audio — `GeminiTtsService.speak()` synthétisait tout le script en un seul appel HTTP bloquant
+  - **Ce qui a été fait** :
+    - `lib/utils/text_chunker.dart` (nouveau) : découpage aux frontières de phrases, 1er morceau court (démarrage rapide), morceaux suivants plus grands (moins d'allers-retours réseau)
+    - `GeminiTtsService` : synthèse et lecture séparées (`synthesizeToFile`/`playFile`), `speak()` existant inchangé ; `concatenateWavFiles` (nouveau) pour que le résultat en morceaux reste mis en cache comme une synthèse classique
+    - `TtsOrchestrator.speakChunked()` : synthétise le morceau N+1 pendant que le morceau N joue ; en cas d'échec, repli Piper sur tout le script (échec du 1er morceau) ou juste sur le texte restant (échec plus tard) — pas de redite ni de changement de voix en cours de narration. `onChunkStart(index, total)` pilote une vraie progression morceau N/M au lieu du spinner indéterminé
+    - `CancelToken.onCancel` (nouveau, `Future` complété par `cancel()`) pour pouvoir faire courir la boucle de lecture contre l'annulation plutôt que de sonder `isCancelled`
+  - **Bugs réels trouvés en construisant ceci** :
+    - `AudioPlayerPlugin.kt` : `stop()` ne résolvait jamais un appel `playWav` en cours — aurait bloqué indéfiniment l'annulation en cours de morceau, seul le nouveau chemin en morceaux awaite vraiment `playWav`. Corrigé (suivi du `Result` en attente, résolu aussi par `stop`)
+    - Une erreur de synthèse pouvait remonter comme erreur Zone non gérée malgré un `try/catch` plus loin — Dart marque une `Future` rejetée comme non gérée si aucun listener n'est attaché au moment du rejet. Corrigé en attachant `.then(onError:)` immédiatement à la création de la `Future`
+  - **Vérifié réellement** : build Android local (le fichier Kotlin natif est modifié)
+  - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 78/78 (13 nouveaux : `text_chunker_test.dart`, `tts_chunking_test.dart`)
+
 - [x] **T78** 🌱 ⭐⭐⭐⭐ - **Capture différée** : photo + GPS maintenant, analyse (cloud) plus tard
   - **Validé** : 2026-08-16 (PR #9, commit `33c0673`)
   - **Contexte** : demande utilisateur — économiser sa conso data sans se rabattre sur les modèles locaux (qualité moindre) : capturer photo + position tout de suite, lancer l'analyse cloud plus tard (ex. une fois sur wifi)
