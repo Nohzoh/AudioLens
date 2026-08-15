@@ -238,7 +238,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                     color: Colors.orange,
                                   ),
                                 if (guide.ttsWasFallback)
-                                  _FallbackBanner(
+                                  const _FallbackBanner(
                                     icon: Icons.volume_down,
                                     message: 'Voix Piper (Gemini TTS indisponible)',
                                     color: Colors.orange,

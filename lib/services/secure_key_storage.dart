@@ -14,8 +14,8 @@ import '../utils/app_logger.dart';
 class SecureKeyStorage {
   static const String apiKeyKey = 'gemini_api_key';
 
-  static final FlutterSecureStorage _secure = FlutterSecureStorage(
-    aOptions: const AndroidOptions(encryptedSharedPreferences: true),
+  static const FlutterSecureStorage _secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
   /// Lit la clé API : d'abord dans le stockage sécurisé, puis (migration

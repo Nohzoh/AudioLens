@@ -42,7 +42,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              Text('🎧', style: const TextStyle(fontSize: 48))
+              const Text('🎧', style: TextStyle(fontSize: 48))
                   .animate().fadeIn().slideY(begin: -0.2),
               const SizedBox(height: 16),
               Text('AudioLens',
