@@ -21,6 +21,8 @@ Une application mobile d'audio guide alimentée par l'IA. Prenez une photo d'un 
 Photo → EXIF GPS → GPS temps réel → Wikipedia → IA (vision) → LLM (script) → TTS → Audio
 ```
 
+Détails et diagrammes du pipeline dans [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ### Modes disponibles
 - **☁️ Cloud** : Utilise votre compte **Google (Gemini API)** — meilleure qualité (~400 mots)
 - **📱 Local** : Modèle embarqué **Gemini Nano** — fonctionne sans internet (~180 mots)
