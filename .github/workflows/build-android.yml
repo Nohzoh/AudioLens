@@ -48,14 +48,43 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      # T83: NDK is a multi-GB download re-fetched on every run otherwise.
+      # Bump the key's version suffix if the pinned NDK version below changes.
+      - name: Cache Android NDK
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk
+          key: ${{ runner.os }}-ndk-27.0.12077973
+
       - name: Install Android SDK 36 + NDK 27
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973" "ndk;26.3.11579264"
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973"
 
       - name: Setup Flutter 3.32.2
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.2'
           channel: 'stable'
+          cache: true
+
+      # T83: ~/.pub-cache and Gradle's caches/wrapper are cold on every run
+      # today because android/ isn't committed (see bootstrap step below).
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       # Bootstrap: Re-generate Android project files (not versioned in repo)
       # Required because android/ folder is not committed (only Flutter code is versioned)
@@ -178,7 +207,10 @@ jobs:
       - name: Build APK (release)
         run: |
           BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          # T83: only real-device ABIs — x86/x86_64 are emulator-only and
+          # sherpa_onnx has real native code per ABI to compile/link/package.
           flutter build apk --release \
+            --target-platform android-arm,android-arm64 \
             --dart-define=BUILD_DATE="$BUILD_DATE" \
             2>&1 | tee build_output.txt
           exit ${PIPESTATUS[0]}

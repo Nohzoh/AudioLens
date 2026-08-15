@@ -47,7 +47,7 @@ SDKMANAGER="$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | he
 echo "   sdkmanager: $SDKMANAGER"
 
 echo "==> Installation des composants SDK (idempotent, peut être long)"
-"$SDKMANAGER" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973" "ndk;26.3.11579264"
+"$SDKMANAGER" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973"
 yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 
 echo "==> Bootstrap Android (flutter create)"
