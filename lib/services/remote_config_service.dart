@@ -20,6 +20,9 @@ class RemoteConfig {
   final int wikipediaMaxResults;
   final int wikipediaExtractChars;
 
+  // POI (point of interest) lookup — T74
+  final int poiRadiusMeters;
+
   // TTS
   final double ttsSpeed;
   final int ttsSid;
@@ -47,9 +50,10 @@ class RemoteConfig {
     this.geminiTemperature = 0.7,
     this.geminiNanoMaxTokens = 256,
     this.geminiNanoCascadeSegments = 3,
-    this.wikipediaRadiusMeters = 200,
+    this.wikipediaRadiusMeters = 500,
     this.wikipediaMaxResults = 3,
     this.wikipediaExtractChars = 1500,
+    this.poiRadiusMeters = 75,
     this.ttsSpeed = 1.2,
     this.ttsSid = 0,
     this.ttsNumThreads = 2,
@@ -73,9 +77,10 @@ class RemoteConfig {
       geminiTemperature: (json['gemini_temperature'] as num?)?.toDouble() ?? 0.7,
       geminiNanoMaxTokens: json['gemini_nano_max_tokens'] as int? ?? 256,
       geminiNanoCascadeSegments: json['gemini_nano_cascade_segments'] as int? ?? 3,
-      wikipediaRadiusMeters: json['wikipedia_radius_meters'] as int? ?? 200,
+      wikipediaRadiusMeters: json['wikipedia_radius_meters'] as int? ?? 500,
       wikipediaMaxResults: json['wikipedia_max_results'] as int? ?? 3,
       wikipediaExtractChars: json['wikipedia_extract_chars'] as int? ?? 1500,
+      poiRadiusMeters: json['poi_radius_meters'] as int? ?? 75,
       ttsSpeed: (json['tts_speed'] as num?)?.toDouble() ?? 1.2,
       ttsSid: json['tts_sid'] as int? ?? 0,
       ttsNumThreads: json['tts_num_threads'] as int? ?? 2,
@@ -102,6 +107,7 @@ class RemoteConfig {
     'wikipedia_radius_meters': wikipediaRadiusMeters,
     'wikipedia_max_results': wikipediaMaxResults,
     'wikipedia_extract_chars': wikipediaExtractChars,
+    'poi_radius_meters': poiRadiusMeters,
     'tts_speed': ttsSpeed,
     'tts_sid': ttsSid,
     'tts_num_threads': ttsNumThreads,
