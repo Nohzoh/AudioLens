@@ -16,14 +16,28 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 ## 🔥 Critique / Bloquant
 *Doit être traité avant toute nouvelle fonctionnalité*
 
-*Aucune tâche critique en cours.*
+- [ ] **T79** 🔥 ⭐⭐ - La CI distribue un **APK debug**, pas release
+  - **Ajouté** : 2026-08-15 (audit du code existant)
+  - **Contexte** : `build-android.yml:183` lance `flutter build apk --debug` alors que toute l'infra de signature release existe déjà (keystore en secret CI, `scripts/patch_signing.py`, config de signing patchée). Un APK `debuggable="true"` distribué à des utilisateurs est un vrai risque : n'importe quel outil peut s'y attacher pour lire la mémoire du process (y compris la clé API déchiffrée en mémoire malgré T10), et le build n'est pas optimisé
+  - **À faire** : passer à `flutter build apk --release`, vérifier que la signature/le keystore CI fonctionnent bien en release, décider d'activer ou non la minification R8 (attention aux plugins natifs/réflexion — règles ProGuard à valider)
+  - **Cible** : `.github/workflows/build-android.yml`
 
 ---
 
 ## ⚡ Haut impact / Court terme
 *À traiter dans les 1-2 semaines*
 
-*Aucune tâche en cours.*
+- [ ] **T80** ⚡ ⭐⭐ - `allowBackup` forcé à `true` en CI avec une classe `backupAgent` probablement fausse
+  - **Ajouté** : 2026-08-15 (audit du code existant)
+  - **Contexte** : `build-android.yml:129-133` — plusieurs `sed` enchaînés (avec des `|| true` qui avalent les échecs silencieusement) forcent `android:allowBackup="true"` et posent `android:backupAgent="androidx.work.impl.background.systemjob.SystemJobService"` — une classe WorkManager, pas un `BackupAgent`, presque certainement un copier-coller erroné. Avec `allowBackup=true`, l'historique (photos, GPS, scripts SQLite) devient exportable via `adb backup` sur un appareil en debug USB non verrouillé
+  - **À faire** : retirer/corriger le `backupAgent` bogué, décider consciemment si `allowBackup=true` est voulu (utile pour la restauration Google Drive, mais expose l'historique) — envisager `android:fullBackupContent` avec des règles d'exclusion plutôt qu'un tout-ou-rien, et remplacer les `sed` chaînés silencieux par un patch plus robuste
+  - **Cible** : `.github/workflows/build-android.yml`
+
+- [ ] **T81** ⚡ ⭐⭐⭐ - `RemoteConfigService` peut rediriger la clé API vers une URL arbitraire, sans validation
+  - **Ajouté** : 2026-08-15 (audit du code existant)
+  - **Contexte** : `remote_config_service.dart` charge `config.json` depuis une URL GitHub publique non authentifiée (`raw.githubusercontent.com/Nohzoh/audio-guide/main/config.json`), et ce JSON contrôle `geminiApiUrl` — l'URL vers laquelle la clé API Gemini est envoyée (en query param `?key=...`). Aucune validation/allowlist du domaine reçu. Si le repo ou la branche `main` est un jour compromis, c'est un vecteur direct d'exfiltration de la clé de tous les utilisateurs
+  - **À faire** : valider que `gemini_api_url` reçu appartient à une allowlist de domaines connus (`generativelanguage.googleapis.com`) avant de l'utiliser, sinon ignorer et garder la valeur par défaut intégrée au code
+  - **Cible** : `remote_config_service.dart`
 
 ---
 
@@ -33,6 +47,14 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 - [ ] **T07** 📈 ⭐⭐⭐ - **Centraliser la configuration** (IA, TTS, GPS, etc.)
   - **Où** : `RemoteConfigService` ou nouveau fichier dédié
   - **Objectif** : Éviter la duplication des constants
+  - **Preuve concrète (2026-08-15)** : `home_screen.dart:60-61` hardcode `imageQuality: 85, maxWidth: 1280` dans l'appel `ImagePicker` au lieu de lire `RemoteConfigService.current.imageQuality`/`imageMaxWidth` — ces deux réglages remote sont récupérés mais jamais appliqués
+
+- [ ] **T82** 📈 ⭐⭐ - Nettoyage complémentaire post-T06 (code mort restant)
+  - **Ajouté** : 2026-08-15 (audit du code existant)
+  - **À faire** :
+    - Code natif mort : `MediaPipePlugin.kt` toujours enregistré dans `MainActivity.kt` et ses dépendances Gradle (`tasks-genai`, `genai-prompt`) toujours ajoutées en CI (`build-android.yml`), alors que `mediapipe_service.dart` (son seul appelant Dart) a été supprimé en T06 — bloat inutile de l'APK
+    - Dépendance inutilisée `google_generative_ai` dans `pubspec.yaml` — jamais importée, tous les appels Gemini sont faits à la main via `http`
+    - Bug silencieux dans `gemini_api_service.dart:218-223` : un `if` détecte une "phrase anglaise qui a fuité" du raisonnement du modèle mais son corps est vide (juste un commentaire) — la condition ne filtre rien
 
 - [ ] **T09** 📈 ⭐⭐⭐ - Améliorer la **robustesse du stockage local** et des migrations
   - **Fusion de** : robustesse du stockage + tests de migrations SQLite (ex-T44)
@@ -103,6 +125,7 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
     - `AudioGuideService.analyzeAndPlay` : si le réglage est actif, s'arrêter après l'étape `analyzing` (skip `TtsOrchestrator.speak`), état final différent de `speaking` (ex. `scriptReady`)
     - Écran historique (`history_screen.dart`) : affichage distinct pour une entrée sans `audioPath`, bouton "Générer l'audio" qui relance uniquement l'étape TTS (`TtsOrchestrator` + `script` déjà en base) sur le script existant, sans refaire GPS/Wikipedia/IA
   - **Lié à** : T13 (re-demande d'une analyse échouée) et T50 (relancer avec nouveau style/voix) — mécanique de "relance partielle" voisine, à regarder ensemble
+  - **Note (2026-08-15)** : `HistoryService` a déjà le pattern `pending`/`failed`/`addPendingEntry`/`completeEntry` — bonne base à réutiliser plutôt qu'un nouveau mécanisme
 
 - [ ] **T17** 🌱 ⭐⭐ - Ajouter un **mode d’analyse plus détaillé ou plus court**
 
@@ -123,6 +146,7 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
     - Écran de capture : bouton "Capturer sans analyser" à côté du flux actuel (`home_screen.dart:_pickImage` appelle `analyzeAndPlay` directement aujourd'hui)
     - Écran historique : bouton "Lancer l'analyse" sur une entrée capturée, qui déclenche le pipeline complet à partir des coordonnées déjà stockées
   - **Lié à** : T16 (génération audio à la demande) — même mécanique sous-jacente de "relance partielle du pipeline depuis l'historique", à concevoir ensemble plutôt que deux systèmes séparés
+  - **Note (2026-08-15)** : comme pour T16, `HistoryService` a déjà le pattern `pending`/`failed`/`addPendingEntry`/`completeEntry` — bonne base à réutiliser
 
 - [ ] **T21** 🌱 ⭐⭐ - Ajouter des **interactions plus riches** dans l’écran de lecture
 
@@ -147,7 +171,8 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
   - Créer des fichiers `.arb` pour français/anglais
 
 - [ ] **T68** 🌱 ⭐⭐⭐ - **Étendre la couverture de tests** aux services non testés
-  - Cible : LocationService, WikipediaService, ExifLocationService, MediaPipeService
+  - **Mis à jour** : 2026-08-15 — `MediaPipeService` retiré de la cible (supprimé en T06) ; `HistoryService`, `TtsOrchestrator`, `LocationContextResolver`, `RemoteConfigService` ajoutés (nés du refactor T06, encore sans test dédié — `HistoryService` en particulier n'a aucun test, pertinent pour T09)
+  - Cible : `LocationService`, `WikipediaService`, `ExifLocationService`, `HistoryService`, `TtsOrchestrator`, `LocationContextResolver`, `RemoteConfigService`
   - Objectif : 80% de couverture sur les services critiques
 
 - [ ] **T69** 🌱 ⭐⭐ - **Documenter l’architecture** et les flux
