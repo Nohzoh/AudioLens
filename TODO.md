@@ -122,18 +122,6 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 - [ ] **T20** 🌱 ⭐⭐⭐ - **Améliorer l’expérience hors ligne**
   - **Fusion de** : reprise/cache + badge/explication des fonctions disponibles/indisponibles (ex-T52)
 
-- [ ] **T78** 🌱 ⭐⭐⭐⭐ - **Capture différée** : photo + GPS maintenant, analyse (cloud) plus tard
-  - **Ajouté** : 2026-08-15
-  - **Contexte** : demande utilisateur — économiser sa conso data sans se rabattre sur les modèles locaux (qualité moindre) : capturer photo + position tout de suite, lancer l'analyse cloud plus tard (ex. une fois sur wifi)
-  - **Différent de T20** : T20 dégrade gracieusement quand le réseau manque ; ici on **choisit délibérément** de différer les étapes réseau, réseau disponible ou non
-  - **Point d'attention** : même la résolution GPS actuelle fait un appel réseau (reverse geocoding Nominatim dans `LocationService._reverseGeocode`). Pour une capture vraiment 100% hors-ligne, ne stocker à la capture que les **coordonnées brutes** (EXIF ou fix GPS), et différer reverse geocoding + Wikipedia + IA + TTS à la relance — `LocationContextResolver.resolve()` (T06) devrait accepter des coordonnées déjà connues en entrée plutôt que de toujours repartir d'un fichier image
-  - **À faire** :
-    - Nouveau statut `HistoryEntry`/`AnalysisStatus` pour "capturé, analyse non lancée" (distinct de `pending`, qui semble désigner l'analyse en cours)
-    - Écran de capture : bouton "Capturer sans analyser" à côté du flux actuel (`home_screen.dart:_pickImage` appelle `analyzeAndPlay` directement aujourd'hui)
-    - Écran historique : bouton "Lancer l'analyse" sur une entrée capturée, qui déclenche le pipeline complet à partir des coordonnées déjà stockées
-  - **Lié à** : T16 (génération audio à la demande) — même mécanique sous-jacente de "relance partielle du pipeline depuis l'historique", à concevoir ensemble plutôt que deux systèmes séparés
-  - **Note (2026-08-15)** : comme pour T16, `HistoryService` a déjà le pattern `pending`/`failed`/`addPendingEntry`/`completeEntry` — bonne base à réutiliser
-
 - [ ] **T21** 🌱 ⭐⭐ - Ajouter des **interactions plus riches** dans l’écran de lecture
 
 - [ ] **T22** 🌱 ⭐ - Permettre la **mise en pause** pendant la lecture audio depuis la galerie
