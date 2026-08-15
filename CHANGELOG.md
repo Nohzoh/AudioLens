@@ -123,6 +123,7 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
   - **Note** : Annulations basées sur checks avant chaque étape. HTTP natif non supporté (nécessite package dio).
 - [x] **T63** ⚡ ⭐ - **Unifier le nom du projet** sur AudioLens
   - **Validé** : Commit `6afd7b9` (pubspec, README, AGENTS, workflow) + renaming complet du package Android (Kotlin files, channels, namespace)
+  - **applicationId changé en `io.nohzoh.audiolens` (2026-08-16)** : `com.audiolens.audiolens` suggérait une entité commerciale/organisation inexistante ; choix final de préfixe (`io.`, personnel plutôt que lié à une plateforme d'hébergement type `io.github.*`) discuté avec l'utilisateur avant publication Play Store (T84), seul moment où le changement est encore gratuit — `applicationId` devient immuable après la première publication
 - [x] **T64** ⚡ ⭐⭐ - Nettoyer les **fichiers untracked** et le .gitignore
   - **Validé** : Commit `2e3d404` (nettoyage des untracked files)
 - [x] **T65** ⚡ ⭐⭐ - Nettoyer tous les **imports inutilisés** et variables mortes

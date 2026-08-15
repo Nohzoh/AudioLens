@@ -1,4 +1,4 @@
-package com.audiolens.audiolens
+package io.nohzoh.audiolens
 
 import android.media.MediaPlayer
 import io.flutter.embedding.engine.plugins.FlutterPlugin

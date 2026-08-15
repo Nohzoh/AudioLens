@@ -1,4 +1,4 @@
-package com.audiolens.audiolens
+package io.nohzoh.audiolens
 
 import android.Manifest
 import android.app.Activity

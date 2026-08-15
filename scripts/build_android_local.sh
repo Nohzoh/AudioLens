@@ -51,7 +51,7 @@ echo "==> Installation des composants SDK (idempotent, peut être long)"
 yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 
 echo "==> Bootstrap Android (flutter create)"
-flutter create --project-name audiolens --org com.audiolens --platforms android . 2>&1 | tail -3 || true
+flutter create --project-name audiolens --org io.nohzoh --platforms android . 2>&1 | tail -3 || true
 
 echo "==> Patch build.gradle.kts (SDK / NDK / dépendances natives)"
 FILE="android/app/build.gradle.kts"

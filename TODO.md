@@ -56,6 +56,15 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
   - **Services concernés** : GeminiApiService, GeminiTtsService
   - **Impact** : Permettra une vraie interruptibilité des appels cloud
 
+- [ ] **T85** 📈 ⭐⭐⭐⭐ - Faire tourner l'**analyse en tâche de fond** et **notifier** quand l'audio est prêt
+  - **Ajouté** : 2026-08-16
+  - **Contexte** : demande utilisateur suite à un historique de freezes en usage conjoint avec des apps GPS-intensives (AllTrails, Ingress). Analyse du code (2026-08-16) : aucun mécanisme de tâche de fond aujourd'hui — pas de foreground service, pas de `WorkManager`, pas de wakelock. Le process Android continue généralement de tourner quand l'appli est backgroundée, mais rien ne le protège : l'OS peut le tuer à tout moment (pression mémoire, Doze, optimisation batterie), auquel cas l'analyse s'interrompt net, sans notification. Seul filet de sécurité existant : `home_screen.dart:72` écrit une entrée `pending` en base avant de lancer l'analyse, donc au pire l'utilisateur retrouve une entrée à relancer manuellement dans l'historique (T13) — mais pas de reprise automatique ni d'notification
+  - **À faire** :
+    - **Foreground service Android** (notification persistante pendant l'analyse) pour fiabiliser l'exécution en arrière-plan — requis par Android 8+ pour un travail de fond garanti au-delà de quelques minutes
+    - **Notification locale** quand l'audio est prêt (ex. `flutter_local_notifications`, pas encore dans `pubspec.yaml`)
+    - Patch du `AndroidManifest.xml` (non committé, bootstrap CI — cf. `scripts/patch_signing.py` pour le pattern existant) pour la permission `FOREGROUND_SERVICE` et la déclaration du service
+  - **Hors scope pour l'instant** : reprise d'une analyse interrompue à mi-chemin (relance complète depuis le début, comme aujourd'hui)
+
 - [ ] **T75** 📈 ⭐⭐ - Ajouter une **option de style de script** (suggestion d'un ami)
   - **Exemples** : style "académique/historique" vs style qui met en avant les **anecdotes et le storytelling**
   - **À faire** : sélecteur de style dans les paramètres (et/ou onboarding), transmission du style au prompt IA (`gemini_api_service.dart` + `gemini_nano_service.dart`), persistance via `SettingsService`
@@ -68,7 +77,7 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 
 - [ ] **T84** 🌱 ⭐⭐⭐⭐⭐ - **Publication sur le Play Store**
   - **Ajouté** : 2026-08-15
-  - **Déjà acquis** (bon point de départ) : signature release fonctionnelle (T79), `allowBackup=false` (T80), clé API protégée par allowlist (T81), stockage sécurisé de la clé (T10), disclaimer "contenu généré par IA" déjà dans l'appli (T72), `applicationId` stable `com.audiolens.audiolens` (T63)
+  - **Déjà acquis** (bon point de départ) : signature release fonctionnelle (T79), `allowBackup=false` (T80), clé API protégée par allowlist (T81), stockage sécurisé de la clé (T10), disclaimer "contenu généré par IA" déjà dans l'appli (T72), `applicationId` stable `io.nohzoh.audiolens` (T63)
   - **Décisions/démarches non techniques à faire d'abord** :
     - Créer un **compte développeur Google Play** (25$, paiement unique) — prérequis absolu, aucune tâche technique ne peut être testée en réel avant
     - **Politique de confidentialité** hébergée publiquement et un lien à fournir dans la fiche Play Console — obligatoire vu les permissions demandées (caméra, localisation) et le fait que photos + position sont envoyées à l'API Gemini (partage de données à un tiers)
