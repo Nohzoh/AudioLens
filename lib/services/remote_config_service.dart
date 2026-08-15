@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_logger.dart';
 
 class RemoteConfig {
   // Gemini API
@@ -120,6 +121,17 @@ class RemoteConfigService {
       'https://raw.githubusercontent.com/Nohzoh/audio-guide/main/config.json';
   static const _cacheKey = 'remote_config_cache';
 
+  /// Hosts the Gemini API URL is allowed to point to. The remote config is
+  /// fetched unauthenticated (T81) — without this allowlist, a compromised
+  /// config.json could redirect the user's API key to an attacker's server.
+  static const allowedApiHosts = {'generativelanguage.googleapis.com'};
+
+  /// Whether [url] is safe to use as the Gemini API base URL.
+  static bool isAllowedApiUrl(String url) {
+    final host = Uri.tryParse(url)?.host;
+    return host != null && allowedApiHosts.contains(host);
+  }
+
   static RemoteConfig _current = const RemoteConfig();
   static DateTime? _loadedAt;
   static bool _loadedFromRemote = false;
@@ -141,6 +153,12 @@ class RemoteConfigService {
           .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final apiUrl = json['gemini_api_url'] as String?;
+        if (apiUrl != null && !isAllowedApiUrl(apiUrl)) {
+          AppLogger.error(
+              'Remote config: gemini_api_url "$apiUrl" rejected (not in allowlist), using default');
+          json.remove('gemini_api_url');
+        }
         _current = RemoteConfig.fromJson(json);
         _loadedAt = DateTime.now();
         _loadedFromRemote = true;

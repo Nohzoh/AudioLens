@@ -88,7 +88,7 @@ MANIFEST="android/app/src/main/AndroidManifest.xml"
 if ! grep -q 'ACCESS_FINE_LOCATION' "$MANIFEST"; then
   sed -i 's|<application|<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"/>\n    <application|' "$MANIFEST"
 fi
-sed -i 's/android:label="[^"]*"/android:label="AudioLens"/' "$MANIFEST"
+sed -i 's/android:label="[^"]*"/android:label="AudioLens" android:allowBackup="false"/' "$MANIFEST"
 if ! grep -q 'FileProvider' "$MANIFEST"; then
   sed -i 's|</application>|    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/></provider>\n    </application>|' "$MANIFEST"
 fi
