@@ -1,21 +1,23 @@
 import 'dart:io';
 import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
+import '../utils/error_sanitizer.dart';
 import '../models/guide_error.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'ai_service.dart';
 import 'gemini_nano_service.dart';
 import 'gemini_api_service.dart';
 import 'tts_service.dart';
 import 'gemini_tts_service.dart';
 import 'location_service.dart';
-import 'exif_location_service.dart';
-import 'wikipedia_service.dart';
 import 'remote_config_service.dart';
 import 'secure_key_storage.dart';
+import 'guide_preferences_store.dart';
+import 'guide_progress_estimator.dart';
+import 'location_context_resolver.dart';
+import 'tts_orchestrator.dart';
 
 enum GuideState { idle, locating, analyzing, synthesizing, speaking, paused, cancelling, error }
 enum AIProvider { geminiNano, geminiApi }
@@ -40,13 +42,23 @@ class AudioGuideService extends ChangeNotifier {
     GeminiTtsService? geminiTtsService,
     GeminiApiService? geminiApiService,
     GeminiNanoService? nanoService,
+    GuidePreferencesStore? preferencesStore,
+    LocationContextResolver? locationResolver,
   })  : _ttsService = ttsService ?? TtsService(),
         _nanoService = nanoService ?? GeminiNanoService(),
         _geminiTtsService = geminiTtsService,
-        _geminiApiService = geminiApiService;
+        _geminiApiService = geminiApiService,
+        _preferencesStore = preferencesStore ?? GuidePreferencesStore(),
+        _locationResolver = locationResolver ?? LocationContextResolver() {
+    _ttsOrchestrator = TtsOrchestrator(piper: _ttsService);
+  }
 
   final TtsService _ttsService;
   TtsService get ttsService => _ttsService;
+  final GuidePreferencesStore _preferencesStore;
+  final LocationContextResolver _locationResolver;
+  late final TtsOrchestrator _ttsOrchestrator;
+  GuideProgressEstimator _progressEstimator = GuideProgressEstimator();
   GeminiTtsService? _geminiTtsService;
   GeminiTtsService? get geminiTtsService => _geminiTtsService;
   String? _lastAudioPath;
@@ -106,13 +118,7 @@ class AudioGuideService extends ChangeNotifier {
   String? get geminiApiKey => _geminiApiKey;
   GeminiApiService? _geminiApiService; // cached instance
 
-  // Timing history
-  List<double> _gpsDurations = [];
-  List<double> _analyzeDurations = [];
-
-  double _stepProgress = 0.0;
   int _currentStep = 0;
-  bool _simulating = false;
   bool _analysisInProgress = false;
 
   GuideState get state => _state;
@@ -125,22 +131,14 @@ class AudioGuideService extends ChangeNotifier {
 
   PipelineProgress get progress => PipelineProgress(
     state: _state,
-    stepProgress: _stepProgress,
+    stepProgress: _progressEstimator.stepProgress,
     currentStep: _currentStep,
     estimatedSecondsRemaining: _estimateRemaining(),
   );
 
   double? _estimateRemaining() {
-    final analyzeAvg = _analyzeDurations.isNotEmpty
-        ? _analyzeDurations.reduce((a, b) => a + b) / _analyzeDurations.length
-        : 10.0;
-    final gpsAvg = _gpsDurations.isNotEmpty
-        ? _gpsDurations.reduce((a, b) => a + b) / _gpsDurations.length
-        : 1.5;
-
-    if (_state == GuideState.locating) return gpsAvg + analyzeAvg + 5.0;
-    if (_state == GuideState.analyzing) return analyzeAvg * (1 - _stepProgress) + 5.0;
-    if (_state == GuideState.synthesizing) return null;
+    if (_state == GuideState.locating) return _progressEstimator.estimateWhileLocating;
+    if (_state == GuideState.analyzing) return _progressEstimator.estimateWhileAnalyzing;
     return null;
   }
 
@@ -168,7 +166,7 @@ class AudioGuideService extends ChangeNotifier {
 
     _ttsService.onComplete = () {
       _state = GuideState.idle;
-      _stepProgress = 0.0;
+      _progressEstimator.stepProgress = 0.0;
       notifyListeners();
     };
 
@@ -196,8 +194,7 @@ class AudioGuideService extends ChangeNotifier {
   Future<void> setActiveProvider(AIProvider provider) async {
     _activeProvider = provider;
     _updateProviderName();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('active_provider', provider.name);
+    await _preferencesStore.saveActiveProviderName(provider.name);
     notifyListeners();
   }
 
@@ -216,21 +213,23 @@ class AudioGuideService extends ChangeNotifier {
   }
 
   Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
     _geminiApiKey = await SecureKeyStorage.readApiKey();
     if (_geminiApiKey?.isNotEmpty == true) {
       _geminiApiService = GeminiApiService(apiKey: _geminiApiKey!);
       _geminiTtsService = GeminiTtsService(apiKey: _geminiApiKey!);
     }
-    final providerName = prefs.getString('active_provider');
+    final providerName = await _preferencesStore.loadActiveProviderName();
     if (providerName != null) {
       _activeProvider = AIProvider.values.firstWhere(
         (p) => p.name == providerName,
         orElse: () => AIProvider.geminiNano,
       );
     }
-    _gpsDurations = (prefs.getStringList('timing_gps') ?? []).map(double.parse).toList();
-    _analyzeDurations = (prefs.getStringList('timing_analyze') ?? []).map(double.parse).toList();
+    final timings = await _preferencesStore.loadTimings();
+    _progressEstimator = GuideProgressEstimator(
+      gpsDurations: timings.gpsDurations,
+      analyzeDurations: timings.analyzeDurations,
+    );
   }
 
   Future<AudioGuideResult?> analyzeAndPlay(File imageFile) async {
@@ -256,7 +255,7 @@ class AudioGuideService extends ChangeNotifier {
       _lastResult = null;
       _state = GuideState.locating;
       _currentStep = 0;
-      _stepProgress = 0.0;
+      _progressEstimator.stepProgress = 0.0;
       _lastImageFile = imageFile;
       _errorMessage = null;
       notifyListeners();
@@ -270,49 +269,15 @@ class AudioGuideService extends ChangeNotifier {
       }
 
       final gpsStart = DateTime.now();
-      // Check EXIF GPS first — if image has coordinates, use those
-      LocationResult locationResult;
-      final exifCoords = await ExifLocationService.readGpsFromImage(imageFile);
-      if (exifCoords != null) {
-        locationResult = await LocationService.fromCoordinates(
-            exifCoords.lat, exifCoords.lon);
-        _lastGpsSource = 'exif';
-      } else {
-        locationResult = await LocationService.getCurrentLocation();
-        _lastGpsSource = locationResult.status == LocationPermissionStatus.granted
-            ? 'realtime' : 'none';
-      }
-      _lastGpsLatitude = locationResult.info?.latitude;
-      _lastGpsLongitude = locationResult.info?.longitude;
-      _lastGpsAddress = locationResult.info?.contextForPrompt;
-      _lastLocationStatus = locationResult.status;
-      if (locationResult.info == null || locationResult.status != LocationPermissionStatus.granted) {
-        _lastGpsLatitude = null;
-        _lastGpsLongitude = null;
-        _lastGpsAddress = null;
-        _lastGpsSource = 'none';
-      }
-      _gpsDurations.add(DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
-      if (_gpsDurations.length > 5) _gpsDurations.removeAt(0);
-      // Wikipedia enrichment
-      String? wikiContext;
-      if (locationResult.info != null) {
-        final wikiResults = await WikipediaService.searchNearby(
-          lat: locationResult.info!.latitude,
-          lon: locationResult.info!.longitude,
-        );
-        if (wikiResults.isNotEmpty) {
-          wikiContext = WikipediaService.buildContext(wikiResults);
-          _lastWikipediaUsed = true;
-        } else {
-          _lastWikipediaUsed = false;
-        }
-      }
-
-      final fullContext = [
-        locationResult.info?.contextForPrompt,
-        wikiContext,
-      ].where((s) => s != null && s.isNotEmpty).join('\n\n');
+      final locationContext = await _locationResolver.resolve(imageFile);
+      _lastGpsSource = locationContext.source;
+      _lastGpsLatitude = locationContext.latitude;
+      _lastGpsLongitude = locationContext.longitude;
+      _lastGpsAddress = locationContext.address;
+      _lastLocationStatus = locationContext.status;
+      _lastWikipediaUsed = locationContext.wikipediaUsed;
+      _progressEstimator.recordGpsDuration(
+          DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
 
       // Check cancellation before AI analysis
       if (_cancelToken.isCancelled) {
@@ -324,22 +289,23 @@ class AudioGuideService extends ChangeNotifier {
 
       _state = GuideState.analyzing;
       _currentStep = 1;
-      _stepProgress = 0.0;
+      _progressEstimator.stepProgress = 0.0;
       notifyListeners();
 
-      _startProgressSimulation(expectedDuration: _analyzeDurations.isNotEmpty
-          ? _analyzeDurations.reduce((a, b) => a + b) / _analyzeDurations.length
-          : 10.0);
+      _progressEstimator.simulate(
+        expectedDuration: _progressEstimator.averageAnalyzeDuration,
+        onTick: notifyListeners,
+      );
 
       _lastAiModel = _providerName; // will be refined after analysis
       final analyzeStart = DateTime.now();
       try {
         _lastResult = await service.analyzeImage(
           imageFile,
-          locationContext: fullContext.isNotEmpty ? fullContext : null,
+          locationContext: locationContext.promptContext,
         );
       } catch (analysisError) {
-        final message = _sanitizeError(analysisError.toString());
+        final message = sanitizeError(analysisError.toString());
         if (_activeProvider == AIProvider.geminiApi && _nanoAvailable) {
           AppLogger.error('Cloud analysis failed, trying local fallback: $message');
           _activeProvider = AIProvider.geminiNano;
@@ -348,7 +314,7 @@ class AudioGuideService extends ChangeNotifier {
           if (localService != null) {
             _lastResult = await localService.analyzeImage(
               imageFile,
-              locationContext: fullContext.isNotEmpty ? fullContext : null,
+              locationContext: locationContext.promptContext,
             );
           } else {
             throw GuideError(GuideErrorKind.ai, 'Analyse IA impossible. $message');
@@ -359,15 +325,14 @@ class AudioGuideService extends ChangeNotifier {
       }
       final analysisDuration = DateTime.now().difference(analyzeStart).inMilliseconds;
       _lastAnalysisDurationMs = analysisDuration;
-      _analyzeDurations.add(analysisDuration / 1000.0);
-      if (_analyzeDurations.length > 5) _analyzeDurations.removeAt(0);
-      _stopProgressSimulation();
+      _progressEstimator.recordAnalyzeDuration(analysisDuration / 1000.0);
+      _progressEstimator.stop();
 
-      if (locationResult.info?.city != null && _lastResult != null) {
+      if (locationContext.city != null && _lastResult != null) {
         _lastResult = AudioGuideResult(
           title: _lastResult!.title,
           script: _lastResult!.script,
-          locationName: locationResult.info!.city,
+          locationName: locationContext.city,
         );
       }
 
@@ -381,71 +346,37 @@ class AudioGuideService extends ChangeNotifier {
 
       _state = GuideState.synthesizing;
       _currentStep = 2;
-      _stepProgress = -1.0;
+      _progressEstimator.stepProgress = -1.0;
       notifyListeners();
 
-      final geminiTts = _geminiTtsService;
-      if (geminiTts != null) {
-        try {
-          geminiTts.onComplete = _ttsService.onComplete;
-          await geminiTts.speak(_lastResult!.script, cancelToken: _cancelToken);
-          _lastTtsModel = 'gemini-tts';
-        } catch (ttsError) {
-          AppLogger.error('Gemini TTS failed, falling back to Piper: ${ttsError.toString()}');
-          try {
-            await _ttsService.speak(_lastResult!.script, cancelToken: _cancelToken);
-            _lastTtsModel = 'piper';
-          } catch (fallbackError) {
-            _lastTtsModel = 'piper';
-            throw GuideError(GuideErrorKind.tts, 'La lecture audio a échoué. ${_sanitizeError(fallbackError.toString())}');
-          }
-        }
-      } else {
-        try {
-          await _ttsService.speak(_lastResult!.script, cancelToken: _cancelToken);
-          _lastTtsModel = 'piper';
-        } catch (ttsError) {
-          throw GuideError(GuideErrorKind.tts, 'La lecture audio a échoué. ${_sanitizeError(ttsError.toString())}');
-        }
-      }
+      _lastTtsModel = await _ttsOrchestrator.speak(
+        _lastResult!.script,
+        cancelToken: _cancelToken,
+        geminiTts: _geminiTtsService,
+      );
+
       // Cache the generated audio for replay without re-generating
       _lastAudioPath = await _getLastWavPath();
 
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setStringList('timing_gps', _gpsDurations.map((d) => d.toString()).toList());
-      prefs.setStringList('timing_analyze', _analyzeDurations.map((d) => d.toString()).toList());
+      await _preferencesStore.saveTimings(
+        _progressEstimator.gpsDurations,
+        _progressEstimator.analyzeDurations,
+      );
 
       _state = GuideState.speaking;
-      _stepProgress = 1.0;
+      _progressEstimator.stepProgress = 1.0;
       notifyListeners();
 
       return _lastResult;
     } catch (e) {
-      _stopProgressSimulation();
+      _progressEstimator.stop();
       _state = GuideState.error;
-      _errorMessage = _sanitizeError(e.toString());
+      _errorMessage = sanitizeError(e.toString());
       notifyListeners();
       return null;
     } finally {
       _analysisInProgress = false;
     }
-  }
-
-  Future<void> _startProgressSimulation({required double expectedDuration}) async {
-    _simulating = true;
-    _stepProgress = 0.0;
-    final startTime = DateTime.now();
-    while (_simulating && _stepProgress < 0.95) {
-      await Future.delayed(const Duration(milliseconds: 150));
-      final elapsed = DateTime.now().difference(startTime).inMilliseconds / 1000.0;
-      _stepProgress = 1.0 - (1.0 / (1.0 + elapsed / expectedDuration * 2));
-      notifyListeners();
-    }
-  }
-
-  void _stopProgressSimulation() {
-    _simulating = false;
-    _stepProgress = 1.0;
   }
 
   Future<void> togglePause() async {
@@ -465,7 +396,7 @@ class AudioGuideService extends ChangeNotifier {
   }
 
   Future<void> cancelCurrentAction() async {
-    _stopProgressSimulation();
+    _progressEstimator.stop();
     _errorMessage = null;
     _analysisInProgress = false;
     
@@ -504,19 +435,9 @@ class AudioGuideService extends ChangeNotifier {
     return null;
   }
 
-  String _sanitizeError(String error) {
-    // Remove API keys (AIza... pattern) from error messages
-    var sanitized = error
-        .replaceAll('Exception: ', '')
-        .replaceAll(RegExp(r'key=[A-Za-z0-9_\-]{20,}'), 'key=***')
-        .replaceAll(RegExp(r'AIza[A-Za-z0-9_\-]{30,}'), '***')
-        .replaceAll(RegExp(r'\?key=[^&\s"]+'), '?key=***');
-    return sanitized;
-  }
-
   @override
   void dispose() {
-    _simulating = false;
+    _progressEstimator.stop();
     _analysisInProgress = false;
     _ttsService.dispose();
     super.dispose();
