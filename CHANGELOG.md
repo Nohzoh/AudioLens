@@ -27,6 +27,12 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
   - **Validé** : 2026-08-15 (commit `4011b5e`)
   - **Ce qui a été fait** : `RemoteConfigService.isAllowedApiUrl()` — allowlist (`generativelanguage.googleapis.com`) vérifiée avant d'utiliser un `gemini_api_url` reçu de la config distante, sinon retour à la valeur par défaut. 4 tests ajoutés (`remote_config_service_test.dart`, premier test de ce service)
 
+- [x] **T82** 📈 ⭐⭐ - Nettoyage complémentaire post-T06 (code mort restant)
+  - **Validé** : 2026-08-15 (PR #3, commit `0b14c3b`)
+  - **Ce qui a été fait** : `MediaPipePlugin.kt` et son enregistrement dans `MainActivity.kt` supprimés, dépendance Gradle `tasks-genai` retirée (`genai-prompt`, utilisée par `GeminiNanoPlugin.kt`, conservée) ; dépendance Dart inutilisée `google_generative_ai` retirée de `pubspec.yaml` ; conditionnel mort dans `gemini_api_service.dart` supprimé plutôt qu'implémenté (le regex — toute ligne commençant en minuscule et finissant par un point — était trop large et risquait de couper de la narration française légitime, sans aucun test pour détecter une régression)
+  - **Bonus trouvé en validant en local** : le patch `allowBackup` (T80) n'était pas idempotent — le relancer sur un manifest déjà patché (sans bootstrap frais) dupliquait l'attribut et cassait le merge du manifest. Corrigé dans les deux scripts (CI + local) avec le même pattern de garde que les blocs permissions/FileProvider
+  - **Vérifié réellement** : bootstrap Android local vraiment à froid (`git clean -X` sur `android/` — sans toucher aux fichiers trackés), build debug réussi sans `MediaPipePlugin`. `flutter analyze` → 0 issue, `flutter test` → 44/44
+
 - [x] **T02** - Améliorer la gestion des **erreurs réseau** et du fallback local
 - [x] **T03** - Empêcher les **analyses concurrentes** et gérer proprement les retries/cancellations
 - [x] **T04** - Vérifier et corriger la **logique de géolocalisation** lors d’une nouvelle analyse après échec
