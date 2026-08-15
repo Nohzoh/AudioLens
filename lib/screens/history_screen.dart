@@ -1,5 +1,6 @@
 import 'dart:io';
 import '../utils/app_logger.dart';
+import '../utils/analysis_runner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
@@ -12,6 +13,49 @@ import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
+
+/// Launches the analysis for a captured entry (T78), using the raw GPS
+/// saved at capture time rather than the device's current location.
+Future<void> _launchAnalysis(BuildContext context, HistoryEntry entry) async {
+  final imageFile = File(entry.imagePath);
+  if (!imageFile.existsSync()) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Image introuvable')),
+    );
+    return;
+  }
+  ({double lat, double lon, String source})? knownCoordinates;
+  if (entry.gpsLatitude != null && entry.gpsLongitude != null) {
+    knownCoordinates = (
+      lat: entry.gpsLatitude!,
+      lon: entry.gpsLongitude!,
+      source: entry.gpsSource ?? 'realtime',
+    );
+  }
+  await runAnalysisAndNavigate(
+    context: context,
+    imageFile: imageFile,
+    entryId: entry.id!,
+    source: 'captured',
+    knownCoordinates: knownCoordinates,
+  );
+}
+
+Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
+  final imageFile = File(entry.imagePath);
+  if (!imageFile.existsSync()) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Image introuvable')),
+    );
+    return;
+  }
+  await runAnalysisAndNavigate(
+    context: context,
+    imageFile: imageFile,
+    entryId: entry.id!,
+    source: 'retry',
+  );
+}
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -85,6 +129,7 @@ class _HistoryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final dateStr =
         DateFormat('d MMM yyyy · HH:mm', 'fr_FR').format(entry.createdAt);
+    final isFailed = entry.status == AnalysisStatus.failed;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -93,12 +138,20 @@ class _HistoryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => HistoryDetailScreen(entry: entry),
-            ),
-          ),
+          onTap: () {
+            if (entry.isPending || isFailed) {
+              _retryAnalysis(context, entry);
+            } else if (entry.isCaptured) {
+              _launchAnalysis(context, entry);
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => HistoryDetailScreen(entry: entry),
+                ),
+              );
+            }
+          },
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -163,6 +216,38 @@ class _HistoryCard extends StatelessWidget {
                               'Script seul',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: Colors.white38,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (entry.isCaptured) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.cloud_off_outlined,
+                                size: 12, color: Colors.white38),
+                            const SizedBox(width: 2),
+                            Text(
+                              'Capturé — appuyer pour analyser',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.white38,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (isFailed) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.refresh,
+                                size: 12, color: Colors.orangeAccent),
+                            const SizedBox(width: 2),
+                            Text(
+                              'Échec — appuyer pour réessayer',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.orangeAccent,
                               ),
                             ),
                           ],

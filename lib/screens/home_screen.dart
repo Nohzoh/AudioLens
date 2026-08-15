@@ -1,5 +1,6 @@
 import 'dart:io';
-import '../utils/app_logger.dart';
+import '../utils/analysis_runner.dart';
+import '../services/exif_location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,7 +10,6 @@ import '../services/history_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
-import 'player_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 
@@ -51,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   ImageSource? _lastSource;
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickImage(ImageSource source, {bool analyzeNow = true}) async {
     _lastSource = source;
     final history = context.read<HistoryService>();
     final picker = ImagePicker();
@@ -63,9 +63,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (xFile == null || !mounted) return;
 
     final imageFile = File(xFile.path);
+
+    if (!analyzeNow) {
+      await _captureOnly(imageFile);
+      return;
+    }
+
     final pendingEntry = await history.addPendingEntry(imagePath: imageFile.path);
     final analysisSource = _lastSource == ImageSource.camera ? 'camera' : 'gallery';
     await _runAnalysis(imageFile: imageFile, entryId: pendingEntry.id!, source: analysisSource);
+  }
+
+  /// Saves the photo + raw GPS only — no reverse geocoding, Wikipedia, AI,
+  /// or TTS — so the whole capture stays offline (T78). The analysis can
+  /// be launched later (e.g. once back on wifi) from the history entry.
+  Future<void> _captureOnly(File imageFile) async {
+    final history = context.read<HistoryService>();
+
+    final exifCoords = await ExifLocationService.readGpsFromImage(imageFile);
+    double? lat = exifCoords?.lat;
+    double? lon = exifCoords?.lon;
+    var gpsSource = exifCoords != null ? 'exif' : 'none';
+
+    if (exifCoords == null) {
+      final raw = await LocationService.getCurrentRawCoordinates();
+      if (raw != null) {
+        lat = raw.lat;
+        lon = raw.lon;
+        gpsSource = 'realtime';
+      }
+    }
+
+    await history.addCapturedEntry(
+      imagePath: imageFile.path,
+      gpsLatitude: lat,
+      gpsLongitude: lon,
+      gpsSource: gpsSource,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Photo enregistrée — lancez l\'analyse plus tard depuis l\'historique'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _showLocationDeniedForeverDialog() {
@@ -106,62 +149,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await _runAnalysis(imageFile: imageFile, entryId: entry.id!, source: 'retry');
   }
 
+  /// Launches the analysis for a captured entry (T78), using the raw GPS
+  /// saved at capture time rather than the device's current location.
+  Future<void> _launchAnalysisForCaptured(HistoryEntry entry) async {
+    final imageFile = File(entry.imagePath);
+    if (!imageFile.existsSync()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Image introuvable')),
+      );
+      return;
+    }
+
+    ({double lat, double lon, String source})? knownCoordinates;
+    if (entry.gpsLatitude != null && entry.gpsLongitude != null) {
+      knownCoordinates = (
+        lat: entry.gpsLatitude!,
+        lon: entry.gpsLongitude!,
+        source: entry.gpsSource ?? 'realtime',
+      );
+    }
+
+    await _runAnalysis(
+      imageFile: imageFile,
+      entryId: entry.id!,
+      source: 'captured',
+      knownCoordinates: knownCoordinates,
+    );
+  }
+
   Future<void> _runAnalysis({
     required File imageFile,
     required int entryId,
     required String source,
+    ({double lat, double lon, String source})? knownCoordinates,
   }) async {
-    final guide = context.read<AudioGuideService>();
-    final history = context.read<HistoryService>();
-    final settings = context.read<SettingsService>();
-
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => PlayerScreen(imageFile: imageFile),
-    ));
-
-    final result = await guide.analyzeAndPlay(
-      imageFile,
-      generateAudio: settings.autoGenerateAudio,
+    await runAnalysisAndNavigate(
+      context: context,
+      imageFile: imageFile,
+      entryId: entryId,
+      source: source,
+      knownCoordinates: knownCoordinates,
     );
-
-    if (mounted) setState(() => _permissionStatus = guide.lastLocationStatus);
-
-    // Debug: trace metadata values
-    AppLogger.info('result: ${result?.title}');
-    AppLogger.info('aiModel: ${guide.actualAiModel} / ${guide.lastAiModel}');
-    AppLogger.info('gpsSource: ${guide.lastGpsSource}');
-    AppLogger.info('gpsLat: ${guide.lastGpsLatitude}');
-    AppLogger.info('wikipedia: ${guide.lastWikipediaUsed}');
-    AppLogger.info('duration: ${guide.lastAnalysisDurationMs}');
-
-    if (result != null) {
-      await history.completeEntry(
-        entryId: entryId,
-        title: result.title,
-        script: result.script,
-        locationName: result.locationName,
-        aiModel: guide.actualAiModel ?? guide.lastAiModel,
-        analysisSource: source,
-        gpsSource: guide.lastGpsSource,
-        wikipediaUsed: guide.lastWikipediaUsed,
-        analysisDurationMs: guide.lastAnalysisDurationMs,
-        gpsLatitude: guide.lastGpsLatitude,
-        gpsLongitude: guide.lastGpsLongitude,
-        gpsAddress: guide.lastGpsAddress,
-        aiFallback: guide.aiModelWasFallback,
-        ttsFallback: guide.ttsWasFallback,
-      );
-      final audioPath = guide.lastAudioPath;
-      if (audioPath != null) {
-        await history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel);
-      }
-    } else {
-      await history.failEntry(entryId);
+    if (mounted) {
+      final guide = context.read<AudioGuideService>();
+      setState(() => _permissionStatus = guide.lastLocationStatus);
     }
   }
 
   Future<void> _showImageSourceDialog() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final choice = await showModalBottomSheet<({ImageSource source, bool analyzeNow})>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
@@ -181,19 +217,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ListTile(
               leading: const Icon(Icons.camera_alt),
               title: const Text('Prendre une photo'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
+              onTap: () => Navigator.pop(context, (source: ImageSource.camera, analyzeNow: true)),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text('Choisir depuis la galerie'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
+              onTap: () => Navigator.pop(context, (source: ImageSource.gallery, analyzeNow: true)),
+            ),
+            const Divider(height: 24),
+            ListTile(
+              leading: const Icon(Icons.cloud_off_outlined),
+              title: const Text('Capturer sans analyser'),
+              subtitle: const Text('Photo + position enregistrées, analyse à lancer plus tard (économise data)'),
+              onTap: () => Navigator.pop(context, (source: ImageSource.camera, analyzeNow: false)),
             ),
             const SizedBox(height: 16),
           ],
         ),
       ),
     );
-    if (source != null) _pickImage(source);
+    if (choice != null) _pickImage(choice.source, analyzeNow: choice.analyzeNow);
   }
 
   @override
@@ -403,11 +446,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               final entry = history.entries[i];
                               final isPending = entry.isPending;
                               final isFailed = entry.status == AnalysisStatus.failed;
+                              final isCaptured = entry.isCaptured;
+                              final isDimmed = isPending || isFailed || isCaptured;
                               return GestureDetector(
                                 onTap: () {
                                   if (isPending || isFailed) {
                                     // Retry analysis
                                     _retryAnalysis(entry);
+                                  } else if (isCaptured) {
+                                    _launchAnalysisForCaptured(entry);
                                   } else {
                                     Navigator.push(context,
                                       MaterialPageRoute(
@@ -421,9 +468,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [
-                                      // Image — greyed if pending/failed
+                                      // Image — greyed if pending/failed/captured
                                       ColorFiltered(
-                                        colorFilter: (isPending || isFailed)
+                                        colorFilter: isDimmed
                                             ? const ColorFilter.matrix([
                                                 0.2126, 0.7152, 0.0722, 0, 0,
                                                 0.2126, 0.7152, 0.0722, 0, 0,
@@ -442,7 +489,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         const Center(child: SizedBox(width: 24, height: 24,
                                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)))
                                       else if (isFailed)
-                                        const Center(child: Icon(Icons.refresh, color: Colors.white, size: 28)),
+                                        const Center(child: Icon(Icons.refresh, color: Colors.white, size: 28))
+                                      else if (isCaptured)
+                                        const Center(child: Icon(Icons.cloud_off_outlined, color: Colors.white70, size: 28)),
                                       // Title at bottom
                                       Positioned(
                                         bottom: 0, left: 0, right: 0,
@@ -456,9 +505,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                             ),
                                           ),
                                           child: Text(
-                                            isFailed ? 'Appuyer pour réessayer' : entry.title,
+                                            isFailed
+                                                ? 'Appuyer pour réessayer'
+                                                : isCaptured
+                                                    ? 'Appuyer pour analyser'
+                                                    : entry.title,
                                             style: TextStyle(
-                                              color: isFailed ? Colors.orangeAccent : Colors.white,
+                                              color: isFailed
+                                                  ? Colors.orangeAccent
+                                                  : isCaptured
+                                                      ? Colors.white70
+                                                      : Colors.white,
                                               fontSize: 9, height: 1.2,
                                             ),
                                             maxLines: 2,

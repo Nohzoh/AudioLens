@@ -146,6 +146,7 @@ Status: ${live.status.name}
     'camera' => '📷 Caméra',
     'gallery' => '🖼️ Galerie',
     'retry' => '🔄 Relancée',
+    'captured' => '📥 Capture différée',
     _ => 'Inconnu',
   };
 
@@ -160,6 +161,7 @@ Status: ${live.status.name}
     AnalysisStatus.complete => '✅ Complète',
     AnalysisStatus.pending => '⏳ En attente',
     AnalysisStatus.failed => '❌ Échouée',
+    AnalysisStatus.captured => '📥 Capturée (analyse non lancée)',
   };
 }
 

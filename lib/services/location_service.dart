@@ -52,9 +52,10 @@ class LocationService {
     }
   }
 
-  /// Build LocationResult from known coordinates (e.g. from EXIF)
-  static Future<LocationResult> fromCoordinates(double lat, double lon) async {
-    final geo = await _reverseGeocode(lat, lon);
+  /// Build LocationResult from known coordinates (e.g. from EXIF).
+  /// [client] allows injecting a mock HTTP client in tests.
+  static Future<LocationResult> fromCoordinates(double lat, double lon, {http.Client? client}) async {
+    final geo = await _reverseGeocode(lat, lon, client: client);
     return LocationResult(
       status: LocationPermissionStatus.granted,
       info: LocationInfo(
@@ -69,7 +70,8 @@ class LocationService {
     );
   }
 
-  static Future<LocationResult> getCurrentLocation() async {
+  /// [client] allows injecting a mock HTTP client in tests.
+  static Future<LocationResult> getCurrentLocation({http.Client? client}) async {
     try {
       final result = await _channel.invokeMethod<Map>('requestLocation');
       final map = Map<String, dynamic>.from(result ?? {});
@@ -93,7 +95,7 @@ class LocationService {
       }
 
       // Reverse geocode via Nominatim
-      final geo = await _reverseGeocode(lat, lon);
+      final geo = await _reverseGeocode(lat, lon, client: client);
       return LocationResult(
         status: LocationPermissionStatus.granted,
         info: LocationInfo(
@@ -111,6 +113,25 @@ class LocationService {
     }
   }
 
+  /// Returns the current raw GPS fix without reverse geocoding — no
+  /// network call (T78, for capturing a location entirely offline).
+  /// Null if permission isn't granted or no fix is available.
+  static Future<({double lat, double lon})?> getCurrentRawCoordinates() async {
+    try {
+      final result = await _channel.invokeMethod<Map>('requestLocation');
+      final map = Map<String, dynamic>.from(result ?? {});
+      if ((map['status'] as String? ?? 'error') != 'granted') return null;
+
+      final lat = (map['latitude'] as num?)?.toDouble();
+      final lon = (map['longitude'] as num?)?.toDouble();
+      if (lat == null || lon == null) return null;
+
+      return (lat: lat, lon: lon);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<void> openSettings() async {
     await _channel.invokeMethod('openSettings');
   }
@@ -123,13 +144,14 @@ class LocationService {
     }
   }
 
-  static Future<Map<String, dynamic>?> _reverseGeocode(double lat, double lon) async {
+  static Future<Map<String, dynamic>?> _reverseGeocode(double lat, double lon, {http.Client? client}) async {
     try {
       final uri = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse'
         '?lat=$lat&lon=$lon&format=json&addressdetails=1&accept-language=fr',
       );
-      final response = await http.get(
+      final c = client ?? http.Client();
+      final response = await c.get(
         uri,
         headers: {'User-Agent': NetworkConfig.userAgent},
       ).timeout(const Duration(seconds: 8));
