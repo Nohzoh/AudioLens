@@ -15,6 +15,7 @@ import 'location_service.dart';
 import 'exif_location_service.dart';
 import 'wikipedia_service.dart';
 import 'remote_config_service.dart';
+import 'secure_key_storage.dart';
 
 enum GuideState { idle, locating, analyzing, synthesizing, speaking, paused, cancelling, error }
 enum AIProvider { geminiNano, geminiApi }
@@ -81,13 +82,7 @@ class AudioGuideService extends ChangeNotifier {
     if (svc is GeminiApiService) return svc.lastUsedModel;
     return _lastAiModel;
   }
-  List<String> get aiModelAttempts {
-    final svc = _currentService;
-    if (svc is GeminiApiService) return svc.lastAttempts;
-    return [];
-  }
   bool get ttsWasFallback => _lastTtsModel == 'piper' && _geminiTtsService != null;
-
   final GeminiNanoService _nanoService;
 
   GuideState _state = GuideState.idle;
@@ -210,8 +205,7 @@ class AudioGuideService extends ChangeNotifier {
     _geminiApiKey = key.isEmpty ? null : key;
     _geminiApiService = key.isNotEmpty ? GeminiApiService(apiKey: key) : null;
     _geminiTtsService = key.isNotEmpty ? GeminiTtsService(apiKey: key) : null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('gemini_api_key', key);
+    await SecureKeyStorage.writeApiKey(key);
     // Auto-switch to Gemini API if key provided
     if (key.isNotEmpty) {
       await setActiveProvider(AIProvider.geminiApi);
@@ -223,7 +217,7 @@ class AudioGuideService extends ChangeNotifier {
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    _geminiApiKey = prefs.getString('gemini_api_key');
+    _geminiApiKey = await SecureKeyStorage.readApiKey();
     if (_geminiApiKey?.isNotEmpty == true) {
       _geminiApiService = GeminiApiService(apiKey: _geminiApiKey!);
       _geminiTtsService = GeminiTtsService(apiKey: _geminiApiKey!);

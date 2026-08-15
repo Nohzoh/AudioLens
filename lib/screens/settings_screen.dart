@@ -293,7 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   '• Reconnaît les œuvres d\'art et monuments\n'
                   '• Textes 2× plus longs et précis\n'
                   '• Nécessite une connexion internet\n'
-                  '• Clé stockée uniquement sur cet appareil',
+                  '• Clé stockée cryptée sur cet appareil',
                   style: TextStyle(
                       color: Colors.white54, fontSize: 13, height: 1.6),
                 ),
