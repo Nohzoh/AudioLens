@@ -70,11 +70,12 @@ else
   $SED -i '/compileSdk = 36/a\        ndkVersion = "27.0.12077973"' "$FILE"
 fi
 
-if ! grep -q 'tasks-genai' "$FILE"; then
+# T82: com.google.mediapipe:tasks-genai dropped — only used by the dead
+# MediaPipePlugin.kt. Gemini Nano uses com.google.mlkit:genai-prompt instead.
+if ! grep -q 'genai-prompt' "$FILE"; then
   cat >> "$FILE" << 'DEPS'
 
 dependencies {
-    implementation("com.google.mediapipe:tasks-genai:0.10.14")
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
     implementation("com.google.guava:guava:32.1.3-android")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
@@ -95,7 +96,12 @@ MANIFEST="android/app/src/main/AndroidManifest.xml"
 if ! grep -q 'ACCESS_FINE_LOCATION' "$MANIFEST"; then
   $SED -i 's|<application|<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"/>\n    <application|' "$MANIFEST"
 fi
-$SED -i 's/android:label="[^"]*"/android:label="AudioLens" android:allowBackup="false"/' "$MANIFEST"
+$SED -i 's/android:label="[^"]*"/android:label="AudioLens"/' "$MANIFEST"
+# Guarded (T82 fix): re-running against an already-patched manifest (no
+# fresh bootstrap) duplicated this attribute and broke manifest merging.
+if ! grep -q 'allowBackup' "$MANIFEST"; then
+  $SED -i 's/android:label="AudioLens"/android:label="AudioLens" android:allowBackup="false"/' "$MANIFEST"
+fi
 if ! grep -q 'FileProvider' "$MANIFEST"; then
   $SED -i 's|</application>|    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/></provider>\n    </application>|' "$MANIFEST"
 fi

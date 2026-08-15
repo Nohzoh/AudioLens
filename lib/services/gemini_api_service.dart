@@ -215,11 +215,6 @@ class GeminiApiService implements AIService {
       for (final p in thinkingPatterns) {
         if (lower.contains(p)) return false;
       }
-      // Skip lines that start with English words mid-thought
-      if (RegExp(r'^[a-z].*\.$', caseSensitive: true).hasMatch(line.trim()) &&
-          !line.trim().startsWith('e.') && !line.trim().startsWith('c.')) {
-        // Likely English sentence — skip if surrounded by French content
-      }
       return true;
     }).toList();
     return filtered.join('\n').trim();
