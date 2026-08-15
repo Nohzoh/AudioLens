@@ -88,6 +88,23 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 ## 🌱 Bas impact / Long terme
 *Backlog pour améliorations futures*
 
+- [ ] **T84** 🌱 ⭐⭐⭐⭐⭐ - **Publication sur le Play Store**
+  - **Ajouté** : 2026-08-15
+  - **Déjà acquis** (bon point de départ) : signature release fonctionnelle (T79), `allowBackup=false` (T80), clé API protégée par allowlist (T81), stockage sécurisé de la clé (T10), disclaimer "contenu généré par IA" déjà dans l'appli (T72), `applicationId` stable `com.audiolens.audiolens` (T63)
+  - **Décisions/démarches non techniques à faire d'abord** :
+    - Créer un **compte développeur Google Play** (25$, paiement unique) — prérequis absolu, aucune tâche technique ne peut être testée en réel avant
+    - **Politique de confidentialité** hébergée publiquement et un lien à fournir dans la fiche Play Console — obligatoire vu les permissions demandées (caméra, localisation) et le fait que photos + position sont envoyées à l'API Gemini (partage de données à un tiers)
+    - **Formulaire "Data safety"** de Play Console : déclarer précisément quelles données sont collectées/partagées (photo, GPS, script) et avec qui (Google Gemini)
+    - **Déclaration des permissions sensibles** (`ACCESS_FINE_LOCATION`, `CAMERA`) — justification demandée par Google, la localisation est particulièrement scrutée
+    - Vérifier si les **politiques Play sur les apps génératives IA** imposent des déclarations supplémentaires au-delà du disclaimer déjà présent (T72)
+  - **À faire, technique** :
+    - **AAB au lieu d'APK** : Play Store exige un `.aab` (`flutter build appbundle --release`), pas l'APK actuel — nouveau job ou étape CI dédiée
+    - **Stratégie de versionCode** : `pubspec.yaml` est figé à `0.1.0+1` depuis le début, jamais incrémenté — chaque upload Play Console doit avoir un `versionCode` strictement croissant, à automatiser (ex. `versionCode` basé sur le numéro de run CI ou un compteur committé)
+    - **Icône d'application manquante** : `assets/images/` est vide (juste un `.gitkeep`) — l'appli tourne aujourd'hui avec l'icône Flutter par défaut (`android/app/src/main/res/mipmap-*/ic_launcher.png`, régénérée à chaque bootstrap CI). Un vrai icône est indispensable avant toute soumission
+    - **Assets de fiche store** : description courte/longue, catégorie, graphique de mise en avant, captures d'écran
+    - **Automatiser l'upload** vers Play Console depuis la CI (ex. action `r0adkll/upload-google-play`, clé de compte de service en secret) — à faire seulement une fois le compte développeur créé
+  - **Recommandation** : ne pas traiter comme une tâche unique — les démarches non techniques (compte, politique de confidentialité, data safety) bloquent et doivent être faites avant toute automatisation CI
+
 - [ ] **T77** 🌱 ⭐⭐⭐⭐⭐ - **Portage iOS** — faire fonctionner AudioLens sur iPhone
   - **Ajouté** : 2026-08-15
   - **Contexte** : projet 100% Android aujourd'hui, `ios/` n'existe même pas — il faudra générer le scaffold (`flutter create --platforms=ios .`)
