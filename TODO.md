@@ -97,10 +97,9 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
   - **CI** : nouveau workflow (`build-ios.yml`), runner macOS (payant/limité sur GitHub Actions), certificats/provisioning en secrets
   - **Recommandation** : ne pas traiter comme une tâche unique — découper en sous-tâches une fois les blocages ci-dessus tranchés
 
-- [ ] **T12** 🌱 ⭐⭐⭐ - Fusionner la **galerie et l’historique**
-  - **Option** : Rendre l’historique la vue principale avec accès à la nouvelle analyse et à la config
-
-- [ ] **T13** 🌱 ⭐⭐ - Permettre la **re-demande d’une ancienne analyse échouée** depuis l’historique
+- [ ] **T12** 🌱 ⭐⭐⭐ - Fusionner la **grille "Récemment visité" de l'accueil et l'historique**
+  - **Clarifié (2026-08-16)** : "galerie" désignait la grille de vignettes sur l'écran d'accueil (`home_screen.dart`), pas un écran dédié — il n'en existe pas
+  - **Option** : Rendre l'historique la vue principale avec accès à la nouvelle analyse et à la config
 
 - [ ] **T14** 🌱 ⭐⭐ - Ajouter un **mode d’affichage de lecture** avec la photo normale (au lieu du texte superposé)
 
@@ -112,12 +111,16 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 
 - [ ] **T19** 🌱 ⭐⭐ - Ajouter le **partage/export** du texte ou de l’audio
 
-- [ ] **T20** 🌱 ⭐⭐⭐ - **Améliorer l’expérience hors ligne**
-  - **Fusion de** : reprise/cache + badge/explication des fonctions disponibles/indisponibles (ex-T52)
+- [ ] **T21** 🌱 ⭐⭐⭐ - Ajouter des **interactions plus riches** dans l’écran de lecture
+  - **Clarifié (2026-08-16)** : pistes retenues —
+    - Avance/recul de X secondes (style podcast), plutôt que play/pause uniquement
+    - Appui long sur une phrase du texte affiché pour relancer la lecture audio à cet endroit précis
+    - Mini-carte de la localisation GPS en plus de l'adresse textuelle
+    - Geste swipe pour naviguer entre les entrées de l'historique sans repasser par la liste
+  - **Cible** : `player_screen.dart`
 
-- [ ] **T21** 🌱 ⭐⭐ - Ajouter des **interactions plus riches** dans l’écran de lecture
-
-- [ ] **T22** 🌱 ⭐ - Permettre la **mise en pause** pendant la lecture audio depuis la galerie
+- [ ] **T22** 🌱 ⭐ - Permettre la **mise en pause** pendant la lecture audio depuis la grille "Récemment visité" de l'accueil
+  - **Clarifié (2026-08-16)** : même précision que T12 — "galerie" = grille de vignettes sur `home_screen.dart`
 
 - [ ] **T23** 🌱 ⭐⭐⭐ - Améliorer l’**accessibilité visuelle**
   - **À découper en sous-tâches** : Contrastes, tailles de boutons, lisibilité
