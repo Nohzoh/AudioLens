@@ -26,15 +26,6 @@
 ## 📈 Moyen impact / Moyen terme
 *À traiter dans les 1-2 mois*
 
-- [ ] **T06** 📈 ⭐⭐⭐⭐ - **Refactoriser l’architecture** et nettoyer le code legacy
-  - **Fusion de** : clarifier le pipeline + nettoyer les doublons (ex-T08)
-  - **Cible** : Pipeline IA/GPS/TTS modulaire, responsabilités séparées (screens/services/persistence)
-  - **En cours — 2026-08-12** :
-    - ✅ Code mort supprimé : `app_settings.dart` (`LocalModel`, `availableModels`, `logoAsset`), `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart` (restes T60/T62)
-    - ✅ Getter mort `aiModelAttempts` supprimé de `audio_guide_service.dart`
-    - ✅ User-Agent dédupliqué dans `lib/services/network_config.dart`
-  - **Reste à faire** : modulaire le pipeline IA/GPS/TTS (extraction de la persistence prefs/timing hors de `audio_guide_service.dart`), clarifier les responsabilités screens/services
-
 - [ ] **T07** 📈 ⭐⭐⭐ - **Centraliser la configuration** (IA, TTS, GPS, etc.)
   - **Où** : `RemoteConfigService` ou nouveau fichier dédié
   - **Objectif** : Éviter la duplication des constants
@@ -203,9 +194,23 @@
   - **Validé** : 2026-08-12 (nouveau `lib/services/secure_key_storage.dart` : stockage Android Keystore/iOS Keychain chiffré, migration one-shot depuis `SharedPreferences`, repli propre ; `settings_service.dart` + `audio_guide_service.dart` branchés ; 4 tests de migration ajoutés)
   - **Cible atteinte** : Aucune clé en clair dans `SharedPreferences` (supprimée après migration)
 
+- [x] **T06** 📈 ⭐⭐⭐⭐ - **Refactoriser l’architecture** et nettoyer le code legacy
+  - **Fusion de** : clarifier le pipeline + nettoyer les doublons (ex-T08)
+  - **Validé** : 2026-08-15
+  - **1re tranche (2026-08-12)** : code mort supprimé (`app_settings.dart`, `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart`), getter `aiModelAttempts` retiré, User-Agent centralisé dans `network_config.dart`
+  - **2e tranche (2026-08-15)** : `audio_guide_service.dart` (524 → 445 lignes) découpé en 4 classes dédiées — `GuidePreferencesStore` (persistence prefs/timing), `GuideProgressEstimator` (simulation/estimation de progression), `LocationContextResolver` (GPS EXIF/temps réel + enrichissement Wikipedia), `TtsOrchestrator` (Gemini TTS → fallback Piper) — + `utils/error_sanitizer.dart` partagé
+  - **Note** : le fallback IA (cloud → nano) reste dans `audio_guide_service.dart` car il mute l'état `activeProvider` du service lui-même — moins isolable proprement que les autres étapes
+  - **Cible atteinte** : pipeline modulaire, responsabilités séparées ; `AudioGuideService` ne fait plus que piloter les transitions d'état et notifier l'UI
+
 ---
 
 ## 📊 Retours de tests
+
+- **2026-08-15 (reprise après pause, T06 — 2e tranche)**
+  - ✅ **T10 confirmée terminée** : le code était fait mais jamais committé (interruption faute de crédits) ; committé tel quel après vérification (branchement complet, tests verts)
+  - ✅ **T06 terminée** : `audio_guide_service.dart` découpé en `GuidePreferencesStore`, `GuideProgressEstimator`, `LocationContextResolver`, `TtsOrchestrator` + `utils/error_sanitizer.dart` partagé (524 → 445 lignes)
+  - ✅ **Validation finale** : `flutter analyze` → 0 erreur ; `flutter test` → 40 tests passés (30 existants + 4 `guide_preferences_store_test.dart` + 6 `guide_progress_estimator_test.dart`)
+  - ⚠️ **À noter** : signature GPG des commits cassée sur cette machine (gpg absent, clé de signature introuvable) → gpg installé (`brew install gnupg`), nouvelle clé générée et ajoutée à GitHub, config locale du repo corrigée (`user.name`/`user.email` étaient restés sur les valeurs placeholder du template)
 
 - **2026-08-12 (T06 — 1re tranche)**
   - ✅ **T06 (partiel)** : code mort supprimé (`app_settings.dart`, `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart`), getter `aiModelAttempts` retiré, User-Agent centralisé dans `network_config.dart`
