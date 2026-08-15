@@ -35,13 +35,6 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
   - **Objectif** : Éviter la duplication des constants
   - **Preuve concrète (2026-08-15)** : `home_screen.dart:60-61` hardcode `imageQuality: 85, maxWidth: 1280` dans l'appel `ImagePicker` au lieu de lire `RemoteConfigService.current.imageQuality`/`imageMaxWidth` — ces deux réglages remote sont récupérés mais jamais appliqués
 
-- [ ] **T82** 📈 ⭐⭐ - Nettoyage complémentaire post-T06 (code mort restant)
-  - **Ajouté** : 2026-08-15 (audit du code existant)
-  - **À faire** :
-    - Code natif mort : `MediaPipePlugin.kt` toujours enregistré dans `MainActivity.kt` et ses dépendances Gradle (`tasks-genai`, `genai-prompt`) toujours ajoutées en CI (`build-android.yml`), alors que `mediapipe_service.dart` (son seul appelant Dart) a été supprimé en T06 — bloat inutile de l'APK
-    - Dépendance inutilisée `google_generative_ai` dans `pubspec.yaml` — jamais importée, tous les appels Gemini sont faits à la main via `http`
-    - Bug silencieux dans `gemini_api_service.dart:218-223` : un `if` détecte une "phrase anglaise qui a fuité" du raisonnement du modèle mais son corps est vide (juste un commentaire) — la condition ne filtre rien
-
 - [ ] **T09** 📈 ⭐⭐⭐ - Améliorer la **robustesse du stockage local** et des migrations
   - **Fusion de** : robustesse du stockage + tests de migrations SQLite (ex-T44)
   - **À faire** : Transactions SQLite, rollbacks, tests sur anciennes versions de la base
