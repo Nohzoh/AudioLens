@@ -142,11 +142,6 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
   - Cible : `LocationService`, `WikipediaService`, `ExifLocationService`, `HistoryService`, `TtsOrchestrator`, `LocationContextResolver`, `RemoteConfigService`
   - Objectif : 80% de couverture sur les services critiques
 
-- [ ] **T69** 🌱 ⭐⭐ - **Documenter l’architecture** et les flux
-  - Ajouter un fichier `ARCHITECTURE.md`
-  - Diagramme : `Photo → AIService → TTS → Audio`
-  - Diagramme : `Géolocalisation (EXIF → GPS → Wikipedia)`
-
 ---
 
 ## 📝 À compléter au fil du projet

@@ -11,6 +11,10 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 
 ## ✅ Terminé
 
+- [x] **T69** 🌱 ⭐⭐ - **Documenter l'architecture** et les flux
+  - **Validé** : 2026-08-16 (PR #12)
+  - **Ce qui a été fait** : `ARCHITECTURE.md` — diagramme du pipeline principal (photo → localisation → IA → TTS → audio, avec les branches capture différée T78 et script seul T16), diagramme de résolution de localisation (EXIF/GPS → reverse geocoding → POI → Wikipedia), tableau de persistance, tableau des canaux natifs, diagramme écrans → services. Écrit après T74/T76/T78/T16 pour refléter le pipeline réel, pas sa forme d'avant ces refontes. `README.md` renvoie vers ce fichier au lieu de dupliquer
+
 - [x] **T76** 📈 ⭐⭐⭐⭐ - **Découper le script en morceaux** pour démarrer la lecture audio plus vite
   - **Validé** : 2026-08-16 (PR #11, commit `4c8dd93`)
   - **Contexte** : ~30s (parfois plus) d'attente entre l'affichage du texte et le début de la lecture audio — `GeminiTtsService.speak()` synthétisait tout le script en un seul appel HTTP bloquant
