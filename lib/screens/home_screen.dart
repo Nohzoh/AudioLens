@@ -113,12 +113,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }) async {
     final guide = context.read<AudioGuideService>();
     final history = context.read<HistoryService>();
+    final settings = context.read<SettingsService>();
 
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => PlayerScreen(imageFile: imageFile),
     ));
 
-    final result = await guide.analyzeAndPlay(imageFile);
+    final result = await guide.analyzeAndPlay(
+      imageFile,
+      generateAudio: settings.autoGenerateAudio,
+    );
 
     if (mounted) setState(() => _permissionStatus = guide.lastLocationStatus);
 

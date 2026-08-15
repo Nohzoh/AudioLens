@@ -267,6 +267,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) => settings.setShowKofiButton(value),
             ),
           ),
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => SwitchListTile(
+              title: const Text('Générer l\'audio automatiquement'),
+              subtitle: const Text(
+                  'Désactiver pour garder seulement le script, et générer l\'audio plus tard depuis l\'historique'),
+              value: settings.autoGenerateAudio,
+              onChanged: (value) => settings.setAutoGenerateAudio(value),
+            ),
+          ),
 
           const SizedBox(height: 32),
 

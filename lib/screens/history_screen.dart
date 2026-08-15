@@ -152,6 +152,22 @@ class _HistoryCard extends StatelessWidget {
                           ],
                         ),
                       ],
+                      if (entry.status == AnalysisStatus.complete && !entry.hasAudio) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.text_snippet_outlined,
+                                size: 12, color: Colors.white38),
+                            const SizedBox(width: 2),
+                            Text(
+                              'Script seul',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.white38,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         dateStr,
@@ -227,18 +243,53 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       final tts = _getTts(context);
       await tts.stop();
       setState(() => _isPlaying = false);
-    } else {
-      setState(() => _isPlaying = true);
-      final live = _liveEntry(context);
-      if (live.hasAudio) {
-        // Use cached audio — no TTS regeneration needed
-        await _playCachedAudio(live.audioPath!);
-      } else {
-        // No cache — generate with TTS
-        final tts = _getTts(context);
-        tts.onComplete = () => setState(() => _isPlaying = false);
-        await tts.speak(live.script);
+      return;
+    }
+
+    final live = _liveEntry(context);
+    setState(() => _isPlaying = true);
+
+    if (live.hasAudio) {
+      // Use cached audio — no TTS regeneration needed
+      await _playCachedAudio(live.audioPath!);
+      return;
+    }
+
+    // No cached audio (T16 — script-only entry, or a missing cache file):
+    // generate via the orchestrated pipeline (cloud TTS + Piper fallback)
+    // and persist the result so it's cached from now on.
+    final guide = context.read<AudioGuideService>();
+    final history = context.read<HistoryService>();
+    guide.ttsService.onComplete = () => setState(() => _isPlaying = false);
+    final result = await guide.generateAudioForScript(
+      title: live.title,
+      script: live.script,
+      locationName: live.locationName,
+    );
+
+    if (result == null) {
+      // Synthesis failed — onComplete above never fires, reset locally.
+      setState(() => _isPlaying = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(guide.errorMessage ?? 'La génération audio a échoué.'),
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.orange.shade800,
+          ),
+        );
       }
+      return;
+    }
+
+    final audioPath = guide.lastAudioPath;
+    if (audioPath != null && live.id != null) {
+      await history.saveAudioPath(
+        live.id!,
+        audioPath,
+        ttsModel: guide.lastTtsModel,
+        ttsFallback: guide.ttsWasFallback,
+      );
     }
   }
 
@@ -544,14 +595,19 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             },
                           ),
 
-                        // Play button
+                        // Play / generate button
                         FilledButton.icon(
                           onPressed: _toggleAudio,
-                          icon:
-                              Icon(_isPlaying ? Icons.stop : Icons.play_arrow),
+                          icon: Icon(_isPlaying
+                              ? Icons.stop
+                              : (live.hasAudio
+                                  ? Icons.play_arrow
+                                  : Icons.auto_awesome)),
                           label: Text(_isPlaying
                               ? 'Arrêter'
-                              : 'Écouter le commentaire'),
+                              : (live.hasAudio
+                                  ? 'Écouter le commentaire'
+                                  : 'Générer l\'audio')),
                           style: FilledButton.styleFrom(
                             minimumSize: const Size(double.infinity, 52),
                             shape: RoundedRectangleBorder(
