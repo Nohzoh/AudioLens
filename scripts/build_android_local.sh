@@ -6,6 +6,7 @@
 # Prérequis (1 seule fois, voir README de build) :
 #   brew install --cask temurin@17
 #   brew install --cask android-commandlinetools
+#   brew install gnu-sed
 #
 set -euo pipefail
 
@@ -15,6 +16,12 @@ echo "==> Vérification des prérequis"
 
 command -v flutter >/dev/null 2>&1 || { echo "❌ flutter introuvable (brew install --cask flutter)"; exit 1; }
 command -v java >/dev/null 2>&1 || { echo "❌ java introuvable (brew install --cask temurin@17)"; exit 1; }
+# macOS ships BSD sed, dont -i et les commandes multi-lignes (a\, \n dans le
+# remplacement) ont une syntaxe incompatible avec le GNU sed utilisé par la
+# CI (ubuntu-latest) — sans ça, chaque `$SED -i` ci-dessous échoue ou patche
+# le mauvais fichier silencieusement.
+command -v gsed >/dev/null 2>&1 || { echo "❌ gsed introuvable (brew install gnu-sed) — requis pour un comportement identique à la CI"; exit 1; }
+SED="gsed"
 
 JAVA_MAJOR="$(java -version 2>&1 | awk -F'"' '/version/ {print $2}' | cut -d. -f1)"
 echo "   Java $(java -version 2>&1 | head -1)"
@@ -50,17 +57,17 @@ echo "==> Patch build.gradle.kts (SDK / NDK / dépendances natives)"
 FILE="android/app/build.gradle.kts"
 [ -f "$FILE" ] || FILE="android/app/build.gradle"
 
-sed -i 's|^\s*compileSdk\s*=.*|    compileSdk = 36|' "$FILE"
-sed -i 's|^\s*minSdk\s*=.*|        minSdk = 26|' "$FILE"
-sed -i 's|^\s*targetSdk\s*=.*|        targetSdk = 36|' "$FILE"
-sed -i 's|^\s*compileSdkVersion\s.*|    compileSdkVersion 36|' "$FILE"
-sed -i 's|^\s*minSdkVersion\s.*|        minSdkVersion 26|' "$FILE"
-sed -i 's|^\s*targetSdkVersion\s.*|        targetSdkVersion 36|' "$FILE"
+$SED -i 's|^\s*compileSdk\s*=.*|    compileSdk = 36|' "$FILE"
+$SED -i 's|^\s*minSdk\s*=.*|        minSdk = 26|' "$FILE"
+$SED -i 's|^\s*targetSdk\s*=.*|        targetSdk = 36|' "$FILE"
+$SED -i 's|^\s*compileSdkVersion\s.*|    compileSdkVersion 36|' "$FILE"
+$SED -i 's|^\s*minSdkVersion\s.*|        minSdkVersion 26|' "$FILE"
+$SED -i 's|^\s*targetSdkVersion\s.*|        targetSdkVersion 36|' "$FILE"
 
 if grep -q 'ndkVersion' "$FILE"; then
-  sed -i 's|ndkVersion = "[^"]*"|ndkVersion = "27.0.12077973"|; s|ndkVersion = flutter.ndkVersion|ndkVersion = "27.0.12077973"|' "$FILE"
+  $SED -i 's|ndkVersion = "[^"]*"|ndkVersion = "27.0.12077973"|; s|ndkVersion = flutter.ndkVersion|ndkVersion = "27.0.12077973"|' "$FILE"
 else
-  sed -i '/compileSdk = 36/a\        ndkVersion = "27.0.12077973"' "$FILE"
+  $SED -i '/compileSdk = 36/a\        ndkVersion = "27.0.12077973"' "$FILE"
 fi
 
 if ! grep -q 'tasks-genai' "$FILE"; then
@@ -79,18 +86,18 @@ fi
 
 echo "==> Patch version Kotlin (2.2.0)"
 for f in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-  [ -f "$f" ] && sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.0"/' "$f"
-  [ -f "$f" ] && sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.0"/' "$f"
+  [ -f "$f" ] && $SED -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.0"/' "$f"
+  [ -f "$f" ] && $SED -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.0"/' "$f"
 done
 
 echo "==> Patch AndroidManifest.xml (permissions + label + FileProvider)"
 MANIFEST="android/app/src/main/AndroidManifest.xml"
 if ! grep -q 'ACCESS_FINE_LOCATION' "$MANIFEST"; then
-  sed -i 's|<application|<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"/>\n    <application|' "$MANIFEST"
+  $SED -i 's|<application|<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"/>\n    <application|' "$MANIFEST"
 fi
-sed -i 's/android:label="[^"]*"/android:label="AudioLens" android:allowBackup="false"/' "$MANIFEST"
+$SED -i 's/android:label="[^"]*"/android:label="AudioLens" android:allowBackup="false"/' "$MANIFEST"
 if ! grep -q 'FileProvider' "$MANIFEST"; then
-  sed -i 's|</application>|    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/></provider>\n    </application>|' "$MANIFEST"
+  $SED -i 's|</application>|    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/></provider>\n    </application>|' "$MANIFEST"
 fi
 mkdir -p android/app/src/main/res/xml
 cat > android/app/src/main/res/xml/file_paths.xml << 'XML'
