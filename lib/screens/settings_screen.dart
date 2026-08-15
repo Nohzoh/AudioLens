@@ -78,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(24),
         children: [
           // Provider status
-          _SectionHeader('Moteur IA actif'),
+          const _SectionHeader('Moteur IA actif'),
           const SizedBox(height: 8),
           _ProviderCard(
             icon: Icons.phone_android,
@@ -105,7 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Gemini API key
-          _SectionHeader('Clé API Gemini'),
+          const _SectionHeader('Clé API Gemini'),
           const SizedBox(height: 8),
           Text(
             'Obtenez une clé gratuite sur aistudio.google.com',
@@ -160,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Active config section
-          _SectionHeader('Configuration active'),
+          const _SectionHeader('Configuration active'),
           const SizedBox(height: 8),
           Builder(builder: (context) {
             final cfg = RemoteConfigService.current;
@@ -247,7 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Developer tools
-          _SectionHeader('Outils'),
+          const _SectionHeader('Outils'),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.terminal, size: 16),

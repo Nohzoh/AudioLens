@@ -16,7 +16,9 @@ class AppLogger {
     if (_buffer.length > _maxLines) _buffer.removeAt(0);
 
     debugPrint(line);
-    for (final l in _listeners) l();
+    for (final l in _listeners) {
+      l();
+    }
   }
 
   static void info(String message) => log('INFO', message);
@@ -32,7 +34,9 @@ class AppLogger {
 
   static void clear() {
     _buffer.clear();
-    for (final l in _listeners) l();
+    for (final l in _listeners) {
+      l();
+    }
   }
 
   static void addListener(VoidCallback listener) => _listeners.add(listener);

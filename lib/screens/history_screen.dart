@@ -465,8 +465,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                         if (_liveEntry(context).hasLowQualityTts)
                           Consumer<AudioGuideService>(
                             builder: (context, guide, _) {
-                              if (guide.geminiTtsService == null)
+                              if (guide.geminiTtsService == null) {
                                 return const SizedBox.shrink();
+                              }
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: OutlinedButton.icon(
