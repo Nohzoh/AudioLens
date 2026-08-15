@@ -399,10 +399,15 @@ class AudioGuideService extends ChangeNotifier {
     _progressEstimator.stepProgress = -1.0;
     notifyListeners();
 
-    _lastTtsModel = await _ttsOrchestrator.speak(
+    _lastTtsModel = await _ttsOrchestrator.speakChunked(
       script,
       cancelToken: _cancelToken,
       geminiTts: _geminiTtsService,
+      // T76: real chunk-N/M progress instead of a flat indeterminate spinner.
+      onChunkStart: (chunkIndex, totalChunks) {
+        _progressEstimator.stepProgress = totalChunks > 0 ? chunkIndex / totalChunks : -1.0;
+        notifyListeners();
+      },
     );
 
     // Cache the generated audio for replay without re-generating

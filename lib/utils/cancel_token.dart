@@ -1,3 +1,5 @@
+import 'dart:async';
+
 /// A simple cancellation token that can be used to cancel long-running operations.
 ///
 /// Usage:
@@ -12,24 +14,32 @@
 /// ```
 class CancelToken {
   bool _isCancelled = false;
+  Completer<void> _cancelCompleter = Completer<void>();
 
   /// Returns true if cancellation was requested
   bool get isCancelled => _isCancelled;
 
+  /// Completes when [cancel] is called. Useful to race against a
+  /// non-interruptible operation (e.g. native playback, T76) instead of
+  /// polling [isCancelled].
+  Future<void> get onCancel => _cancelCompleter.future;
+
   /// Request cancellation
   void cancel() {
     _isCancelled = true;
+    if (!_cancelCompleter.isCompleted) _cancelCompleter.complete();
   }
 
   /// Reset the token for reuse
   void reset() {
     _isCancelled = false;
+    if (_cancelCompleter.isCompleted) _cancelCompleter = Completer<void>();
   }
 
   /// Create a new token that inherits the cancellation state
   CancelToken fork() {
     final newToken = CancelToken();
-    if (_isCancelled) newToken._isCancelled = true;
+    if (_isCancelled) newToken.cancel();
     return newToken;
   }
 }
