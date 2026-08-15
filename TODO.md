@@ -9,6 +9,7 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 - **Priorités** : 🔥 Critique | ⚡ Haut | 📈 Moyen | 🌱 Bas
 - **Effort** : ⭐ (1-2h) | ⭐⭐ (1/2j) | ⭐⭐⭐ (1j) | ⭐⭐⭐⭐ (2-3j) | ⭐⭐⭐⭐⭐ (5j+)
 - **IDs** : séquence unique partagée avec `CHANGELOG.md` — vérifier le plus grand ID des deux fichiers avant d'en créer un nouveau (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`)
+- **Ajouté** : chaque nouvelle tâche porte sa date de création (`**Ajouté** : YYYY-MM-DD`) — permet de repérer les tâches basse priorité qui traînent depuis longtemps. Pas de rétro-remplissage pour les tâches déjà existantes sans date connue.
 
 ---
 
@@ -60,6 +61,7 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
   - **Lié à** : T48 (variantes de ton) — envisager une fusion pour éviter le doublon
 
 - [ ] **T76** 📈 ⭐⭐⭐⭐ - **Découper le script en morceaux** pour démarrer la lecture audio plus vite
+  - **Ajouté** : 2026-08-15
   - **Contexte** : ~30s (parfois plus) d'attente entre l'affichage du texte et le début de la lecture audio. `GeminiTtsService.speak()` synthétise **tout le script en un seul appel HTTP bloquant** avant de jouer quoi que ce soit (`gemini_tts_service.dart:36-95`) ; `TtsService` (Piper) a un problème similaire malgré son découpage en phrases interne (`_splitSentences`), qui ne sert aujourd'hui qu'au calcul de progression, pas à un démarrage anticipé
   - **Piste** : découper le script (phrases/paragraphes), synthétiser le 1er morceau, lancer sa lecture immédiatement, synthétiser la suite pendant la lecture, enchaîner. Le channel natif `audio_guide/audio_player` (`AudioPlayerPlugin.kt`) résout déjà `playWav` seulement à la fin de la lecture — l'enchaînement séquentiel semble faisable **côté Dart sans changement natif** (produire le morceau suivant pendant que le précédent joue)
   - **Points d'attention** : découpage aux frontières de phrases pour rester naturel à l'oreille ; `CancelToken` doit rester efficace au milieu de la séquence ; le flag `stepProgress = -1.0` (indéterminé) sur l'étape `synthesizing` pourrait devenir une vraie progression (morceau N/M)
@@ -71,6 +73,7 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 *Backlog pour améliorations futures*
 
 - [ ] **T77** 🌱 ⭐⭐⭐⭐⭐ - **Portage iOS** — faire fonctionner AudioLens sur iPhone
+  - **Ajouté** : 2026-08-15
   - **Contexte** : projet 100% Android aujourd'hui, `ios/` n'existe même pas — il faudra générer le scaffold (`flutter create --platforms=ios .`)
   - **Blocages à trancher avant de commencer** :
     - **Gemini Nano n'a pas d'équivalent iOS** (`GeminiNanoPlugin.kt` s'appuie sur l'API Android AICore) — aucune solution native équivalente identifiée. Décision à prendre : mode local désactivé sur iOS (cloud uniquement) ou remplacement par un autre modèle on-device ?
@@ -111,6 +114,7 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
   - **Fusion de** : reprise/cache + badge/explication des fonctions disponibles/indisponibles (ex-T52)
 
 - [ ] **T78** 🌱 ⭐⭐⭐⭐ - **Capture différée** : photo + GPS maintenant, analyse (cloud) plus tard
+  - **Ajouté** : 2026-08-15
   - **Contexte** : demande utilisateur — économiser sa conso data sans se rabattre sur les modèles locaux (qualité moindre) : capturer photo + position tout de suite, lancer l'analyse cloud plus tard (ex. une fois sur wifi)
   - **Différent de T20** : T20 dégrade gracieusement quand le réseau manque ; ici on **choisit délibérément** de différer les étapes réseau, réseau disponible ou non
   - **Point d'attention** : même la résolution GPS actuelle fait un appel réseau (reverse geocoding Nominatim dans `LocationService._reverseGeocode`). Pour une capture vraiment 100% hors-ligne, ne stocker à la capture que les **coordonnées brutes** (EXIF ou fix GPS), et différer reverse geocoding + Wikipedia + IA + TTS à la relance — `LocationContextResolver.resolve()` (T06) devrait accepter des coordonnées déjà connues en entrée plutôt que de toujours repartir d'un fichier image
