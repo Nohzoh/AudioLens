@@ -1,4 +1,4 @@
-package com.audiolens.audiolens
+package io.nohzoh.audiolens
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

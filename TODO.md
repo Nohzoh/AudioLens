@@ -77,7 +77,7 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 
 - [ ] **T84** 🌱 ⭐⭐⭐⭐⭐ - **Publication sur le Play Store**
   - **Ajouté** : 2026-08-15
-  - **Déjà acquis** (bon point de départ) : signature release fonctionnelle (T79), `allowBackup=false` (T80), clé API protégée par allowlist (T81), stockage sécurisé de la clé (T10), disclaimer "contenu généré par IA" déjà dans l'appli (T72), `applicationId` stable `com.audiolens.audiolens` (T63)
+  - **Déjà acquis** (bon point de départ) : signature release fonctionnelle (T79), `allowBackup=false` (T80), clé API protégée par allowlist (T81), stockage sécurisé de la clé (T10), disclaimer "contenu généré par IA" déjà dans l'appli (T72), `applicationId` stable `io.nohzoh.audiolens` (T63)
   - **Décisions/démarches non techniques à faire d'abord** :
     - Créer un **compte développeur Google Play** (25$, paiement unique) — prérequis absolu, aucune tâche technique ne peut être testée en réel avant
     - **Politique de confidentialité** hébergée publiquement et un lien à fournir dans la fiche Play Console — obligatoire vu les permissions demandées (caméra, localisation) et le fait que photos + position sont envoyées à l'API Gemini (partage de données à un tiers)
