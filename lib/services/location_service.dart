@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'network_config.dart';
 
 const _channel = MethodChannel('audio_guide/location');
 
@@ -130,7 +131,7 @@ class LocationService {
       );
       final response = await http.get(
         uri,
-        headers: {'User-Agent': 'AudioLens/1.0'},
+        headers: {'User-Agent': NetworkConfig.userAgent},
       ).timeout(const Duration(seconds: 8));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;

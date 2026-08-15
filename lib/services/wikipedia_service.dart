@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'network_config.dart';
 
 class WikipediaResult {
   final String title;
@@ -35,7 +36,7 @@ class WikipediaService {
       );
 
       final geoResp = await http.get(geoUri,
-        headers: {'User-Agent': 'AudioLens/1.0'})
+        headers: {'User-Agent': NetworkConfig.userAgent})
           .timeout(const Duration(seconds: 6));
 
       if (geoResp.statusCode != 200) return [];
@@ -62,7 +63,7 @@ class WikipediaService {
       );
 
       final extractResp = await http.get(extractUri,
-        headers: {'User-Agent': 'AudioLens/1.0'})
+        headers: {'User-Agent': NetworkConfig.userAgent})
           .timeout(const Duration(seconds: 6));
 
       if (extractResp.statusCode != 200) return [];
