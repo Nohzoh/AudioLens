@@ -11,6 +11,22 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 
 ## ✅ Terminé
 
+- [x] **T79** 🔥 ⭐⭐ - La CI distribue un **APK debug**, pas release
+  - **Validé** : 2026-08-15 (commits `4011b5e`, `9d9ff11`, `88c196d` — run CI vert [31897372162](https://github.com/Nohzoh/audio-guide/actions/runs/31897372162))
+  - **Ce qui a été fait** : `flutter build apk --release` (au lieu de `--debug`) ; vérification CI que l'APK final n'est pas `debuggable` (via `aapt dump badging`)
+  - **Détours rencontrés en cours de route** :
+    - R8/minification (activée par défaut en release) cassait le build sur des classes manquantes (`javax.lang.model.*`) venant d'une dépendance shaded tirée par les deps MediaPipe/genai mortes (cf. T82) — minification désactivée explicitement dans `scripts/patch_signing.py` en attendant leur suppression
+    - Le check anti-debuggable ajouté ne vérifiait en fait rien : `aapt` n'est pas sur le `PATH` du runner CI, donc le `grep` matchait toujours sur une entrée vide et affichait "non debuggable" quoi qu'il arrive — corrigé en localisant le binaire sous `$ANDROID_HOME/build-tools`
+  - **Vérifié réellement** : run CI final montre `aapt dump badging` fonctionnel (package/version/sdkVersion affichés) et confirme l'absence du flag `application-debuggable`
+
+- [x] **T80** ⚡ ⭐⭐ - `allowBackup` forcé à `true` en CI avec une classe `backupAgent` probablement fausse
+  - **Validé** : 2026-08-15 (commit `4011b5e`)
+  - **Ce qui a été fait** : les 4 `sed` chaînés (avec `backupAgent` bogué et repli silencieux `|| true`) remplacés par un seul patch explicite `android:allowBackup="false"` — décision : pas de backup automatique tant que l'historique (GPS, photos) n'a pas de règles d'exclusion dédiées. Répliqué dans `scripts/build_android_local.sh` pour cohérence CI/local
+
+- [x] **T81** ⚡ ⭐⭐⭐ - `RemoteConfigService` peut rediriger la clé API vers une URL arbitraire, sans validation
+  - **Validé** : 2026-08-15 (commit `4011b5e`)
+  - **Ce qui a été fait** : `RemoteConfigService.isAllowedApiUrl()` — allowlist (`generativelanguage.googleapis.com`) vérifiée avant d'utiliser un `gemini_api_url` reçu de la config distante, sinon retour à la valeur par défaut. 4 tests ajoutés (`remote_config_service_test.dart`, premier test de ce service)
+
 - [x] **T02** - Améliorer la gestion des **erreurs réseau** et du fallback local
 - [x] **T03** - Empêcher les **analyses concurrentes** et gérer proprement les retries/cancellations
 - [x] **T04** - Vérifier et corriger la **logique de géolocalisation** lors d’une nouvelle analyse après échec
@@ -91,6 +107,16 @@ les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 ---
 
 ## 📊 Retours de tests
+
+- **2026-08-15 (T79/T80/T81 — audit sécurité CI)**
+  - ✅ **T79/T80/T81 validées** : build release signé et non-debuggable confirmé par un run CI réel ([31897372162](https://github.com/Nohzoh/audio-guide/actions/runs/31897372162))
+  - 🐛 **2 bugs trouvés en cours de route, invisibles sans exécution réelle** :
+    - R8 (minification, activée par défaut en release) cassait le build sur des classes manquantes tirées par les deps MediaPipe/genai mortes — désactivée explicitement en attendant leur suppression (T82)
+    - Le check anti-debuggable ajouté ne vérifiait en fait rien : `aapt` absent du `PATH` du runner CI, `grep` matchait toujours sur une entrée vide → toujours "✅ non debuggable" quel que soit le résultat réel. Corrigé en localisant le binaire sous `$ANDROID_HOME/build-tools`
+  - ⚙️ **Environnement Android installé en local** (Java 17 via `openjdk@17`, SDK/NDK via `android-commandlinetools`, `gnu-sed`) — `flutter doctor` vert, variables persistées dans `~/.zshrc`. Permet désormais de reproduire les builds CI localement sans attendre un run GitHub Actions
+  - 🐛 **Bug trouvé dans `scripts/build_android_local.sh`** : tous les `sed -i` utilisaient la syntaxe GNU, silencieusement cassée sous le `sed` BSD de macOS (`-i` sans argument fait avaler le script comme suffixe de backup, puis tente d'interpréter le chemin du fichier cible comme un script sed). Corrigé en forçant l'usage de `gsed`
+  - ⚠️ **Incident mineur** : un `rm -rf android` pour forcer un bootstrap propre a supprimé des fichiers trackés par git (plugins Kotlin natifs) — restauré immédiatement via `git checkout`, rien perdu
+  - ✅ **T83 ajoutée** : pistes pour accélérer le build CI (~6-8 min/run), identifiées en observant les runs
 
 - **2026-08-15 (reprise après pause, T06 — 2e tranche)**
   - ✅ **T10 confirmée terminée** : le code était fait mais jamais committé (interruption faute de crédits) ; committé tel quel après vérification (branchement complet, tests verts)

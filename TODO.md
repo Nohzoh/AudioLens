@@ -16,28 +16,14 @@ Tâches terminées et retours de tests archivés dans [`CHANGELOG.md`](CHANGELOG
 ## 🔥 Critique / Bloquant
 *Doit être traité avant toute nouvelle fonctionnalité*
 
-- [ ] **T79** 🔥 ⭐⭐ - La CI distribue un **APK debug**, pas release
-  - **Ajouté** : 2026-08-15 (audit du code existant)
-  - **Contexte** : `build-android.yml:183` lance `flutter build apk --debug` alors que toute l'infra de signature release existe déjà (keystore en secret CI, `scripts/patch_signing.py`, config de signing patchée). Un APK `debuggable="true"` distribué à des utilisateurs est un vrai risque : n'importe quel outil peut s'y attacher pour lire la mémoire du process (y compris la clé API déchiffrée en mémoire malgré T10), et le build n'est pas optimisé
-  - **À faire** : passer à `flutter build apk --release`, vérifier que la signature/le keystore CI fonctionnent bien en release, décider d'activer ou non la minification R8 (attention aux plugins natifs/réflexion — règles ProGuard à valider)
-  - **Cible** : `.github/workflows/build-android.yml`
+*Aucune tâche critique en cours.*
 
 ---
 
 ## ⚡ Haut impact / Court terme
 *À traiter dans les 1-2 semaines*
 
-- [ ] **T80** ⚡ ⭐⭐ - `allowBackup` forcé à `true` en CI avec une classe `backupAgent` probablement fausse
-  - **Ajouté** : 2026-08-15 (audit du code existant)
-  - **Contexte** : `build-android.yml:129-133` — plusieurs `sed` enchaînés (avec des `|| true` qui avalent les échecs silencieusement) forcent `android:allowBackup="true"` et posent `android:backupAgent="androidx.work.impl.background.systemjob.SystemJobService"` — une classe WorkManager, pas un `BackupAgent`, presque certainement un copier-coller erroné. Avec `allowBackup=true`, l'historique (photos, GPS, scripts SQLite) devient exportable via `adb backup` sur un appareil en debug USB non verrouillé
-  - **À faire** : retirer/corriger le `backupAgent` bogué, décider consciemment si `allowBackup=true` est voulu (utile pour la restauration Google Drive, mais expose l'historique) — envisager `android:fullBackupContent` avec des règles d'exclusion plutôt qu'un tout-ou-rien, et remplacer les `sed` chaînés silencieux par un patch plus robuste
-  - **Cible** : `.github/workflows/build-android.yml`
-
-- [ ] **T81** ⚡ ⭐⭐⭐ - `RemoteConfigService` peut rediriger la clé API vers une URL arbitraire, sans validation
-  - **Ajouté** : 2026-08-15 (audit du code existant)
-  - **Contexte** : `remote_config_service.dart` charge `config.json` depuis une URL GitHub publique non authentifiée (`raw.githubusercontent.com/Nohzoh/audio-guide/main/config.json`), et ce JSON contrôle `geminiApiUrl` — l'URL vers laquelle la clé API Gemini est envoyée (en query param `?key=...`). Aucune validation/allowlist du domaine reçu. Si le repo ou la branche `main` est un jour compromis, c'est un vecteur direct d'exfiltration de la clé de tous les utilisateurs
-  - **À faire** : valider que `gemini_api_url` reçu appartient à une allowlist de domaines connus (`generativelanguage.googleapis.com`) avant de l'utiliser, sinon ignorer et garder la valeur par défaut intégrée au code
-  - **Cible** : `remote_config_service.dart`
+*Aucune tâche en cours.*
 
 ---
 
