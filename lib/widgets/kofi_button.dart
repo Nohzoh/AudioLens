@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// A discrete Ko-fi support button widget.
 ///
-/// This widget displays a small heart icon (or custom icon) that opens
+/// This widget displays a small coffee cup icon that opens
 /// the Ko-fi support page when pressed. It can be shown/hidden based
 /// on user preferences.
 class KofiButton extends StatelessWidget {
@@ -24,7 +24,7 @@ class KofiButton extends StatelessWidget {
 
     return IconButton(
       icon: Icon(
-        Icons.favorite_border,
+        Icons.local_cafe_outlined,
         color: iconColor ?? Colors.grey[600],
         size: iconSize ?? 20,
       ),

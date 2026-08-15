@@ -55,6 +55,9 @@ class AboutAnalysisScreen extends StatelessWidget {
           Text(live.title,
               style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+
+          const _AiGeneratedBanner(),
           const SizedBox(height: 20),
 
           _Section(title: 'DATES', children: [
@@ -158,6 +161,39 @@ Status: ${live.status.name}
     AnalysisStatus.pending => '⏳ En attente',
     AnalysisStatus.failed => '❌ Échouée',
   };
+}
+
+class _AiGeneratedBanner extends StatelessWidget {
+  const _AiGeneratedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.auto_awesome,
+              size: 18, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Contenu généré par IA : le script de cette analyse et sa voix ont été créés automatiquement par un modèle d\'intelligence artificielle.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Section extends StatelessWidget {
