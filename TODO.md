@@ -23,7 +23,17 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## ⚡ High impact / Short term
 *To handle within 1-2 weeks*
 
-*No tasks in progress.*
+- [ ] **T88** ⚡ ⭐⭐⭐ - Thumbnails sometimes display **upside down / sideways**
+  - **Added**: 2026-08-16
+  - **Reported**: user-observed on a Pixel 10 (Android 17) and previously on a Pixel 7a, and reproduces even with a photo downloaded from the web (not camera-captured) — so it isn't specific to a device/camera/Android version
+  - **Investigated, ruled out** (each confirmed on a real Android 16 and Android 17 emulator, not just by reading code):
+    - `Image.file` not applying EXIF rotation — false; Skia correctly auto-rotates for all 4 non-mirrored orientation tags (1/3/6/8) tested with real physically-rotated fixtures
+    - Different decode size between the home grid (~130px cells) and the history list (72px) causing different EXIF handling — tested the same file at 4 sizes (72-400px), always correct
+    - The home grid's `ColorFiltered` wrapper (dimmed grey filter for pending/captured, "no-op" transparent-multiply filter for complete) interfering with rotation — tested both variants in isolation against the same file, both correct
+    - `image_picker`'s native Android resize (`maxWidth`/`imageQuality`) losing/mishandling EXIF during downscaling — tested with a 2000×2000 fixture (large enough to actually trigger the resize, unlike earlier smaller fixtures), still displayed correctly
+  - **Not yet tested**: mirrored EXIF orientations (2/4/5/7) — only pure-rotation tags were reproduced; a stale/incorrect orientation tag on a web-sourced image (pixels already upright but tag still claims a rotation is needed) is the current leading theory, since it would explain reproducing with a downloaded photo that never went through a camera
+  - **Tooling added while investigating**: `about_analysis_screen.dart`'s "Copier les infos de debug" button now includes the raw EXIF orientation tag, Flutter's actual decoded image dimensions, and file size for the entry's photo — next step is capturing this for an actual affected photo on a real device, which hasn't been possible yet (no way to get the raw file off the reporting device into this dev environment)
+  - **To do**: get the diagnostic output (or the raw file) for a photo that's actually reproducing the bug on a real device, to confirm the stale-tag theory or find the real cause
 
 ---
 
