@@ -34,6 +34,26 @@ gh pr create --title "..." --body "..."
 gh pr merge <number> --merge --delete-branch
 ```
 
+### Commit Messages
+
+Conventional Commits (2026-08-16 onward — not retroactive, existing
+history stays as-is): `<type>[optional scope]: <description>`.
+
+Types used in this project: `feat`, `fix`, `docs`, `refactor`, `test`,
+`ci`, `build`, `chore`, `style`, `perf`. Scope is optional (e.g.
+`feat(tts): ...`). Keep the summary line under ~72 chars; put the "why"
+in the body, as usual.
+
+```
+feat: run analysis in the background and notify when audio is ready
+fix(location): stop leaking the GPS listener on cancel
+docs: translate TODO.md and CHANGELOG.md to English
+```
+
+PR titles aren't required to follow this format (this repo uses
+`--merge`, not squash, so the PR title never becomes a commit message),
+but doing so anyway is fine for consistency.
+
 ---
 
 ## Global Guidelines for All Agents
