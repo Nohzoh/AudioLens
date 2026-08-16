@@ -150,24 +150,92 @@ class GeminiApiService implements AIService {
     String title;
     String script;
     try {
-      final jsonStart = text.indexOf('{');
-      final jsonEnd = text.lastIndexOf('}');
-      if (jsonStart != -1 && jsonEnd != -1) {
-        final parsed = jsonDecode(text.substring(jsonStart, jsonEnd + 1)) as Map<String, dynamic>;
-        title = (parsed['title'] as String? ?? '').trim();
-        script = _cleanMarkdown((parsed['script'] as String? ?? text).trim());
-        if (title.isEmpty) throw const FormatException('empty title');
-      } else {
-        throw const FormatException('no JSON');
-      }
+      final jsonBlob = _extractJsonObject(text);
+      if (jsonBlob == null) throw const FormatException('no JSON');
+      final parsed = jsonDecode(jsonBlob) as Map<String, dynamic>;
+      title = (parsed['title'] as String? ?? '').trim();
+      script = _cleanMarkdown((parsed['script'] as String? ?? text).trim());
+      if (title.isEmpty) throw const FormatException('empty title');
     } catch (_) {
-      final cleaned = _cleanMarkdown(text);
-      final first = cleaned.split(RegExp(r'[.!?]')).first.trim();
-      title = first.length > 60 ? '${first.substring(0, 60)}...' : first;
-      script = cleaned;
+      // Full JSON parsing failed — often because the model left an
+      // unescaped quote inside "script" (not a brace-matching problem,
+      // so _extractJsonObject's string-aware scan doesn't help here).
+      // The "title" field alone is short (5-8 words per the prompt) and
+      // rarely contains a stray quote, so it's usually still recoverable
+      // by regex even when the full object isn't valid JSON.
+      final titleMatch = RegExp(r'"title"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(text);
+      final scriptMatch = RegExp(r'"script"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(text);
+      final regexTitle = titleMatch != null ? _unescapeJsonString(titleMatch.group(1)!) : null;
+
+      if (regexTitle != null && regexTitle.trim().isNotEmpty) {
+        title = regexTitle.trim();
+        script = scriptMatch != null
+            ? _cleanMarkdown((_unescapeJsonString(scriptMatch.group(1)!) ?? text).trim())
+            : _cleanMarkdown(text);
+      } else {
+        final cleaned = _cleanMarkdown(text);
+        final first = cleaned.split(RegExp(r'[.!?]')).first.trim();
+        // Last-resort guard: if even this heuristic lands on something
+        // that still looks like unparsed JSON, never show that to the
+        // user (T90) — fall back to a generic title instead.
+        final looksLikeJson = first.startsWith('{') || first.contains('"title"');
+        title = looksLikeJson
+            ? 'Votre guide audio'
+            : (first.length > 60 ? '${first.substring(0, 60)}...' : first);
+        script = cleaned;
+      }
     }
 
     return AudioGuideResult(title: title, script: script);
+  }
+
+  /// Finds the first top-level JSON object in [text] by scanning for
+  /// balanced braces, tracking whether the scanner is inside a string
+  /// literal so a `{`/`}` inside e.g. the "script" value's own text (or a
+  /// ```` ```json ```` fence around the object) doesn't throw off the
+  /// match — unlike a plain `indexOf('{')`/`lastIndexOf('}')` pair, which
+  /// silently returns the wrong boundary in both cases (T90).
+  static String? _extractJsonObject(String text) {
+    final start = text.indexOf('{');
+    if (start == -1) return null;
+
+    var depth = 0;
+    var inString = false;
+    var escaped = false;
+    for (var i = start; i < text.length; i++) {
+      final char = text[i];
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char == '\\') {
+          escaped = true;
+        } else if (char == '"') {
+          inString = false;
+        }
+        continue;
+      }
+      if (char == '"') {
+        inString = true;
+      } else if (char == '{') {
+        depth++;
+      } else if (char == '}') {
+        depth--;
+        if (depth == 0) return text.substring(start, i + 1);
+      }
+    }
+    return null;
+  }
+
+  /// Unescapes a raw JSON string body (the content between the quotes,
+  /// as captured by a regex) by delegating to [jsonDecode] rather than
+  /// hand-rolling escape handling. Returns null if [raw] isn't valid
+  /// JSON string content (e.g. a truncated escape sequence).
+  static String? _unescapeJsonString(String raw) {
+    try {
+      return jsonDecode('"$raw"') as String;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<http.Response> _post(
