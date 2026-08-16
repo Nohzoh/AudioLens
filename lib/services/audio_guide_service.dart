@@ -399,15 +399,17 @@ class AudioGuideService extends ChangeNotifier {
     _progressEstimator.stepProgress = -1.0;
     notifyListeners();
 
-    _lastTtsModel = await _ttsOrchestrator.speakChunked(
+    // T76's speakChunked() is parked for now (2026-08-16): splitting a
+    // script into several Gemini TTS calls reliably hits rate limiting on
+    // real accounts, and the fallback-to-Piper-mid-script it causes is a
+    // worse experience than the plain wait speak() gives every user. Back
+    // to one call for the whole script until chunking (or an alternative
+    // like T89's native-TTS fallback) is revisited. speakChunked() and
+    // its tests are untouched, ready to swap back in.
+    _lastTtsModel = await _ttsOrchestrator.speak(
       script,
       cancelToken: _cancelToken,
       geminiTts: _geminiTtsService,
-      // T76: real chunk-N/M progress instead of a flat indeterminate spinner.
-      onChunkStart: (chunkIndex, totalChunks) {
-        _progressEstimator.stepProgress = totalChunks > 0 ? chunkIndex / totalChunks : -1.0;
-        notifyListeners();
-      },
     );
 
     // Cache the generated audio for replay without re-generating
