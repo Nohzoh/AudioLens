@@ -123,6 +123,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 - [ ] **T22** 🌱 ⭐ - Allow **pausing** audio playback from the home screen's "Recently visited" grid
   - **Clarified (2026-08-16)**: same clarification as T12 — "gallery" = the thumbnail grid on `home_screen.dart`
 
+- [ ] **T86** 🌱 ⭐ - Fix Ko-fi **icon contrast** on the home screen
+  - **Added**: 2026-08-16
+  - **Reported**: the Ko-fi button on the home screen looks noticeably more washed out than on the history/settings screens right next to it
+  - **Investigated**: the icon color is actually identical (`Colors.grey[600]`, `kofi_button.dart:28`, the default) on 5 of the 6 screens that show it (home, history, settings, about_analysis, logs) — there's no differing constant to unify. The difference is contrast: `home_screen.dart:246-256` renders it inside a custom gradient `Container` (`theme.colorScheme.surface` → `surfaceContainerHigh`), while the other 4 screens use a plain `AppBar(backgroundColor: Colors.transparent)` sitting on the flat Scaffold background — same fixed color, different backdrop, so it reads differently. `player_screen.dart:106` is the one legitimate exception (`iconColor: Colors.white70`), intentional for its dark photo backdrop — leave that one alone
+  - **To do**: pick an icon color/opacity with enough contrast against the home screen's specific gradient (or reconsider using that gradient behind the icon row) — applying "the same color" everywhere won't fix it since it's already the same color
+
 - [ ] **T23** 🌱 ⭐⭐⭐ - Improve **visual accessibility**
   - **Needs breaking down into subtasks**: Contrast, button sizes, readability
 
