@@ -17,6 +17,12 @@ class TtsOrchestrator {
 
   final TtsService piper;
 
+  /// Set by [speak]/[speakChunked] when the most recent call fell back to
+  /// Piper specifically because Gemini TTS was rate-limited (429), as
+  /// opposed to some other failure — lets the UI show an accurate reason
+  /// instead of a generic "unavailable" message.
+  bool wasRateLimited = false;
+
   /// Speaks [script] in one blocking synthesis call. Returns the model
   /// actually used ('gemini-tts' or 'piper'). Throws [GuideError] if both
   /// engines fail. Prefer [speakChunked], which uses this as its fallback
@@ -26,12 +32,14 @@ class TtsOrchestrator {
     required CancelToken cancelToken,
     GeminiTtsService? geminiTts,
   }) async {
+    wasRateLimited = false;
     if (geminiTts != null) {
       try {
         geminiTts.onComplete = piper.onComplete;
         await geminiTts.speak(script, cancelToken: cancelToken);
         return 'gemini-tts';
       } catch (ttsError) {
+        wasRateLimited = ttsError is GeminiTtsRateLimitException;
         AppLogger.error('Gemini TTS failed, falling back to Piper: $ttsError');
         try {
           await piper.speak(script, cancelToken: cancelToken);
@@ -74,6 +82,7 @@ class TtsOrchestrator {
     GeminiTtsService? geminiTts,
     void Function(int chunkIndex, int totalChunks)? onChunkStart,
   }) async {
+    wasRateLimited = false;
     if (geminiTts == null) {
       return speak(script, cancelToken: cancelToken, geminiTts: geminiTts);
     }
@@ -92,6 +101,7 @@ class TtsOrchestrator {
     try {
       await geminiTts.synthesizeToFile(chunks[0], chunkPaths[0]);
     } catch (ttsError) {
+      wasRateLimited = ttsError is GeminiTtsRateLimitException;
       AppLogger.error('Gemini TTS (chunk 0) failed, falling back to Piper: $ttsError');
       try {
         await piper.speak(script, cancelToken: cancelToken);
@@ -139,6 +149,7 @@ class TtsOrchestrator {
       if (nextSynthesisOutcome != null) {
         final ttsError = await nextSynthesisOutcome;
         if (ttsError != null) {
+          wasRateLimited = ttsError is GeminiTtsRateLimitException;
           AppLogger.error(
               'Gemini TTS (chunk ${i + 1}) failed, falling back to Piper for the rest: $ttsError');
           final remaining = chunks.sublist(i + 1).join(' ');

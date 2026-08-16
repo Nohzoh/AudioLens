@@ -9,6 +9,19 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'remote_config_service.dart';
 
+/// Thrown when Gemini TTS still returns 429 after the retry in
+/// [GeminiTtsService.synthesizeToFile] is exhausted. A distinct type from
+/// other synthesis failures so callers can tell "rate-limited" apart from
+/// e.g. a network error or a malformed response, and show the user an
+/// accurate reason for the Piper fallback instead of a generic one.
+class GeminiTtsRateLimitException implements Exception {
+  const GeminiTtsRateLimitException();
+
+  @override
+  String toString() => 'La synthèse vocale a échoué (429). '
+      'Vous pouvez réessayer ou utiliser une autre voix/option.';
+}
+
 class GeminiTtsService {
   /// Backoff schedule for retrying a 429 in [synthesizeToFile] — each
   /// entry is the wait before that attempt.
@@ -113,6 +126,9 @@ class GeminiTtsService {
 
     if (response.statusCode != 200) {
       AppLogger.error('Gemini TTS error: ${response.statusCode}');
+      if (response.statusCode == 429) {
+        throw const GeminiTtsRateLimitException();
+      }
       throw Exception(
         'La synthèse vocale a échoué (${response.statusCode}). '
         'Vous pouvez réessayer ou utiliser une autre voix/option.',
