@@ -11,6 +11,18 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T09** 📈 ⭐⭐⭐ - Improve **local storage robustness** and migrations
+  - **Verified**: 2026-08-16 (PR #20)
+  - **Merged from**: storage robustness + SQLite migration tests (ex-T44)
+  - **Investigated first**: read `sqflite_common`'s source (`database_mixin.dart`) before writing anything — `openDatabase` already wraps the entire `onCreate`/`onUpgrade` callback in one exclusive SQLite transaction (`await transaction((txn) async { ... onUpgrade ...; await setVersion(...); }, exclusive: true)`). A failure partway through `history_service.dart`'s multi-`ALTER TABLE` upgrade block was assumed to be a real risk (partial columns added, version not bumped, "duplicate column" crash-loop on retry) — it isn't; sqflite already rolls it back atomically and never bumps the version on failure. Confirmed empirically, not just by reading source (see below)
+  - **What was done**:
+    - `history_service.dart`: `HistoryService.init()` now takes an optional `dbPath` param (same DI pattern used elsewhere) so tests can point it at an isolated file instead of the real app database
+    - `test/history_service_migration_test.dart` (new): hand-reconstructed the historical v1-v5 schemas from the `onUpgrade` ALTER sequence, migrates each one to v6 through the real `HistoryService.init()` path, and checks data survives with sane defaults on new columns — this path had zero test coverage before (only `HistoryEntry` serialization was tested, never the actual `openDatabase`/migration flow)
+    - Same file: a dedicated test reproduces the transaction/rollback guarantee directly (2-step `onUpgrade` that throws after the first `ALTER`) and confirms the DB is left at the old version with no partial column — this is what actually verifies the "transactions, rollbacks" part of the task, since sqflite already provides it and there was nothing to add in `history_service.dart` itself for that half
+    - `sqflite_common_ffi` added as a dev dependency (needed to run real SQLite against a file in `flutter test`, no platform channel available there) — added `libsqlite3-0` install step to `test.yml` (`ubuntu-latest` usually has it already, pinned explicitly rather than relying on that)
+  - **Not done**: `HistoryService`'s CRUD methods (`addPendingEntry`, `completeEntry`, etc.) remain untested — that's T68's broader scope, noted there
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 89/89 (7 new: `history_service_migration_test.dart`)
+
 - [x] **T07** 📈 ⭐⭐⭐ - **Centralize configuration** (AI, TTS, GPS, etc.)
   - **Verified**: 2026-08-16 (PR #19)
   - **Context**: `RemoteConfig` already defines most values centrally, but several fields were fetched and never actually read anywhere — the original evidence (`home_screen.dart` hardcoding `imageQuality`/`maxWidth`) turned out to be one of three

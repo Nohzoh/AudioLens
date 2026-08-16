@@ -30,10 +30,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
-- [ ] **T09** 📈 ⭐⭐⭐ - Improve **local storage robustness** and migrations
-  - **Merged from**: storage robustness + SQLite migration tests (ex-T44)
-  - **To do**: SQLite transactions, rollbacks, tests against older DB versions
-
 - [ ] **T45** 📈 ⭐⭐ - Define a **retention policy** for images, WAV files, caches, temp files
   - **Includes**: temp file cleanup (ex-T11)
 
@@ -143,7 +139,8 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - Create `.arb` files for French/English
 
 - [ ] **T68** 🌱 ⭐⭐⭐ - **Extend test coverage** to untested services
-  - **Updated**: 2026-08-15 — `MediaPipeService` removed from scope (deleted in T06); `HistoryService`, `TtsOrchestrator`, `LocationContextResolver`, `RemoteConfigService` added (born from the T06 refactor, still without dedicated tests — `HistoryService` in particular has none, relevant to T09)
+  - **Updated**: 2026-08-15 — `MediaPipeService` removed from scope (deleted in T06); `HistoryService`, `TtsOrchestrator`, `LocationContextResolver`, `RemoteConfigService` added (born from the T06 refactor, still without dedicated tests)
+  - **Updated**: 2026-08-16 — T09 added migration-path coverage for `HistoryService` (`history_service_migration_test.dart`); its CRUD methods (`addPendingEntry`, `completeEntry`, `failEntry`, `saveAudioPath`, `deleteEntry`) are still untested
   - Target: `LocationService`, `WikipediaService`, `ExifLocationService`, `HistoryService`, `TtsOrchestrator`, `LocationContextResolver`, `RemoteConfigService`
   - Goal: 80% coverage on critical services
 
