@@ -23,12 +23,7 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## ⚡ High impact / Short term
 *To handle within 1-2 weeks*
 
-- [ ] **T90** ⚡ ⭐⭐ - Analysis title sometimes shows **raw JSON** instead of the parsed title
-  - **Added**: 2026-08-16
-  - **Reported**: user observed this ~1/20 analyses (e.g. title displayed as `{ "title": "La Tour Eiffel, prouesse de fer parisienne", ...` instead of just the title text)
-  - **Likely cause**: `gemini_api_service.dart`'s title/script parsing (~line 149) extracts the JSON blob via `text.indexOf('{')` to `text.lastIndexOf('}')`, then `jsonDecode`s that substring. This breaks if the model's `script` content itself contains `{`/`}` characters (pulls in the wrong boundary), or if the response is wrapped in a markdown code fence — in the fallback path (`catch (_)`), `title` is set to the text up to the first `.`/`!`/`?`, which for raw unparsed JSON text picks up the literal `{ "title": "...` fragment as-is (no `.!?` before it)
-  - **To do**: replace the naive `indexOf`/`lastIndexOf` brace matching with a real balanced-brace scan (or strip a possible ` ```json ` fence first), and/or make the fallback heuristic detect and reject JSON-looking text instead of using it verbatim as a title
-
+*No high-impact tasks in progress.*
 
 ---
 

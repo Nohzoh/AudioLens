@@ -11,6 +11,15 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T90** ⚡ ⭐⭐ - Analysis title (and sometimes the **script** itself) shows **raw JSON** instead of parsed text
+  - **Verified**: 2026-08-16 (PR #34)
+  - **Context**: not the first attempt at this — earlier fixes (the naive `text.indexOf('{')`/`lastIndexOf('}')` extraction + sentence-split fallback) still had gaps, per repeated real-world reports (~1/20 analyses). Mid-PR, the user reported the *script* (not just the title) sometimes shows as raw JSON too — the first version of this fix guarded the title but still fell back to raw `text` (still JSON-shaped) as the script when the script field wasn't recoverable
+  - **What was done**: `gemini_api_service.dart`'s title/script parsing now has three layers instead of one:
+    1. `_extractJsonObject` — a balanced-brace scan that tracks whether it's inside a string literal, so a `{`/`}` inside the model's own `script` text (or a ` ```json ` fence around the object) no longer throws off the match, unlike the old indexOf/lastIndexOf pair
+    2. If full `jsonDecode` still fails (e.g. an unescaped quote inside a field breaks JSON syntax even with correct brace balance), a regex fallback recovers `title`/`script` independently — but now **both** must be recovered, not just `title`, or the result is discarded
+    3. Last-resort guard: if the response still looks JSON-shaped (`{`-prefixed or a `"title"`/`"script"` key literal present) but neither layer above could fully recover it, the analysis **throws** instead of ever showing raw JSON as the title or reading it aloud as the script — worse to fail loudly (existing retry flow already handles this) than to silently show/speak broken JSON as if it were real content. A true plain-text response (model ignored the JSON instruction entirely, no JSON markers at all) still falls through to the original sentence-split heuristic unchanged — that's legitimate readable content, just not in the expected shape
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 107/107 (8 cases in `gemini_title_parsing_test.dart`: fenced JSON, braces inside script, unescaped quote inside script recovered via regex, plain-text fallback, and 3 throw-instead-of-leak cases covering both the title-side and script-side gaps)
+
 - [x] **T88** ⚡ ⭐⭐⭐ - Thumbnails sometimes display **upside down / sideways**
   - **Verified**: 2026-08-16 (PR #32)
   - **Root cause found**: not an AudioLens bug at all — a Flutter engine/Skia rendering bug in **Flutter 3.32.2**, the version CI was pinned to. `.github/workflows/build-android.yml`/`test.yml` now pin **3.44.9**
