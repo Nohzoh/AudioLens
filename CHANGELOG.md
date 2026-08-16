@@ -11,6 +11,15 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T88** ⚡ ⭐⭐⭐ - Thumbnails sometimes display **upside down / sideways**
+  - **Verified**: 2026-08-16 (PR #32)
+  - **Root cause found**: not an AudioLens bug at all — a Flutter engine/Skia rendering bug in **Flutter 3.32.2**, the version CI was pinned to. `.github/workflows/build-android.yml`/`test.yml` now pin **3.44.9**
+  - **How this was found**: 8+ hypotheses (EXIF orientation in every combination, decode size, aspect-ratio mismatch, `ColorFiltered`, `image_picker` resize, missing list `key`s, byte-for-byte grid code reproduction, software vs. hardware GPU rendering) were tested and ruled out across two sessions on real Android 16/17 emulators — including with the *actual* affected file, pulled directly off the reporter's Pixel 10 over USB (`adb pull` from the device's saved-to-gallery copy, via the app's existing "Sauvegarder" button — no `run-as` needed since it's shared storage, not app-private). None reproduced it
+  - The breakthrough: the user pointed out every test that day had used a **locally-built app** (this dev machine, Flutter 3.44.9) or the **CI-built release APK** (Flutter 3.32.2, pinned in the workflow) — and the bug only ever showed up with the CI build. Built a release APK locally (throwaway keystore, matching CI's `patch_signing.py` + `--target-platform android-arm,android-arm64` flow) and installed it directly on the reporter's Pixel 10 via USB: correct. Confirmed it wasn't debug-vs-release build mode, a device/driver quirk, or anything in AudioLens's code — purely the pinned Flutter SDK version
+  - **Diagnostics added along the way, kept even though they didn't end up pinpointing it**: `about_analysis_screen.dart`'s "Copier les infos de debug" now includes the image's raw EXIF orientation tag, Flutter's actual decoded dimensions, file size, and 5 sampled pixel colors (top/bottom/left/right/center) — useful for any future image-rendering report
+  - **Also added** (real, defensible Flutter practice found while investigating, even though it turned out not to be the cause here): `key: ValueKey(entry.id)` on the home grid's and history list's dynamically-reordered items
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 94/94 (unaffected — this was a CI pipeline config fix, not an app code fix); confirmed on real hardware (Pixel 10) with the actual reported file, not just emulators
+
 - [x] **T87** 🌱 ⭐⭐⭐ - Let the user **pick the location on a map** when a gallery photo has no GPS in its EXIF
   - **Verified**: 2026-08-16 (PR #26)
   - **Context**: `LocationContextResolver.resolve()` fell back to the device's *real-time* GPS position when a photo had no EXIF GPS — reasonable for a fresh camera capture, misleading for a gallery photo (could be old, from anywhere)
