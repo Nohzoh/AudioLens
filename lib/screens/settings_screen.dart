@@ -26,12 +26,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _nativeTts = NativeTtsService();
   bool _obscure = true;
   bool _saving = false;
+  List<Map<String, String>> _nativeVoices = [];
+  Map<String, String>? _selectedNativeVoice;
 
   @override
   void initState() {
     super.initState();
     final guide = context.read<AudioGuideService>();
     _apiKeyController.text = guide.geminiApiKey ?? '';
+    _loadNativeVoices();
+  }
+
+  Future<void> _loadNativeVoices() async {
+    final voices = await _nativeTts.frenchVoices();
+    if (!mounted) return;
+    setState(() {
+      _nativeVoices = voices;
+      if (voices.isNotEmpty) _selectedNativeVoice = voices.first;
+    });
   }
 
   @override
@@ -57,6 +69,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
       return;
+    }
+    final voice = _selectedNativeVoice;
+    if (voice != null) {
+      await _nativeTts.setVoice(voice['name']!, voice['locale']!);
     }
     await _nativeTts.speak(_ttsCompareSample);
   }
@@ -322,6 +338,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: _testPiperVoice,
           ),
           const SizedBox(height: 8),
+          if (_nativeVoices.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: DropdownButtonFormField<Map<String, String>>(
+                initialValue: _selectedNativeVoice,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Voix native à tester',
+                  border: OutlineInputBorder(),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: _nativeVoices
+                    .map((v) => DropdownMenuItem(
+                          value: v,
+                          child: Text(
+                            v['name'] ?? '?',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedNativeVoice = v),
+              ),
+            ),
           OutlinedButton.icon(
             icon: const Icon(Icons.record_voice_over_outlined, size: 16),
             label: const Text('Tester le TTS natif Android'),
