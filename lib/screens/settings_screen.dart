@@ -74,7 +74,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (voice != null) {
       await _nativeTts.setVoice(voice['name']!, voice['locale']!);
     }
-    await _nativeTts.speak(_ttsCompareSample);
+    final played = await _nativeTts.speak(_ttsCompareSample);
+    if (!played && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Aucun son produit${voice != null ? " avec ${voice['name']}" : ""} — cette voix n\'est probablement pas vraiment disponible sur cet appareil'),
+        ),
+      );
+    }
   }
 
   Future<void> _save() async {
