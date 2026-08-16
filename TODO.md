@@ -30,11 +30,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
-- [ ] **T07** 📈 ⭐⭐⭐ - **Centralize configuration** (AI, TTS, GPS, etc.)
-  - **Where**: `RemoteConfigService` or a new dedicated file
-  - **Goal**: Avoid duplicated constants
-  - **Concrete evidence (2026-08-15)**: `home_screen.dart:60-61` hardcodes `imageQuality: 85, maxWidth: 1280` in the `ImagePicker` call instead of reading `RemoteConfigService.current.imageQuality`/`imageMaxWidth` — both remote settings are fetched but never applied
-
 - [ ] **T09** 📈 ⭐⭐⭐ - Improve **local storage robustness** and migrations
   - **Merged from**: storage robustness + SQLite migration tests (ex-T44)
   - **To do**: SQLite transactions, rollbacks, tests against older DB versions

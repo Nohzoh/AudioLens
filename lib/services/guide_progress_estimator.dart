@@ -1,12 +1,24 @@
+import 'remote_config_service.dart';
+
 /// Tracks GPS/analysis step durations, simulates step progress, and
 /// estimates remaining pipeline time (T06 — extracted from
 /// AudioGuideService).
 class GuideProgressEstimator {
-  GuideProgressEstimator({List<double>? gpsDurations, List<double>? analyzeDurations})
-      : gpsDurations = gpsDurations ?? [],
-        analyzeDurations = analyzeDurations ?? [];
+  GuideProgressEstimator({
+    List<double>? gpsDurations,
+    List<double>? analyzeDurations,
+    int? maxSamples,
+    int? simulationIntervalMs,
+  })  : gpsDurations = gpsDurations ?? [],
+        analyzeDurations = analyzeDurations ?? [],
+        _maxSamples = maxSamples ?? RemoteConfigService.current.timingHistorySize,
+        _simulationInterval = Duration(
+          milliseconds: simulationIntervalMs ??
+              RemoteConfigService.current.progressSimulationIntervalMs,
+        );
 
-  static const _maxSamples = 5;
+  final int _maxSamples;
+  final Duration _simulationInterval;
   static const _defaultAnalyzeSeconds = 10.0;
   static const _defaultGpsSeconds = 1.5;
 
@@ -48,7 +60,7 @@ class GuideProgressEstimator {
     stepProgress = 0.0;
     final startTime = DateTime.now();
     while (_simulating && stepProgress < 0.95) {
-      await Future.delayed(const Duration(milliseconds: 150));
+      await Future.delayed(_simulationInterval);
       final elapsed = DateTime.now().difference(startTime).inMilliseconds / 1000.0;
       stepProgress = 1.0 - (1.0 / (1.0 + elapsed / expectedDuration * 2));
       onTick();

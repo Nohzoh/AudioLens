@@ -38,6 +38,14 @@ void main() {
     expect(estimator.estimateWhileAnalyzing, 10.0 * 0.5 + 5.0);
   });
 
+  test('maxSamples override caps history at a custom size (T07)', () {
+    final estimator = GuideProgressEstimator(maxSamples: 2);
+    for (final d in [1.0, 2.0, 3.0]) {
+      estimator.recordGpsDuration(d);
+    }
+    expect(estimator.gpsDurations, [2.0, 3.0]);
+  });
+
   test('stop sets stepProgress to 1.0', () {
     final estimator = GuideProgressEstimator();
     estimator.stepProgress = 0.3;
