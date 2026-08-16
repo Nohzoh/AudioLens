@@ -11,6 +11,15 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T90** ⚡ ⭐⭐ - Analysis title sometimes shows **raw JSON** instead of the parsed title
+  - **Verified**: 2026-08-16 (PR #34)
+  - **Context**: not the first attempt at this — earlier fixes (the naive `text.indexOf('{')`/`lastIndexOf('}')` extraction + sentence-split fallback) still had gaps, per repeated real-world reports (~1/20 analyses)
+  - **What was done**: `gemini_api_service.dart`'s title/script parsing now has three layers instead of one:
+    1. `_extractJsonObject` — a balanced-brace scan that tracks whether it's inside a string literal, so a `{`/`}` inside the model's own `script` text (or a ` ```json ` fence around the object) no longer throws off the match, unlike the old indexOf/lastIndexOf pair
+    2. If full `jsonDecode` still fails (e.g. an unescaped quote inside `script` breaks JSON syntax even with correct brace balance), a regex fallback recovers the `title`/`script` fields independently — `title` is short (5-8 words per the prompt) and rarely contains a stray quote, so it's usually still recoverable even when the whole object isn't valid JSON
+    3. Last-resort guard: if even the old sentence-split heuristic lands on text that still looks like unparsed JSON (`{`-prefixed or contains `"title"`), it's replaced with a generic "Votre guide audio" title instead of ever showing raw JSON to the user — this is the actual fix for the recurring nature of the bug: whatever new parsing edge case shows up next, the raw JSON can no longer reach the UI
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 105/105 (6 new cases in `gemini_title_parsing_test.dart` covering fenced JSON, braces inside script, unescaped quotes inside script, plain-text fallback, and the raw-JSON guard)
+
 - [x] **T88** ⚡ ⭐⭐⭐ - Thumbnails sometimes display **upside down / sideways**
   - **Verified**: 2026-08-16 (PR #32)
   - **Root cause found**: not an AudioLens bug at all — a Flutter engine/Skia rendering bug in **Flutter 3.32.2**, the version CI was pinned to. `.github/workflows/build-android.yml`/`test.yml` now pin **3.44.9**
