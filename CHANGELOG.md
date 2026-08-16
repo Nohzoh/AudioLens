@@ -11,6 +11,12 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T86** 🌱 ⭐ - Fix Ko-fi **icon contrast** on the home screen
+  - **Verified**: 2026-08-16 (PR #40)
+  - **Confirmed by**: a screenshot showing the Ko-fi icon visibly darker than the history/settings icons right next to it on the home screen's icon row — all three sit on the same page-level gradient background, so the mismatch traced to styling, not backdrop: history/settings `IconButton`s use the theme's implicit default color, while `KofiButton` hardcodes `Colors.grey[600]` (chosen to read as subtly de-emphasized against the plain `AppBar`s on the other 5 screens where it shows, and left unchanged there)
+  - **What was done**: `home_screen.dart` now passes `iconColor: theme.colorScheme.onSurfaceVariant` to `KofiButton` (using the override param the widget already supported) — matches its neighbors' contrast on this screen specifically, without touching the shared default used elsewhere
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 107/107
+
 - [x] **T89** 📈 ⭐⭐⭐ - Replace **Piper** (sherpa_onnx) with the **native Android TTS engine**
   - **Verified**: 2026-08-16 (PR #39)
   - **Context**: started as "investigate native TTS as a better-quality Piper alternative" while chasing Gemini TTS 429s. Real-device A/B testing (added in earlier PRs #35/#37/#38: a comparison UI, then a voice picker, then surfacing voices that silently produced no audio) showed the native voice was clearly better — user's verdict: "la native Android est bien meilleure. elle a juste une voix d'annonce SNCF" (the default voice was flat/robotic; `fr-fr-x-frc-network` sounded much better suited to a museum guide)

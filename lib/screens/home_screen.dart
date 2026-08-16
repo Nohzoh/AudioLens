@@ -298,8 +298,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     const Spacer(),
                     Consumer<SettingsService>(
+                      // T86: the default grey (Colors.grey[600], chosen to
+                      // read as subtly de-emphasized against the plain
+                      // AppBars on the other screens) has too little
+                      // contrast against this screen's surface gradient —
+                      // reported as visibly more washed out than the
+                      // history/settings icons right next to it. Matching
+                      // their color keeps it readable here without
+                      // affecting the other 5 screens.
                       builder: (context, settings, _) => KofiButton(
                         show: settings.showKofiButton,
+                        iconColor: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                     IconButton(
