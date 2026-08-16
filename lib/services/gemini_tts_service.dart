@@ -10,6 +10,13 @@ import 'package:path/path.dart' as p;
 import 'remote_config_service.dart';
 
 class GeminiTtsService {
+  /// Backoff schedule for retrying a 429 in [synthesizeToFile] — each
+  /// entry is the wait before that attempt.
+  static const _retryDelaysOn429 = [
+    Duration(seconds: 2),
+    Duration(seconds: 5),
+  ];
+
   final String apiKey;
   final http.Client _client;
   Function()? onComplete;
@@ -83,12 +90,16 @@ class GeminiTtsService {
         .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
         .timeout(const Duration(seconds: 60));
 
-    // A single chunk hitting a transient rate limit shouldn't force the
-    // rest of the script into a different voice (Piper) — retry once
-    // after a short delay before giving up.
-    if (response.statusCode == 429) {
-      AppLogger.tts('synthesizeToFile got 429, retrying once in 1.5s');
-      await Future.delayed(const Duration(milliseconds: 1500));
+    // A chunk hitting a rate limit shouldn't force the rest of the script
+    // into a different, noticeably worse-sounding voice (Piper) — retry
+    // with backoff before giving up. A single 1.5s retry wasn't enough in
+    // practice (two consecutive 429s ~1.5s apart, observed on a real
+    // device) — this covers longer rate-limit windows at the cost of
+    // extra wait only when it's actually still being throttled.
+    for (final delay in _retryDelaysOn429) {
+      if (response.statusCode != 429) break;
+      AppLogger.tts('synthesizeToFile got 429, retrying in ${delay.inSeconds}s');
+      await Future.delayed(delay);
       response = await _client
           .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
           .timeout(const Duration(seconds: 60));
