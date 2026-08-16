@@ -95,6 +95,7 @@ class AudioGuideService extends ChangeNotifier {
     return _lastAiModel;
   }
   bool get ttsWasFallback => _lastTtsModel == 'piper' && _geminiTtsService != null;
+  bool get ttsFallbackWasRateLimit => _ttsOrchestrator.wasRateLimited;
   final GeminiNanoService _nanoService;
 
   GuideState _state = GuideState.idle;

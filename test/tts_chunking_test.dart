@@ -18,11 +18,24 @@ class _FakePiper extends TtsService {
 }
 
 class _FakeGeminiTts extends GeminiTtsService {
-  _FakeGeminiTts({this.failOnChunk, this.synthDelay, this.playDelay})
-      : super(apiKey: 'test-key');
+  _FakeGeminiTts({
+    this.failOnChunk,
+    this.failSpeak = false,
+    this.rateLimited = false,
+    this.synthDelay,
+    this.playDelay,
+  }) : super(apiKey: 'test-key');
 
   /// 0-based chunk index whose synthesis should throw, or null to never fail.
   final int? failOnChunk;
+
+  /// Makes the single-shot [speak] path throw instead of [synthesizeToFile].
+  final bool failSpeak;
+
+  /// When a failure is triggered, throw [GeminiTtsRateLimitException]
+  /// instead of a plain [Exception] — to test that TtsOrchestrator tells
+  /// the two apart.
+  final bool rateLimited;
 
   /// Simulates network/playback latency, to verify chunk N+1's synthesis
   /// genuinely overlaps chunk N's playback rather than just being called
@@ -38,6 +51,11 @@ class _FakeGeminiTts extends GeminiTtsService {
   Future<void> speak(String text, {CancelToken? cancelToken}) async {
     log.add('speak');
     synthesizedTexts.add(text);
+    if (failSpeak) {
+      throw rateLimited
+          ? const GeminiTtsRateLimitException()
+          : Exception('speak failed');
+    }
     onComplete?.call();
   }
 
@@ -48,7 +66,9 @@ class _FakeGeminiTts extends GeminiTtsService {
     synthesizedTexts.add(text);
     if (synthDelay != null) await Future.delayed(synthDelay!);
     if (failOnChunk == index) {
-      throw Exception('synthesis failed for chunk $index');
+      throw rateLimited
+          ? const GeminiTtsRateLimitException()
+          : Exception('synthesis failed for chunk $index');
     }
     await File(outputPath).writeAsBytes(Uint8List(60));
   }
@@ -253,5 +273,59 @@ void main() {
     expect(model, 'gemini-tts');
     final playedCount = gemini.log.where((l) => l.startsWith('play:')).length;
     expect(playedCount, lessThan(expectedChunks.length));
+  });
+
+  test('wasRateLimited is set when the first chunk fails with a 429', () async {
+    final piper = _FakePiper();
+    final gemini = _FakeGeminiTts(failOnChunk: 0, rateLimited: true);
+    final orchestrator = TtsOrchestrator(piper: piper);
+
+    await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: gemini);
+
+    expect(orchestrator.wasRateLimited, isTrue);
+  });
+
+  test('wasRateLimited stays false when the first chunk fails for another reason', () async {
+    final piper = _FakePiper();
+    final gemini = _FakeGeminiTts(failOnChunk: 0, rateLimited: false);
+    final orchestrator = TtsOrchestrator(piper: piper);
+
+    await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: gemini);
+
+    expect(orchestrator.wasRateLimited, isFalse);
+  });
+
+  test('wasRateLimited is set when a later chunk fails with a 429', () async {
+    final piper = _FakePiper();
+    final gemini = _FakeGeminiTts(failOnChunk: 1, rateLimited: true);
+    final orchestrator = TtsOrchestrator(piper: piper);
+
+    await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: gemini);
+
+    expect(orchestrator.wasRateLimited, isTrue);
+  });
+
+  test('wasRateLimited resets to false on a subsequent successful call', () async {
+    final piper = _FakePiper();
+    final failingGemini = _FakeGeminiTts(failOnChunk: 0, rateLimited: true);
+    final orchestrator = TtsOrchestrator(piper: piper);
+
+    await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: failingGemini);
+    expect(orchestrator.wasRateLimited, isTrue);
+
+    final okGemini = _FakeGeminiTts();
+    await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: okGemini);
+    expect(orchestrator.wasRateLimited, isFalse);
+  });
+
+  test('speak() (single-shot path) also sets wasRateLimited on a 429', () async {
+    final piper = _FakePiper();
+    final gemini = _FakeGeminiTts(failSpeak: true, rateLimited: true);
+    final orchestrator = TtsOrchestrator(piper: piper);
+
+    final model = await orchestrator.speak('Un script.', cancelToken: CancelToken(), geminiTts: gemini);
+
+    expect(model, 'piper');
+    expect(orchestrator.wasRateLimited, isTrue);
   });
 }

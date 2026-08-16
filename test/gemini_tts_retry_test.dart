@@ -36,7 +36,8 @@ void main() {
     expect(File(outputPath).existsSync(), isTrue);
   });
 
-  test('a second consecutive 429 gives up (only one retry)', () async {
+  test('a second consecutive 429 gives up (only one retry) and throws a '
+      'rate-limit-specific exception', () async {
     var callCount = 0;
     final client = MockClient((request) async {
       callCount++;
@@ -46,7 +47,7 @@ void main() {
 
     await expectLater(
       service.synthesizeToFile('Some text', '${Directory.systemTemp.path}/x.wav'),
-      throwsException,
+      throwsA(isA<GeminiTtsRateLimitException>()),
     );
     expect(callCount, 2);
   });
@@ -64,7 +65,7 @@ void main() {
     expect(callCount, 1);
   });
 
-  test('a non-429 error is not retried', () async {
+  test('a non-429 error is not retried and is not the rate-limit exception', () async {
     var callCount = 0;
     final client = MockClient((request) async {
       callCount++;
@@ -74,7 +75,7 @@ void main() {
 
     await expectLater(
       service.synthesizeToFile('Some text', '${Directory.systemTemp.path}/z.wav'),
-      throwsException,
+      throwsA(isNot(isA<GeminiTtsRateLimitException>())),
     );
     expect(callCount, 1);
   });
