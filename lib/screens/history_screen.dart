@@ -108,7 +108,7 @@ class HistoryScreen extends StatelessWidget {
             itemCount: history.entries.length,
             itemBuilder: (context, index) {
               final entry = history.entries[index];
-              return _HistoryCard(entry: entry)
+              return _HistoryCard(key: ValueKey(entry.id), entry: entry)
                   .animate(delay: (index * 50).ms)
                   .fadeIn()
                   .slideY(begin: 0.1);
@@ -122,7 +122,7 @@ class HistoryScreen extends StatelessWidget {
 
 class _HistoryCard extends StatelessWidget {
   final HistoryEntry entry;
-  const _HistoryCard({required this.entry});
+  const _HistoryCard({super.key, required this.entry});
 
   @override
   Widget build(BuildContext context) {

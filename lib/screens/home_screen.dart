@@ -478,6 +478,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               final isCaptured = entry.isCaptured;
                               final isDimmed = isPending || isFailed || isCaptured;
                               return GestureDetector(
+                                key: ValueKey(entry.id),
                                 onTap: () {
                                   if (isPending || isFailed) {
                                     // Retry analysis
