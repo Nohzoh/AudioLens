@@ -1,234 +1,234 @@
 # Changelog - AudioLens
 
-Historique des tâches terminées et des retours de tests. Les tâches en cours
-ou à faire sont dans [`TODO.md`](TODO.md).
+History of completed tasks and test feedback. Tasks in progress or to do
+are in [`TODO.md`](TODO.md).
 
-Les identifiants (T01, T02...) forment une séquence unique partagée avec
-`TODO.md` — avant de créer une nouvelle tâche, vérifier le plus grand ID dans
-les deux fichiers (`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
-
----
-
-## ✅ Terminé
-
-- [x] **T13** 🌱 ⭐⭐ - Permettre la **re-demande d'une ancienne analyse échouée** depuis l'historique
-  - **Validé** : 2026-08-16 (déjà fait, constaté lors de la revue de tâches)
-  - **Constat** : déjà couvert par T78 — `history_screen.dart` : `_HistoryCard.onTap` relance l'analyse (`_retryAnalysis`) quand l'entrée est `pending` ou `failed`. Pas de code écrit pour cette tâche, simple clôture
-
-- [x] **T69** 🌱 ⭐⭐ - **Documenter l'architecture** et les flux
-  - **Validé** : 2026-08-16 (PR #12)
-  - **Ce qui a été fait** : `ARCHITECTURE.md` — diagramme du pipeline principal (photo → localisation → IA → TTS → audio, avec les branches capture différée T78 et script seul T16), diagramme de résolution de localisation (EXIF/GPS → reverse geocoding → POI → Wikipedia), tableau de persistance, tableau des canaux natifs, diagramme écrans → services. Écrit après T74/T76/T78/T16 pour refléter le pipeline réel, pas sa forme d'avant ces refontes. `README.md` renvoie vers ce fichier au lieu de dupliquer
-
-- [x] **T76** 📈 ⭐⭐⭐⭐ - **Découper le script en morceaux** pour démarrer la lecture audio plus vite
-  - **Validé** : 2026-08-16 (PR #11, commit `4c8dd93`)
-  - **Contexte** : ~30s (parfois plus) d'attente entre l'affichage du texte et le début de la lecture audio — `GeminiTtsService.speak()` synthétisait tout le script en un seul appel HTTP bloquant
-  - **Ce qui a été fait** :
-    - `lib/utils/text_chunker.dart` (nouveau) : découpage aux frontières de phrases, 1er morceau court (démarrage rapide), morceaux suivants plus grands (moins d'allers-retours réseau)
-    - `GeminiTtsService` : synthèse et lecture séparées (`synthesizeToFile`/`playFile`), `speak()` existant inchangé ; `concatenateWavFiles` (nouveau) pour que le résultat en morceaux reste mis en cache comme une synthèse classique
-    - `TtsOrchestrator.speakChunked()` : synthétise le morceau N+1 pendant que le morceau N joue ; en cas d'échec, repli Piper sur tout le script (échec du 1er morceau) ou juste sur le texte restant (échec plus tard) — pas de redite ni de changement de voix en cours de narration. `onChunkStart(index, total)` pilote une vraie progression morceau N/M au lieu du spinner indéterminé
-    - `CancelToken.onCancel` (nouveau, `Future` complété par `cancel()`) pour pouvoir faire courir la boucle de lecture contre l'annulation plutôt que de sonder `isCancelled`
-  - **Bugs réels trouvés en construisant ceci** :
-    - `AudioPlayerPlugin.kt` : `stop()` ne résolvait jamais un appel `playWav` en cours — aurait bloqué indéfiniment l'annulation en cours de morceau, seul le nouveau chemin en morceaux awaite vraiment `playWav`. Corrigé (suivi du `Result` en attente, résolu aussi par `stop`)
-    - Une erreur de synthèse pouvait remonter comme erreur Zone non gérée malgré un `try/catch` plus loin — Dart marque une `Future` rejetée comme non gérée si aucun listener n'est attaché au moment du rejet. Corrigé en attachant `.then(onError:)` immédiatement à la création de la `Future`
-  - **Vérifié réellement** : build Android local (le fichier Kotlin natif est modifié)
-  - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 78/78 (13 nouveaux : `text_chunker_test.dart`, `tts_chunking_test.dart`)
-
-- [x] **T78** 🌱 ⭐⭐⭐⭐ - **Capture différée** : photo + GPS maintenant, analyse (cloud) plus tard
-  - **Validé** : 2026-08-16 (PR #9, commit `33c0673`)
-  - **Contexte** : demande utilisateur — économiser sa conso data sans se rabattre sur les modèles locaux (qualité moindre) : capturer photo + position tout de suite, lancer l'analyse cloud plus tard (ex. une fois sur wifi)
-  - **Ce qui a été fait** :
-    - `AnalysisStatus.captured` (nouveau) : photo + GPS brut enregistrés, analyse non lancée — aucune migration DB (`status` déjà en TEXT, colonnes GPS déjà existantes)
-    - `LocationService.getCurrentRawCoordinates()` : fix GPS sans reverse geocoding — capture vraiment hors-ligne (le fix GPS lui-même n'a pas besoin de réseau ; `getCurrentLocation()` couplait jusque-là systématiquement le fix à un appel Nominatim)
-    - `LocationContextResolver` scindé en résolution de coordonnées (`resolve()` depuis une photo, ou `resolveFromCoordinates()` depuis des coordonnées déjà connues) + enrichissement partagé (`_enrich` : reverse geocoding + POI + Wikipedia) — l'enrichissement tourne maintenant au moment de "lancer l'analyse", avec les coordonnées capturées à l'époque, pas la position actuelle de l'appareil
-    - `home_screen.dart` : option "Capturer sans analyser" ; `history_screen.dart` : les entrées capturées ont maintenant un statut visuel et déclenchent l'analyse au tap avec les coordonnées stockées (cet écran ne gérait auparavant aucun tap pending/failed/captured — seule la grille de `home_screen.dart` le faisait ; les deux sont maintenant cohérents)
-    - `lib/utils/analysis_runner.dart` (nouveau) : séquence "analyser + persister en historique" extraite et partagée entre les deux écrans
-  - **Bonus** : `LocationService` n'avait aucune injection de client HTTP (contrairement à tous les autres services réseau du projet) — ajoutée, nécessaire pour pouvoir vérifier ce changement par un vrai test plutôt qu'à l'inspection
-  - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 65/65 (3 nouveaux : `deferred_capture_test.dart`)
-  - **T20 retirée (2026-08-16)** : "Améliorer l'expérience hors ligne" (reprise/cache + badge fonctions dispo/indispo) était devenue obsolète — couverte par ce qui précède (capture différée hors-ligne, statuts visuels par entrée)
-
-- [x] **T16** 🌱 ⭐⭐⭐ - Ajouter un **mode sans TTS**, avec **génération audio à la demande** ensuite
-  - **Validé** : 2026-08-15 (PR #7, commit `896bb2b`)
-  - **Contexte** : demande utilisateur — réglage pour désactiver la génération audio automatique après l'analyse, avec possibilité de demander la synthèse audio plus tard depuis une entrée "script seul" de l'historique
-  - **Ce qui a été fait** :
-    - `SettingsService.autoGenerateAudio` (défaut `true`), toggle dans les paramètres sur le modèle de `showKofiButton`
-    - `AudioGuideService.analyzeAndPlay(imageFile, generateAudio: false)` s'arrête après l'analyse IA, état `GuideState.scriptReady` (nouveau) au lieu de `speaking` — aucune migration DB nécessaire, `HistoryEntry.audioPath` était déjà nullable
-    - `AudioGuideService.generateAudioForScript()` (nouveau) : relance uniquement l'étape TTS (`TtsOrchestrator`, donc fallback cloud → Piper) sur un script déjà connu, sans refaire GPS/Wikipedia/IA
-    - `history_screen.dart` : indicateur "Script seul" sur les entrées sans audio, bouton "Générer l'audio" qui persiste désormais le résultat via `HistoryService.saveAudioPath` (l'ancien comportement — génération à la volée sans sauvegarde ni fallback — a été remplacé)
-  - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 62/62 (7 nouveaux : `script_only_mode_test.dart`)
-
-- [x] **T74** 📈 ⭐⭐⭐ - Améliorer la **détection des lieux et de leur histoire**
-  - **Validé** : 2026-08-15 (PR #5, commit `3592327`)
-  - **Contexte** : Test réel (bowling de la Matène, 2026-08-12) — l'appli n'a pas évoqué le tournage des *Tontons flingueurs* : le lieu n'avait pas d'article Wikipedia géolocalisé dans le rayon de 200 m, et le nom du commerce (POI) n'était jamais récupéré
-  - **Ce qui a été fait** :
-    - `PoiService` (nouveau) : recherche Overpass API des POI taggés (leisure/tourism/historic/amenity) proches, sélectionne le plus proche par distance de Haversine
-    - `WikipediaService.searchByName` (nouveau) : recherche full-text par nom + ville, fusionnée avec le géosearch existant (`WikipediaService.merge`), fallback fr → en si le français ne trouve rien
-    - Prompt `gemini_api_service.dart` : incite explicitement le modèle à utiliser le lieu identifié/l'adresse pour cerner l'endroit réel et chercher des faits marquants (tournages, événements, personnalités) plutôt que de décrire seulement ce qui est visible
-    - **Bug corrigé au passage** : `wikipedia_radius_meters`/`max_results`/`extract_chars` de `RemoteConfigService` étaient récupérés mais jamais réellement transmis à `WikipediaService.searchNearby` (l'appel utilisait ses propres valeurs par défaut) — câblés ; rayon par défaut relevé 200 m → 500 m (l'augmenter via `config.json` n'avait auparavant aucun effet, la valeur n'était jamais lue)
-  - **Note** : `location_service.dart`/`audio_guide_service.dart` non touchés — la cible d'origine datait d'avant le refactor T06 ; un `PoiService` dédié s'intègre mieux dans cette architecture, et aucun nouveau champ persisté/affiché n'était nécessaire pour corriger le bug réel (l'IA ne mentionnait jamais le lieu)
-  - **Validation finale** : `flutter analyze` → 0 issue ; `flutter test` → 55/55 (11 nouveaux : `poi_service_test.dart`, `wikipedia_service_test.dart`)
-
-- [x] **T79** 🔥 ⭐⭐ - La CI distribue un **APK debug**, pas release
-  - **Validé** : 2026-08-15 (commits `4011b5e`, `9d9ff11`, `88c196d` — run CI vert [31897372162](https://github.com/Nohzoh/audio-guide/actions/runs/31897372162))
-  - **Ce qui a été fait** : `flutter build apk --release` (au lieu de `--debug`) ; vérification CI que l'APK final n'est pas `debuggable` (via `aapt dump badging`)
-  - **Détours rencontrés en cours de route** :
-    - R8/minification (activée par défaut en release) cassait le build sur des classes manquantes (`javax.lang.model.*`) venant d'une dépendance shaded tirée par les deps MediaPipe/genai mortes (cf. T82) — minification désactivée explicitement dans `scripts/patch_signing.py` en attendant leur suppression
-    - Le check anti-debuggable ajouté ne vérifiait en fait rien : `aapt` n'est pas sur le `PATH` du runner CI, donc le `grep` matchait toujours sur une entrée vide et affichait "non debuggable" quoi qu'il arrive — corrigé en localisant le binaire sous `$ANDROID_HOME/build-tools`
-  - **Vérifié réellement** : run CI final montre `aapt dump badging` fonctionnel (package/version/sdkVersion affichés) et confirme l'absence du flag `application-debuggable`
-
-- [x] **T80** ⚡ ⭐⭐ - `allowBackup` forcé à `true` en CI avec une classe `backupAgent` probablement fausse
-  - **Validé** : 2026-08-15 (commit `4011b5e`)
-  - **Ce qui a été fait** : les 4 `sed` chaînés (avec `backupAgent` bogué et repli silencieux `|| true`) remplacés par un seul patch explicite `android:allowBackup="false"` — décision : pas de backup automatique tant que l'historique (GPS, photos) n'a pas de règles d'exclusion dédiées. Répliqué dans `scripts/build_android_local.sh` pour cohérence CI/local
-
-- [x] **T81** ⚡ ⭐⭐⭐ - `RemoteConfigService` peut rediriger la clé API vers une URL arbitraire, sans validation
-  - **Validé** : 2026-08-15 (commit `4011b5e`)
-  - **Ce qui a été fait** : `RemoteConfigService.isAllowedApiUrl()` — allowlist (`generativelanguage.googleapis.com`) vérifiée avant d'utiliser un `gemini_api_url` reçu de la config distante, sinon retour à la valeur par défaut. 4 tests ajoutés (`remote_config_service_test.dart`, premier test de ce service)
-
-- [x] **T82** 📈 ⭐⭐ - Nettoyage complémentaire post-T06 (code mort restant)
-  - **Validé** : 2026-08-15 (PR #3, commit `0b14c3b`)
-  - **Ce qui a été fait** : `MediaPipePlugin.kt` et son enregistrement dans `MainActivity.kt` supprimés, dépendance Gradle `tasks-genai` retirée (`genai-prompt`, utilisée par `GeminiNanoPlugin.kt`, conservée) ; dépendance Dart inutilisée `google_generative_ai` retirée de `pubspec.yaml` ; conditionnel mort dans `gemini_api_service.dart` supprimé plutôt qu'implémenté (le regex — toute ligne commençant en minuscule et finissant par un point — était trop large et risquait de couper de la narration française légitime, sans aucun test pour détecter une régression)
-  - **Bonus trouvé en validant en local** : le patch `allowBackup` (T80) n'était pas idempotent — le relancer sur un manifest déjà patché (sans bootstrap frais) dupliquait l'attribut et cassait le merge du manifest. Corrigé dans les deux scripts (CI + local) avec le même pattern de garde que les blocs permissions/FileProvider
-  - **Vérifié réellement** : bootstrap Android local vraiment à froid (`git clean -X` sur `android/` — sans toucher aux fichiers trackés), build debug réussi sans `MediaPipePlugin`. `flutter analyze` → 0 issue, `flutter test` → 44/44
-
-- [x] **T02** - Améliorer la gestion des **erreurs réseau** et du fallback local
-- [x] **T03** - Empêcher les **analyses concurrentes** et gérer proprement les retries/cancellations
-- [x] **T04** - Vérifier et corriger la **logique de géolocalisation** lors d’une nouvelle analyse après échec
-- [x] **T05** - Afficher un **message utilisateur clair** en cas d’échec de l’amélioration de voix (ex. HTTP 429)
-  - **Validé** : 2026-08-02
-- [x] **T31** - Introduire des **types d’erreurs métier explicites**
-- [x] **T32** - Ajouter une **couverture de tests de base** sur les services critiques
-- [x] **T33** - Vérifier la **licence du projet** et ajouter/clarifier le fichier de licence
-- [x] **T39** 🔥 ⭐⭐ - Corriger les erreurs bloquantes de `flutter analyze`
-  - **Validé** : 2026-08-02 (via T39b)
-- [x] **T40** 🔥 ⭐⭐ - Corriger l’onboarding pour parler de **Gemini API** au lieu d’Anthropic
-  - **Validé** : Inclus dans T60 (commit `0f13e76`)
-- [x] **T39b** 🔥 ⭐⭐ - Corriger **toutes les erreurs `flutter analyze`**
-  - **Validé** : Commit `c37a3f1`
-- [x] **T60** 🔥 ⭐ - Supprimer tout code et références à **Anthropic/OpenAI**
-  - **Validé** : Commit `0f13e76`
-- [x] **T61** 🔥 ⭐⭐⭐ - Aligner les **fournisseurs cloud** avec l’implémentation réelle
-  - **Validé** : Inclus dans T60 (commit `0f13e76`)
-- [x] **T62** ⚡ ⭐⭐⭐⭐ - **Compléter les modèles locaux** ou supprimer les écrans inutilisés
-  - **Validé** : Commit `c37a3f1`
-- [x] **T38** 🌱 ⭐ - Ajouter un **bouton Ko-fi** pour accepter des soutiens volontaires
-  - **Validé** : Commit `83a790e` (widget réutilisable, intégration dans toutes les pages, toggle dans les paramètres)
-- [x] **T42** 🔥 ⭐⭐⭐ - Ajouter une vérification de **build Android complet** et clarifier le rôle du bootstrap dans GitHub Actions
-  - **Validé** : Commit `82d877a`
-- [x] **T01** 🔥 ⭐⭐⭐ - Corriger le **freeze du téléphone** lors du lancement de Piper + ajouter un **bouton d’annulation**
-  - **Lié à** : T43 (annulations interruptibles)
-  - **Validé** : Commit `37f4ccd` (bouton d'annulation + état cancelling + timeout)
-  - **Note** : Bouton d'annulation fonctionnel pendant la synthèse. Freeze résiduel nécessite T43.
-- [x] **T43** ⚡ ⭐⭐⭐ - Rendre les **annulations vraiment interruptibles** (appels HTTP, étapes longues du pipeline)
-  - **Lié à** : T01 (freeze Piper)
-  - **Validé** : Commit `4a9b211` (CancelToken system, checks avant chaque étape, passage aux services TTS)
-  - **Note** : Annulations basées sur checks avant chaque étape. HTTP natif non supporté (nécessite package dio).
-- [x] **T63** ⚡ ⭐ - **Unifier le nom du projet** sur AudioLens
-  - **Validé** : Commit `6afd7b9` (pubspec, README, AGENTS, workflow) + renaming complet du package Android (Kotlin files, channels, namespace)
-  - **applicationId changé en `io.nohzoh.audiolens` (2026-08-16)** : `com.audiolens.audiolens` suggérait une entité commerciale/organisation inexistante ; choix final de préfixe (`io.`, personnel plutôt que lié à une plateforme d'hébergement type `io.github.*`) discuté avec l'utilisateur avant publication Play Store (T84), seul moment où le changement est encore gratuit — `applicationId` devient immuable après la première publication
-- [x] **T64** ⚡ ⭐⭐ - Nettoyer les **fichiers untracked** et le .gitignore
-  - **Validé** : Commit `2e3d404` (nettoyage des untracked files)
-- [x] **T65** ⚡ ⭐⭐ - Nettoyer tous les **imports inutilisés** et variables mortes
-  - **Validé** : Commit `e176b62` (7 fichiers nettoyés, 0 warnings)
-- [x] **T41** ⚡ ⭐ - Synchroniser le **README** avec le produit actuel
-  - **Contenu à mettre à jour** : Gemini Nano/API, TTS Gemini/Piper, état Android, architecture
-  - **Validé** : 2026-08-08 (README réécrit : pipeline EXIF/GPS → Wikipedia → IA → TTS, fournisseurs IA, TTS, plateforme, config)
-- [x] **T66** ⚡ ⭐ - Remplacer tous les **.withOpacity()** par **.withValues()**
-  - Fichiers concernés : `history_screen.dart`, `home_screen.dart`, `player_screen.dart`, `onboarding_screen.dart`, `settings_screen.dart`, widgets/*
-  - **Validé** : 2026-08-08 (20 occurrences remplacées dans 7 fichiers)
-- [x] **T71** ⚡ ⭐ - Nettoyer la **configuration des assets** dans pubspec.yaml
-  - Supprimer les doublons (`assets/tts/` apparaissait 2 fois)
-  - Vérifier que tous les assets existent
-  - **Validé** : 2026-08-08 (doublon supprimé, existence vérifiée)
-  - **Note** : `assets/images/google.png` référencé dans `app_settings.dart` mais absent (code mort, nettoyé dans T06)
-- [x] **T47** ⚡ ⭐⭐ - Ajouter une **fiche technique d’analyse**
-  - **Contenu** : Modèle utilisé, fallback, GPS, Wikipedia, durée, source
-  - **Dépend de** : T46 (tests de fallback, toujours à faire)
-  - **Validé** : 2026-08-08 (indication de fallback IA/TTS ajoutée à l'écran "À propos", persistance dans `HistoryEntry` + migration DB v6, tests de sérialisation couverts)
-- [x] **T46** ⚡ ⭐⭐⭐ - Ajouter des **tests de fallback** IA/TTS/GPS
-  - **Cas à couvrir** : Modèle Gemini principal → fallback, Gemini TTS → Piper, GPS refusé
-  - **Validé** : 2026-08-08 (15 nouveaux tests : fallback de modèles Gemini via `MockClient`, orchestration TTS→Piper / Cloud→Nano / GPS refusé, parsing EXIF GPS)
-  - **Note** : Injection HTTP (`GeminiApiService(client:)`) et de services (`AudioGuideService(ttsService:, geminiTtsService:, geminiApiService:, nanoService:)`) ajoutées, rétro-compatibles, sans nouvelle dépendance
-
-- [x] **T72** 📈 ⭐ - Ajouter un **disclaimer "contenu généré par IA"** (transparence AI Act UE)
-  - **Validé** : 2026-08-12 (bandeau `_AiGeneratedBanner` en haut de l'écran "À propos de cette analyse" dans `about_analysis_screen.dart`)
-  - **Note** : Libellé "Contenu généré par IA : le script de cette analyse et sa voix ont été créés automatiquement par un modèle d'intelligence artificielle."
-
-- [x] **T73** 📈 ⭐ - Remplacer l'**icône Ko-fi** (cœur) par la **tasse de café standard**
-  - **Validé** : 2026-08-12 (`Icons.favorite_border` → `Icons.local_cafe_outlined` dans `lib/widgets/kofi_button.dart`)
-
-- [x] **T10** 📈 ⭐⭐ - **Sécuriser le stockage des clés API** avec flutter_secure_storage
-  - **Validé** : 2026-08-12 (nouveau `lib/services/secure_key_storage.dart` : stockage Android Keystore/iOS Keychain chiffré, migration one-shot depuis `SharedPreferences`, repli propre ; `settings_service.dart` + `audio_guide_service.dart` branchés ; 4 tests de migration ajoutés)
-  - **Cible atteinte** : Aucune clé en clair dans `SharedPreferences` (supprimée après migration)
-
-- [x] **T06** 📈 ⭐⭐⭐⭐ - **Refactoriser l’architecture** et nettoyer le code legacy
-  - **Fusion de** : clarifier le pipeline + nettoyer les doublons (ex-T08)
-  - **Validé** : 2026-08-15
-  - **1re tranche (2026-08-12)** : code mort supprimé (`app_settings.dart`, `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart`), getter `aiModelAttempts` retiré, User-Agent centralisé dans `network_config.dart`
-  - **2e tranche (2026-08-15)** : `audio_guide_service.dart` (524 → 445 lignes) découpé en 4 classes dédiées — `GuidePreferencesStore` (persistence prefs/timing), `GuideProgressEstimator` (simulation/estimation de progression), `LocationContextResolver` (GPS EXIF/temps réel + enrichissement Wikipedia), `TtsOrchestrator` (Gemini TTS → fallback Piper) — + `utils/error_sanitizer.dart` partagé
-  - **Note** : le fallback IA (cloud → nano) reste dans `audio_guide_service.dart` car il mute l'état `activeProvider` du service lui-même — moins isolable proprement que les autres étapes
-  - **Cible atteinte** : pipeline modulaire, responsabilités séparées ; `AudioGuideService` ne fait plus que piloter les transitions d'état et notifier l'UI
+IDs (T01, T02...) form a single sequence shared with `TODO.md` — before
+creating a new task, check the highest ID across both files
+(`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
 
 ---
 
-## 📊 Retours de tests
+## ✅ Done
 
-- **2026-08-15 (T79/T80/T81 — audit sécurité CI)**
-  - ✅ **T79/T80/T81 validées** : build release signé et non-debuggable confirmé par un run CI réel ([31897372162](https://github.com/Nohzoh/audio-guide/actions/runs/31897372162))
-  - 🐛 **2 bugs trouvés en cours de route, invisibles sans exécution réelle** :
-    - R8 (minification, activée par défaut en release) cassait le build sur des classes manquantes tirées par les deps MediaPipe/genai mortes — désactivée explicitement en attendant leur suppression (T82)
-    - Le check anti-debuggable ajouté ne vérifiait en fait rien : `aapt` absent du `PATH` du runner CI, `grep` matchait toujours sur une entrée vide → toujours "✅ non debuggable" quel que soit le résultat réel. Corrigé en localisant le binaire sous `$ANDROID_HOME/build-tools`
-  - ⚙️ **Environnement Android installé en local** (Java 17 via `openjdk@17`, SDK/NDK via `android-commandlinetools`, `gnu-sed`) — `flutter doctor` vert, variables persistées dans `~/.zshrc`. Permet désormais de reproduire les builds CI localement sans attendre un run GitHub Actions
-  - 🐛 **Bug trouvé dans `scripts/build_android_local.sh`** : tous les `sed -i` utilisaient la syntaxe GNU, silencieusement cassée sous le `sed` BSD de macOS (`-i` sans argument fait avaler le script comme suffixe de backup, puis tente d'interpréter le chemin du fichier cible comme un script sed). Corrigé en forçant l'usage de `gsed`
-  - ⚠️ **Incident mineur** : un `rm -rf android` pour forcer un bootstrap propre a supprimé des fichiers trackés par git (plugins Kotlin natifs) — restauré immédiatement via `git checkout`, rien perdu
-  - ✅ **T83 ajoutée** : pistes pour accélérer le build CI (~6-8 min/run), identifiées en observant les runs
+- [x] **T13** 🌱 ⭐⭐ - Allow **re-requesting an old failed analysis** from history
+  - **Verified**: 2026-08-16 (already done, noticed during a task review)
+  - **Finding**: already covered by T78 — `history_screen.dart`: `_HistoryCard.onTap` retries the analysis (`_retryAnalysis`) when the entry is `pending` or `failed`. No code written for this task, just a closure
 
-- **2026-08-15 (reprise après pause, T06 — 2e tranche)**
-  - ✅ **T10 confirmée terminée** : le code était fait mais jamais committé (interruption faute de crédits) ; committé tel quel après vérification (branchement complet, tests verts)
-  - ✅ **T06 terminée** : `audio_guide_service.dart` découpé en `GuidePreferencesStore`, `GuideProgressEstimator`, `LocationContextResolver`, `TtsOrchestrator` + `utils/error_sanitizer.dart` partagé (524 → 445 lignes)
-  - ✅ **Validation finale** : `flutter analyze` → 0 erreur ; `flutter test` → 40 tests passés (30 existants + 4 `guide_preferences_store_test.dart` + 6 `guide_progress_estimator_test.dart`)
-  - ⚠️ **À noter** : signature GPG des commits cassée sur cette machine (gpg absent, clé de signature introuvable) → gpg installé (`brew install gnupg`), nouvelle clé générée et ajoutée à GitHub, config locale du repo corrigée (`user.name`/`user.email` étaient restés sur les valeurs placeholder du template)
+- [x] **T69** 🌱 ⭐⭐ - **Document the architecture** and data flows
+  - **Verified**: 2026-08-16 (PR #12)
+  - **What was done**: `ARCHITECTURE.md` — main pipeline diagram (photo → location → AI → TTS → audio, including the deferred capture T78 and script-only T16 branches), location resolution diagram (EXIF/GPS → reverse geocoding → POI → Wikipedia), persistence table, native channels table, screens → services diagram. Written after T74/T76/T78/T16 to reflect the actual pipeline, not its shape before those overhauls. `README.md` now links to this file instead of duplicating it
 
-- **2026-08-12 (T06 — 1re tranche)**
-  - ✅ **T06 (partiel)** : code mort supprimé (`app_settings.dart`, `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart`), getter `aiModelAttempts` retiré, User-Agent centralisé dans `network_config.dart`
-  - ✅ **Validation finale** : `flutter test` → 30 tests passés, 2026-08-12
-  - ⚠️ **Reste T06** : modularisation du pipeline IA/GPS/TTS + extraction de la persistence prefs hors de `audio_guide_service.dart`
+- [x] **T76** 📈 ⭐⭐⭐⭐ - **Chunk the script** to start audio playback faster
+  - **Verified**: 2026-08-16 (PR #11, commit `4c8dd93`)
+  - **Context**: ~30s (sometimes more) of waiting between the text appearing and audio playback starting — `GeminiTtsService.speak()` synthesized the whole script in a single blocking HTTP call
+  - **What was done**:
+    - `lib/utils/text_chunker.dart` (new): splits at sentence boundaries, short first chunk (fast start), larger following chunks (fewer network round-trips)
+    - `GeminiTtsService`: synthesis and playback separated (`synthesizeToFile`/`playFile`), existing `speak()` unchanged; `concatenateWavFiles` (new) so the chunked result still gets cached like a regular synthesis
+    - `TtsOrchestrator.speakChunked()`: synthesizes chunk N+1 while chunk N plays; on failure, falls back to Piper for the whole script (1st chunk failure) or just the remaining text (later failure) — no repeat and no voice change mid-narration. `onChunkStart(index, total)` drives real chunk N/M progress instead of the indeterminate spinner
+    - `CancelToken.onCancel` (new, a `Future` completed by `cancel()`) so the playback loop can race against cancellation instead of polling `isCancelled`
+  - **Real bugs found while building this**:
+    - `AudioPlayerPlugin.kt`: `stop()` never resolved an in-flight `playWav` call — would have hung cancellation indefinitely mid-chunk; only the new chunked path actually awaits `playWav`. Fixed (tracks the pending `Result`, also resolved by `stop`)
+    - A synthesis error could surface as an unhandled Zone error despite a `try/catch` further down — Dart flags a rejected `Future` as unhandled if no listener is attached at the moment of rejection. Fixed by attaching `.then(onError:)` immediately when the `Future` is created
+  - **Actually verified**: local Android build (the native Kotlin file is modified)
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 78/78 (13 new: `text_chunker_test.dart`, `tts_chunking_test.dart`)
+
+- [x] **T78** 🌱 ⭐⭐⭐⭐ - **Deferred capture**: photo + GPS now, analysis (cloud) later
+  - **Verified**: 2026-08-16 (PR #9, commit `33c0673`)
+  - **Context**: user request — save mobile data without falling back to local models (lower quality): capture photo + position right away, run the cloud analysis later (e.g. once on wifi)
+  - **What was done**:
+    - `AnalysisStatus.captured` (new): photo + raw GPS saved, analysis not started — no DB migration needed (`status` was already TEXT, GPS columns already existed)
+    - `LocationService.getCurrentRawCoordinates()`: GPS fix without reverse geocoding — truly offline capture (the GPS fix itself doesn't need network; `getCurrentLocation()` previously always coupled the fix to a Nominatim call)
+    - `LocationContextResolver` split into coordinate resolution (`resolve()` from a photo, or `resolveFromCoordinates()` from already-known coordinates) + shared enrichment (`_enrich`: reverse geocoding + POI + Wikipedia) — enrichment now runs when "run analysis" is triggered, using the coordinates captured at that time, not the device's current position
+    - `home_screen.dart`: "Capture without analyzing" option; `history_screen.dart`: captured entries now show a visual status and trigger the analysis on tap using the stored coordinates (this screen previously handled no pending/failed/captured tap at all — only the `home_screen.dart` grid did; both are now consistent)
+    - `lib/utils/analysis_runner.dart` (new): the "analyze + persist to history" sequence extracted and shared between the two screens
+  - **Bonus**: `LocationService` had no HTTP client injection (unlike every other network service in the project) — added, needed to verify this change with a real test instead of just inspection
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 65/65 (3 new: `deferred_capture_test.dart`)
+  - **T20 removed (2026-08-16)**: "Improve the offline experience" (resume/cache + available/unavailable feature badge) had become obsolete — covered by the above (offline deferred capture, per-entry visual status)
+
+- [x] **T16** 🌱 ⭐⭐⭐ - Add a **no-TTS mode**, with **on-demand audio generation** afterwards
+  - **Verified**: 2026-08-15 (PR #7, commit `896bb2b`)
+  - **Context**: user request — a setting to disable automatic audio generation after analysis, with the option to request audio synthesis later from a "script only" history entry
+  - **What was done**:
+    - `SettingsService.autoGenerateAudio` (default `true`), toggle in settings modeled on `showKofiButton`
+    - `AudioGuideService.analyzeAndPlay(imageFile, generateAudio: false)` stops after the AI analysis, new `GuideState.scriptReady` state instead of `speaking` — no DB migration needed, `HistoryEntry.audioPath` was already nullable
+    - `AudioGuideService.generateAudioForScript()` (new): re-runs only the TTS step (`TtsOrchestrator`, so cloud → Piper fallback still applies) on an already-known script, without redoing GPS/Wikipedia/AI
+    - `history_screen.dart`: "Script only" indicator on entries with no audio, "Generate audio" button that now persists the result via `HistoryService.saveAudioPath` (the old behavior — on-the-fly generation with no save and no fallback — was replaced)
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 62/62 (7 new: `script_only_mode_test.dart`)
+
+- [x] **T74** 📈 ⭐⭐⭐ - Improve **place and history detection**
+  - **Verified**: 2026-08-15 (PR #5, commit `3592327`)
+  - **Context**: real-world test (Matène bowling alley, 2026-08-12) — the app never mentioned that *Les Tontons flingueurs* was filmed there: the place had no geolocated Wikipedia article within the 200 m radius, and the business name (POI) was never fetched
+  - **What was done**:
+    - `PoiService` (new): Overpass API search for nearby tagged POIs (leisure/tourism/historic/amenity), picks the closest by Haversine distance
+    - `WikipediaService.searchByName` (new): full-text search by name + city, merged with the existing geosearch (`WikipediaService.merge`), fr → en fallback if French finds nothing
+    - `gemini_api_service.dart` prompt: explicitly nudges the model to use the identified place/address to pin down the real location and look for notable facts (filmings, events, notable people) instead of only describing what's visible
+    - **Bug fixed along the way**: `RemoteConfigService`'s `wikipedia_radius_meters`/`max_results`/`extract_chars` were fetched but never actually passed to `WikipediaService.searchNearby` (the call used its own defaults) — wired up; default radius raised from 200 m to 500 m (raising it via `config.json` previously had no effect, since the value was never read)
+  - **Note**: `location_service.dart`/`audio_guide_service.dart` untouched — the original target predated the T06 refactor; a dedicated `PoiService` fits this architecture better, and no new persisted/displayed field was needed to fix the actual bug (the AI never mentioned the place)
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 55/55 (11 new: `poi_service_test.dart`, `wikipedia_service_test.dart`)
+
+- [x] **T79** 🔥 ⭐⭐ - CI ships a **debug APK**, not release
+  - **Verified**: 2026-08-15 (commits `4011b5e`, `9d9ff11`, `88c196d` — green CI run [31897372162](https://github.com/Nohzoh/audio-guide/actions/runs/31897372162))
+  - **What was done**: `flutter build apk --release` (instead of `--debug`); CI check that the final APK isn't `debuggable` (via `aapt dump badging`)
+  - **Detours along the way**:
+    - R8/minification (enabled by default in release) broke the build on missing classes (`javax.lang.model.*`) coming from a shaded dependency pulled in by dead MediaPipe/genai deps (see T82) — minification explicitly disabled in `scripts/patch_signing.py` pending their removal
+    - The added anti-debuggable check actually checked nothing: `aapt` isn't on the CI runner's `PATH`, so the `grep` always matched an empty result and reported "not debuggable" regardless of the truth — fixed by locating the binary under `$ANDROID_HOME/build-tools`
+  - **Actually verified**: the final CI run shows a working `aapt dump badging` (package/version/sdkVersion displayed) and confirms the absence of the `application-debuggable` flag
+
+- [x] **T80** ⚡ ⭐⭐ - `allowBackup` forced to `true` in CI, with a likely-broken `backupAgent` class
+  - **Verified**: 2026-08-15 (commit `4011b5e`)
+  - **What was done**: the 4 chained `sed` commands (with a buggy `backupAgent` and a silent `|| true` fallback) replaced with a single explicit `android:allowBackup="false"` patch — decision: no automatic backup until the history (GPS, photos) has dedicated exclusion rules. Replicated in `scripts/build_android_local.sh` for CI/local consistency
+
+- [x] **T81** ⚡ ⭐⭐⭐ - `RemoteConfigService` could redirect the API key to an arbitrary URL, unvalidated
+  - **Verified**: 2026-08-15 (commit `4011b5e`)
+  - **What was done**: `RemoteConfigService.isAllowedApiUrl()` — an allowlist (`generativelanguage.googleapis.com`) checked before using a `gemini_api_url` received from the remote config, otherwise falls back to the default value. 4 tests added (`remote_config_service_test.dart`, this service's first test)
+
+- [x] **T82** 📈 ⭐⭐ - Follow-up cleanup after T06 (remaining dead code)
+  - **Verified**: 2026-08-15 (PR #3, commit `0b14c3b`)
+  - **What was done**: `MediaPipePlugin.kt` and its registration in `MainActivity.kt` removed, `tasks-genai` Gradle dependency removed (`genai-prompt`, used by `GeminiNanoPlugin.kt`, kept); unused `google_generative_ai` Dart dependency removed from `pubspec.yaml`; dead conditional in `gemini_api_service.dart` removed rather than implemented (the regex — any line starting lowercase and ending with a period — was too broad and risked cutting legitimate French narration, with no test to catch a regression)
+  - **Bonus found while validating locally**: the `allowBackup` patch (T80) wasn't idempotent — re-running it on an already-patched manifest (without a fresh bootstrap) duplicated the attribute and broke the manifest merge. Fixed in both scripts (CI + local) with the same guard pattern as the permissions/FileProvider blocks
+  - **Actually verified**: a truly cold local Android bootstrap (`git clean -X` on `android/` — without touching tracked files), successful debug build with no `MediaPipePlugin`. `flutter analyze` → 0 issues, `flutter test` → 44/44
+
+- [x] **T02** - Improve **network error handling** and local fallback
+- [x] **T03** - Prevent **concurrent analyses** and properly handle retries/cancellations
+- [x] **T04** - Check and fix the **geolocation logic** on a new analysis after a failure
+- [x] **T05** - Show a **clear user message** when voice enhancement fails (e.g. HTTP 429)
+  - **Verified**: 2026-08-02
+- [x] **T31** - Introduce explicit **business error types**
+- [x] **T32** - Add **basic test coverage** on critical services
+- [x] **T33** - Check the project's **license** and add/clarify the license file
+- [x] **T39** 🔥 ⭐⭐ - Fix `flutter analyze` blocking errors
+  - **Verified**: 2026-08-02 (via T39b)
+- [x] **T40** 🔥 ⭐⭐ - Fix onboarding to talk about **Gemini API** instead of Anthropic
+  - **Verified**: Included in T60 (commit `0f13e76`)
+- [x] **T39b** 🔥 ⭐⭐ - Fix **all `flutter analyze` errors**
+  - **Verified**: Commit `c37a3f1`
+- [x] **T60** 🔥 ⭐ - Remove all **Anthropic/OpenAI** code and references
+  - **Verified**: Commit `0f13e76`
+- [x] **T61** ⚡ ⭐⭐⭐ - Align **cloud providers** with the actual implementation
+  - **Verified**: Included in T60 (commit `0f13e76`)
+- [x] **T62** ⚡ ⭐⭐⭐⭐ - **Finish the local models** or remove unused screens
+  - **Verified**: Commit `c37a3f1`
+- [x] **T38** 🌱 ⭐ - Add a **Ko-fi button** to accept voluntary support
+  - **Verified**: Commit `83a790e` (reusable widget, integrated on every page, toggle in settings)
+- [x] **T42** 🔥 ⭐⭐⭐ - Add a **full Android build** check and clarify the bootstrap's role in GitHub Actions
+  - **Verified**: Commit `82d877a`
+- [x] **T01** 🔥 ⭐⭐⭐ - Fix the **phone freeze** when launching Piper + add a **cancel button**
+  - **Related to**: T43 (interruptible cancellation)
+  - **Verified**: Commit `37f4ccd` (cancel button + cancelling state + timeout)
+  - **Note**: Cancel button works during synthesis. Residual freeze needs T43.
+- [x] **T43** ⚡ ⭐⭐⭐ - Make cancellations **actually interruptible** (HTTP calls, long pipeline steps)
+  - **Related to**: T01 (Piper freeze)
+  - **Verified**: Commit `4a9b211` (CancelToken system, checks before each step, wired into TTS services)
+  - **Note**: Cancellation based on checks before each step. Native HTTP not supported (needs the dio package).
+- [x] **T63** ⚡ ⭐ - **Unify the project name** as AudioLens
+  - **Verified**: Commit `6afd7b9` (pubspec, README, AGENTS, workflow) + full Android package renaming (Kotlin files, channels, namespace)
+  - **applicationId changed to `io.nohzoh.audiolens` (2026-08-16)**: `com.audiolens.audiolens` implied a non-existent commercial entity/organization; final prefix choice (`io.`, personal rather than tied to a hosting platform like `io.github.*`) discussed with the user before the Play Store publication (T84), the last moment this change is still free — `applicationId` becomes immutable after the first publication
+- [x] **T64** ⚡ ⭐⭐ - Clean up **untracked files** and .gitignore
+  - **Verified**: Commit `2e3d404` (untracked files cleanup)
+- [x] **T65** ⚡ ⭐⭐ - Clean up all **unused imports** and dead variables
+  - **Verified**: Commit `e176b62` (7 files cleaned up, 0 warnings)
+- [x] **T41** ⚡ ⭐ - Sync the **README** with the current product
+  - **Content to update**: Gemini Nano/API, Gemini/Piper TTS, Android status, architecture
+  - **Verified**: 2026-08-08 (README rewritten: EXIF/GPS → Wikipedia → AI → TTS pipeline, AI providers, TTS, platform, config)
+- [x] **T66** ⚡ ⭐ - Replace all **.withOpacity()** with **.withValues()**
+  - Files affected: `history_screen.dart`, `home_screen.dart`, `player_screen.dart`, `onboarding_screen.dart`, `settings_screen.dart`, widgets/*
+  - **Verified**: 2026-08-08 (20 occurrences replaced across 7 files)
+- [x] **T71** ⚡ ⭐ - Clean up **asset configuration** in pubspec.yaml
+  - Remove duplicates (`assets/tts/` appeared twice)
+  - Check that all assets actually exist
+  - **Verified**: 2026-08-08 (duplicate removed, existence checked)
+  - **Note**: `assets/images/google.png` referenced in `app_settings.dart` but missing (dead code, cleaned up in T06)
+- [x] **T47** ⚡ ⭐⭐ - Add an **analysis detail sheet**
+  - **Content**: Model used, fallback, GPS, Wikipedia, duration, source
+  - **Depends on**: T46 (fallback tests, still to do)
+  - **Verified**: 2026-08-08 (AI/TTS fallback indicator added to the "About" screen, persisted in `HistoryEntry` + DB migration v6, serialization tests covered)
+- [x] **T46** ⚡ ⭐⭐⭐ - Add **AI/TTS/GPS fallback tests**
+  - **Cases to cover**: Primary Gemini model → fallback, Gemini TTS → Piper, GPS denied
+  - **Verified**: 2026-08-08 (15 new tests: Gemini model fallback via `MockClient`, TTS→Piper / Cloud→Nano / GPS-denied orchestration, EXIF GPS parsing)
+  - **Note**: HTTP injection (`GeminiApiService(client:)`) and service injection (`AudioGuideService(ttsService:, geminiTtsService:, geminiApiService:, nanoService:)`) added, backward compatible, no new dependency
+
+- [x] **T72** 📈 ⭐ - Add an **"AI-generated content" disclaimer** (EU AI Act transparency)
+  - **Verified**: 2026-08-12 (`_AiGeneratedBanner` banner at the top of the "About this analysis" screen in `about_analysis_screen.dart`)
+  - **Note**: Copy: "AI-generated content: this analysis's script and voice were automatically created by an artificial intelligence model."
+
+- [x] **T73** 📈 ⭐ - Replace the **Ko-fi icon** (heart) with the **standard coffee cup**
+  - **Verified**: 2026-08-12 (`Icons.favorite_border` → `Icons.local_cafe_outlined` in `lib/widgets/kofi_button.dart`)
+
+- [x] **T10** 📈 ⭐⭐ - **Secure API key storage** with flutter_secure_storage
+  - **Verified**: 2026-08-12 (new `lib/services/secure_key_storage.dart`: encrypted Android Keystore/iOS Keychain storage, one-shot migration from `SharedPreferences`, clean fallback; `settings_service.dart` + `audio_guide_service.dart` wired up; 4 migration tests added)
+  - **Goal reached**: No plaintext key left in `SharedPreferences` (removed after migration)
+
+- [x] **T06** 📈 ⭐⭐⭐⭐ - **Refactor the architecture** and clean up legacy code
+  - **Merged from**: clarify the pipeline + clean up duplication (ex-T08)
+  - **Verified**: 2026-08-15
+  - **1st batch (2026-08-12)**: dead code removed (`app_settings.dart`, `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart`), `aiModelAttempts` getter removed, User-Agent centralized in `network_config.dart`
+  - **2nd batch (2026-08-15)**: `audio_guide_service.dart` (524 → 445 lines) split into 4 dedicated classes — `GuidePreferencesStore` (prefs/timing persistence), `GuideProgressEstimator` (progress simulation/estimation), `LocationContextResolver` (EXIF/real-time GPS + Wikipedia enrichment), `TtsOrchestrator` (Gemini TTS → Piper fallback) — plus a shared `utils/error_sanitizer.dart`
+  - **Note**: the AI fallback (cloud → nano) stays in `audio_guide_service.dart` since it mutates the service's own `activeProvider` state — less cleanly isolable than the other steps
+  - **Goal reached**: modular pipeline, separated responsibilities; `AudioGuideService` now only drives state transitions and notifies the UI
+
+---
+
+## 📊 Test feedback
+
+- **2026-08-15 (T79/T80/T81 — CI security audit)**
+  - ✅ **T79/T80/T81 verified**: signed, non-debuggable release build confirmed by a real CI run ([31897372162](https://github.com/Nohzoh/audio-guide/actions/runs/31897372162))
+  - 🐛 **2 bugs found along the way, invisible without a real run**:
+    - R8 (minification, enabled by default in release) broke the build on missing classes pulled in by dead MediaPipe/genai deps — explicitly disabled pending their removal (T82)
+    - The added anti-debuggable check actually checked nothing: `aapt` was missing from the CI runner's `PATH`, `grep` always matched an empty result → always "✅ not debuggable" regardless of the actual result. Fixed by locating the binary under `$ANDROID_HOME/build-tools`
+  - ⚙️ **Android environment installed locally** (Java 17 via `openjdk@17`, SDK/NDK via `android-commandlinetools`, `gnu-sed`) — `flutter doctor` green, variables persisted in `~/.zshrc`. Now allows reproducing CI builds locally without waiting for a GitHub Actions run
+  - 🐛 **Bug found in `scripts/build_android_local.sh`**: all `sed -i` calls used GNU syntax, silently broken under macOS's BSD `sed` (`-i` with no argument swallows the next token as a backup suffix, then tries to interpret the target file path as a sed script). Fixed by forcing the use of `gsed`
+  - ⚠️ **Minor incident**: an `rm -rf android` meant to force a clean bootstrap deleted git-tracked files (native Kotlin plugins) — restored immediately via `git checkout`, nothing lost
+  - ✅ **T83 added**: leads to speed up the CI build (~6-8 min/run), identified while watching the runs
+
+- **2026-08-15 (resumed after a break, T06 — 2nd batch)**
+  - ✅ **T10 confirmed done**: the code existed but was never committed (interrupted due to running out of credits); committed as-is after verification (fully wired up, tests green)
+  - ✅ **T06 done**: `audio_guide_service.dart` split into `GuidePreferencesStore`, `GuideProgressEstimator`, `LocationContextResolver`, `TtsOrchestrator` + shared `utils/error_sanitizer.dart` (524 → 445 lines)
+  - ✅ **Final validation**: `flutter analyze` → 0 errors; `flutter test` → 40 tests passed (30 existing + 4 `guide_preferences_store_test.dart` + 6 `guide_progress_estimator_test.dart`)
+  - ⚠️ **Worth noting**: commit GPG signing broken on this machine (gpg missing, no signing key found) → gpg installed (`brew install gnupg`), new key generated and added to GitHub, local repo config fixed (`user.name`/`user.email` had been left at the template's placeholder values)
+
+- **2026-08-12 (T06 — 1st batch)**
+  - ✅ **T06 (partial)**: dead code removed (`app_settings.dart`, `cloud_provider_picker.dart`, `mode_card.dart`, `mediapipe_service.dart`, `image_utils.dart`), `aiModelAttempts` getter removed, User-Agent centralized in `network_config.dart`
+  - ✅ **Final validation**: `flutter test` → 30 tests passed, 2026-08-12
+  - ⚠️ **T06 remaining**: AI/GPS/TTS pipeline modularization + extracting prefs persistence out of `audio_guide_service.dart`
 
 - **2026-08-12 (T72 / T73 / T10)**
-  - ✅ **T72 validée** : Disclaimer "contenu généré par IA" ajouté à la fiche d'analyse (AI Act)
-  - ✅ **T73 validée** : Icône Ko-fi remplacée par la tasse de café (`Icons.local_cafe_outlined`)
-  - ✅ **T10 validée** : Clé API Gemini stockée via `flutter_secure_storage` (Keystore/Keychain), migration one-shot depuis SharedPreferences, repli dégradé si stockage sécurisé indisponible
-  - ✅ **Validation finale** : `flutter test` → 30 tests passés (26 existants + 4 nouveaux `secure_key_storage_test.dart`), 2026-08-12
-  - ⚠️ **À noter** : T74 (détection des lieux) créée suite au test réel du bowling de la Matène ; T75 (style de script) créée suite à une suggestion extérieure
+  - ✅ **T72 verified**: "AI-generated content" disclaimer added to the analysis sheet (AI Act)
+  - ✅ **T73 verified**: Ko-fi icon replaced with the coffee cup (`Icons.local_cafe_outlined`)
+  - ✅ **T10 verified**: Gemini API key stored via `flutter_secure_storage` (Keystore/Keychain), one-shot migration from SharedPreferences, degraded fallback if secure storage is unavailable
+  - ✅ **Final validation**: `flutter test` → 30 tests passed (26 existing + 4 new `secure_key_storage_test.dart`), 2026-08-12
+  - ⚠️ **Worth noting**: T74 (place detection) created following a real-world test at the Matène bowling alley; T75 (script style) created following an outside suggestion
 
 - **2026-08-08 (T41 / T66 / T71 / T47 / T46)**
-  - ✅ **T41 validée** : README synchronisé avec le produit actuel (pipeline EXIF/GPS → Wikipedia → IA → TTS)
-  - ✅ **T66 validée** : `.withOpacity()` → `.withValues()` (20 occurrences dans 7 fichiers)
-  - ✅ **T71 validée** : Doublon `assets/tts/` supprimé, tous les assets déclarés existent
-  - ✅ **T47 validée** : Indication de fallback IA/TTS dans la fiche d'analyse (persistée en DB v6)
-  - ✅ **T46 validée** : Tests de fallback IA/TTS/GPS (15 tests, voir section Terminé)
-  - ✅ **Validation finale** : `flutter analyze` → 0 erreur ; `flutter test` → 26 tests passés (2026-08-08)
-  - 🐛 **Bug corrigé** : imports de tests restés sur `package:audio_guide/` après le renommage en `audiolens` (T63) → `flutter test` échouait à la compilation (6 fichiers corrigés)
-  - ⚠️ **À noter** : `assets/images/google.png` référencé mais absent (code mort, nettoyé dans T06)
-  - ⚠️ **À noter** : `test/widget_test.dart` (template cassé, référence `MyApp` inexistant) supprimé
+  - ✅ **T41 verified**: README synced with the current product (EXIF/GPS → Wikipedia → AI → TTS pipeline)
+  - ✅ **T66 verified**: `.withOpacity()` → `.withValues()` (20 occurrences across 7 files)
+  - ✅ **T71 verified**: `assets/tts/` duplicate removed, all declared assets exist
+  - ✅ **T47 verified**: AI/TTS fallback indicator in the analysis sheet (persisted in DB v6)
+  - ✅ **T46 verified**: AI/TTS/GPS fallback tests (15 tests, see the Done section)
+  - ✅ **Final validation**: `flutter analyze` → 0 errors; `flutter test` → 26 tests passed (2026-08-08)
+  - 🐛 **Bug fixed**: test imports still referenced `package:audio_guide/` after the rename to `audiolens` (T63) → `flutter test` failed to compile (6 files fixed)
+  - ⚠️ **Worth noting**: `assets/images/google.png` referenced but missing (dead code, cleaned up in T06)
+  - ⚠️ **Worth noting**: `test/widget_test.dart` (broken template, referenced a nonexistent `MyApp`) removed
 
 - **2026-08-02**
-  - ✅ **T05 validée** : Message d’erreur clair lors de l’amélioration de voix.
-  - ✅ **Date de build validée** : Affichage dans les paramètres OK.
-  - ⚠️ **T01 à compléter** : Aucun bouton d’annulation visible pendant la synthèse Piper (traitement trop rapide pour reproduire le freeze). **À retester** avec téléphone en charge + apps actives en arrière-plan.
+  - ✅ **T05 verified**: Clear error message when voice enhancement fails.
+  - ✅ **Build date verified**: Shown correctly in settings.
+  - ⚠️ **T01 to finish**: No cancel button visible during Piper synthesis (processing too fast to reproduce the freeze). **Needs retesting** with the phone charging + active background apps.
 
 - **2026-08-02 (T60/T39b/T61/T62)**
-  - ✅ **T60 validée** : Tout code Anthropic/OpenAI supprimé (commit `0f13e76`)
-  - ✅ **T61 validée** : Fournisseurs cloud alignés avec implémentation (Gemini uniquement)
-  - ✅ **T62 validée** : Écrans de téléchargement de modèles supprimés (commit `c37a3f1`)
-  - ✅ **T39b validée** : `flutter analyze` → **0 erreurs** (commit `c37a3f1`)
+  - ✅ **T60 verified**: All Anthropic/OpenAI code removed (commit `0f13e76`)
+  - ✅ **T61 verified**: Cloud providers aligned with the implementation (Gemini only)
+  - ✅ **T62 verified**: Model download screens removed (commit `c37a3f1`)
+  - ✅ **T39b verified**: `flutter analyze` → **0 errors** (commit `c37a3f1`)
 
 - **2026-08-02 (T42)**
-  - ✅ **T42 validée** : Bootstrap documenté + vérification APK ajoutée (commit `82d877a`)
+  - ✅ **T42 verified**: Bootstrap documented + APK check added (commit `82d877a`)
 
 - **2026-08-02 (T63)**
-  - ✅ **T63 validée** : Nom du projet aligné sur AudioLens (commit `6afd7b9`) + renaming complet du package Android (Kotlin files, MethodChannels, namespace, applicationId)
+  - ✅ **T63 verified**: Project name aligned on AudioLens (commit `6afd7b9`) + full Android package renaming (Kotlin files, MethodChannels, namespace, applicationId)
 
 - **2026-08-02 (T65)**
-  - ✅ **T65 validée** : Imports et variables inutilisés nettoyés (commit `e176b62`)
+  - ✅ **T65 verified**: Unused imports and variables cleaned up (commit `e176b62`)
 
 - **2026-08-02 (T64)**
-  - ✅ **T64 validée** : Nettoyage des fichiers untracked + .gitignore (commit `2e3d404`)
+  - ✅ **T64 verified**: Untracked files + .gitignore cleanup (commit `2e3d404`)

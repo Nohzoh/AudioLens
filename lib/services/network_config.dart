@@ -1,5 +1,5 @@
-/// Constantes réseau partagées par les services (T06 — déduplication).
+/// Network constants shared across services (T06 — deduplication).
 class NetworkConfig {
-  /// User-Agent envoyé sur les API publiques (Wikipedia, géocodage…).
+  /// User-Agent sent on public APIs (Wikipedia, geocoding…).
   static const String userAgent = 'AudioLens/1.0';
 }

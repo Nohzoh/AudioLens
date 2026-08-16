@@ -1,48 +1,48 @@
 # 🎧 AudioLens
 
-Une application mobile d'audio guide alimentée par l'IA. Prenez une photo d'un lieu et obtenez instantanément une explication audio.
+An AI-powered audio guide mobile app. Take a photo of a place and instantly get an audio explanation.
 
-## Fonctionnalités
+## Features
 
-- 📸 Capture photo pour identifier les lieux
-- 🗺️ Géolocalisation intelligente : coordonnées **EXIF** de la photo, puis **GPS temps réel** en secours
-- 📖 Enrichissement **Wikipedia** pour contextualiser le lieu
-- 🤖 Analyse par IA : **Gemini API** (cloud) ou **Gemini Nano** (local, sur l'appareil)
-- 🔊 Génération audio : **Gemini TTS** (cloud) avec **Piper** en secours (TTS local hors-ligne)
-- 🧭 Détection de position : l'appareil a besoin d'un accès aux coordonnées si la photo ne contient pas d'EXIF
-- 📜 **Historique** des analyses (SQLite) avec re-lecture et relance
-- 🧾 **Fiche technique d'analyse** (modèle, fallback, GPS, durée)
-- 📋 **Écran de logs** intégré pour le débogage sur le terrain
-- 🆓 Bouton **Ko-fi** pour soutenir le projet
+- 📸 Photo capture to identify places
+- 🗺️ Smart geolocation: photo **EXIF** coordinates, then **real-time GPS** as a fallback
+- 📖 **Wikipedia** enrichment to add context to the place
+- 🤖 AI analysis: **Gemini API** (cloud) or **Gemini Nano** (local, on-device)
+- 🔊 Audio generation: **Gemini TTS** (cloud) with **Piper** as a fallback (offline local TTS)
+- 🧭 Location detection: the device needs coordinate access if the photo has no EXIF
+- 📜 Analysis **history** (SQLite) with replay and retry
+- 🧾 **Analysis detail sheet** (model, fallback, GPS, duration)
+- 📋 Built-in **logs screen** for field debugging
+- 🆓 **Ko-fi** button to support the project
 
 ## Architecture
 
 ```
-Photo → EXIF GPS → GPS temps réel → Wikipedia → IA (vision) → LLM (script) → TTS → Audio
+Photo → EXIF GPS → Real-time GPS → Wikipedia → AI (vision) → LLM (script) → TTS → Audio
 ```
 
-Détails et diagrammes du pipeline dans [`ARCHITECTURE.md`](ARCHITECTURE.md).
+Pipeline details and diagrams in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-### Modes disponibles
-- **☁️ Cloud** : Utilise votre compte **Google (Gemini API)** — meilleure qualité (~400 mots)
-- **📱 Local** : Modèle embarqué **Gemini Nano** — fonctionne sans internet (~180 mots)
-- **⚡ Hybride** : Cloud si disponible, **fallback local** sinon
+### Available modes
+- **☁️ Cloud**: Uses your **Google account (Gemini API)** — best quality (~400 words)
+- **📱 Local**: On-device **Gemini Nano** model — works without internet (~180 words)
+- **⚡ Hybrid**: Cloud when available, **local fallback** otherwise
 
-### Fournisseurs IA
-| Fournisseur | Localisation | Modèle |
+### AI providers
+| Provider | Location | Model |
 |---|---|---|
-| **Gemini API** | Cloud | Configurable (`config.json`, défaut `gemini-3.6-flash`) |
-| **Gemini Nano** | Sur l'appareil | Modèle local Android |
+| **Gemini API** | Cloud | Configurable (`config.json`, default `gemini-3.6-flash`) |
+| **Gemini Nano** | On-device | Local Android model |
 
 ### Text-to-Speech
-| Moteur | Localisation | Rôle |
+| Engine | Location | Role |
 |---|---|---|
-| **Gemini TTS** | Cloud | Primaire quand une clé API est configurée |
-| **Piper** (sherpa-onnx) | Local | Secours automatique + mode hors-ligne |
+| **Gemini TTS** | Cloud | Primary when an API key is configured |
+| **Piper** (sherpa-onnx) | Local | Automatic fallback + offline mode |
 
-## Plateformes
+## Platforms
 
-Application **Android** uniquement. Buildé automatiquement via **GitHub Actions** à chaque push sur `main`.
+**Android** only. Automatically built via **GitHub Actions** on every push to `main`.
 
 ## Build
 
@@ -53,4 +53,4 @@ flutter build apk --debug
 
 ## Configuration
 
-La configuration (modèles, fallbacks, TTS, GPS) est centralisée dans [`config.json`](config.json) et chargée à distance par `RemoteConfigService` avec des valeurs par défaut intégrées en secours.
+Configuration (models, fallbacks, TTS, GPS) is centralized in [`config.json`](config.json) and fetched remotely by `RemoteConfigService`, with built-in defaults as a fallback.
