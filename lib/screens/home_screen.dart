@@ -4,6 +4,7 @@ import '../services/exif_location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
@@ -12,6 +13,7 @@ import '../services/remote_config_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import 'history_screen.dart';
+import 'map_picker_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -71,9 +73,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
+    // A gallery photo could be old, or from anywhere — unlike a fresh
+    // camera capture, falling back to the device's current position when
+    // there's no EXIF GPS would be misleading. Offer picking the real
+    // spot on a map instead (T87); if declined, behavior is unchanged
+    // (LocationContextResolver falls back to real-time GPS as before).
+    ({double lat, double lon, String source})? knownCoordinates;
+    if (source == ImageSource.gallery) {
+      final exifCoords = await ExifLocationService.readGpsFromImage(imageFile);
+      if (exifCoords == null && mounted) {
+        final picked = await Navigator.push<LatLng>(
+          context,
+          MaterialPageRoute(builder: (_) => const MapPickerScreen()),
+        );
+        if (picked != null) {
+          knownCoordinates = (lat: picked.latitude, lon: picked.longitude, source: 'map');
+        }
+      }
+    }
+    if (!mounted) return;
+
     final pendingEntry = await history.addPendingEntry(imagePath: imageFile.path);
     final analysisSource = _lastSource == ImageSource.camera ? 'camera' : 'gallery';
-    await _runAnalysis(imageFile: imageFile, entryId: pendingEntry.id!, source: analysisSource);
+    await _runAnalysis(
+      imageFile: imageFile,
+      entryId: pendingEntry.id!,
+      source: analysisSource,
+      knownCoordinates: knownCoordinates,
+    );
   }
 
   /// Saves the photo + raw GPS only — no reverse geocoding, Wikipedia, AI,

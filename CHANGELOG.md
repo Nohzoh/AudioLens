@@ -11,6 +11,18 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T87** 🌱 ⭐⭐⭐ - Let the user **pick the location on a map** when a gallery photo has no GPS in its EXIF
+  - **Verified**: 2026-08-16 (PR #26)
+  - **Context**: `LocationContextResolver.resolve()` fell back to the device's *real-time* GPS position when a photo had no EXIF GPS — reasonable for a fresh camera capture, misleading for a gallery photo (could be old, from anywhere)
+  - **What was done**:
+    - `flutter_map` + `latlong2` added (OpenStreetMap tiles, no API key — matches the project's existing OSM-based stack: Nominatim, Overpass)
+    - `lib/screens/map_picker_screen.dart` (new): tap-to-drop-pin map, best-effort centers on the device's current position purely as a convenient starting point (never used as the actual answer)
+    - `home_screen.dart`: when picking from the gallery and EXIF has no GPS, pushes the map picker before starting analysis; if the user picks a spot, it flows through as `knownCoordinates` (source `'map'`) — the exact same plumbing T78 built for deferred-capture coordinates (`AudioGuideService.analyzeAndPlay` → `LocationContextResolver.resolveFromCoordinates`), already covered by `deferred_capture_test.dart`. If declined, behavior is unchanged (falls back to real-time GPS as before)
+    - `about_analysis_screen.dart`: added the `'map'` GPS source label (`🗺️ Choisie sur la carte`) — the existing `_gpsSourceLabel` switch already had an "Inconnu" fallback so nothing would have broken, but this is the honest label
+  - **Camera captures with no GPS** (permission denied, no signal): unchanged, still fall back to real-time GPS — out of scope, only the gallery case was misleading
+  - **Verified for real**: local Android build + emulator (Android 17, matching the reporter's device) — pushed a GPS-less test photo into the gallery, picked it through the real app, confirmed the map picker opens, real OSM tiles load, tap drops a pin at the right spot, "Confirmer" returns it and analysis proceeds (up to the expected "no API key" error in this test environment — nothing to verify past that point, `resolveFromCoordinates` is already tested)
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 95/95 (unchanged — the new code is UI-flow wiring with no widget-test harness in this project yet, same gap as T14; verified via the real build instead)
+
 - [x] **T14** 🌱 ⭐⭐ - Add a **playback display mode** showing the plain photo (instead of overlaid text)
   - **Verified**: 2026-08-16 (PR #21)
   - **Design confirmed with the user first**: a per-screen toggle (not persisted, not a global setting) in `player_screen.dart`'s top bar, next to the Ko-fi button

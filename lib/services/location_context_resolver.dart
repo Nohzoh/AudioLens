@@ -21,7 +21,8 @@ class LocationContext {
     this.promptContext,
   });
 
-  /// 'exif' | 'realtime' | 'none'
+  /// 'exif' | 'realtime' | 'map' (T87 — picked on a map, gallery photos
+  /// with no EXIF GPS) | 'none'
   final String source;
   final LocationPermissionStatus status;
   final double? latitude;
