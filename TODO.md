@@ -93,8 +93,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Clarified (2026-08-16)**: "gallery" meant the thumbnail grid on the home screen (`home_screen.dart`), not a dedicated screen — none exists
   - **Option**: Make history the main view, with access to a new analysis and to settings
 
-- [ ] **T14** 🌱 ⭐⭐ - Add a **playback display mode** showing the plain photo (instead of overlaid text)
-
 - [ ] **T15** 🌱 ⭐ - Allow **configuring playback speed**
 
 - [ ] **T17** 🌱 ⭐⭐ - Add a **more detailed or shorter analysis mode**

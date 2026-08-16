@@ -11,6 +11,13 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T14** 🌱 ⭐⭐ - Add a **playback display mode** showing the plain photo (instead of overlaid text)
+  - **Verified**: 2026-08-16 (PR #21)
+  - **Design confirmed with the user first**: a per-screen toggle (not persisted, not a global setting) in `player_screen.dart`'s top bar, next to the Ko-fi button
+  - **What was done**: `_PlayerScreenState._photoMode` (new); when on, hides the state label, title, location row, save/copy action row, fallback banners, and the scrollable script, and switches the background gradient from the heavy bottom-weighted one (needed for text contrast) to a light scrim only at the very top/bottom edges (just enough for the back/toggle/Ko-fi icons and playback controls to stay legible) — leaving the photo shown clean. Playback controls (pause/stop) and the top bar stay visible in both modes. Resets to off automatically when a new analysis starts (mirrors the existing `_readingProgress` reset), so the toggle can't leave a stale "photo mode" showing over unrelated new content. The toggle icon itself only appears once `guide.lastResult != null` (same guard as the text content it replaces)
+  - **Not verified visually**: no Android emulator/device is set up in this environment — verification here is `flutter analyze`/`flutter test` (unaffected, this is a pure widget-state change with no new service logic) and a careful read of the diff, not an actual on-screen check. Worth a quick look on a real device before considering this fully done
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 89/89 (unchanged — no new unit-testable logic; the project has no widget-test harness for `player_screen.dart`'s Provider-dependent tree yet)
+
 - [x] **T09** 📈 ⭐⭐⭐ - Improve **local storage robustness** and migrations
   - **Verified**: 2026-08-16 (PR #20)
   - **Merged from**: storage robustness + SQLite migration tests (ex-T44)

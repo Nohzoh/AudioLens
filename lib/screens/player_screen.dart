@@ -20,6 +20,7 @@ class PlayerScreen extends StatefulWidget {
 class _PlayerScreenState extends State<PlayerScreen> {
   final ScrollController _scrollController = ScrollController();
   double _readingProgress = 0.0; // 0.0 to 1.0
+  bool _photoMode = false; // T14: show the plain photo instead of the overlaid text
 
   @override
   void initState() {
@@ -63,6 +64,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           if (guide.state == GuideState.locating ||
               guide.state == GuideState.analyzing) {
             _readingProgress = 0.0;
+            _photoMode = false;
           }
 
           return Stack(
@@ -75,11 +77,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.95),
-                    ],
-                    stops: const [0.25, 0.75],
+                    colors: _photoMode
+                        ? [
+                            Colors.black.withValues(alpha: 0.35),
+                            Colors.transparent,
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.35),
+                          ]
+                        : [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.95),
+                          ],
+                    stops: _photoMode
+                        ? const [0.0, 0.15, 0.85, 1.0]
+                        : const [0.25, 0.75],
                   ),
                 ),
               ),
@@ -100,6 +111,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             },
                           ),
                           const Spacer(),
+                          if (guide.lastResult != null)
+                            IconButton(
+                              icon: Icon(
+                                _photoMode
+                                    ? Icons.article_outlined
+                                    : Icons.image_outlined,
+                                color: Colors.white70,
+                              ),
+                              tooltip: _photoMode
+                                  ? 'Afficher le texte'
+                                  : 'Mode photo',
+                              onPressed: () =>
+                                  setState(() => _photoMode = !_photoMode),
+                            ),
                           Consumer<SettingsService>(
                             builder: (context, settings, _) => KofiButton(
                               show: settings.showKofiButton,
@@ -147,11 +172,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             ],
 
                             // State label
-                            _StateLabel(state: guide.state),
-                            const SizedBox(height: 8),
+                            if (!_photoMode) ...[
+                              _StateLabel(state: guide.state),
+                              const SizedBox(height: 8),
+                            ],
 
                             // Title
-                            if (guide.lastResult != null) ...[
+                            if (guide.lastResult != null && !_photoMode) ...[
                               Text(
                                 guide.lastResult!.title,
                                 style: theme.textTheme.titleLarge?.copyWith(
