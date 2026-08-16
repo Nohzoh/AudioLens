@@ -24,6 +24,27 @@ class NativeTtsService {
     return result == true || result == 1;
   }
 
+  /// All French voices the device's TTS engine offers, as {name, locale}
+  /// maps (flutter_tts doesn't surface Android's quality/network-required
+  /// metadata, so the app can't auto-pick "the best one" — this is meant
+  /// to be listed for the user to try, since a monotone default voice
+  /// (T89: reported as sounding like an SNCF-style announcement) can
+  /// often be swapped for a much more natural one on the same device).
+  Future<List<Map<String, String>>> frenchVoices() async {
+    final voices = await _tts.getVoices;
+    if (voices is! List) return [];
+    return voices
+        .whereType<Map>()
+        .map((v) => v.map((k, val) => MapEntry(k.toString(), val.toString())))
+        .where((v) => (v['locale'] ?? '').toLowerCase().startsWith('fr'))
+        .toList();
+  }
+
+  Future<void> setVoice(String name, String locale) async {
+    await _ensureInitialized();
+    await _tts.setVoice({'name': name, 'locale': locale});
+  }
+
   Future<void> speak(String text) async {
     await _ensureInitialized();
     await _tts.speak(text);
