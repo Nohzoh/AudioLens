@@ -11,6 +11,7 @@ import 'remote_config_service.dart';
 
 class GeminiTtsService {
   final String apiKey;
+  final http.Client _client;
   Function()? onComplete;
   bool _isPlaying = false;
   String? _lastWavPath;
@@ -18,7 +19,9 @@ class GeminiTtsService {
 
   bool get isPlaying => _isPlaying;
 
-  GeminiTtsService({required this.apiKey});
+  /// [client] allows injecting a mock HTTP client in tests.
+  GeminiTtsService({required this.apiKey, http.Client? client})
+      : _client = client ?? http.Client();
 
   Future<void> speak(String text, {CancelToken? cancelToken}) async {
     // Check cancellation before starting
@@ -52,32 +55,44 @@ class GeminiTtsService {
         '[Voix chaleureuse et passionnée d\'un guide de musée, '
         'ton vivant et expressif, rythme posé] $text';
 
-    final response = await http.post(
-      Uri.parse(
-        '${cfg.geminiApiUrl}/models/${cfg.geminiTtsModel}:generateContent'
-        '?key=$apiKey',
-      ),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'contents': [
-          {
-            'parts': [
-              {'text': styledText}
-            ]
-          }
-        ],
-        'generationConfig': {
-          'responseModalities': ['AUDIO'],
-          'speechConfig': {
-            'voiceConfig': {
-              'prebuiltVoiceConfig': {
-                'voiceName': cfg.geminiTtsVoice,
-              }
+    final uri = Uri.parse(
+      '${cfg.geminiApiUrl}/models/${cfg.geminiTtsModel}:generateContent'
+      '?key=$apiKey',
+    );
+    final body = jsonEncode({
+      'contents': [
+        {
+          'parts': [
+            {'text': styledText}
+          ]
+        }
+      ],
+      'generationConfig': {
+        'responseModalities': ['AUDIO'],
+        'speechConfig': {
+          'voiceConfig': {
+            'prebuiltVoiceConfig': {
+              'voiceName': cfg.geminiTtsVoice,
             }
           }
-        },
-      }),
-    ).timeout(const Duration(seconds: 60));
+        }
+      },
+    });
+
+    var response = await _client
+        .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
+        .timeout(const Duration(seconds: 60));
+
+    // A single chunk hitting a transient rate limit shouldn't force the
+    // rest of the script into a different voice (Piper) — retry once
+    // after a short delay before giving up.
+    if (response.statusCode == 429) {
+      AppLogger.tts('synthesizeToFile got 429, retrying once in 1.5s');
+      await Future.delayed(const Duration(milliseconds: 1500));
+      response = await _client
+          .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
+          .timeout(const Duration(seconds: 60));
+    }
 
     if (response.statusCode != 200) {
       AppLogger.error('Gemini TTS error: ${response.statusCode}');
