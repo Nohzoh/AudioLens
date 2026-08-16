@@ -43,6 +43,8 @@ class GeminiTtsService {
   /// without playing it (T76 — chunked playback synthesizes the next
   /// chunk while the previous one is still playing).
   Future<void> synthesizeToFile(String text, String outputPath) async {
+    final started = DateTime.now();
+    AppLogger.tts('synthesizeToFile start -> $outputPath (${text.length} chars)');
     final cfg = RemoteConfigService.current;
 
     // Add audio guide style instruction to the TTS prompt
@@ -99,7 +101,8 @@ class GeminiTtsService {
 
     await File(outputPath).writeAsBytes(wavBytes);
     _lastWavPath = outputPath;
-    AppLogger.tts('Gemini TTS generated ${pcmBytes.length} bytes -> $outputPath');
+    final elapsed = DateTime.now().difference(started).inMilliseconds;
+    AppLogger.tts('synthesizeToFile done -> $outputPath: ${pcmBytes.length} bytes in ${elapsed}ms');
   }
 
   /// Plays an already-synthesized WAV file, awaiting playback completion
@@ -108,6 +111,8 @@ class GeminiTtsService {
   /// chunk but the last, so [onComplete] fires only once, when the whole
   /// script has actually finished playing.
   Future<void> playFile(String path, {bool notifyComplete = true}) async {
+    final started = DateTime.now();
+    AppLogger.tts('playFile start -> $path');
     _isPlaying = true;
     const channel = MethodChannel('audio_guide/audio_player');
     try {
@@ -115,6 +120,8 @@ class GeminiTtsService {
     } finally {
       _isPlaying = false;
     }
+    final elapsed = DateTime.now().difference(started).inMilliseconds;
+    AppLogger.tts('playFile done -> $path (${elapsed}ms)');
     if (notifyComplete) onComplete?.call();
   }
 
