@@ -11,6 +11,11 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T83** 📈 ⭐⭐ - **Speed up the Android CI build**
+  - **Verified**: 2026-08-16 (already done, noticed during a follow-up question — the fix landed on 2026-08-15 as commit `0e0f8be` but TODO.md/CHANGELOG.md were never updated to reflect it)
+  - **What was done** (commit `0e0f8be`, "T83: cache Gradle/pub/NDK across CI runs, drop unused NDK, restrict ABIs"): `actions/cache` added for Gradle (`~/.gradle/caches`), the pub cache, and the Android NDK; build restricted to `--target-platform android-arm,android-arm64` (dropping armeabi/x86/x86_64, only useful for emulators); the unused NDK 26 install dropped, keeping only NDK 27
+  - **Verified for real**: compared successful `build-android.yml` run durations before/after the commit via `gh run list` — 6.5–8.3 min before (16 runs, 2026-07-25 to 2026-08-15 17:20), consistently 3.7–5.6 min after (18 runs since) — the "not verified" note from the original task no longer applies
+
 - [x] **T13** 🌱 ⭐⭐ - Allow **re-requesting an old failed analysis** from history
   - **Verified**: 2026-08-16 (already done, noticed during a task review)
   - **Finding**: already covered by T78 — `history_screen.dart`: `_HistoryCard.onTap` retries the analysis (`_retryAnalysis`) when the entry is `pending` or `failed`. No code written for this task, just a closure
