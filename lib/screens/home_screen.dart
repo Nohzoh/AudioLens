@@ -8,6 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/location_service.dart';
+import '../services/remote_config_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import 'history_screen.dart';
@@ -55,10 +56,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _lastSource = source;
     final history = context.read<HistoryService>();
     final picker = ImagePicker();
+    final cfg = RemoteConfigService.current;
     final xFile = await picker.pickImage(
       source: source,
-      imageQuality: 85,
-      maxWidth: 1280,
+      imageQuality: cfg.imageQuality,
+      maxWidth: cfg.imageMaxWidth.toDouble(),
     );
     if (xFile == null || !mounted) return;
 

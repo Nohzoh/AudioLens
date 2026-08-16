@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'network_config.dart';
+import 'remote_config_service.dart';
 
 const _channel = MethodChannel('audio_guide/location');
 
@@ -70,10 +71,17 @@ class LocationService {
     );
   }
 
-  /// [client] allows injecting a mock HTTP client in tests.
-  static Future<LocationResult> getCurrentLocation({http.Client? client}) async {
+  /// [client] allows injecting a mock HTTP client in tests. [timeout]
+  /// defaults to [RemoteConfig.locationTimeoutSeconds] and can be
+  /// overridden in tests to avoid waiting on the real default.
+  static Future<LocationResult> getCurrentLocation({
+    http.Client? client,
+    Duration? timeout,
+  }) async {
     try {
-      final result = await _channel.invokeMethod<Map>('requestLocation');
+      final result = await _channel.invokeMethod<Map>('requestLocation').timeout(
+        timeout ?? Duration(seconds: RemoteConfigService.current.locationTimeoutSeconds),
+      );
       final map = Map<String, dynamic>.from(result ?? {});
       final status = map['status'] as String? ?? 'error';
 
@@ -115,10 +123,16 @@ class LocationService {
 
   /// Returns the current raw GPS fix without reverse geocoding — no
   /// network call (T78, for capturing a location entirely offline).
-  /// Null if permission isn't granted or no fix is available.
-  static Future<({double lat, double lon})?> getCurrentRawCoordinates() async {
+  /// Null if permission isn't granted or no fix is available. [timeout]
+  /// defaults to [RemoteConfig.locationTimeoutSeconds] and can be
+  /// overridden in tests to avoid waiting on the real default.
+  static Future<({double lat, double lon})?> getCurrentRawCoordinates({
+    Duration? timeout,
+  }) async {
     try {
-      final result = await _channel.invokeMethod<Map>('requestLocation');
+      final result = await _channel.invokeMethod<Map>('requestLocation').timeout(
+        timeout ?? Duration(seconds: RemoteConfigService.current.locationTimeoutSeconds),
+      );
       final map = Map<String, dynamic>.from(result ?? {});
       if ((map['status'] as String? ?? 'error') != 'granted') return null;
 
