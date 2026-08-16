@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:exif/exif.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -107,12 +109,14 @@ class AboutAnalysisScreen extends StatelessWidget {
           OutlinedButton.icon(
             icon: const Icon(Icons.copy, size: 16),
             label: const Text('Copier les infos de debug'),
-            onPressed: () {
-              final debug = _buildDebugInfo(live: live);
+            onPressed: () async {
+              final debug = await _buildDebugInfo(live: live);
               Clipboard.setData(ClipboardData(text: debug));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Infos copiées')),
-              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Infos copiées')),
+                );
+              }
             },
           ),
           const SizedBox(height: 24),
@@ -121,7 +125,34 @@ class AboutAnalysisScreen extends StatelessWidget {
     );
   }
 
-  String _buildDebugInfo({required HistoryEntry live}) {
+  /// Reads the raw EXIF orientation tag and the dimensions Flutter's
+  /// decoder actually produced, to diagnose thumbnails that appear
+  /// upside down/sideways in some screens (T88) — the tag alone doesn't
+  /// say whether Skia already applied it (swapped width/height for a
+  /// 90°/270° tag) or the file's orientation metadata is stale/wrong.
+  Future<String> _imageDiagnostics(String imagePath) async {
+    final file = File(imagePath);
+    if (!file.existsSync()) return 'file missing';
+    try {
+      final bytes = await file.readAsBytes();
+      final exifData = await readExifFromBytes(bytes);
+      final orientationTag = exifData['Image Orientation']?.printable ?? 'no orientation tag';
+
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final decodedSize = '${frame.image.width}x${frame.image.height}';
+      frame.image.dispose();
+
+      return 'EXIF orientation: $orientationTag\n'
+          'Decoded size (Flutter): $decodedSize\n'
+          'File size: ${bytes.length} bytes';
+    } catch (e) {
+      return 'error reading image: $e';
+    }
+  }
+
+  Future<String> _buildDebugInfo({required HistoryEntry live}) async {
+    final imageDiag = await _imageDiagnostics(live.imagePath);
     return '''AudioLens Debug Info
 ====================
 Title: ${live.title}
@@ -139,6 +170,8 @@ Word count: ${live.wordCount ?? 'unknown'}
 Analysis duration: ${live.analysisDurationMs ?? 'unknown'}ms
 Audio path: ${live.audioPath ?? 'none'}
 Status: ${live.status.name}
+Image path: ${live.imagePath}
+$imageDiag
 ''';
   }
 
