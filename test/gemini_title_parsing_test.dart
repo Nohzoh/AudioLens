@@ -100,15 +100,34 @@ void main() {
     expect(result.script, contains('inaugure en 1886'));
   });
 
-  test('never shows raw JSON as the title, even when every parsing layer fails', () async {
+  test('never shows raw JSON as the title: throws instead when every '
+      'parsing layer fails on JSON-shaped text', () async {
     // Malformed beyond what the title-regex can recover (no closing
     // quote for the title value at all) — must not surface the JSON
-    // debris verbatim as the title.
+    // debris verbatim as the title. There's no usable script either, so
+    // this must fail loudly (existing retry flow) rather than silently
+    // showing broken JSON as if it were real content.
     final service = await serviceReturning('{"title": incomplete garbage here');
 
-    final result = await service.analyzeImage(tempImage());
+    await expectLater(service.analyzeImage(tempImage()), throwsException);
+  });
 
-    expect(result.title, isNot(startsWith('{')));
-    expect(result.title, isNot(contains('"title"')));
+  test('never shows raw JSON as the script: title recovers via regex but '
+      'script does not -> throws instead of leaking the JSON wrapper', () async {
+    // Regression case for the gap this test file's first version missed:
+    // title alone was guarded against showing raw JSON, but a missing
+    // "script" match used to fall back to the full raw `text` (still
+    // JSON-shaped) as the script.
+    final service = await serviceReturning(
+        '{"title": "La Tour Eiffel", "script": no closing quote for this one');
+
+    await expectLater(service.analyzeImage(tempImage()), throwsException);
+  });
+
+  test('a valid JSON object missing the script field entirely also throws '
+      'instead of using the raw text (still containing the title key) as script', () async {
+    final service = await serviceReturning('{"title": "La Tour Eiffel"}');
+
+    await expectLater(service.analyzeImage(tempImage()), throwsException);
   });
 }

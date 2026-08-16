@@ -11,14 +11,14 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
-- [x] **T90** ⚡ ⭐⭐ - Analysis title sometimes shows **raw JSON** instead of the parsed title
+- [x] **T90** ⚡ ⭐⭐ - Analysis title (and sometimes the **script** itself) shows **raw JSON** instead of parsed text
   - **Verified**: 2026-08-16 (PR #34)
-  - **Context**: not the first attempt at this — earlier fixes (the naive `text.indexOf('{')`/`lastIndexOf('}')` extraction + sentence-split fallback) still had gaps, per repeated real-world reports (~1/20 analyses)
+  - **Context**: not the first attempt at this — earlier fixes (the naive `text.indexOf('{')`/`lastIndexOf('}')` extraction + sentence-split fallback) still had gaps, per repeated real-world reports (~1/20 analyses). Mid-PR, the user reported the *script* (not just the title) sometimes shows as raw JSON too — the first version of this fix guarded the title but still fell back to raw `text` (still JSON-shaped) as the script when the script field wasn't recoverable
   - **What was done**: `gemini_api_service.dart`'s title/script parsing now has three layers instead of one:
     1. `_extractJsonObject` — a balanced-brace scan that tracks whether it's inside a string literal, so a `{`/`}` inside the model's own `script` text (or a ` ```json ` fence around the object) no longer throws off the match, unlike the old indexOf/lastIndexOf pair
-    2. If full `jsonDecode` still fails (e.g. an unescaped quote inside `script` breaks JSON syntax even with correct brace balance), a regex fallback recovers the `title`/`script` fields independently — `title` is short (5-8 words per the prompt) and rarely contains a stray quote, so it's usually still recoverable even when the whole object isn't valid JSON
-    3. Last-resort guard: if even the old sentence-split heuristic lands on text that still looks like unparsed JSON (`{`-prefixed or contains `"title"`), it's replaced with a generic "Votre guide audio" title instead of ever showing raw JSON to the user — this is the actual fix for the recurring nature of the bug: whatever new parsing edge case shows up next, the raw JSON can no longer reach the UI
-  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 105/105 (6 new cases in `gemini_title_parsing_test.dart` covering fenced JSON, braces inside script, unescaped quotes inside script, plain-text fallback, and the raw-JSON guard)
+    2. If full `jsonDecode` still fails (e.g. an unescaped quote inside a field breaks JSON syntax even with correct brace balance), a regex fallback recovers `title`/`script` independently — but now **both** must be recovered, not just `title`, or the result is discarded
+    3. Last-resort guard: if the response still looks JSON-shaped (`{`-prefixed or a `"title"`/`"script"` key literal present) but neither layer above could fully recover it, the analysis **throws** instead of ever showing raw JSON as the title or reading it aloud as the script — worse to fail loudly (existing retry flow already handles this) than to silently show/speak broken JSON as if it were real content. A true plain-text response (model ignored the JSON instruction entirely, no JSON markers at all) still falls through to the original sentence-split heuristic unchanged — that's legitimate readable content, just not in the expected shape
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 107/107 (8 cases in `gemini_title_parsing_test.dart`: fenced JSON, braces inside script, unescaped quote inside script recovered via regex, plain-text fallback, and 3 throw-instead-of-leak cases covering both the title-side and script-side gaps)
 
 - [x] **T88** ⚡ ⭐⭐⭐ - Thumbnails sometimes display **upside down / sideways**
   - **Verified**: 2026-08-16 (PR #32)

@@ -153,35 +153,59 @@ class GeminiApiService implements AIService {
       final jsonBlob = _extractJsonObject(text);
       if (jsonBlob == null) throw const FormatException('no JSON');
       final parsed = jsonDecode(jsonBlob) as Map<String, dynamic>;
-      title = (parsed['title'] as String? ?? '').trim();
-      script = _cleanMarkdown((parsed['script'] as String? ?? text).trim());
-      if (title.isEmpty) throw const FormatException('empty title');
+      final parsedTitle = (parsed['title'] as String? ?? '').trim();
+      final parsedScript = (parsed['script'] as String? ?? '').trim();
+      // Require both fields — falling back to the raw (still-JSON-shaped)
+      // `text` for a missing script would leak the JSON wrapper into the
+      // displayed script, the same bug as T90 but on the script side.
+      if (parsedTitle.isEmpty || parsedScript.isEmpty) {
+        throw const FormatException('empty title or script');
+      }
+      title = parsedTitle;
+      script = _cleanMarkdown(parsedScript);
     } catch (_) {
       // Full JSON parsing failed — often because the model left an
-      // unescaped quote inside "script" (not a brace-matching problem,
-      // so _extractJsonObject's string-aware scan doesn't help here).
-      // The "title" field alone is short (5-8 words per the prompt) and
-      // rarely contains a stray quote, so it's usually still recoverable
-      // by regex even when the full object isn't valid JSON.
+      // unescaped quote inside a field (not a brace-matching problem, so
+      // _extractJsonObject's string-aware scan doesn't help here). Try to
+      // recover title/script independently via regex before giving up:
+      // "title" alone is short (5-8 words per the prompt) and rarely
+      // contains a stray quote, so it's often recoverable even when the
+      // whole object isn't valid JSON — but "script" is long-form prose,
+      // so a stray quote inside it is much more likely to also break the
+      // regex, unlike title.
       final titleMatch = RegExp(r'"title"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(text);
       final scriptMatch = RegExp(r'"script"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(text);
       final regexTitle = titleMatch != null ? _unescapeJsonString(titleMatch.group(1)!) : null;
+      final regexScript = scriptMatch != null ? _unescapeJsonString(scriptMatch.group(1)!) : null;
 
-      if (regexTitle != null && regexTitle.trim().isNotEmpty) {
+      // A "title"/"script" key literal appearing anywhere means the
+      // response was meant to be JSON — even if regex extraction above
+      // only got one field or none, the raw text is JSON-shaped and must
+      // never be shown verbatim as either the title or the script.
+      final looksLikeJson = text.trimLeft().startsWith('{') ||
+          RegExp(r'"(title|script)"\s*:').hasMatch(text);
+
+      if (regexTitle != null &&
+          regexTitle.trim().isNotEmpty &&
+          regexScript != null &&
+          regexScript.trim().isNotEmpty) {
         title = regexTitle.trim();
-        script = scriptMatch != null
-            ? _cleanMarkdown((_unescapeJsonString(scriptMatch.group(1)!) ?? text).trim())
-            : _cleanMarkdown(text);
+        script = _cleanMarkdown(regexScript.trim());
+      } else if (looksLikeJson) {
+        // Malformed beyond what regex can recover, on either field —
+        // showing the raw JSON debris as the title or (worse) reading it
+        // aloud as the script (T90) is a worse experience than a clear
+        // failure the app's existing retry flow already handles.
+        throw Exception(
+          'Gemini API: reponse JSON invalide (title/script illisibles)',
+        );
       } else {
+        // Genuinely plain-text response (model ignored the JSON
+        // instruction entirely) — legitimate, readable content, just not
+        // in the expected shape.
         final cleaned = _cleanMarkdown(text);
         final first = cleaned.split(RegExp(r'[.!?]')).first.trim();
-        // Last-resort guard: if even this heuristic lands on something
-        // that still looks like unparsed JSON, never show that to the
-        // user (T90) — fall back to a generic title instead.
-        final looksLikeJson = first.startsWith('{') || first.contains('"title"');
-        title = looksLikeJson
-            ? 'Votre guide audio'
-            : (first.length > 60 ? '${first.substring(0, 60)}...' : first);
+        title = first.length > 60 ? '${first.substring(0, 60)}...' : first;
         script = cleaned;
       }
     }
