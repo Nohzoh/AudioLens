@@ -95,6 +95,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 
 - [ ] **T15** 🌱 ⭐ - Allow **configuring playback speed**
 
+- [ ] **T87** 🌱 ⭐⭐⭐ - Let the user **pick the location on a map** when a gallery photo has no GPS in its EXIF
+  - **Added**: 2026-08-16
+  - **Context**: `LocationContextResolver.resolve()` (`location_context_resolver.dart:66`) falls back to the device's *real-time* GPS position when a photo has no EXIF GPS — reasonable for a fresh camera capture, but misleading for a photo picked from the gallery (could be old, could be from anywhere; the phone's current position has nothing to do with where that photo was taken)
+  - **To do**: when the source is gallery (`home_screen.dart` already tracks `_lastSource`/`ImageSource.gallery`) and EXIF has no GPS, show a map picker instead of silently using real-time GPS — needs a new map dependency (no map package in `pubspec.yaml` yet; `flutter_map` + OpenStreetMap tiles would match the project's existing OSM-based stack — Nominatim, Overpass — no API key needed, unlike `google_maps_flutter`)
+  - **Not addressed by this task**: camera captures with no GPS (permission denied, no signal) — real-time GPS fallback stays correct there, this is specifically about the gallery case
+
 - [ ] **T17** 🌱 ⭐⭐ - Add a **more detailed or shorter analysis mode**
 
 - [ ] **T18** 🌱 ⭐⭐⭐ - Allow **choosing voice language/style**
