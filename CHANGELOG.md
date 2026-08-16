@@ -11,6 +11,16 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T07** 📈 ⭐⭐⭐ - **Centralize configuration** (AI, TTS, GPS, etc.)
+  - **Verified**: 2026-08-16 (PR #19)
+  - **Context**: `RemoteConfig` already defines most values centrally, but several fields were fetched and never actually read anywhere — the original evidence (`home_screen.dart` hardcoding `imageQuality`/`maxWidth`) turned out to be one of three
+  - **What was done**:
+    - `home_screen.dart`: `ImagePicker` now reads `RemoteConfigService.current.imageQuality`/`imageMaxWidth` instead of hardcoded `85`/`1280`
+    - `guide_progress_estimator.dart`: `_maxSamples` (hardcoded `5`) and the progress-simulation tick interval (hardcoded `150ms`) now default from `RemoteConfig.timingHistorySize`/`progressSimulationIntervalMs`, both previously unused anywhere in the codebase — via optional constructor params (`maxSamples`, `simulationIntervalMs`) rather than reading the global directly, so tests can override them
+    - `location_service.dart`: **real bug found while auditing `locationTimeoutSeconds`** — it was defined in `RemoteConfig` (default 10s) but never applied anywhere; the native `requestLocation` channel call (`LocationPlugin.kt`) had no timeout on either side (Kotlin or Dart), so a GPS fix that never resolves (e.g. indoors, no signal) could hang the pipeline indefinitely with no way out short of force-quitting the app. `getCurrentLocation()`/`getCurrentRawCoordinates()` now wrap the channel call in `.timeout(...)`, defaulting to the config value via an optional `timeout` param (same DI pattern as the existing `client` param) so tests don't have to wait on the real default
+  - **Not changed**: HTTP call timeouts scattered across `gemini_api_service.dart`/`gemini_tts_service.dart`/`poi_service.dart`/`wikipedia_service.dart` (6-60s, each used once) — these aren't duplicated constants, just not configurable; centralizing them wasn't part of this task's actual evidence and would be scope creep
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 82/82 (4 new: `location_timeout_test.dart` covering the real hang bug, 1 in `guide_progress_estimator_test.dart`)
+
 - [x] **T83** 📈 ⭐⭐ - **Speed up the Android CI build**
   - **Verified**: 2026-08-16 (already done, noticed during a follow-up question — the fix landed on 2026-08-15 as commit `0e0f8be` but TODO.md/CHANGELOG.md were never updated to reflect it)
   - **What was done** (commit `0e0f8be`, "T83: cache Gradle/pub/NDK across CI runs, drop unused NDK, restrict ABIs"): `actions/cache` added for Gradle (`~/.gradle/caches`), the pub cache, and the Android NDK; build restricted to `--target-platform android-arm,android-arm64` (dropping armeabi/x86/x86_64, only useful for emulators); the unused NDK 26 install dropped, keeping only NDK 27
