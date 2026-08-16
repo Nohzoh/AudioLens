@@ -12,9 +12,15 @@ import 'remote_config_service.dart';
 class GeminiTtsService {
   /// Backoff schedule for retrying a 429 in [synthesizeToFile] — each
   /// entry is the wait before that attempt.
+  ///
+  /// Was briefly a 2-step schedule (2s, 5s) to cover longer rate-limit
+  /// windows, but real-device logs showed retries essentially never
+  /// succeeding once 429 hit (0/5 across two real sessions) — the extra
+  /// wait was pure latency with no payoff. Cut back to one quick check,
+  /// and the real fix for actually avoiding 429 is fewer/larger TTS
+  /// chunks (see chunkScript's chunkMaxChars).
   static const _retryDelaysOn429 = [
-    Duration(seconds: 2),
-    Duration(seconds: 5),
+    Duration(milliseconds: 1500),
   ];
 
   final String apiKey;

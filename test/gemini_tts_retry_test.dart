@@ -20,7 +20,7 @@ String _successBody() => jsonEncode({
     });
 
 void main() {
-  test('a single 429 is retried and succeeds, instead of failing the chunk', () async {
+  test('a single 429 is retried once and succeeds, instead of failing the chunk', () async {
     var callCount = 0;
     final client = MockClient((request) async {
       callCount++;
@@ -36,23 +36,7 @@ void main() {
     expect(File(outputPath).existsSync(), isTrue);
   });
 
-  test('a 429 on the first retry succeeds on the second retry (backoff, not a single retry)', () async {
-    var callCount = 0;
-    final client = MockClient((request) async {
-      callCount++;
-      if (callCount <= 2) return http.Response('rate limited', 429);
-      return http.Response(_successBody(), 200);
-    });
-    final service = GeminiTtsService(apiKey: 'test-key', client: client);
-    final outputPath = '${Directory.systemTemp.path}/gemini_tts_retry_test_backoff.wav';
-
-    await service.synthesizeToFile('Some text', outputPath);
-
-    expect(callCount, 3);
-    expect(File(outputPath).existsSync(), isTrue);
-  });
-
-  test('a 429 on every attempt gives up after exhausting the backoff schedule', () async {
+  test('a second consecutive 429 gives up (only one retry)', () async {
     var callCount = 0;
     final client = MockClient((request) async {
       callCount++;
@@ -64,8 +48,7 @@ void main() {
       service.synthesizeToFile('Some text', '${Directory.systemTemp.path}/x.wav'),
       throwsException,
     );
-    // Initial attempt + 2 backoff retries (2s, 5s) — matches _retryDelaysOn429.
-    expect(callCount, 3);
+    expect(callCount, 2);
   });
 
   test('a success on the first try does not trigger any retry', () async {

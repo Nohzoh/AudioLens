@@ -83,16 +83,28 @@ void main() {
     tmpDir.deleteSync(recursive: true);
   });
 
-  // Long enough to always produce 3+ chunks under chunkScript()'s defaults.
+  // ~2200 chars (matching a typical ~400-word real cloud script) — long
+  // enough to always produce 4+ chunks under chunkScript()'s defaults
+  // (700 chars/chunk after the first). The old 280-char default only
+  // needed ~550 chars for the same coverage; this fixture replaces that
+  // shorter one now that chunkMaxChars was raised (2026-08-16).
   const longScript =
-      'Premiere phrase courte. Deuxieme phrase un peu plus longue ici. '
-      'Troisieme phrase. Quatrieme phrase qui rallonge un peu le texte total. '
-      'Cinquieme phrase. Sixieme phrase pour continuer a remplir. '
-      'Septieme phrase assez longue pour ce test de decoupage. Huitieme phrase finale. '
-      'Neuvieme phrase qui ajoute encore un peu de contenu au script. '
-      'Dixieme phrase pour etre certain de depasser trois morceaux. '
-      'Onzieme phrase, toujours plus longue que les precedentes pour ce test. '
-      'Douzieme et derniere phrase qui cloture ce script de test assez long.';
+      'Premiere phrase courte. Deuxieme phrase un peu plus longue ici, avec quelques mots de plus. '
+      'Troisieme phrase, qui elle aussi rallonge legerement le texte total du script. '
+      'Quatrieme phrase qui rallonge encore un peu le texte total pour ce test de decoupage. '
+      'Cinquieme phrase, plus courte. Sixieme phrase pour continuer a remplir le script de test. '
+      'Septieme phrase assez longue pour ce test de decoupage en plusieurs morceaux distincts. '
+      'Huitieme phrase finale de ce premier groupe de phrases du script de test. '
+      'Neuvieme phrase qui ajoute encore un peu de contenu au script en cours de redaction. '
+      'Dixieme phrase pour etre certain de depasser largement trois morceaux au decoupage. '
+      'Onzieme phrase, toujours plus longue que les precedentes pour ce test de decoupage. '
+      'Douzieme phrase qui continue de rallonger le texte total du script de test en cours. '
+      'Treizieme phrase, courte. Quatorzieme phrase, plus longue, pour ajouter du contenu. '
+      'Quinzieme phrase qui approche de la fin de ce script de test assez consequent. '
+      'Seizieme phrase, avant-derniere du script, qui rallonge encore un peu le texte total. '
+      'Dix-septieme phrase, plus courte celle-ci, pour varier un peu le rythme du texte. '
+      'Dix-huitieme phrase qui ajoute du contenu supplementaire au script de test en cours. '
+      'Dix-neuvieme et derniere phrase qui cloture ce script de test assez long et complet.';
 
   test('a short script falls through to the single-shot speak() path', () async {
     final piper = _FakePiper();
