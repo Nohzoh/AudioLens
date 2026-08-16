@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'logs_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_guide_service.dart';
+import '../services/native_tts_service.dart';
 import '../services/remote_config_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import '../utils/build_info.dart';
 import 'package:intl/intl.dart';
+
+const _ttsCompareSample =
+    'Voici un exemple de voix pour comparer avec celle utilisée '
+    'actuellement dans l\'application. Remarquez le rythme et '
+    'l\'intonation sur cette phrase.';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,6 +23,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
+  final _nativeTts = NativeTtsService();
   bool _obscure = true;
   bool _saving = false;
 
@@ -31,6 +38,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _apiKeyController.dispose();
     super.dispose();
+  }
+
+  Future<void> _testPiperVoice() async {
+    final guide = context.read<AudioGuideService>();
+    await guide.ttsService.speak(_ttsCompareSample);
+  }
+
+  Future<void> _testNativeVoice() async {
+    final available = await _nativeTts.isFrenchAvailable();
+    if (!available) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Aucune voix française trouvée sur le TTS système de cet appareil'),
+          ),
+        );
+      }
+      return;
+    }
+    await _nativeTts.speak(_ttsCompareSample);
   }
 
   Future<void> _save() async {
@@ -275,6 +303,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: settings.autoGenerateAudio,
               onChanged: (value) => settings.setAutoGenerateAudio(value),
             ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // T89 — A/B comparison, not wired into the real synthesis
+          // pipeline. Just lets the user listen to both voices back to
+          // back to judge whether the native engine is good enough to
+          // replace or complement Piper.
+          const _SectionHeader('Comparer les voix (T89)'),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.record_voice_over, size: 16),
+            label: const Text('Tester la voix Piper (actuelle)'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+            ),
+            onPressed: _testPiperVoice,
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.record_voice_over_outlined, size: 16),
+            label: const Text('Tester le TTS natif Android'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+            ),
+            onPressed: _testNativeVoice,
           ),
 
           const SizedBox(height: 32),

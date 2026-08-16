@@ -39,11 +39,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Services affected**: GeminiApiService, GeminiTtsService
   - **Impact**: Will enable true interruptibility of cloud calls
 
-- [ ] **T89** 📈 ⭐⭐⭐ - Investigate the **native Android TTS engine** as a better-quality Piper alternative
+- [~] **T89** 📈 ⭐⭐⭐ - Investigate the **native Android TTS engine** as a better-quality Piper alternative
   - **Added**: 2026-08-16
   - **Context**: user question while chasing Gemini TTS 429s — the current Piper fallback voice (`fr_FR-miro-high`, `tts_service.dart`) is already at its highest quality tier, but Android's built-in system TTS (Google's on-device neural voices, already installed, no bundled model) is generally noticeably better on modern devices and would need no APK size increase
-  - **To do**: evaluate `flutter_tts` (or a dedicated native plugin, matching the project's existing `AudioPlayerPlugin.kt`/`GeminiNanoPlugin.kt` pattern) against Piper for quality, latency, and availability across devices (system TTS engine isn't guaranteed present/configured on every device — needs a detection + fallback path, possibly keeping Piper as the last-resort fully-offline option)
-  - **Open question**: replace Piper entirely, or keep both (system TTS as the primary local fallback, Piper as a guaranteed-available last resort)?
+  - **APK size finding (2026-08-16)**: Piper's footprint is large — `assets/tts/` (voice model + espeak-ng-data) is 36 MB, plus `sherpa_onnx`'s native libs (`libonnxruntime.so` + friends, arm + arm64 both bundled) add ~43 MB more. The current release APK is ~77 MB total, so Piper is likely the majority of it — a real motivation to replace it if the native voice is good enough, not just keep both
+  - **Prototype landed (2026-08-16)**: `flutter_tts` added, `lib/services/native_tts_service.dart` (thin wrapper, not wired into `TtsOrchestrator` yet), and two "Comparer les voix (T89)" buttons in Settings → Outils to A/B-listen Piper vs. the native engine on a real device. Manifest needs a `<queries>` entry for `android.speech.tts.engine.TextToSpeechService` (Android 11+ package visibility) — added to both `build-android.yml` and `scripts/build_android_local.sh`'s patch steps; verified with a real local debug build
+  - **To do next**: user to A/B-listen both voices on their Pixel 10 and decide — replace Piper entirely, or keep both (system TTS as the primary local fallback, Piper as a guaranteed-available last resort, since the system TTS engine isn't guaranteed present/configured on every device)? Once decided, wire the chosen native service into `TtsOrchestrator` for real and (if replacing) remove `sherpa_onnx` + `assets/tts/`
 
 - [ ] **T85** 📈 ⭐⭐⭐⭐ - Run the **analysis in the background** and **notify** when the audio is ready
   - **Added**: 2026-08-16

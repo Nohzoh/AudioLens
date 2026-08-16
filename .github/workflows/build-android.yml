@@ -159,7 +159,14 @@ jobs:
           if ! grep -q 'allowBackup' $MANIFEST; then
             sed -i 's/android:label="AudioLens"/android:label="AudioLens" android:allowBackup="false"/' $MANIFEST
           fi
-          echo "✅ Manifest patched (allowBackup=false)"
+          # T89: Android 11+ (targetSdk 30+) hides other apps/services from
+          # package queries by default — without this <queries> entry,
+          # flutter_tts's isLanguageAvailable()/speak() can silently fail
+          # to find the system TTS engine on some devices.
+          if ! grep -q 'TextToSpeechService' $MANIFEST; then
+            sed -i 's|</manifest>|<queries><intent><action android:name="android.speech.tts.engine.TextToSpeechService" /></intent></queries>\n</manifest>|' $MANIFEST
+          fi
+          echo "✅ Manifest patched (allowBackup=false, TTS engine query)"
 
       - name: Add FileProvider
         run: |
