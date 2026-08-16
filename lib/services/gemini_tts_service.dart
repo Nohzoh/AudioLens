@@ -13,7 +13,7 @@ import 'remote_config_service.dart';
 /// [GeminiTtsService.synthesizeToFile] is exhausted. A distinct type from
 /// other synthesis failures so callers can tell "rate-limited" apart from
 /// e.g. a network error or a malformed response, and show the user an
-/// accurate reason for the Piper fallback instead of a generic one.
+/// accurate reason for the native TTS fallback instead of a generic one.
 class GeminiTtsRateLimitException implements Exception {
   const GeminiTtsRateLimitException();
 
@@ -110,7 +110,7 @@ class GeminiTtsService {
         .timeout(const Duration(seconds: 60));
 
     // A chunk hitting a rate limit shouldn't force the rest of the script
-    // into a different, noticeably worse-sounding voice (Piper) — retry
+    // into a different voice than the one the user is hearing — retry
     // with backoff before giving up. A single 1.5s retry wasn't enough in
     // practice (two consecutive 429s ~1.5s apart, observed on a real
     // device) — this covers longer rate-limit windows at the cost of

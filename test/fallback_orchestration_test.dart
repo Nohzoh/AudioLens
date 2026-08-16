@@ -9,10 +9,10 @@ import 'package:audiolens/services/audio_guide_service.dart';
 import 'package:audiolens/services/gemini_api_service.dart';
 import 'package:audiolens/services/gemini_nano_service.dart';
 import 'package:audiolens/services/gemini_tts_service.dart';
-import 'package:audiolens/services/tts_service.dart';
+import 'package:audiolens/services/native_tts_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
 
-class _FakePiper extends TtsService {
+class _FakeNativeTts extends NativeTtsService {
   bool speakCalled = false;
 
   @override
@@ -109,11 +109,11 @@ void main() {
     return f;
   }
 
-  test('Gemini TTS failure -> falls back to Piper and flags ttsWasFallback', () async {
-    final piper = _FakePiper();
+  test('Gemini TTS failure -> falls back to native TTS and flags ttsWasFallback', () async {
+    final native = _FakeNativeTts();
     final geminiTts = _FakeGeminiTts(fail: true);
     final service = AudioGuideService(
-      ttsService: piper,
+      nativeTtsService: native,
       geminiTtsService: geminiTts,
       geminiApiService: _successApi(),
     );
@@ -123,17 +123,17 @@ void main() {
 
     expect(result, isNotNull);
     expect(geminiTts.speakCalled, isTrue);
-    expect(piper.speakCalled, isTrue);
-    expect(service.lastTtsModel, 'piper');
+    expect(native.speakCalled, isTrue);
+    expect(service.lastTtsModel, 'native-tts');
     expect(service.ttsWasFallback, isTrue);
     expect(service.state, GuideState.speaking);
   });
 
   test('Gemini TTS success -> no fallback, ttsWasFallback false', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final geminiTts = _FakeGeminiTts(fail: false);
     final service = AudioGuideService(
-      ttsService: piper,
+      nativeTtsService: native,
       geminiTtsService: geminiTts,
       geminiApiService: _successApi(),
     );
@@ -142,7 +142,7 @@ void main() {
     await service.analyzeAndPlay(tempImage());
 
     expect(geminiTts.speakCalled, isTrue);
-    expect(piper.speakCalled, isFalse);
+    expect(native.speakCalled, isFalse);
     expect(service.lastTtsModel, 'gemini-tts');
     expect(service.ttsWasFallback, isFalse);
   });

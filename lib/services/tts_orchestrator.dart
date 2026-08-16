@@ -7,26 +7,29 @@ import '../utils/cancel_token.dart';
 import '../utils/error_sanitizer.dart';
 import '../utils/text_chunker.dart';
 import 'gemini_tts_service.dart';
-import 'tts_service.dart';
+import 'native_tts_service.dart';
 
 /// Speaks a script via Gemini TTS (cloud) when available, falling back to
-/// Piper (local) on failure (T06 — extracted from
-/// AudioGuideService.analyzeAndPlay).
+/// the device's native TTS engine (local) on failure (T06 — extracted
+/// from AudioGuideService.analyzeAndPlay; T89 — native engine replaced
+/// Piper as the local fallback after real-device A/B testing showed
+/// better quality).
 class TtsOrchestrator {
-  TtsOrchestrator({required this.piper});
+  TtsOrchestrator({required this.nativeTts});
 
-  final TtsService piper;
+  final NativeTtsService nativeTts;
 
   /// Set by [speak]/[speakChunked] when the most recent call fell back to
-  /// Piper specifically because Gemini TTS was rate-limited (429), as
-  /// opposed to some other failure — lets the UI show an accurate reason
-  /// instead of a generic "unavailable" message.
+  /// the native engine specifically because Gemini TTS was rate-limited
+  /// (429), as opposed to some other failure — lets the UI show an
+  /// accurate reason instead of a generic "unavailable" message.
   bool wasRateLimited = false;
 
   /// Speaks [script] in one blocking synthesis call. Returns the model
-  /// actually used ('gemini-tts' or 'piper'). Throws [GuideError] if both
-  /// engines fail. Prefer [speakChunked], which uses this as its fallback
-  /// for scripts too short to chunk or when Gemini TTS isn't configured.
+  /// actually used ('gemini-tts' or 'native-tts'). Throws [GuideError] if
+  /// both engines fail. Prefer [speakChunked], which uses this as its
+  /// fallback for scripts too short to chunk or when Gemini TTS isn't
+  /// configured.
   Future<String> speak(
     String script, {
     required CancelToken cancelToken,
@@ -35,15 +38,15 @@ class TtsOrchestrator {
     wasRateLimited = false;
     if (geminiTts != null) {
       try {
-        geminiTts.onComplete = piper.onComplete;
+        geminiTts.onComplete = nativeTts.onComplete;
         await geminiTts.speak(script, cancelToken: cancelToken);
         return 'gemini-tts';
       } catch (ttsError) {
         wasRateLimited = ttsError is GeminiTtsRateLimitException;
-        AppLogger.error('Gemini TTS failed, falling back to Piper: $ttsError');
+        AppLogger.error('Gemini TTS failed, falling back to native TTS: $ttsError');
         try {
-          await piper.speak(script, cancelToken: cancelToken);
-          return 'piper';
+          await nativeTts.speak(script, cancelToken: cancelToken);
+          return 'native-tts';
         } catch (fallbackError) {
           throw GuideError(GuideErrorKind.tts,
               'La lecture audio a échoué. ${sanitizeError(fallbackError.toString())}');
@@ -51,8 +54,8 @@ class TtsOrchestrator {
       }
     }
     try {
-      await piper.speak(script, cancelToken: cancelToken);
-      return 'piper';
+      await nativeTts.speak(script, cancelToken: cancelToken);
+      return 'native-tts';
     } catch (ttsError) {
       throw GuideError(GuideErrorKind.tts, 'La lecture audio a échoué. ${sanitizeError(ttsError.toString())}');
     }
@@ -67,9 +70,10 @@ class TtsOrchestrator {
   /// Falls back to [speak] (unchanged, single-shot) when there's no Gemini
   /// TTS configured or the script is too short to be worth chunking. If a
   /// chunk fails to synthesize partway through, the remaining text is
-  /// spoken via Piper as one block — the already-played chunks stay as
-  /// they were (no restart), and the rest is announced consistently in a
-  /// single fallback voice rather than bouncing between engines.
+  /// spoken via the native engine as one block — the already-played
+  /// chunks stay as they were (no restart), and the rest is announced
+  /// consistently in a single fallback voice rather than bouncing between
+  /// engines.
   ///
   /// [onChunkStart] is called with the (0-based) index of each chunk as
   /// its playback begins and the total chunk count, e.g. to drive a
@@ -102,17 +106,17 @@ class TtsOrchestrator {
       await geminiTts.synthesizeToFile(chunks[0], chunkPaths[0]);
     } catch (ttsError) {
       wasRateLimited = ttsError is GeminiTtsRateLimitException;
-      AppLogger.error('Gemini TTS (chunk 0) failed, falling back to Piper: $ttsError');
+      AppLogger.error('Gemini TTS (chunk 0) failed, falling back to native TTS: $ttsError');
       try {
-        await piper.speak(script, cancelToken: cancelToken);
-        return 'piper';
+        await nativeTts.speak(script, cancelToken: cancelToken);
+        return 'native-tts';
       } catch (fallbackError) {
         throw GuideError(GuideErrorKind.tts,
             'La lecture audio a échoué. ${sanitizeError(fallbackError.toString())}');
       }
     }
 
-    geminiTts.onComplete = piper.onComplete;
+    geminiTts.onComplete = nativeTts.onComplete;
 
     for (var i = 0; i < chunks.length; i++) {
       if (cancelToken.isCancelled) return 'gemini-tts';
@@ -151,15 +155,15 @@ class TtsOrchestrator {
         if (ttsError != null) {
           wasRateLimited = ttsError is GeminiTtsRateLimitException;
           AppLogger.error(
-              'Gemini TTS (chunk ${i + 1}) failed, falling back to Piper for the rest: $ttsError');
+              'Gemini TTS (chunk ${i + 1}) failed, falling back to native TTS for the rest: $ttsError');
           final remaining = chunks.sublist(i + 1).join(' ');
           try {
-            await piper.speak(remaining, cancelToken: cancelToken);
+            await nativeTts.speak(remaining, cancelToken: cancelToken);
           } catch (fallbackError) {
             throw GuideError(GuideErrorKind.tts,
                 'La lecture audio a échoué. ${sanitizeError(fallbackError.toString())}');
           }
-          return 'piper';
+          return 'native-tts';
         }
       }
     }

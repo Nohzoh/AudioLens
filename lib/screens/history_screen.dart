@@ -299,7 +299,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   // Use AudioGuideService TTS so same voice as first analysis
   _getTts(BuildContext context) {
     final guide = context.read<AudioGuideService>();
-    return guide.geminiTtsService ?? guide.ttsService;
+    return guide.geminiTtsService ?? guide.nativeTtsService;
   }
 
   // Play cached audio file directly without re-generating TTS
@@ -341,11 +341,11 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     }
 
     // No cached audio (T16 — script-only entry, or a missing cache file):
-    // generate via the orchestrated pipeline (cloud TTS + Piper fallback)
+    // generate via the orchestrated pipeline (cloud TTS + native fallback)
     // and persist the result so it's cached from now on.
     final guide = context.read<AudioGuideService>();
     final history = context.read<HistoryService>();
-    guide.ttsService.onComplete = () => setState(() => _isPlaying = false);
+    guide.nativeTtsService.onComplete = () => setState(() => _isPlaying = false);
     final result = await guide.generateAudioForScript(
       title: live.title,
       script: live.script,

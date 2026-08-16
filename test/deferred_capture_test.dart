@@ -9,10 +9,10 @@ import 'package:audiolens/services/gemini_api_service.dart';
 import 'package:audiolens/services/gemini_tts_service.dart';
 import 'package:audiolens/services/location_context_resolver.dart';
 import 'package:audiolens/services/location_service.dart';
-import 'package:audiolens/services/tts_service.dart';
+import 'package:audiolens/services/native_tts_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
 
-class _FakePiper extends TtsService {
+class _FakeNativeTts extends NativeTtsService {
   @override
   Future<void> speak(String text, {CancelToken? cancelToken}) async {
     onComplete?.call();
@@ -108,7 +108,7 @@ void main() {
       });
 
       final service = AudioGuideService(
-        ttsService: _FakePiper(),
+        nativeTtsService: _FakeNativeTts(),
         geminiTtsService: _FakeGeminiTts(),
         geminiApiService: GeminiApiService(
           apiKey: 'test-key',

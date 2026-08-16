@@ -1,14 +1,33 @@
 import 'dart:async';
 import 'package:flutter_tts/flutter_tts.dart';
+import '../utils/cancel_token.dart';
 
-/// Thin wrapper around the device's system TTS engine (T89), used to let
-/// the user A/B-listen it against Piper (`tts_service.dart`) before
-/// deciding whether it's good enough to replace or complement it. Not
-/// wired into the main synthesis pipeline (TtsOrchestrator) yet.
+/// Wraps the device's system TTS engine — the app's sole local/offline TTS
+/// engine since T89 replaced Piper (sherpa_onnx) with it, after real-device
+/// A/B testing showed the native voice quality was clearly better. Same
+/// public shape as the old TtsService (onComplete/onProgress/isPlaying/
+/// speak/pause/stop) so TtsOrchestrator only needed a different engine
+/// plugged in, not restructuring.
 class NativeTtsService {
   final FlutterTts _tts = FlutterTts();
   bool _initialized = false;
+  bool _isPlaying = false;
+  String? _lastSpokenText;
   Completer<bool>? _pendingSpeak;
+
+  Function()? onComplete;
+  Function(double progress)? onProgress;
+
+  bool get isPlaying => _isPlaying;
+
+  /// 'female' or 'male' — set directly (no platform I/O) by
+  /// AudioGuideService from the persisted preference; only takes effect
+  /// once actually applied (lazily on first use, or immediately via
+  /// [applyPreferredVoice] after the user changes it).
+  String preferredGender = 'female';
+
+  static const femaleVoice = {'name': 'fr-fr-x-frc-network', 'locale': 'fr-FR'};
+  static const maleVoice = {'name': 'fr-fr-x-frd-network', 'locale': 'fr-FR'};
 
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
@@ -21,28 +40,51 @@ class NativeTtsService {
     // comparing voices). These let speak() report whether audio actually
     // played instead of just firing and forgetting.
     _tts.setCompletionHandler(() {
+      _isPlaying = false;
       if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(true);
+      onComplete?.call();
     });
     _tts.setErrorHandler((_) {
+      _isPlaying = false;
       if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(false);
+      // Still notify onComplete so the app's state doesn't stay stuck on
+      // "speaking" forever — applyPreferredVoice() already avoids the
+      // most common cause (a listed-but-unavailable voice) by checking
+      // availability before selecting one, so this should be rare.
+      onComplete?.call();
+    });
+    _tts.setProgressHandler((text, start, end, word) {
+      if (text.isEmpty) return;
+      onProgress?.call((end / text.length).clamp(0.0, 1.0));
     });
     _initialized = true;
+    await _applyPreferredVoiceInternal();
   }
 
-  /// Whether the device's system TTS engine has a French voice installed
-  /// — not guaranteed on every device/configuration, unlike the bundled
-  /// Piper model.
-  Future<bool> isFrenchAvailable() async {
-    final result = await _tts.isLanguageAvailable('fr-FR');
-    return result == true || result == 1;
+  Future<void> _applyPreferredVoiceInternal() async {
+    final target = preferredGender == 'male' ? maleVoice : femaleVoice;
+    final voices = await frenchVoices();
+    final isAvailable = voices
+        .any((v) => v['name'] == target['name'] && v['locale'] == target['locale']);
+    if (isAvailable) {
+      await _tts.setVoice(target);
+    }
+    // Else: leave the engine's own default French voice in place rather
+    // than risk a silent no-op speak() call with an unavailable voice.
   }
 
-  /// All French voices the device's TTS engine offers, as {name, locale}
-  /// maps (flutter_tts doesn't surface Android's quality/network-required
-  /// metadata, so the app can't auto-pick "the best one" — this is meant
-  /// to be listed for the user to try, since a monotone default voice
-  /// (T89: reported as sounding like an SNCF-style announcement) can
-  /// often be swapped for a much more natural one on the same device).
+  /// Re-applies [preferredGender]'s voice right away — call after the user
+  /// changes the preference so the next speak() reflects it immediately,
+  /// instead of waiting for a fresh (one-time) initialization cycle.
+  Future<void> applyPreferredVoice() async {
+    await _ensureInitialized();
+    await _applyPreferredVoiceInternal();
+  }
+
+  /// All French voices the device's TTS engine reports (flutter_tts only
+  /// surfaces name/locale, not Android's quality/network-required
+  /// metadata — see [_applyPreferredVoiceInternal] for how this is used
+  /// to avoid selecting an unavailable one).
   Future<List<Map<String, String>>> frenchVoices() async {
     final voices = await _tts.getVoices;
     if (voices is! List) return [];
@@ -53,16 +95,22 @@ class NativeTtsService {
         .toList();
   }
 
-  Future<void> setVoice(String name, String locale) async {
+  /// Fire-and-forget, matching TtsService/GeminiTtsService's convention:
+  /// kicks off synthesis+playback and returns once it's been queued, not
+  /// once it's finished — actual completion is signaled via [onComplete].
+  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+    if (cancelToken?.isCancelled ?? false) return;
     await _ensureInitialized();
-    await _tts.setVoice({'name': name, 'locale': locale});
+    _lastSpokenText = text;
+    _isPlaying = true;
+    await _tts.speak(text);
   }
 
-  /// Speaks [text], returning whether audio actually played. A voice
-  /// that's listed but not really available on the device (see
-  /// [frenchVoices]) tends to just do nothing rather than throw, which
-  /// this surfaces instead of silently swallowing.
-  Future<bool> speak(String text) async {
+  /// Speaks [text] and waits for the actual result — used by the Settings
+  /// voice-preview button, which wants immediate feedback on whether the
+  /// selected voice produced audio, unlike [speak]'s fire-and-forget
+  /// production behavior.
+  Future<bool> speakAndWaitForResult(String text) async {
     await _ensureInitialized();
     if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(false);
     final completer = Completer<bool>();
@@ -74,7 +122,24 @@ class NativeTtsService {
     );
   }
 
+  Future<void> pause() async {
+    await _tts.pause();
+    _isPlaying = false;
+  }
+
+  /// Android's TextToSpeech has no true pause/resume — flutter_tts fakes
+  /// it by remembering how much of the text was already spoken (via the
+  /// progress handler) and expects the *same* text to be passed to speak()
+  /// again to continue from there, which this wraps.
+  Future<void> resume() async {
+    final text = _lastSpokenText;
+    if (text == null) return;
+    _isPlaying = true;
+    await _tts.speak(text);
+  }
+
   Future<void> stop() async {
     await _tts.stop();
+    _isPlaying = false;
   }
 }

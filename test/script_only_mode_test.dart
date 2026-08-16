@@ -8,10 +8,10 @@ import 'package:audiolens/services/audio_guide_service.dart';
 import 'package:audiolens/services/gemini_api_service.dart';
 import 'package:audiolens/services/gemini_tts_service.dart';
 import 'package:audiolens/services/settings_service.dart';
-import 'package:audiolens/services/tts_service.dart';
+import 'package:audiolens/services/native_tts_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
 
-class _FakePiper extends TtsService {
+class _FakeNativeTts extends NativeTtsService {
   bool speakCalled = false;
 
   @override
@@ -76,10 +76,10 @@ void main() {
 
   group('analyzeAndPlay(generateAudio: false) — T16', () {
     test('stops after analysis: scriptReady, no audio, TTS never called', () async {
-      final piper = _FakePiper();
+      final native = _FakeNativeTts();
       final geminiTts = _FakeGeminiTts();
       final service = AudioGuideService(
-        ttsService: piper,
+        nativeTtsService: native,
         geminiTtsService: geminiTts,
         geminiApiService: _successApi(),
       );
@@ -91,15 +91,15 @@ void main() {
       expect(result!.title, 'La Joconde');
       expect(service.state, GuideState.scriptReady);
       expect(service.lastAudioPath, isNull);
-      expect(piper.speakCalled, isFalse);
+      expect(native.speakCalled, isFalse);
       expect(geminiTts.speakCalled, isFalse);
     });
 
     test('default (generateAudio: true) still synthesizes as before', () async {
-      final piper = _FakePiper();
+      final native = _FakeNativeTts();
       final geminiTts = _FakeGeminiTts();
       final service = AudioGuideService(
-        ttsService: piper,
+        nativeTtsService: native,
         geminiTtsService: geminiTts,
         geminiApiService: _successApi(),
       );
@@ -115,9 +115,9 @@ void main() {
 
   group('generateAudioForScript — T16', () {
     test('synthesizes and plays a given script without re-running GPS/AI', () async {
-      final piper = _FakePiper();
+      final native = _FakeNativeTts();
       final geminiTts = _FakeGeminiTts();
-      final service = AudioGuideService(ttsService: piper, geminiTtsService: geminiTts);
+      final service = AudioGuideService(nativeTtsService: native, geminiTtsService: geminiTts);
 
       final result = await service.generateAudioForScript(
         title: 'Titre existant',
@@ -130,13 +130,13 @@ void main() {
       expect(result.script, 'Script déjà en base.');
       expect(service.state, GuideState.speaking);
       expect(geminiTts.speakCalled, isTrue);
-      expect(piper.speakCalled, isFalse);
+      expect(native.speakCalled, isFalse);
     });
 
-    test('falls back to Piper if Gemini TTS fails', () async {
-      final piper = _FakePiper();
+    test('falls back to native TTS if Gemini TTS fails', () async {
+      final native = _FakeNativeTts();
       final geminiTts = _FakeGeminiTts(fail: true);
-      final service = AudioGuideService(ttsService: piper, geminiTtsService: geminiTts);
+      final service = AudioGuideService(nativeTtsService: native, geminiTtsService: geminiTts);
 
       final result = await service.generateAudioForScript(
         title: 'Titre',
@@ -144,14 +144,14 @@ void main() {
       );
 
       expect(result, isNotNull);
-      expect(service.lastTtsModel, 'piper');
+      expect(service.lastTtsModel, 'native-tts');
       expect(service.ttsWasFallback, isTrue);
-      expect(piper.speakCalled, isTrue);
+      expect(native.speakCalled, isTrue);
     });
 
     test('returns null and sets error state when already busy', () async {
       final service = AudioGuideService(
-        ttsService: _FakePiper(),
+        nativeTtsService: _FakeNativeTts(),
         geminiTtsService: _FakeGeminiTts(),
         geminiApiService: _successApi(),
       );
