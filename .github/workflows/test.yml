@@ -37,6 +37,13 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      # sqflite_common_ffi (T09, history_service_migration_test.dart) needs
+      # a system SQLite lib to dlopen. Usually already present on
+      # ubuntu-latest, but pinned explicitly so this doesn't depend on an
+      # unstated assumption about the runner image.
+      - name: Install libsqlite3
+        run: sudo apt-get update -qq && sudo apt-get install -y libsqlite3-0
+
       - name: Analyze
         run: flutter analyze
 

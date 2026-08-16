@@ -173,10 +173,12 @@ class HistoryService extends ChangeNotifier {
 
   List<HistoryEntry> get entries => _entries;
 
-  Future<void> init() async {
-    final dbPath = await getDatabasesPath();
+  /// [dbPath] allows pointing at an isolated database file in tests
+  /// instead of the app's real one.
+  Future<void> init({String? dbPath}) async {
+    final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
-      join(dbPath, 'audio_guide_history.db'),
+      path,
       version: 6,
       onCreate: (db, version) {
         return db.execute('''
