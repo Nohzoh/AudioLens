@@ -78,6 +78,7 @@ creating a new task, check the highest ID across both files
     - A synthesis error could surface as an unhandled Zone error despite a `try/catch` further down — Dart flags a rejected `Future` as unhandled if no listener is attached at the moment of rejection. Fixed by attaching `.then(onError:)` immediately when the `Future` is created
   - **Actually verified**: local Android build (the native Kotlin file is modified)
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 78/78 (13 new: `text_chunker_test.dart`, `tts_chunking_test.dart`)
+  - **Parked (2026-08-16)**: real-world testing showed splitting into several Gemini TTS calls reliably hits rate limiting on a real account — even after raising `chunkMaxChars` 280→700 (fewer calls) and tuning the 429 retry twice, it kept happening, and the resulting mid-script fallback to Piper was judged a worse experience than the plain wait `speak()` gives. `AudioGuideService._synthesizeAndPlay` now calls `speak()` again instead of `speakChunked()`; nothing here was deleted — `TtsOrchestrator.speakChunked()`, `text_chunker.dart`, and their tests are untouched and ready to swap back in, either once quota isn't the bottleneck or alongside T89 (native Android TTS as a fallback that isn't rate-limited)
 
 - [x] **T78** 🌱 ⭐⭐⭐⭐ - **Deferred capture**: photo + GPS now, analysis (cloud) later
   - **Verified**: 2026-08-16 (PR #9, commit `33c0673`)
