@@ -130,6 +130,33 @@ class AboutAnalysisScreen extends StatelessWidget {
   /// upside down/sideways in some screens (T88) — the tag alone doesn't
   /// say whether Skia already applied it (swapped width/height for a
   /// 90°/270° tag) or the file's orientation metadata is stale/wrong.
+  /// Hex color at 5 fixed points (top/bottom/left/right-center, center)
+  /// of the decoded [image] — a cheap way to eyeball its orientation from
+  /// text alone (e.g. sky-colored top vs. ground-colored bottom) without
+  /// needing to transfer the actual file (T88).
+  Future<String> _samplePixels(ui.Image image) async {
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (byteData == null) return 'unavailable';
+    String colorAt(double xFrac, double yFrac) {
+      final x = (image.width * xFrac).clamp(0, image.width - 1).toInt();
+      final y = (image.height * yFrac).clamp(0, image.height - 1).toInt();
+      final offset = (y * image.width + x) * 4;
+      final r = byteData.getUint8(offset);
+      final g = byteData.getUint8(offset + 1);
+      final b = byteData.getUint8(offset + 2);
+      return '#${r.toRadixString(16).padLeft(2, '0')}'
+          '${g.toRadixString(16).padLeft(2, '0')}'
+          '${b.toRadixString(16).padLeft(2, '0')}';
+    }
+
+    final top = colorAt(0.5, 0.05);
+    final bottom = colorAt(0.5, 0.95);
+    final left = colorAt(0.05, 0.5);
+    final right = colorAt(0.95, 0.5);
+    final center = colorAt(0.5, 0.5);
+    return '$top / $bottom / $left / $right / $center';
+  }
+
   Future<String> _imageDiagnostics(String imagePath) async {
     final file = File(imagePath);
     if (!file.existsSync()) return 'file missing';
@@ -140,12 +167,20 @@ class AboutAnalysisScreen extends StatelessWidget {
 
       final codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
-      final decodedSize = '${frame.image.width}x${frame.image.height}';
-      frame.image.dispose();
+      final image = frame.image;
+      final decodedSize = '${image.width}x${image.height}';
+
+      // Sample a few pixel colors from the frame Flutter actually decoded
+      // (before any screen-specific rendering) — tells us whether the
+      // *decoded* image is already upright or not, independent of
+      // whatever the grid/player/about screens each do with it (T88).
+      final pixelSamples = await _samplePixels(image);
+      image.dispose();
 
       return 'EXIF orientation: $orientationTag\n'
           'Decoded size (Flutter): $decodedSize\n'
-          'File size: ${bytes.length} bytes';
+          'File size: ${bytes.length} bytes\n'
+          'Pixel samples (top/bottom/left/right/center): $pixelSamples';
     } catch (e) {
       return 'error reading image: $e';
     }
