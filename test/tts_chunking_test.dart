@@ -18,10 +18,17 @@ class _FakePiper extends TtsService {
 }
 
 class _FakeGeminiTts extends GeminiTtsService {
-  _FakeGeminiTts({this.failOnChunk}) : super(apiKey: 'test-key');
+  _FakeGeminiTts({this.failOnChunk, this.synthDelay, this.playDelay})
+      : super(apiKey: 'test-key');
 
   /// 0-based chunk index whose synthesis should throw, or null to never fail.
   final int? failOnChunk;
+
+  /// Simulates network/playback latency, to verify chunk N+1's synthesis
+  /// genuinely overlaps chunk N's playback rather than just being called
+  /// first and then blocking on it (T76 prefetch — see the timing test).
+  final Duration? synthDelay;
+  final Duration? playDelay;
 
   final List<String> log = [];
   final List<String> synthesizedTexts = [];
@@ -39,6 +46,7 @@ class _FakeGeminiTts extends GeminiTtsService {
     final index = _nextIndex++;
     log.add('synth:$index');
     synthesizedTexts.add(text);
+    if (synthDelay != null) await Future.delayed(synthDelay!);
     if (failOnChunk == index) {
       throw Exception('synthesis failed for chunk $index');
     }
@@ -48,6 +56,7 @@ class _FakeGeminiTts extends GeminiTtsService {
   @override
   Future<void> playFile(String path, {bool notifyComplete = true}) async {
     log.add('play:${path.split('/').last}');
+    if (playDelay != null) await Future.delayed(playDelay!);
     if (notifyComplete) onComplete?.call();
   }
 }
@@ -137,6 +146,43 @@ void main() {
     // All-gemini success concatenates chunks into the conventional cached
     // path (AudioGuideService._getLastWavPath looks for this exact name).
     expect(File('${tmpDir.path}/gemini_tts_output.wav').existsSync(), isTrue);
+  });
+
+  test('chunk synthesis genuinely overlaps the previous chunk\'s playback, not just called-then-blocked', () async {
+    // Log-order alone (as in the test above) only proves synthesizeToFile
+    // is *called* before playFile is awaited — it wouldn't catch a bug
+    // where that call is somehow serialized behind playback in practice.
+    // Real delays make that observable: with synthesis (100ms) shorter
+    // than playback (300ms) for every chunk, a correctly-overlapped run
+    // pays the synthesis cost only once (for chunk 0, before the loop);
+    // a sequential run would pay it again before every later chunk.
+    const synthDelay = Duration(milliseconds: 100);
+    const playDelay = Duration(milliseconds: 300);
+    final piper = _FakePiper();
+    final gemini = _FakeGeminiTts(synthDelay: synthDelay, playDelay: playDelay);
+    final orchestrator = TtsOrchestrator(piper: piper);
+
+    final expectedChunks = chunkScript(longScript);
+    expect(expectedChunks.length, greaterThanOrEqualTo(3));
+    final intermediateChunks = expectedChunks.length - 1;
+
+    final stopwatch = Stopwatch()..start();
+    await orchestrator.speakChunked(
+      longScript,
+      cancelToken: CancelToken(),
+      geminiTts: gemini,
+    );
+    stopwatch.stop();
+
+    final sequentialEstimate = synthDelay +
+        (synthDelay + playDelay) * intermediateChunks;
+    final overlappedEstimate = synthDelay + playDelay * intermediateChunks;
+
+    // Comfortable margin either side of the overlapped estimate — must be
+    // well under sequential (proves overlap happened) without being
+    // suspiciously fast (proves the delays were actually awaited at all).
+    expect(stopwatch.elapsed, lessThan(sequentialEstimate - const Duration(milliseconds: 150)));
+    expect(stopwatch.elapsed, greaterThanOrEqualTo(overlappedEstimate - const Duration(milliseconds: 50)));
   });
 
   test('falls back to Piper for the whole script if the first chunk fails', () async {
