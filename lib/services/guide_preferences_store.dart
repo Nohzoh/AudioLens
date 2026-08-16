@@ -18,6 +18,18 @@ class GuidePreferencesStore {
   static const _activeProviderKey = 'active_provider';
   static const _timingGpsKey = 'timing_gps';
   static const _timingAnalyzeKey = 'timing_analyze';
+  static const _ttsVoiceGenderKey = 'tts_voice_gender';
+
+  /// 'female' or 'male' — which native TTS voice to prefer (T89).
+  Future<String> loadTtsVoiceGender() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_ttsVoiceGenderKey) ?? 'female';
+  }
+
+  Future<void> saveTtsVoiceGender(String gender) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_ttsVoiceGenderKey, gender);
+  }
 
   Future<String?> loadActiveProviderName() async {
     final prefs = await SharedPreferences.getInstance();

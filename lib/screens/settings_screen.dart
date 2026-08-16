@@ -2,17 +2,15 @@ import 'package:flutter/material.dart';
 import 'logs_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/audio_guide_service.dart';
-import '../services/native_tts_service.dart';
 import '../services/remote_config_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import '../utils/build_info.dart';
 import 'package:intl/intl.dart';
 
-const _ttsCompareSample =
-    'Voici un exemple de voix pour comparer avec celle utilisée '
-    'actuellement dans l\'application. Remarquez le rythme et '
-    'l\'intonation sur cette phrase.';
+const _ttsPreviewSample =
+    'Voici un exemple de la voix qui sera utilisée pour vos guides audio. '
+    'Remarquez le rythme et l\'intonation sur cette phrase.';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,27 +21,14 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
-  final _nativeTts = NativeTtsService();
   bool _obscure = true;
   bool _saving = false;
-  List<Map<String, String>> _nativeVoices = [];
-  Map<String, String>? _selectedNativeVoice;
 
   @override
   void initState() {
     super.initState();
     final guide = context.read<AudioGuideService>();
     _apiKeyController.text = guide.geminiApiKey ?? '';
-    _loadNativeVoices();
-  }
-
-  Future<void> _loadNativeVoices() async {
-    final voices = await _nativeTts.frenchVoices();
-    if (!mounted) return;
-    setState(() {
-      _nativeVoices = voices;
-      if (voices.isNotEmpty) _selectedNativeVoice = voices.first;
-    });
   }
 
   @override
@@ -52,34 +37,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _testPiperVoice() async {
+  Future<void> _testVoice() async {
     final guide = context.read<AudioGuideService>();
-    await guide.ttsService.speak(_ttsCompareSample);
-  }
-
-  Future<void> _testNativeVoice() async {
-    final available = await _nativeTts.isFrenchAvailable();
-    if (!available) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Aucune voix française trouvée sur le TTS système de cet appareil'),
-          ),
-        );
-      }
-      return;
-    }
-    final voice = _selectedNativeVoice;
-    if (voice != null) {
-      await _nativeTts.setVoice(voice['name']!, voice['locale']!);
-    }
-    final played = await _nativeTts.speak(_ttsCompareSample);
+    final played =
+        await guide.nativeTtsService.speakAndWaitForResult(_ttsPreviewSample);
     if (!played && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
-              'Aucun son produit${voice != null ? " avec ${voice['name']}" : ""} — cette voix n\'est probablement pas vraiment disponible sur cet appareil'),
+              'Aucun son produit — le TTS système ne semble pas disponible sur cet appareil'),
         ),
       );
     }
@@ -331,53 +297,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 24),
 
-          // T89 — A/B comparison, not wired into the real synthesis
-          // pipeline. Just lets the user listen to both voices back to
-          // back to judge whether the native engine is good enough to
-          // replace or complement Piper.
-          const _SectionHeader('Comparer les voix (T89)'),
+          const _SectionHeader('Voix'),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.record_voice_over, size: 16),
-            label: const Text('Tester la voix Piper (actuelle)'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 44),
+          Consumer<AudioGuideService>(
+            builder: (context, guide, _) => SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'female',
+                  label: Text('Féminine'),
+                  icon: Icon(Icons.face_3),
+                ),
+                ButtonSegment(
+                  value: 'male',
+                  label: Text('Masculine'),
+                  icon: Icon(Icons.face_6),
+                ),
+              ],
+              selected: {guide.ttsVoiceGender},
+              onSelectionChanged: (selection) =>
+                  guide.setTtsVoiceGender(selection.first),
             ),
-            onPressed: _testPiperVoice,
           ),
           const SizedBox(height: 8),
-          if (_nativeVoices.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: DropdownButtonFormField<Map<String, String>>(
-                initialValue: _selectedNativeVoice,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Voix native à tester',
-                  border: OutlineInputBorder(),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                items: _nativeVoices
-                    .map((v) => DropdownMenuItem(
-                          value: v,
-                          child: Text(
-                            v['name'] ?? '?',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedNativeVoice = v),
-              ),
-            ),
           OutlinedButton.icon(
-            icon: const Icon(Icons.record_voice_over_outlined, size: 16),
-            label: const Text('Tester le TTS natif Android'),
+            icon: const Icon(Icons.play_arrow, size: 16),
+            label: const Text('Tester la voix'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 44),
             ),
-            onPressed: _testNativeVoice,
+            onPressed: _testVoice,
           ),
 
           const SizedBox(height: 32),

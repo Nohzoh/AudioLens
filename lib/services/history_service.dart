@@ -23,7 +23,7 @@ class HistoryEntry {
   final String? audioPath;
   final DateTime createdAt;
   final AnalysisStatus status;
-  final String? ttsModel; // e.g. "gemini-tts", "piper"
+  final String? ttsModel; // e.g. "gemini-tts", "native-tts" (was "piper" before T89)
   final String? aiModel; // e.g. "gemini-3.5-flash", "gemini-nano"
   final DateTime? analyzedAt;
   final String? analysisSource; // "camera", "gallery", "retry"
@@ -35,7 +35,7 @@ class HistoryEntry {
   final double? gpsLongitude;
   final String? gpsAddress;
   final bool aiFallback; // a fallback model was used for the analysis
-  final bool ttsFallback; // Gemini TTS failed → fell back to Piper
+  final bool ttsFallback; // Gemini TTS failed → fell back to the native engine
 
   const HistoryEntry({
     this.id,
@@ -64,6 +64,10 @@ class HistoryEntry {
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
   bool get isPending => status == AnalysisStatus.pending;
   bool get isCaptured => status == AnalysisStatus.captured;
+  // Only checks for the old "piper" value: post-T89 native-tts entries
+  // never have a cached audioPath (they're re-synthesized on replay
+  // instead, being instant and free), so this condition is naturally
+  // moot for them regardless.
   bool get hasLowQualityTts => ttsModel == "piper" && audioPath != null;
   String get audioDurationEstimate {
     if (wordCount == null) return '';

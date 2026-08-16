@@ -28,7 +28,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     // Listen to TTS progress from service
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final guide = context.read<AudioGuideService>();
-      guide.ttsService.onProgress = (progress) {
+      guide.nativeTtsService.onProgress = (progress) {
         if (!mounted) return;
         setState(() => _readingProgress = progress);
         _scrollToProgress(progress);
@@ -268,8 +268,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                   _FallbackBanner(
                                     icon: Icons.volume_down,
                                     message: guide.ttsFallbackWasRateLimit
-                                        ? 'Quota voix Gemini atteint pour l\'instant — voix Piper utilisée'
-                                        : 'Voix Piper (Gemini TTS indisponible)',
+                                        ? 'Quota voix Gemini atteint pour l\'instant — voix native utilisée'
+                                        : 'Voix native (Gemini TTS indisponible)',
                                     color: Colors.orange,
                                   ),
                                 const SizedBox(height: 8),

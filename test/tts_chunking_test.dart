@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:audiolens/services/gemini_tts_service.dart';
 import 'package:audiolens/services/tts_orchestrator.dart';
-import 'package:audiolens/services/tts_service.dart';
+import 'package:audiolens/services/native_tts_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
 import 'package:audiolens/utils/text_chunker.dart';
 
-class _FakePiper extends TtsService {
+class _FakeNativeTts extends NativeTtsService {
   final List<String> spokenTexts = [];
 
   @override
@@ -127,9 +127,9 @@ void main() {
       'Dix-neuvieme et derniere phrase qui cloture ce script de test assez long et complet.';
 
   test('a short script falls through to the single-shot speak() path', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts();
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     final model = await orchestrator.speakChunked(
       'Une seule phrase.',
@@ -143,15 +143,15 @@ void main() {
   });
 
   test('chunks a long script, plays every chunk, calls onComplete once, and caches the result', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts();
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     var completeCount = 0;
-    // speakChunked mirrors piper.onComplete onto geminiTts.onComplete
+    // speakChunked mirrors native.onComplete onto geminiTts.onComplete
     // (same as speak()), so set it here — matches how AudioGuideService
     // wires it in practice.
-    piper.onComplete = () => completeCount++;
+    native.onComplete = () => completeCount++;
 
     final expectedChunks = chunkScript(longScript);
     expect(expectedChunks.length, greaterThanOrEqualTo(3),
@@ -190,9 +190,9 @@ void main() {
     // a sequential run would pay it again before every later chunk.
     const synthDelay = Duration(milliseconds: 100);
     const playDelay = Duration(milliseconds: 300);
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts(synthDelay: synthDelay, playDelay: playDelay);
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     final expectedChunks = chunkScript(longScript);
     expect(expectedChunks.length, greaterThanOrEqualTo(3));
@@ -217,10 +217,10 @@ void main() {
     expect(stopwatch.elapsed, greaterThanOrEqualTo(overlappedEstimate - const Duration(milliseconds: 50)));
   });
 
-  test('falls back to Piper for the whole script if the first chunk fails', () async {
-    final piper = _FakePiper();
+  test('falls back to native TTS for the whole script if the first chunk fails', () async {
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts(failOnChunk: 0);
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     final model = await orchestrator.speakChunked(
       longScript,
@@ -228,15 +228,15 @@ void main() {
       geminiTts: gemini,
     );
 
-    expect(model, 'piper');
-    expect(piper.spokenTexts, [longScript]);
+    expect(model, 'native-tts');
+    expect(native.spokenTexts, [longScript]);
     expect(gemini.log.where((l) => l.startsWith('play:')), isEmpty);
   });
 
-  test('falls back to Piper for the remaining text if a later chunk fails', () async {
-    final piper = _FakePiper();
+  test('falls back to native TTS for the remaining text if a later chunk fails', () async {
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts(failOnChunk: 1);
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     final expectedChunks = chunkScript(longScript);
 
@@ -246,16 +246,16 @@ void main() {
       geminiTts: gemini,
     );
 
-    expect(model, 'piper');
+    expect(model, 'native-tts');
     // Chunk 0 was already played via Gemini before the fallback kicked in.
     expect(gemini.log, contains('play:gemini_tts_chunk_0.wav'));
-    expect(piper.spokenTexts, [expectedChunks.sublist(1).join(' ')]);
+    expect(native.spokenTexts, [expectedChunks.sublist(1).join(' ')]);
   });
 
   test('cancellation between chunks stops the sequence early', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts();
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
     final cancelToken = CancelToken();
 
     final expectedChunks = chunkScript(longScript);
@@ -276,9 +276,9 @@ void main() {
   });
 
   test('wasRateLimited is set when the first chunk fails with a 429', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts(failOnChunk: 0, rateLimited: true);
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: gemini);
 
@@ -286,9 +286,9 @@ void main() {
   });
 
   test('wasRateLimited stays false when the first chunk fails for another reason', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts(failOnChunk: 0, rateLimited: false);
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: gemini);
 
@@ -296,9 +296,9 @@ void main() {
   });
 
   test('wasRateLimited is set when a later chunk fails with a 429', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts(failOnChunk: 1, rateLimited: true);
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: gemini);
 
@@ -306,9 +306,9 @@ void main() {
   });
 
   test('wasRateLimited resets to false on a subsequent successful call', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final failingGemini = _FakeGeminiTts(failOnChunk: 0, rateLimited: true);
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     await orchestrator.speakChunked(longScript, cancelToken: CancelToken(), geminiTts: failingGemini);
     expect(orchestrator.wasRateLimited, isTrue);
@@ -319,13 +319,13 @@ void main() {
   });
 
   test('speak() (single-shot path) also sets wasRateLimited on a 429', () async {
-    final piper = _FakePiper();
+    final native = _FakeNativeTts();
     final gemini = _FakeGeminiTts(failSpeak: true, rateLimited: true);
-    final orchestrator = TtsOrchestrator(piper: piper);
+    final orchestrator = TtsOrchestrator(nativeTts: native);
 
     final model = await orchestrator.speak('Un script.', cancelToken: CancelToken(), geminiTts: gemini);
 
-    expect(model, 'piper');
+    expect(model, 'native-tts');
     expect(orchestrator.wasRateLimited, isTrue);
   });
 }

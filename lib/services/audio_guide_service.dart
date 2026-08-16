@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'ai_service.dart';
 import 'gemini_nano_service.dart';
 import 'gemini_api_service.dart';
-import 'tts_service.dart';
+import 'native_tts_service.dart';
 import 'gemini_tts_service.dart';
 import 'location_service.dart';
 import 'remote_config_service.dart';
@@ -38,23 +38,23 @@ class PipelineProgress {
 
 class AudioGuideService extends ChangeNotifier {
   AudioGuideService({
-    TtsService? ttsService,
+    NativeTtsService? nativeTtsService,
     GeminiTtsService? geminiTtsService,
     GeminiApiService? geminiApiService,
     GeminiNanoService? nanoService,
     GuidePreferencesStore? preferencesStore,
     LocationContextResolver? locationResolver,
-  })  : _ttsService = ttsService ?? TtsService(),
+  })  : _nativeTtsService = nativeTtsService ?? NativeTtsService(),
         _nanoService = nanoService ?? GeminiNanoService(),
         _geminiTtsService = geminiTtsService,
         _geminiApiService = geminiApiService,
         _preferencesStore = preferencesStore ?? GuidePreferencesStore(),
         _locationResolver = locationResolver ?? LocationContextResolver() {
-    _ttsOrchestrator = TtsOrchestrator(piper: _ttsService);
+    _ttsOrchestrator = TtsOrchestrator(nativeTts: _nativeTtsService);
   }
 
-  final TtsService _ttsService;
-  TtsService get ttsService => _ttsService;
+  final NativeTtsService _nativeTtsService;
+  NativeTtsService get nativeTtsService => _nativeTtsService;
   final GuidePreferencesStore _preferencesStore;
   final LocationContextResolver _locationResolver;
   late final TtsOrchestrator _ttsOrchestrator;
@@ -63,8 +63,10 @@ class AudioGuideService extends ChangeNotifier {
   GeminiTtsService? get geminiTtsService => _geminiTtsService;
   String? _lastAudioPath;
   String? get lastAudioPath => _lastAudioPath;
-  String _lastTtsModel = "piper";
+  String _lastTtsModel = "native-tts";
   String get lastTtsModel => _lastTtsModel;
+  String _ttsVoiceGender = 'female';
+  String get ttsVoiceGender => _ttsVoiceGender;
   String? _lastAiModel;
   String? get lastAiModel => _lastAiModel;
   String? _lastGpsSource;
@@ -94,7 +96,7 @@ class AudioGuideService extends ChangeNotifier {
     if (svc is GeminiApiService) return svc.lastUsedModel;
     return _lastAiModel;
   }
-  bool get ttsWasFallback => _lastTtsModel == 'piper' && _geminiTtsService != null;
+  bool get ttsWasFallback => _lastTtsModel == 'native-tts' && _geminiTtsService != null;
   bool get ttsFallbackWasRateLimit => _ttsOrchestrator.wasRateLimited;
   final GeminiNanoService _nanoService;
 
@@ -165,7 +167,7 @@ class AudioGuideService extends ChangeNotifier {
 
     _updateProviderName();
 
-    _ttsService.onComplete = () {
+    _nativeTtsService.onComplete = () {
       _state = GuideState.idle;
       _progressEstimator.stepProgress = 0.0;
       notifyListeners();
@@ -231,6 +233,22 @@ class AudioGuideService extends ChangeNotifier {
       gpsDurations: timings.gpsDurations,
       analyzeDurations: timings.analyzeDurations,
     );
+    // Plain field assignment (no platform I/O) — the voice itself is
+    // applied lazily on first real use of the native engine, matching
+    // its existing lazy-initialization pattern.
+    _ttsVoiceGender = await _preferencesStore.loadTtsVoiceGender();
+    _nativeTtsService.preferredGender = _ttsVoiceGender;
+  }
+
+  /// Changes the preferred native TTS voice's gender ('female' or 'male',
+  /// T89) and re-applies it immediately so a subsequent preview/speak
+  /// reflects the change without waiting for a fresh app start.
+  Future<void> setTtsVoiceGender(String gender) async {
+    _ttsVoiceGender = gender;
+    _nativeTtsService.preferredGender = gender;
+    await _preferencesStore.saveTtsVoiceGender(gender);
+    await _nativeTtsService.applyPreferredVoice();
+    notifyListeners();
   }
 
   /// Analyzes [imageFile] and, unless [generateAudio] is false (T16),
@@ -392,8 +410,8 @@ class AudioGuideService extends ChangeNotifier {
     }
   }
 
-  /// Synthesizes [script] (cloud TTS with Piper fallback) and plays it,
-  /// driving the synthesizing -> speaking state transition.
+  /// Synthesizes [script] (cloud TTS with native TTS fallback) and plays
+  /// it, driving the synthesizing -> speaking state transition.
   Future<void> _synthesizeAndPlay(String script) async {
     _state = GuideState.synthesizing;
     _currentStep = 2;
@@ -402,11 +420,10 @@ class AudioGuideService extends ChangeNotifier {
 
     // T76's speakChunked() is parked for now (2026-08-16): splitting a
     // script into several Gemini TTS calls reliably hits rate limiting on
-    // real accounts, and the fallback-to-Piper-mid-script it causes is a
+    // real accounts, and the fallback-to-native-mid-script it causes is a
     // worse experience than the plain wait speak() gives every user. Back
-    // to one call for the whole script until chunking (or an alternative
-    // like T89's native-TTS fallback) is revisited. speakChunked() and
-    // its tests are untouched, ready to swap back in.
+    // to one call for the whole script until chunking is revisited.
+    // speakChunked() and its tests are untouched, ready to swap back in.
     _lastTtsModel = await _ttsOrchestrator.speak(
       script,
       cancelToken: _cancelToken,
@@ -459,16 +476,25 @@ class AudioGuideService extends ChangeNotifier {
   }
 
   Future<void> togglePause() async {
+    // Which engine is actually playing must be checked via lastTtsModel,
+    // not just "is Gemini TTS configured" (_geminiTtsService != null) — a
+    // configured Gemini TTS can still have fallen back to the native
+    // engine for this particular playback (rate limit, network error).
+    final geminiIsPlaying = _lastTtsModel == 'gemini-tts' && _geminiTtsService != null;
     if (_state == GuideState.speaking) {
-      if (_geminiTtsService != null) {
+      if (geminiIsPlaying) {
         await _geminiTtsService!.pause();
       } else {
-        await _ttsService.pause();
+        await _nativeTtsService.pause();
       }
       _state = GuideState.paused;
     } else if (_state == GuideState.paused) {
-      const channel = MethodChannel('audio_guide/audio_player');
-      await channel.invokeMethod('play');
+      if (geminiIsPlaying) {
+        const channel = MethodChannel('audio_guide/audio_player');
+        await channel.invokeMethod('play');
+      } else {
+        await _nativeTtsService.resume();
+      }
       _state = GuideState.speaking;
     }
     notifyListeners();
@@ -485,9 +511,15 @@ class AudioGuideService extends ChangeNotifier {
     _state = GuideState.cancelling;
     notifyListeners();
     
-    // Try to stop TTS with a timeout to prevent hanging
+    // Try to stop TTS with a timeout to prevent hanging. Native TTS
+    // manages its own playback internally (not the shared
+    // audio_guide/audio_player channel Gemini TTS's WAV playback uses),
+    // so both need stopping regardless of which one actually played.
     try {
-      await _ttsService.stop().timeout(const Duration(seconds: 5));
+      await Future.wait([
+        _nativeTtsService.stop(),
+        if (_geminiTtsService != null) _geminiTtsService!.stop(),
+      ]).timeout(const Duration(seconds: 5));
     } catch (_) {
       // Timeout reached, TTS is still running in background but we can proceed
     }
@@ -503,13 +535,16 @@ class AudioGuideService extends ChangeNotifier {
     await cancelCurrentAction();
   }
 
+  /// Returns the last Gemini-TTS-generated WAV file for caching, if any.
+  /// The native engine (T89) plays directly via the device's own TTS
+  /// pipeline and doesn't produce a file to cache — its entries are just
+  /// re-synthesized on replay, which is fine since it's instant and free,
+  /// unlike Gemini TTS's quota-limited cloud calls.
   Future<String?> _getLastWavPath() async {
     try {
       final tmpDir = await getTemporaryDirectory();
       final geminiWav = File('${tmpDir.path}/gemini_tts_output.wav');
       if (await geminiWav.exists()) return geminiWav.path;
-      final piperWav = File('${tmpDir.path}/tts_output.wav');
-      if (await piperWav.exists()) return piperWav.path;
     } catch (_) {}
     return null;
   }
@@ -518,7 +553,6 @@ class AudioGuideService extends ChangeNotifier {
   void dispose() {
     _progressEstimator.stop();
     _analysisInProgress = false;
-    _ttsService.dispose();
     super.dispose();
   }
 }

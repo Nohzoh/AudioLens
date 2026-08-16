@@ -78,7 +78,7 @@ class AboutAnalysisScreen extends StatelessWidget {
               _Row('Fallback IA',
                   'Utilisé : ${live.aiModel ?? "modèle de secours"}'),
             if (live.ttsFallback)
-              const _Row('Fallback TTS', 'Piper (Gemini TTS indisponible)'),
+              const _Row('Fallback TTS', 'Voix native (Gemini TTS indisponible)'),
           ]),
 
           _Section(title: 'GÉOLOCALISATION', children: [
