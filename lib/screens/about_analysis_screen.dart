@@ -153,6 +153,7 @@ Status: ${live.status.name}
   String _gpsSourceLabel(String? source) => switch (source) {
     'realtime' => '📡 Temps réel',
     'exif' => '📷 Métadonnées EXIF',
+    'map' => '🗺️ Choisie sur la carte',
     'none' => '❌ Non disponible',
     _ => 'Inconnu',
   };
