@@ -2,15 +2,14 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_logger.dart';
 
-/// Stockage sécurisé de la clé API Gemini (T10).
+/// Secure storage for the Gemini API key (T10).
 ///
-/// La clé est conservée dans le stockage sécurisé de la plateforme
-/// (Android Keystore / iOS Keychain) via flutter_secure_storage, jamais en
-/// clair dans SharedPreferences. Une migration one-shot depuis l'ancien
-/// emplacement SharedPreferences est effectuée automatiquement au premier
-/// accès. En cas d'indisponibilité du stockage sécurisé (tests, keystore
-/// corrompu), on retombe proprement sur SharedPreferences pour ne jamais
-/// casser le flux utilisateur.
+/// The key is kept in the platform's secure storage (Android Keystore /
+/// iOS Keychain) via flutter_secure_storage, never in plaintext in
+/// SharedPreferences. A one-shot migration from the old SharedPreferences
+/// location runs automatically on first access. If secure storage is
+/// unavailable (tests, corrupted keystore), it falls back cleanly to
+/// SharedPreferences so the user flow never breaks.
 class SecureKeyStorage {
   static const String apiKeyKey = 'gemini_api_key';
 
@@ -18,8 +17,8 @@ class SecureKeyStorage {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
-  /// Lit la clé API : d'abord dans le stockage sécurisé, puis (migration
-  /// one-shot) dans l'ancien SharedPreferences. Retourne null si absente.
+  /// Reads the API key: first from secure storage, then (one-shot
+  /// migration) from the old SharedPreferences. Returns null if absent.
   static Future<String?> readApiKey() async {
     try {
       final secureValue = await _secure.read(key: apiKeyKey);
@@ -28,7 +27,7 @@ class SecureKeyStorage {
       AppLogger.error('Secure storage read failed: $e');
     }
 
-    // Migration depuis l'ancien stockage SharedPreferences
+    // Migration from the old SharedPreferences storage
     try {
       final prefs = await SharedPreferences.getInstance();
       final legacy = prefs.getString(apiKeyKey);
@@ -46,8 +45,8 @@ class SecureKeyStorage {
     return null;
   }
 
-  /// Écrit la clé API dans le stockage sécurisé. Une valeur vide supprime la
-  /// clé (du stockage sécurisé et de l'ancien SharedPreferences).
+  /// Writes the API key to secure storage. An empty value deletes the key
+  /// (from secure storage and from the old SharedPreferences).
   static Future<void> writeApiKey(String value) async {
     if (value.isEmpty) {
       await clearApiKey();
@@ -55,7 +54,7 @@ class SecureKeyStorage {
     }
     try {
       await _secure.write(key: apiKeyKey, value: value);
-      // Supprimer toute trace en clair laissée par une version antérieure
+      // Remove any plaintext trace left by an earlier version
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove(apiKeyKey);
@@ -64,14 +63,14 @@ class SecureKeyStorage {
     } catch (e) {
       AppLogger.error('Secure storage write failed: $e');
     }
-    // Dégradé : stockage sécurisé indisponible
+    // Degraded fallback: secure storage unavailable
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(apiKeyKey, value);
     } catch (_) {}
   }
 
-  /// Supprime la clé API partout.
+  /// Deletes the API key everywhere.
   static Future<void> clearApiKey() async {
     try {
       await _secure.delete(key: apiKeyKey);

@@ -18,7 +18,7 @@ changes go through a branch + PR. Both `Test` (flutter analyze + flutter
 test) and `Build Android APK` must pass before merging.
 
 When the work closes a TODO.md task, update TODO.md (remove the entry) and
-CHANGELOG.md (add it under "Terminé", with what was actually verified) in
+CHANGELOG.md (add it under "Done", with what was actually verified) in
 the **same PR** as the code — as a follow-up commit once the PR number is
 known, so the changelog entry can reference it. This halves PR/CI-run count
 versus a separate docs-only PR per task (2026-08-16).

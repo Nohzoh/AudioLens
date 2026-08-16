@@ -34,8 +34,8 @@ class HistoryEntry {
   final double? gpsLatitude;
   final double? gpsLongitude;
   final String? gpsAddress;
-  final bool aiFallback; // un modèle de secours a été utilisé pour l'analyse
-  final bool ttsFallback; // Gemini TTS a échoué → repli sur Piper
+  final bool aiFallback; // a fallback model was used for the analysis
+  final bool ttsFallback; // Gemini TTS failed → fell back to Piper
 
   const HistoryEntry({
     this.id,

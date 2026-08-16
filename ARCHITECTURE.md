@@ -1,157 +1,157 @@
 # Architecture — AudioLens
 
-Vue d'ensemble du pipeline et des flux, pour s'orienter rapidement dans le
-code (T69). Pour l'état des tâches, voir [`TODO.md`](TODO.md) et
+Overview of the pipeline and data flows, to get oriented quickly in the
+code (T69). For task status, see [`TODO.md`](TODO.md) and
 [`CHANGELOG.md`](CHANGELOG.md).
 
-## Vue d'ensemble
+## Overview
 
-AudioLens transforme une photo de lieu en un commentaire audio : une image
-est localisée (GPS), enrichie avec du contexte factuel (Wikipedia, point
-d'intérêt), analysée par un modèle IA (vision), puis le script produit est
-synthétisé en voix et joué.
+AudioLens turns a photo of a place into an audio commentary: an image is
+located (GPS), enriched with factual context (Wikipedia, point of
+interest), analyzed by an AI model (vision), then the resulting script is
+synthesized into speech and played.
 
-Deux chemins d'entrée existent :
-- **Analyse immédiate** (par défaut) : photo → pipeline complet → audio.
-- **Capture différée** (T78) : photo + coordonnées GPS brutes enregistrées
-  sans aucun appel réseau ; le reste du pipeline (reverse geocoding, POI,
-  Wikipedia, IA, TTS) est lancé plus tard, à la demande, depuis l'historique
-  — utile pour économiser sa connexion data.
+Two entry paths exist:
+- **Immediate analysis** (default): photo → full pipeline → audio.
+- **Deferred capture** (T78): photo + raw GPS coordinates saved with no
+  network call at all; the rest of the pipeline (reverse geocoding, POI,
+  Wikipedia, AI, TTS) is triggered later, on demand, from the history
+  screen — useful to save mobile data.
 
-## Diagramme 1 — Pipeline principal : Photo → AIService → TTS → Audio
+## Diagram 1 — Main pipeline: Photo → AIService → TTS → Audio
 
 ```mermaid
 flowchart TD
-    Capture["Photo (caméra/galerie)"] --> Entry{Capturer sans analyser ?}
-    Entry -- "non (par défaut)" --> Loc
-    Entry -- "oui (T78)" --> Stored["HistoryEntry\nstatus=captured\n+ coordonnées brutes"]
-    Stored -. "Lancer l'analyse\n(plus tard)" .-> Loc
+    Capture["Photo (camera/gallery)"] --> Entry{Capture without analyzing?}
+    Entry -- "no (default)" --> Loc
+    Entry -- "yes (T78)" --> Stored["HistoryEntry\nstatus=captured\n+ raw coordinates"]
+    Stored -. "Run analysis\n(later)" .-> Loc
 
-    Loc["LocationContextResolver\n(diagramme 2)"] --> AI
+    Loc["LocationContextResolver\n(diagram 2)"] --> AI
 
-    subgraph AI["Analyse IA (AIService)"]
+    subgraph AI["AI analysis (AIService)"]
         direction TB
-        Cloud["GeminiApiService\n(cloud, ~400 mots)"]
-        Nano["GeminiNanoService\n(on-device, ~180 mots)"]
-        Cloud -- échec --> Nano
+        Cloud["GeminiApiService\n(cloud, ~400 words)"]
+        Nano["GeminiNanoService\n(on-device, ~180 words)"]
+        Cloud -- failure --> Nano
     end
 
     AI --> Result["AudioGuideResult\n{title, script, locationName}"]
-    Result --> AutoTts{"Générer l'audio\nautomatiquement ?\n(réglage, T16)"}
+    Result --> AutoTts{"Generate audio\nautomatically?\n(setting, T16)"}
 
-    AutoTts -- non --> ScriptReady["GuideState.scriptReady\n(script seul en historique)"]
-    ScriptReady -. "Générer l'audio\n(plus tard)" .-> TTS
+    AutoTts -- no --> ScriptReady["GuideState.scriptReady\n(script-only in history)"]
+    ScriptReady -. "Generate audio\n(later)" .-> TTS
 
-    AutoTts -- oui --> TTS
+    AutoTts -- yes --> TTS
 
-    subgraph TTS["Synthèse vocale (TtsOrchestrator.speakChunked, T76)"]
+    subgraph TTS["Speech synthesis (TtsOrchestrator.speakChunked, T76)"]
         direction TB
-        Chunk["text_chunker.dart\ndécoupe en phrases"]
-        GTts["GeminiTtsService\n(cloud, par morceau)"]
+        Chunk["text_chunker.dart\nsplits into sentences"]
+        GTts["GeminiTtsService\n(cloud, per chunk)"]
         Piper["TtsService / Piper\n(local, offline)"]
         Chunk --> GTts
-        GTts -- échec sur un morceau --> Piper
+        GTts -- chunk failure --> Piper
     end
 
-    TTS --> Audio["Lecture native\n(AudioPlayerPlugin.kt)"]
+    TTS --> Audio["Native playback\n(AudioPlayerPlugin.kt)"]
     Audio --> History[("HistoryService\nSQLite")]
 ```
 
-**Points clés** :
-- `AudioGuideService.analyzeAndPlay()` (`audio_guide_service.dart`) orchestre
-  tout le pipeline et notifie l'UI via `GuideState`
+**Key points**:
+- `AudioGuideService.analyzeAndPlay()` (`audio_guide_service.dart`)
+  orchestrates the whole pipeline and notifies the UI via `GuideState`
   (`idle → locating → analyzing → synthesizing → speaking`, plus
   `scriptReady`, `paused`, `cancelling`, `error`).
-- Le repli cloud → local existe à deux niveaux indépendants : IA (Gemini API
-  → Gemini Nano) et TTS (Gemini TTS → Piper). Un échec IA ne déclenche pas de
-  repli TTS et inversement.
-- `TtsOrchestrator.speakChunked()` synthétise le morceau suivant pendant que
-  le morceau courant joue (au lieu d'attendre la synthèse complète du script
-  avant de commencer la lecture). En cas d'échec de synthèse d'un morceau,
-  le repli Piper ne reprend que le texte restant — les morceaux déjà joués
-  ne sont pas rejoués.
-- `CancelToken` (`lib/utils/cancel_token.dart`) est vérifié entre chaque
-  étape du pipeline et entre chaque morceau TTS ; il n'interrompt pas un
-  appel HTTP déjà en cours (le package `http` ne le permet pas — voir T70).
+- The cloud → local fallback exists at two independent levels: AI (Gemini
+  API → Gemini Nano) and TTS (Gemini TTS → Piper). An AI failure does not
+  trigger a TTS fallback, and vice versa.
+- `TtsOrchestrator.speakChunked()` synthesizes the next chunk while the
+  current one plays (instead of waiting for the full script to be
+  synthesized before starting playback). If a chunk fails to synthesize,
+  the Piper fallback only covers the remaining text — already-played
+  chunks are not replayed.
+- `CancelToken` (`lib/utils/cancel_token.dart`) is checked between each
+  pipeline step and between each TTS chunk; it does not interrupt an
+  already in-flight HTTP call (the `http` package doesn't support that —
+  see T70).
 
-## Diagramme 2 — Géolocalisation : EXIF → GPS → Wikipedia
+## Diagram 2 — Geolocation: EXIF → GPS → Wikipedia
 
 ```mermaid
 flowchart TD
-    Start["LocationContextResolver.resolve(imageFile)\nou resolveFromCoordinates(lat, lon, source)"]
-    Start --> Exif{EXIF GPS\ndans la photo ?}
-    Exif -- oui --> FromCoords["source = 'exif'"]
-    Exif -- non --> Realtime["LocationService.getCurrentLocation()\nsource = 'realtime' ou 'none'"]
+    Start["LocationContextResolver.resolve(imageFile)\nor resolveFromCoordinates(lat, lon, source)"]
+    Start --> Exif{EXIF GPS\nin the photo?}
+    Exif -- yes --> FromCoords["source = 'exif'"]
+    Exif -- no --> Realtime["LocationService.getCurrentLocation()\nsource = 'realtime' or 'none'"]
     FromCoords --> Geocode
     Realtime --> Geocode
 
     Geocode["Reverse geocoding\n(Nominatim, OpenStreetMap)"] --> Poi
-    Geocode --> Address["adresse, ville, quartier, pays"]
+    Geocode --> Address["address, city, district, country"]
 
     Poi["PoiService.findNearbyName\n(Overpass API — leisure/tourism/\nhistoric/amenity, T74)"] --> WikiName
 
-    subgraph Wiki["Enrichissement Wikipedia"]
+    subgraph Wiki["Wikipedia enrichment"]
         direction TB
-        WikiGeo["WikipediaService.searchNearby\n(géosearch par coordonnées)"]
-        WikiName["WikipediaService.searchByName\n(recherche par nom de POI + ville,\nfallback fr → en, T74)"]
-        Merge["WikipediaService.merge\n(dédoublonnage par titre)"]
+        WikiGeo["WikipediaService.searchNearby\n(geosearch by coordinates)"]
+        WikiName["WikipediaService.searchByName\n(search by POI name + city,\nfr → en fallback, T74)"]
+        Merge["WikipediaService.merge\n(dedup by title)"]
         WikiGeo --> Merge
         WikiName --> Merge
     end
 
     Address --> Context["LocationContext\n{address, city, poiName, promptContext}"]
     Merge --> Context
-    Context --> Prompt["Contexte injecté dans le prompt IA\n(gemini_api_service.dart)"]
+    Context --> Prompt["Context injected into the AI prompt\n(gemini_api_service.dart)"]
 ```
 
-**Points clés** :
-- Pour une capture différée (T78), seules les coordonnées brutes sont
-  enregistrées à la prise de photo (aucun appel réseau) ; tout ce diagramme
-  s'exécute plus tard, au moment de "Lancer l'analyse", via
-  `resolveFromCoordinates()`.
-- Le rayon de recherche Wikipedia (`wikipedia_radius_meters`, 500 m par
-  défaut) et POI (`poi_radius_meters`, 75 m) sont pilotés par
-  [`config.json`](config.json), chargé à distance par `RemoteConfigService`
-  avec allowlist de domaine (T81) et valeurs par défaut intégrées en secours.
-- `PoiService` sélectionne le POI le plus proche par distance de Haversine
-  (l'ordre de retour d'Overpass n'est pas garanti par distance).
+**Key points**:
+- For a deferred capture (T78), only the raw coordinates are saved when
+  the photo is taken (no network call); this entire diagram runs later,
+  when "Run analysis" is triggered, via `resolveFromCoordinates()`.
+- The Wikipedia search radius (`wikipedia_radius_meters`, 500 m by
+  default) and POI radius (`poi_radius_meters`, 75 m) are driven by
+  [`config.json`](config.json), fetched remotely by `RemoteConfigService`
+  with a domain allowlist (T81) and built-in defaults as a fallback.
+- `PoiService` picks the closest POI by Haversine distance (Overpass's
+  return order is not guaranteed to be distance-sorted).
 
-## Persistance
+## Persistence
 
-| Donnée | Service | Stockage |
+| Data | Service | Storage |
 |---|---|---|
-| Historique des analyses | `HistoryService` | SQLite (`sqflite`) |
-| Clé API Gemini | `SecureKeyStorage` | Keystore/Keychain chiffré (`flutter_secure_storage`), avec migration one-shot depuis l'ancien `SharedPreferences` |
-| Provider actif, historique de timing | `GuidePreferencesStore` | `SharedPreferences` |
-| Réglages (audio auto, bouton Ko-fi...) | `SettingsService` | `SharedPreferences` |
-| Config distante (modèles, rayons, TTS...) | `RemoteConfigService` | Fetch réseau + valeurs par défaut en code |
+| Analysis history | `HistoryService` | SQLite (`sqflite`) |
+| Gemini API key | `SecureKeyStorage` | Encrypted Keystore/Keychain (`flutter_secure_storage`), with a one-shot migration from the old `SharedPreferences` |
+| Active provider, timing history | `GuidePreferencesStore` | `SharedPreferences` |
+| Settings (auto audio, Ko-fi button...) | `SettingsService` | `SharedPreferences` |
+| Remote config (models, radii, TTS...) | `RemoteConfigService` | Network fetch + in-code defaults |
 
-`HistoryEntry.status` (`AnalysisStatus`) a quatre valeurs : `pending`
-(analyse en cours), `captured` (photo + GPS enregistrés, analyse non
-lancée — T78), `complete`, `failed`. Une entrée `complete` sans `audioPath`
-signifie "script seul" (T16) — l'audio peut être généré plus tard sans
-refaire GPS/Wikipedia/IA.
+`HistoryEntry.status` (`AnalysisStatus`) has four values: `pending`
+(analysis in progress), `captured` (photo + GPS saved, analysis not
+started — T78), `complete`, `failed`. A `complete` entry with no
+`audioPath` means "script only" (T16) — audio can be generated later
+without redoing GPS/Wikipedia/AI.
 
-## Canaux natifs (MethodChannel, Android/Kotlin)
+## Native channels (MethodChannel, Android/Kotlin)
 
-| Channel | Plugin Kotlin | Rôle |
+| Channel | Kotlin plugin | Role |
 |---|---|---|
-| `audio_guide/location` | `LocationPlugin.kt` | Permission + fix GPS temps réel |
-| `audio_guide/audio_player` | `AudioPlayerPlugin.kt` | Lecture WAV (Piper et Gemini TTS partagent le même lecteur natif) |
-| `audio_guide/gemini_nano` | `GeminiNanoPlugin.kt` | Analyse IA on-device (Google AI Core) |
+| `audio_guide/location` | `LocationPlugin.kt` | Permission + real-time GPS fix |
+| `audio_guide/audio_player` | `AudioPlayerPlugin.kt` | WAV playback (Piper and Gemini TTS share the same native player) |
+| `audio_guide/gemini_nano` | `GeminiNanoPlugin.kt` | On-device AI analysis (Google AI Core) |
 
-`AudioPlayerPlugin.kt` résout son appel `playWav` seulement quand la lecture
-se termine (ou est arrêtée) — c'est ce qui permet à `TtsOrchestrator` de
-séquencer les morceaux côté Dart sans logique de file d'attente native.
+`AudioPlayerPlugin.kt` resolves its `playWav` call only once playback
+finishes (or is stopped) — that's what lets `TtsOrchestrator` sequence
+chunks on the Dart side without any native queueing logic.
 
-## Écrans → services
+## Screens → services
 
 ```mermaid
 flowchart LR
-    Home["home_screen.dart\n(capture, aperçu récents)"]
-    History["history_screen.dart\n(liste, détail, actions)"]
-    Player["player_screen.dart\n(progression, lecture)"]
-    Runner["lib/utils/analysis_runner.dart\n(analyser + persister, partagé)"]
+    Home["home_screen.dart\n(capture, recents preview)"]
+    History["history_screen.dart\n(list, detail, actions)"]
+    Player["player_screen.dart\n(progress, playback)"]
+    Runner["lib/utils/analysis_runner.dart\n(shared analyze + persist)"]
 
     Home --> Runner
     History --> Runner
@@ -161,7 +161,6 @@ flowchart LR
     AudioGuideService -. notifyListeners .-> Player
 ```
 
-`analysis_runner.dart` centralise la séquence "lancer l'analyse, persister
-le résultat en historique, naviguer vers l'écran de lecture" — utilisée à la
-fois pour une nouvelle photo, une nouvelle tentative, et le lancement d'une
-analyse différée (T78).
+`analysis_runner.dart` centralizes the "run the analysis, persist the
+result to history, navigate to the playback screen" sequence — shared by
+a new photo, a retry, and launching a deferred analysis (T78).
