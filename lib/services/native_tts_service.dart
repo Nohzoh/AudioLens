@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_tts/flutter_tts.dart';
 
 /// Thin wrapper around the device's system TTS engine (T89), used to let
@@ -7,12 +8,24 @@ import 'package:flutter_tts/flutter_tts.dart';
 class NativeTtsService {
   final FlutterTts _tts = FlutterTts();
   bool _initialized = false;
+  Completer<bool>? _pendingSpeak;
 
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
     await _tts.setLanguage('fr-FR');
     await _tts.setSpeechRate(0.45);
     await _tts.setPitch(1.0);
+    // Some voices reported by frenchVoices() turned out to be catalog
+    // entries Android hasn't actually downloaded/enabled on the device —
+    // speak() used to fail silently for those (T89: confusing while
+    // comparing voices). These let speak() report whether audio actually
+    // played instead of just firing and forgetting.
+    _tts.setCompletionHandler(() {
+      if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(true);
+    });
+    _tts.setErrorHandler((_) {
+      if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(false);
+    });
     _initialized = true;
   }
 
@@ -45,9 +58,20 @@ class NativeTtsService {
     await _tts.setVoice({'name': name, 'locale': locale});
   }
 
-  Future<void> speak(String text) async {
+  /// Speaks [text], returning whether audio actually played. A voice
+  /// that's listed but not really available on the device (see
+  /// [frenchVoices]) tends to just do nothing rather than throw, which
+  /// this surfaces instead of silently swallowing.
+  Future<bool> speak(String text) async {
     await _ensureInitialized();
+    if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(false);
+    final completer = Completer<bool>();
+    _pendingSpeak = completer;
     await _tts.speak(text);
+    return completer.future.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => false,
+    );
   }
 
   Future<void> stop() async {
