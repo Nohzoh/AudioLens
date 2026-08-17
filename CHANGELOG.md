@@ -11,6 +11,13 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T15** 🌱 ⭐ - Allow **configuring playback speed**
+  - **Verified**: 2026-08-17 (PR #47)
+  - **Scope decision**: applies to both TTS engines (native + Gemini TTS), not just native — Gemini TTS is the default engine when configured, so a speed setting that silently did nothing for it would be confusing. Settings-only persistent preference (0.75x/1x/1.25x/1.5x), no live in-player control, matching the TODO's ⭐ estimate
+  - **What was done**: native TTS speed is a multiplier on the app's already-tuned baseline rate (`0.45` in `flutter_tts` units, applied fresh on every `speak()`/`speakAndWaitForResult()` call rather than cached, so a mid-session change takes effect immediately). Gemini TTS plays a pre-rendered WAV via `AudioPlayerPlugin.kt`'s `MediaPlayer`, which had no speed control at all — added `MediaPlayer.playbackParams = PlaybackParams().setSpeed(...)` (API 23+, this project's minSdk is 26) after `prepare()` and before `start()`; left pitch untouched, so `PlaybackParams`' default behavior time-stretches without the "chipmunk" pitch shift. The multiplier is threaded as a plain parameter (`speed`) through `TtsOrchestrator.speak()`/`speakChunked()` down to both engines and the native `playWav` MethodChannel call, sourced from a new persisted `AudioGuideService.playbackSpeed` (`GuidePreferencesStore.loadPlaybackSpeed`/`savePlaybackSpeed`) — not cached engine-side state, so there's no "did I remember to re-apply this everywhere the service gets re-instantiated" risk
+  - **Settings UI**: new "Vitesse de lecture" section — a `Wrap` of 4 `ChoiceChip`s (0.75x/1x/1.25x/1.5x); the "Tester la voix" preview button now also plays at the configured speed
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 120/120 (3 new tests in `playback_speed_test.dart` confirming the speed reaches whichever engine actually plays); real local Android build succeeded (native `AudioPlayerPlugin.kt` change) — verifying the audio actually plays faster/slower and stays pitch-stable needs a physical device
+
 - [x] **T75** 📈 ⭐⭐ - Add a **script style option** (merged with T48's tone variants)
   - **Verified**: 2026-08-17 (PR #46)
   - **Scope decision**: T75 and T48 both proposed a style/tone picker (T75: academic vs. storytelling; T48: child, expert, storytelling, concise) — merged into a single picker rather than building two overlapping ones. Chose 4 styles covering both tasks' examples without inventing new use cases (no "child" mode): **Immersif** (default, unchanged), **Académique**, **Anecdotique**, **Concis**

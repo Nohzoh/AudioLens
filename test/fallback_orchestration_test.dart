@@ -15,7 +15,7 @@ class _FakeNativeTts extends NativeTtsService {
   bool speakCalled = false;
 
   @override
-  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+  Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     speakCalled = true;
     onComplete?.call();
   }
@@ -28,7 +28,7 @@ class _FakeGeminiTts extends GeminiTtsService {
   bool speakCalled = false;
 
   @override
-  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+  Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     speakCalled = true;
     if (fail) {
       throw Exception('Gemini TTS 429');

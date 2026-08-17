@@ -98,9 +98,16 @@ class NativeTtsService {
   /// Fire-and-forget, matching TtsService/GeminiTtsService's convention:
   /// kicks off synthesis+playback and returns once it's been queued, not
   /// once it's finished — actual completion is signaled via [onComplete].
-  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+  /// [speed] is a multiplier on the app's tuned baseline rate (T15), e.g.
+  /// 1.0 = normal, 1.5 = 50% faster. Re-applied on every call rather than
+  /// cached, so a mid-session Settings change takes effect immediately
+  /// without needing a separate "re-apply" step (unlike [preferredGender],
+  /// which needs the pricier voice-availability check in
+  /// [_applyPreferredVoiceInternal]).
+  Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     if (cancelToken?.isCancelled ?? false) return;
     await _ensureInitialized();
+    await _tts.setSpeechRate(0.45 * speed);
     _lastSpokenText = text;
     _isPlaying = true;
     await _tts.speak(text);
@@ -110,8 +117,9 @@ class NativeTtsService {
   /// voice-preview button, which wants immediate feedback on whether the
   /// selected voice produced audio, unlike [speak]'s fire-and-forget
   /// production behavior.
-  Future<bool> speakAndWaitForResult(String text) async {
+  Future<bool> speakAndWaitForResult(String text, {double speed = 1.0}) async {
     await _ensureInitialized();
+    await _tts.setSpeechRate(0.45 * speed);
     if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(false);
     final completer = Completer<bool>();
     _pendingSpeak = completer;

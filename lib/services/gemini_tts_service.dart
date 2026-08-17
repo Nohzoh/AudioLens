@@ -51,7 +51,10 @@ class GeminiTtsService {
   GeminiTtsService({required this.apiKey, dio.Dio? dioClient})
       : _dio = dioClient ?? dio.Dio();
 
-  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+  /// [speed] is passed to the native WAV player (T15) — MediaPlayer's
+  /// PlaybackParams, applied natively since the Gemini TTS engine only
+  /// produces a pre-rendered file, unlike native TTS's live synthesis.
+  Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     // Check cancellation before starting
     if (cancelToken?.isCancelled ?? false) {
       return;
@@ -64,7 +67,7 @@ class GeminiTtsService {
     AppLogger.tts('Gemini TTS playing $wavPath...');
     _isPlaying = true;
     const channel = MethodChannel('audio_guide/audio_player');
-    channel.invokeMethod('playWav', {'path': wavPath}).then((_) {
+    channel.invokeMethod('playWav', {'path': wavPath, 'speed': speed}).then((_) {
       _isPlaying = false;
       onComplete?.call();
     });
@@ -199,13 +202,17 @@ class GeminiTtsService {
   /// chunks one after another. [notifyComplete] should be false for every
   /// chunk but the last, so [onComplete] fires only once, when the whole
   /// script has actually finished playing.
-  Future<void> playFile(String path, {bool notifyComplete = true}) async {
+  Future<void> playFile(
+    String path, {
+    bool notifyComplete = true,
+    double speed = 1.0,
+  }) async {
     final started = DateTime.now();
     AppLogger.tts('playFile start -> $path');
     _isPlaying = true;
     const channel = MethodChannel('audio_guide/audio_player');
     try {
-      await channel.invokeMethod('playWav', {'path': path});
+      await channel.invokeMethod('playWav', {'path': path, 'speed': speed});
     } finally {
       _isPlaying = false;
     }

@@ -19,6 +19,7 @@ class GuidePreferencesStore {
   static const _timingGpsKey = 'timing_gps';
   static const _timingAnalyzeKey = 'timing_analyze';
   static const _ttsVoiceGenderKey = 'tts_voice_gender';
+  static const _playbackSpeedKey = 'playback_speed';
 
   /// 'female' or 'male' — which native TTS voice to prefer (T89).
   Future<String> loadTtsVoiceGender() async {
@@ -29,6 +30,18 @@ class GuidePreferencesStore {
   Future<void> saveTtsVoiceGender(String gender) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_ttsVoiceGenderKey, gender);
+  }
+
+  /// Multiplier applied to narration playback speed (T15), e.g. 1.0 =
+  /// normal, 1.5 = 50% faster. Applies to both TTS engines.
+  Future<double> loadPlaybackSpeed() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_playbackSpeedKey) ?? 1.0;
+  }
+
+  Future<void> savePlaybackSpeed(double speed) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_playbackSpeedKey, speed);
   }
 
   Future<String?> loadActiveProviderName() async {

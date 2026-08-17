@@ -19,7 +19,7 @@ import 'support/fake_dio_adapter.dart';
 /// without mocking these channels at all.
 class _FakeNativeTts extends NativeTtsService {
   @override
-  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+  Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     onComplete?.call();
   }
 }
@@ -28,7 +28,7 @@ class _FakeGeminiTts extends GeminiTtsService {
   _FakeGeminiTts() : super(apiKey: 'test-key');
 
   @override
-  Future<void> speak(String text, {CancelToken? cancelToken}) async {}
+  Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {}
 }
 
 String _successJson() => jsonEncode({
