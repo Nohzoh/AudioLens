@@ -1,0 +1,82 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audiolens/services/settings_service.dart';
+
+/// T68 — only autoGenerateAudio was covered before this (incidentally, via
+/// script_only_mode_test.dart); showKofiButton, scriptStyle (T75), the
+/// onboarding/API key flow, and resetOnboarding() had no dedicated test.
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test('defaults before onboarding: not complete, empty key, style immersive', () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    expect(settings.isOnboardingComplete, isFalse);
+    expect(settings.geminiApiKey, isEmpty);
+    expect(settings.showKofiButton, isTrue);
+    expect(settings.autoGenerateAudio, isTrue);
+    expect(settings.scriptStyle, 'immersive');
+  });
+
+  test('completeOnboarding stores the API key and marks onboarding complete',
+      () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    await settings.completeOnboarding(apiKey: 'AIza-test-key');
+
+    expect(settings.isOnboardingComplete, isTrue);
+    expect(settings.geminiApiKey, 'AIza-test-key');
+
+    // Persisted, not just in-memory — a fresh instance sees the same state.
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.isOnboardingComplete, isTrue);
+    expect(reloaded.geminiApiKey, 'AIza-test-key');
+  });
+
+  test('setShowKofiButton persists across a reload', () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    await settings.setShowKofiButton(false);
+    expect(settings.showKofiButton, isFalse);
+
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.showKofiButton, isFalse);
+  });
+
+  test('setScriptStyle persists across a reload (T75)', () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    await settings.setScriptStyle('anecdotal');
+    expect(settings.scriptStyle, 'anecdotal');
+
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.scriptStyle, 'anecdotal');
+  });
+
+  test('resetOnboarding clears onboarding, API key, and restores every default',
+      () async {
+    final settings = SettingsService();
+    await settings.init();
+    await settings.completeOnboarding(apiKey: 'AIza-test-key');
+    await settings.setShowKofiButton(false);
+    await settings.setAutoGenerateAudio(false);
+    await settings.setScriptStyle('concise');
+
+    await settings.resetOnboarding();
+
+    expect(settings.isOnboardingComplete, isFalse);
+    expect(settings.geminiApiKey, isEmpty);
+    expect(settings.showKofiButton, isTrue);
+    expect(settings.autoGenerateAudio, isTrue);
+    expect(settings.scriptStyle, 'immersive');
+  });
+}
