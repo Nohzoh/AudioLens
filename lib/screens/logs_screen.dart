@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/app_logger.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
@@ -56,10 +57,11 @@ class _LogsScreenState extends State<LogsScreen> {
   @override
   Widget build(BuildContext context) {
     final lines = AppLogger.lines;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Logs (${lines.length})'),
+        title: Text(l10n.logsTitle(lines.length)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -70,20 +72,20 @@ class _LogsScreenState extends State<LogsScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.copy),
-            tooltip: 'Copier tout',
+            tooltip: l10n.logsCopyAll,
             onPressed: () {
               Clipboard.setData(ClipboardData(text: AppLogger.allLogs));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Logs copiés'),
-                  duration: Duration(seconds: 2),
+                SnackBar(
+                  content: Text(l10n.logsCopiedAll),
+                  duration: const Duration(seconds: 2),
                 ),
               );
             },
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Vider',
+            tooltip: l10n.logsClear,
             onPressed: () {
               AppLogger.clear();
               setState(() {});
@@ -92,8 +94,8 @@ class _LogsScreenState extends State<LogsScreen> {
         ],
       ),
       body: lines.isEmpty
-          ? const Center(
-              child: Text('Aucun log', style: TextStyle(color: Colors.white38)),
+          ? Center(
+              child: Text(l10n.logsEmpty, style: const TextStyle(color: Colors.white38)),
             )
           : ListView.builder(
               controller: _scroll,
@@ -105,9 +107,9 @@ class _LogsScreenState extends State<LogsScreen> {
                   onLongPress: () {
                     Clipboard.setData(ClipboardData(text: line));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Ligne copiée'),
-                        duration: Duration(seconds: 1),
+                      SnackBar(
+                        content: Text(l10n.logsLineCopied),
+                        duration: const Duration(seconds: 1),
                       ),
                     );
                   },

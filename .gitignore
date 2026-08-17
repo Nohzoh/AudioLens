@@ -77,5 +77,11 @@ android/gradle.properties
 android/gradle/
 android/settings.gradle.kts
 
+# Generated localization code (T67) — regenerated from lib/l10n/*.arb by
+# `flutter gen-l10n` (triggered automatically via `generate: true` on every
+# `flutter pub get`); only the .arb source files are versioned.
+lib/l10n/app_localizations.dart
+lib/l10n/app_localizations_*.dart
+
 # Local project planning
 .aider*

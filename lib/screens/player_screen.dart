@@ -4,6 +4,7 @@ import 'package:gal/gal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
@@ -73,6 +74,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Consumer<AudioGuideService>(
         builder: (context, guide, _) {
@@ -136,8 +138,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 color: Colors.white70,
                               ),
                               tooltip: _photoMode
-                                  ? 'Afficher le texte'
-                                  : 'Mode photo',
+                                  ? l10n.playerShowText
+                                  : l10n.playerPhotoMode,
                               onPressed: () =>
                                   setState(() => _photoMode = !_photoMode),
                             ),
@@ -159,7 +161,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           else if (guide.state == GuideState.speaking || guide.state == GuideState.paused || guide.state == GuideState.synthesizing)
                             IconButton(
                               icon: const Icon(Icons.cancel_outlined, color: Colors.white70),
-                              tooltip: 'Annuler',
+                              tooltip: l10n.playerCancel,
                               onPressed: () async {
                                 await guide.cancelCurrentAction();
                                 if (context.mounted) Navigator.pop(context);
@@ -232,20 +234,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         await Gal.putImage(widget.imageFile.path);
                                         if (context.mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Photo sauvegardée'),
-                                              duration: Duration(seconds: 2),
+                                            SnackBar(
+                                              content: Text(l10n.playerPhotoSaved),
+                                              duration: const Duration(seconds: 2),
                                             ),
                                           );
                                         }
                                       } catch (_) {}
                                     },
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        Icon(Icons.save_alt, size: 14, color: Colors.white38),
-                                        SizedBox(width: 4),
-                                        Text('Sauvegarder', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                                        const Icon(Icons.save_alt, size: 14, color: Colors.white38),
+                                        const SizedBox(width: 4),
+                                        Text(l10n.playerSave, style: const TextStyle(color: Colors.white38, fontSize: 12)),
                                       ]),
                                     ),
                                   ),
@@ -254,15 +256,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                     onTap: () {
                                       Clipboard.setData(ClipboardData(text: guide.lastResult!.script));
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Texte copié'), duration: Duration(seconds: 2)),
+                                        SnackBar(content: Text(l10n.playerTextCopied), duration: const Duration(seconds: 2)),
                                       );
                                     },
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        Icon(Icons.copy, size: 14, color: Colors.white38),
-                                        SizedBox(width: 4),
-                                        Text('Copier', style: TextStyle(color: Colors.white38, fontSize: 12)),
+                                        const Icon(Icons.copy, size: 14, color: Colors.white38),
+                                        const SizedBox(width: 4),
+                                        Text(l10n.playerCopy, style: const TextStyle(color: Colors.white38, fontSize: 12)),
                                       ]),
                                     ),
                                   ),
@@ -277,15 +279,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 if (guide.aiModelWasFallback)
                                   _FallbackBanner(
                                     icon: Icons.swap_horiz,
-                                    message: 'Modèle IA : ${guide.actualAiModel ?? "?"} (fallback)',
+                                    message: l10n.playerAiFallbackMessage(guide.actualAiModel ?? '?'),
                                     color: Colors.orange,
                                   ),
                                 if (guide.ttsWasFallback)
                                   _FallbackBanner(
                                     icon: Icons.volume_down,
                                     message: guide.ttsFallbackWasRateLimit
-                                        ? 'Quota voix Gemini atteint pour l\'instant — voix native utilisée'
-                                        : 'Voix native (Gemini TTS indisponible)',
+                                        ? l10n.playerTtsRateLimitFallback
+                                        : l10n.playerTtsFallback,
                                     color: Colors.orange,
                                   ),
                                 const SizedBox(height: 8),
@@ -352,8 +354,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         const Icon(Icons.error_outline,
                                             color: Colors.redAccent, size: 18),
                                         const SizedBox(width: 8),
-                                        const Text('Erreur',
-                                            style: TextStyle(
+                                        Text(l10n.playerError,
+                                            style: const TextStyle(
                                                 color: Colors.redAccent,
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 14)),
@@ -363,17 +365,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                             Clipboard.setData(ClipboardData(
                                                 text: guide.errorMessage ?? ''));
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                  content: Text('Erreur copiée'),
-                                                  duration: Duration(seconds: 2)));
+                                              SnackBar(
+                                                  content: Text(l10n.playerErrorCopied),
+                                                  duration: const Duration(seconds: 2)));
                                           },
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(4),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4),
                                             child: Row(mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(Icons.copy, size: 14, color: Colors.white54),
-                                                SizedBox(width: 4),
-                                                Text('Copier', style: TextStyle(
+                                                const Icon(Icons.copy, size: 14, color: Colors.white54),
+                                                const SizedBox(width: 4),
+                                                Text(l10n.playerCopy, style: const TextStyle(
                                                     color: Colors.white54, fontSize: 11)),
                                               ]),
                                           ),
@@ -382,7 +384,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      guide.errorMessage ?? 'Erreur inconnue',
+                                      guide.errorMessage ?? l10n.playerUnknownError,
                                       style: const TextStyle(
                                           color: Colors.white, fontSize: 12, height: 1.5),
                                     ),
@@ -492,11 +494,12 @@ class _PipelineProgressWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final progress = guide.progress;
     final steps = [
-      (icon: Icons.location_on, label: 'GPS'),
-      (icon: Icons.psychology, label: 'Analyse'),
-      (icon: Icons.record_voice_over, label: 'Voix'),
+      (icon: Icons.location_on, label: l10n.playerStepGps),
+      (icon: Icons.psychology, label: l10n.playerStepAnalysis),
+      (icon: Icons.record_voice_over, label: l10n.playerStepVoice),
     ];
 
     return Column(
@@ -538,7 +541,7 @@ class _PipelineProgressWidget extends StatelessWidget {
         if (progress.estimatedSecondsRemaining != null) ...[
           const SizedBox(height: 6),
           Text(
-            '~${progress.estimatedSecondsRemaining!.round()}s restantes',
+            l10n.playerSecondsRemaining(progress.estimatedSecondsRemaining!.round()),
             style: const TextStyle(color: Colors.white38, fontSize: 11),
           ),
         ],
@@ -623,50 +626,51 @@ class _StateLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return switch (state) {
-      GuideState.locating => const Row(children: [
-          SizedBox(
+      GuideState.locating => Row(children: [
+          const SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: Colors.white)),
-          SizedBox(width: 8),
-          Text('Localisation...', style: TextStyle(color: Colors.white70)),
+          const SizedBox(width: 8),
+          Text(l10n.playerStateLocating, style: const TextStyle(color: Colors.white70)),
         ]).animate().fadeIn(),
-      GuideState.analyzing => const Row(children: [
-          SizedBox(
+      GuideState.analyzing => Row(children: [
+          const SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: Colors.white)),
-          SizedBox(width: 8),
-          Text('Analyse en cours...',
-              style: TextStyle(color: Colors.white70)),
+          const SizedBox(width: 8),
+          Text(l10n.playerStateAnalyzing,
+              style: const TextStyle(color: Colors.white70)),
         ]).animate().fadeIn(),
-      GuideState.synthesizing => const Row(children: [
-          SizedBox(
+      GuideState.synthesizing => Row(children: [
+          const SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: Colors.white)),
-          SizedBox(width: 8),
-          Text('Génération audio...',
-              style: TextStyle(color: Colors.white70)),
+          const SizedBox(width: 8),
+          Text(l10n.playerStateSynthesizing,
+              style: const TextStyle(color: Colors.white70)),
         ]).animate().fadeIn(),
-      GuideState.speaking => const Row(children: [
-          Icon(Icons.graphic_eq, color: Colors.greenAccent, size: 16),
-          SizedBox(width: 8),
-          Text('Lecture...', style: TextStyle(color: Colors.white70)),
+      GuideState.speaking => Row(children: [
+          const Icon(Icons.graphic_eq, color: Colors.greenAccent, size: 16),
+          const SizedBox(width: 8),
+          Text(l10n.playerStateSpeaking, style: const TextStyle(color: Colors.white70)),
         ]).animate().fadeIn(),
-      GuideState.paused => const Row(children: [
-          Icon(Icons.pause_circle, color: Colors.white54, size: 16),
-          SizedBox(width: 8),
-          Text('En pause', style: TextStyle(color: Colors.white54)),
+      GuideState.paused => Row(children: [
+          const Icon(Icons.pause_circle, color: Colors.white54, size: 16),
+          const SizedBox(width: 8),
+          Text(l10n.playerStatePaused, style: const TextStyle(color: Colors.white54)),
         ]),
-      GuideState.scriptReady => const Row(children: [
-          Icon(Icons.text_snippet_outlined, color: Colors.white54, size: 16),
-          SizedBox(width: 8),
-          Text('Script prêt (sans audio)', style: TextStyle(color: Colors.white54)),
+      GuideState.scriptReady => Row(children: [
+          const Icon(Icons.text_snippet_outlined, color: Colors.white54, size: 16),
+          const SizedBox(width: 8),
+          Text(l10n.playerStateScriptReady, style: const TextStyle(color: Colors.white54)),
         ]),
       _ => const SizedBox.shrink(),
     };

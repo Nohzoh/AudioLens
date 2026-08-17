@@ -7,6 +7,7 @@ import 'package:gal/gal.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
@@ -20,7 +21,7 @@ Future<void> _launchAnalysis(BuildContext context, HistoryEntry entry) async {
   final imageFile = File(entry.imagePath);
   if (!imageFile.existsSync()) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Image introuvable')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.historyImageNotFound)),
     );
     return;
   }
@@ -45,7 +46,7 @@ Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
   final imageFile = File(entry.imagePath);
   if (!imageFile.existsSync()) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Image introuvable')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.historyImageNotFound)),
     );
     return;
   }
@@ -63,9 +64,10 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historique'),
+        title: Text(l10n.historyTitle),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -86,14 +88,14 @@ class HistoryScreen extends StatelessWidget {
                   const Icon(Icons.history, size: 64, color: Colors.white12),
                   const SizedBox(height: 16),
                   Text(
-                    'Aucune visite enregistrée',
+                    l10n.historyEmptyTitle,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: Colors.white38,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Prenez une photo pour commencer',
+                    l10n.historyEmptySubtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.white24,
                     ),
@@ -127,8 +129,10 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateStr =
-        DateFormat('d MMM yyyy · HH:mm', 'fr_FR').format(entry.createdAt);
+    final l10n = AppLocalizations.of(context)!;
+    final dateStr = DateFormat('d MMM yyyy · HH:mm',
+            Localizations.localeOf(context).toString())
+        .format(entry.createdAt);
     final isFailed = entry.status == AnalysisStatus.failed;
 
     return Padding(
@@ -213,7 +217,7 @@ class _HistoryCard extends StatelessWidget {
                                 size: 12, color: Colors.white38),
                             const SizedBox(width: 2),
                             Text(
-                              'Script seul',
+                              l10n.historyScriptOnly,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: Colors.white38,
                               ),
@@ -229,7 +233,7 @@ class _HistoryCard extends StatelessWidget {
                                 size: 12, color: Colors.white38),
                             const SizedBox(width: 2),
                             Text(
-                              'Capturé — appuyer pour analyser',
+                              l10n.historyCapturedTapToAnalyze,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: Colors.white38,
                               ),
@@ -245,7 +249,7 @@ class _HistoryCard extends StatelessWidget {
                                 size: 12, color: Colors.orangeAccent),
                             const SizedBox(width: 2),
                             Text(
-                              'Échec — appuyer pour réessayer',
+                              l10n.historyFailedTapToRetry,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: Colors.orangeAccent,
                               ),
@@ -358,7 +362,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(guide.errorMessage ?? 'La génération audio a échoué.'),
+            content: Text(guide.errorMessage ??
+                AppLocalizations.of(context)!.historyAudioGenerationFailed),
             duration: const Duration(seconds: 4),
             backgroundColor: Colors.orange.shade800,
           ),
@@ -379,20 +384,21 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   }
 
   Future<void> _deleteEntry(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Supprimer'),
-        content: const Text('Supprimer cette entrée de l\'historique ?'),
+        title: Text(l10n.historyDeleteTitle),
+        content: Text(l10n.historyDeleteConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: Text(l10n.historyCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer',
-                style: TextStyle(color: Colors.redAccent)),
+            child: Text(l10n.historyDeleteTitle,
+                style: const TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -407,9 +413,11 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final live = _liveEntry(context);
-    final dateStr =
-        DateFormat('EEEE d MMMM yyyy · HH:mm', 'fr_FR').format(live.createdAt);
+    final dateStr = DateFormat('EEEE d MMMM yyyy · HH:mm',
+            Localizations.localeOf(context).toString())
+        .format(live.createdAt);
 
     return Scaffold(
       body: Stack(
@@ -520,26 +528,26 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   await Gal.putImage(live.imagePath);
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
+                                      SnackBar(
                                         content: Text(
-                                            'Photo sauvegardée dans la galerie'),
-                                        duration: Duration(seconds: 2),
+                                            l10n.historyPhotoSavedToGallery),
+                                        duration: const Duration(seconds: 2),
                                       ),
                                     );
                                   }
                                 } catch (_) {}
                               },
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
                                     vertical: 4, horizontal: 8),
                                 child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.save_alt,
+                                      const Icon(Icons.save_alt,
                                           size: 14, color: Colors.white54),
-                                      SizedBox(width: 4),
-                                      Text('Sauvegarder',
-                                          style: TextStyle(
+                                      const SizedBox(width: 4),
+                                      Text(l10n.historySave,
+                                          style: const TextStyle(
                                               color: Colors.white54,
                                               fontSize: 12)),
                                     ]),
@@ -551,23 +559,23 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                 Clipboard.setData(
                                     ClipboardData(text: live.script));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Texte copié'),
-                                    duration: Duration(seconds: 2),
+                                  SnackBar(
+                                    content: Text(l10n.historyTextCopied),
+                                    duration: const Duration(seconds: 2),
                                   ),
                                 );
                               },
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
                                     vertical: 4, horizontal: 8),
                                 child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.copy,
+                                      const Icon(Icons.copy,
                                           size: 14, color: Colors.white54),
-                                      SizedBox(width: 4),
-                                      Text('Copier',
-                                          style: TextStyle(
+                                      const SizedBox(width: 4),
+                                      Text(l10n.historyCopy,
+                                          style: const TextStyle(
                                               color: Colors.white54,
                                               fontSize: 12)),
                                     ]),
@@ -617,8 +625,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                       : const Icon(Icons.auto_awesome,
                                           size: 16),
                                   label: Text(_isUpgrading
-                                      ? 'Génération en cours...'
-                                      : 'Améliorer la voix'),
+                                      ? l10n.historyUpgradingVoice
+                                      : l10n.historyUpgradeVoice),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.amber,
                                     side: const BorderSide(color: Colors.amber),
@@ -689,10 +697,10 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   ? Icons.play_arrow
                                   : Icons.auto_awesome)),
                           label: Text(_isPlaying
-                              ? 'Arrêter'
+                              ? l10n.historyStop
                               : (live.hasAudio
-                                  ? 'Écouter le commentaire'
-                                  : 'Générer l\'audio')),
+                                  ? l10n.historyListen
+                                  : l10n.historyGenerateAudio)),
                           style: FilledButton.styleFrom(
                             minimumSize: const Size(double.infinity, 52),
                             shape: RoundedRectangleBorder(

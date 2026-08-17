@@ -1,6 +1,7 @@
 import 'dart:io';
 import '../utils/analysis_runner.dart';
 import '../services/exif_location_service.dart';
+import '../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -144,34 +145,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Photo enregistrée — lancez l\'analyse plus tard depuis l\'historique'),
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.homeCapturedSnackbar),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
   }
 
   void _showLocationDeniedForeverDialog() {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Géolocalisation désactivée'),
-        content: const Text(
-          'La géolocalisation améliore la précision des descriptions.\n\n'
-          'Pour l\'activer, allez dans les paramètres de l\'application.',
-        ),
+        title: Text(l10n.homeLocationDisabledTitle),
+        content: Text(l10n.homeLocationDisabledContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Plus tard'),
+            child: Text(l10n.homeLater),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
               LocationService.openSettings();
             },
-            child: const Text('Ouvrir les paramètres'),
+            child: Text(l10n.homeOpenSettings),
           ),
         ],
       ),
@@ -182,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final imageFile = File(entry.imagePath);
     if (!imageFile.existsSync()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Image introuvable')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.homeImageNotFound)),
       );
       return;
     }
@@ -196,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final imageFile = File(entry.imagePath);
     if (!imageFile.existsSync()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Image introuvable')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.homeImageNotFound)),
       );
       return;
     }
@@ -240,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showImageSourceDialog() async {
+    final l10n = AppLocalizations.of(context)!;
     final choice = await showModalBottomSheet<({ImageSource source, bool analyzeNow})>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -259,19 +259,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: const Text('Prendre une photo'),
+              title: Text(l10n.homeTakePhoto),
               onTap: () => Navigator.pop(context, (source: ImageSource.camera, analyzeNow: true)),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Choisir depuis la galerie'),
+              title: Text(l10n.homeChooseFromGallery),
               onTap: () => Navigator.pop(context, (source: ImageSource.gallery, analyzeNow: true)),
             ),
             const Divider(height: 24),
             ListTile(
               leading: const Icon(Icons.cloud_off_outlined),
-              title: const Text('Capturer sans analyser'),
-              subtitle: const Text('Photo + position enregistrées, analyse à lancer plus tard (économise data)'),
+              title: Text(l10n.homeCaptureOnly),
+              subtitle: Text(l10n.homeCaptureOnlySubtitle),
               onTap: () => Navigator.pop(context, (source: ImageSource.camera, analyzeNow: false)),
             ),
             const SizedBox(height: 16),
@@ -285,6 +285,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -366,7 +367,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             const SizedBox(width: 6),
                             Text(
                               guide.providerName.isEmpty
-                                  ? 'Initialisation...'
+                                  ? l10n.homeInitializing
                                   : guide.providerName,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.primary,
@@ -390,14 +391,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             color: Colors.orange.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.location_off,
+                              const Icon(Icons.location_off,
                                   size: 14, color: Colors.orange),
-                              SizedBox(width: 4),
-                              Text('GPS désactivé',
-                                  style: TextStyle(
+                              const SizedBox(width: 4),
+                              Text(l10n.homeGpsDisabled,
+                                  style: const TextStyle(
                                       fontSize: 11, color: Colors.orange)),
                             ],
                           ),
@@ -416,14 +417,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             color: Colors.orange.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.location_off,
+                              const Icon(Icons.location_off,
                                   size: 14, color: Colors.orange),
-                              SizedBox(width: 4),
-                              Text('Autoriser GPS',
-                                  style: TextStyle(
+                              const SizedBox(width: 4),
+                              Text(l10n.homeGpsAllow,
+                                  style: const TextStyle(
                                       fontSize: 11, color: Colors.orange)),
                             ],
                           ),
@@ -438,14 +439,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           color: Colors.green.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.location_on,
+                            const Icon(Icons.location_on,
                                 size: 14, color: Colors.green),
-                            SizedBox(width: 4),
-                            Text('GPS actif',
-                                style: TextStyle(
+                            const SizedBox(width: 4),
+                            Text(l10n.homeGpsActive,
+                                style: const TextStyle(
                                     fontSize: 11, color: Colors.green)),
                           ],
                         ),
@@ -464,7 +465,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         children: [
                           Row(
                             children: [
-                              Text('Récemment visité',
+                              Text(l10n.homeRecentlyVisited,
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   color: Colors.white38,
                                 ),
@@ -475,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   MaterialPageRoute(
                                       builder: (_) => const HistoryScreen()),
                                 ),
-                                child: Text('Voir tout',
+                                child: Text(l10n.homeSeeAll,
                                   style: theme.textTheme.labelSmall?.copyWith(
                                     color: theme.colorScheme.primary,
                                   ),
@@ -559,9 +560,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           ),
                                           child: Text(
                                             isFailed
-                                                ? 'Appuyer pour réessayer'
+                                                ? l10n.homeTapToRetry
                                                 : isCaptured
-                                                    ? 'Appuyer pour analyser'
+                                                    ? l10n.homeTapToAnalyze
                                                     : entry.title,
                                             style: TextStyle(
                                               color: isFailed
@@ -588,18 +589,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   },
                 ),
 
-                const Expanded(
+                Expanded(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.camera_alt_outlined,
+                        const Icon(Icons.camera_alt_outlined,
                             size: 80, color: Colors.white12),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         Text(
-                          'Pointez votre appareil\nvers un lieu ou un monument',
+                          l10n.homeEmptyStateHint,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: Colors.white38,
                               fontSize: 15,
                               height: 1.5),
@@ -612,8 +613,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 FilledButton.icon(
                   onPressed: _showImageSourceDialog,
                   icon: const Icon(Icons.camera_alt, size: 24),
-                  label: const Text('Prendre une photo',
-                      style: TextStyle(fontSize: 18)),
+                  label: Text(l10n.homeTakePhoto,
+                      style: const TextStyle(fontSize: 18)),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(double.infinity, 64),
                     shape: RoundedRectangleBorder(
