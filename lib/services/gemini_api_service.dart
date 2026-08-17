@@ -39,6 +39,7 @@ class GeminiApiService implements AIService {
     File imageFile, {
     String? locationContext,
     CancelToken? cancelToken,
+    String? style,
   }) async {
     final cfg = RemoteConfigService.current;
     final imageBytes = await imageFile.readAsBytes();
@@ -48,24 +49,21 @@ class GeminiApiService implements AIService {
         ? '\n\nContexte et informations factuelles disponibles :\n$locationContext'
         : '';
 
+    final wordCount =
+        style == 'concise' ? 'Entre 100 et 150 mots' : 'Entre 300 et 400 mots';
+
     final prompt = 'Tu es un guide audio de musee, passionne et erudit. '
         'Redige deux choses en JSON valide uniquement, sans markdown : '
         '{"title": "titre court et evocateur (5-8 mots max)", "script": "le texte du guide"} '
         'Le titre doit nommer precisement l\'oeuvre ou le lieu si reconnu, sinon evoquer ce qu\'on voit. '
-        'Le script : narratif et immersif, tu t\'adresses au visiteur avec "vous". '
-        'Varie toujours l\'accroche d\'ouverture : ne commence jamais par "Arrêtez-vous", '
-        '"Regardez", "Devant vous", "Contemplez" ou toute formule repetitive. '
-        'Sois inventif : commence par un fait surprenant, une question, une anecdote, '
-        'une sensation, une date marquante, ou plonge directement dans l\'histoire. '
-        'Construis : accroche originale, details fascinants, contexte historique, '
-        'anecdote marquante, conclusion emotionnelle. '
+        '${_styleGuidance(style)} '
         'Si tu reconnais l\'oeuvre, nomme-la avec des faits reels. '
         'Si le contexte fourni mentionne un lieu identifie, une adresse ou une enseigne, '
         'utilise-le en priorite pour identifier precisement l\'endroit reel plutot que de '
         'rester generique, et cherche les faits marquants qui s\'y rattachent (tournages, '
         'evenements historiques, personnalites) plutot que de decrire seulement ce qui est visible. '
         '$contextPart '
-        'Entre 300 et 400 mots pour le script, sans mise en forme ni asterisque. '
+        '$wordCount pour le script, sans mise en forme ni asterisque. '
         'Ne montre jamais ton raisonnement interne. '
         'Ne commente pas le nombre de mots. '
         'Ecris uniquement le JSON final, rien d\'autre.';
@@ -221,6 +219,47 @@ class GeminiApiService implements AIService {
     }
 
     return AudioGuideResult(title: title, script: script);
+  }
+
+  /// Tone/structure instruction for the script, keyed by [style] (T75/T48).
+  /// The default ('immersive', including null/unrecognized values) is the
+  /// original prompt text unchanged, so the default experience never
+  /// regresses.
+  static String _styleGuidance(String? style) {
+    switch (style) {
+      case 'academic':
+        return 'Le script : documentaire et rigoureux, tu t\'adresses au visiteur avec "vous". '
+            'Privilegie les faits verifies, dates precises et contexte historique '
+            'detaille plutot que l\'emotion. Commence par le fait le plus '
+            'significatif ou la date cle, sans effet de style superflu. '
+            'Construis : mise en contexte factuelle, developpement historique, '
+            'details techniques ou artistiques, conclusion sur l\'importance '
+            'du lieu ou de l\'oeuvre.';
+      case 'anecdotal':
+        return 'Le script : complice et plein de curiosites, tu t\'adresses au '
+            'visiteur avec "vous". Varie toujours l\'accroche d\'ouverture : ne '
+            'commence jamais par "Arrêtez-vous", "Regardez", "Devant vous", '
+            '"Contemplez" ou toute formule repetitive. Mets l\'accent sur les '
+            'anecdotes, secrets et petites histoires peu connues plutot qu\'une '
+            'description exhaustive, comme un ami qui partage ce qu\'il sait de '
+            'plus surprenant. Construis : accroche par une anecdote, '
+            'enchainement de curiosites, conclusion sur ce qui rend l\'histoire '
+            'memorable.';
+      case 'concise':
+        return 'Le script : direct et efficace, tu t\'adresses au visiteur avec '
+            '"vous". Va droit au but : l\'essentiel seulement, sans digression '
+            'ni developpement long. Une accroche courte, un ou deux faits '
+            'marquants, une conclusion breve.';
+      default: // 'immersive'
+        return 'Le script : narratif et immersif, tu t\'adresses au visiteur '
+            'avec "vous". Varie toujours l\'accroche d\'ouverture : ne commence '
+            'jamais par "Arrêtez-vous", "Regardez", "Devant vous", "Contemplez" '
+            'ou toute formule repetitive. Sois inventif : commence par un fait '
+            'surprenant, une question, une anecdote, une sensation, une date '
+            'marquante, ou plonge directement dans l\'histoire. Construis : '
+            'accroche originale, details fascinants, contexte historique, '
+            'anecdote marquante, conclusion emotionnelle.';
+    }
   }
 
   /// Finds the first top-level JSON object in [text] by scanning for

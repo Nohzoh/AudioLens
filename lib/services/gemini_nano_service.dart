@@ -33,12 +33,14 @@ class GeminiNanoService implements AIService {
     File imageFile, {
     String? locationContext,
     CancelToken? cancelToken,
+    String? style,
   }) async {
     if (!_initialized) await initialize();
 
     try {
       final args = {'imagePath': imageFile.path};
       if (locationContext != null) args['locationContext'] = locationContext;
+      if (style != null) args['style'] = style;
 
       final description = await _channel.invokeMethod<String>(
         'describeImage',

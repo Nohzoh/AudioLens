@@ -26,19 +26,37 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     companion object {
         const val CHANNEL = "audio_guide/gemini_nano"
 
-        fun buildSeg1Prompt(locationContext: String?): String {
+        // Tone descriptor per style (T75/T48) — default (null/unrecognized)
+        // is the original wording, so the default experience is unchanged.
+        private fun styleTone(style: String?): String = when (style) {
+            "academic" -> "un ton documentaire et precis, avec des faits verifies"
+            "anecdotal" -> "un ton complice qui met en avant anecdotes et curiosites"
+            "concise" -> "un ton direct et efficace"
+            else -> "un ton chaleureux et vivant"
+        }
+
+        fun buildSeg1Prompt(locationContext: String?, style: String? = null): String {
             val loc = if (!locationContext.isNullOrBlank()) " (prise a : $locationContext)" else ""
-            return "Tu es un guide audio culturel. En te basant sur cette image$loc, decris en francais ce que tu vois avec un ton chaleureux et vivant. Commence directement, sans introduction. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. 2-3 phrases maximum."
+            val sentences = if (style == "concise") "1-2 phrases maximum" else "2-3 phrases maximum"
+            return "Tu es un guide audio culturel. En te basant sur cette image$loc, decris en francais ce que tu vois avec ${styleTone(style)}. Commence directement, sans introduction. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences."
         }
 
-        fun buildSeg2Prompt(previousText: String): String {
+        fun buildSeg2Prompt(previousText: String, style: String? = null): String {
             val excerpt = previousText.takeLast(200)
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt. Continue avec le contexte historique et culturel en 2-3 phrases qui s'enchainent naturellement. Pas de repetition."
+            val focus = when (style) {
+                "academic" -> "le contexte historique precis (dates, faits averes, contexte culturel)"
+                "anecdotal" -> "une anecdote ou curiosite peu connue liee a ce lieu"
+                "concise" -> "l'information essentielle"
+                else -> "le contexte historique et culturel"
+            }
+            val sentences = if (style == "concise") "1 phrase" else "2-3 phrases qui s'enchainent naturellement"
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt. Continue avec $focus en $sentences. Pas de repetition."
         }
 
-        fun buildSeg3Prompt(previousText: String): String {
+        fun buildSeg3Prompt(previousText: String, style: String? = null): String {
             val excerpt = previousText.takeLast(200)
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt. Conclus en 2 phrases sur ce qui rend ce lieu unique et l'emotion qu'il inspire."
+            val sentences = if (style == "concise") "1 phrase" else "2 phrases"
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt. Conclus en $sentences sur ce qui rend ce lieu unique et l'emotion qu'il inspire."
         }
     }
 
@@ -102,6 +120,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "describeImage" -> {
                 val imagePath = call.argument<String>("imagePath")
                 val locationContext = call.argument<String>("locationContext")
+                val style = call.argument<String>("style")
 
                 if (imagePath == null) {
                     result.error("INVALID_ARGS", "imagePath required", null)
@@ -122,7 +141,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 1: Visual description with image
                         val req1 = generateContentRequest(
                             ImagePart(bitmap),
-                            TextPart(buildSeg1Prompt(locationContext))
+                            TextPart(buildSeg1Prompt(locationContext, style))
                         ) { maxOutputTokens = 256 }
                         val seg1 = model.generateContent(req1)
                             .candidates.firstOrNull()?.text?.trim() ?: ""
@@ -131,14 +150,14 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                         // Segment 2: Historical context (text only, faster)
                         val req2 = generateContentRequest(
-                            TextPart(buildSeg2Prompt(seg1))
+                            TextPart(buildSeg2Prompt(seg1, style))
                         ) { maxOutputTokens = 256 }
                         val seg2 = model.generateContent(req2)
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         // Segment 3: Conclusion
                         val req3 = generateContentRequest(
-                            TextPart(buildSeg3Prompt("$seg1 $seg2"))
+                            TextPart(buildSeg3Prompt("$seg1 $seg2", style))
                         ) { maxOutputTokens = 256 }
                         val seg3 = model.generateContent(req3)
                             .candidates.firstOrNull()?.text?.trim() ?: ""

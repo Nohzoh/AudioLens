@@ -11,6 +11,14 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T75** 📈 ⭐⭐ - Add a **script style option** (merged with T48's tone variants)
+  - **Verified**: 2026-08-17 (PR #46)
+  - **Scope decision**: T75 and T48 both proposed a style/tone picker (T75: academic vs. storytelling; T48: child, expert, storytelling, concise) — merged into a single picker rather than building two overlapping ones. Chose 4 styles covering both tasks' examples without inventing new use cases (no "child" mode): **Immersif** (default, unchanged), **Académique**, **Anecdotique**, **Concis**
+  - **Scope decision**: applies to both the cloud path (`GeminiApiService`) and the on-device fallback (`GeminiNanoService`/`GeminiNanoPlugin.kt`) — the latter needed new native Kotlin work (the prompt for Nano's 3-segment pipeline lives entirely in Kotlin, not Dart) rather than just the simpler cloud-only option
+  - **What was done**: `AIService.analyzeImage()` gained an optional `style` parameter (`'immersive'` (default) / `'academic'` / `'anecdotal'` / `'concise'`), threaded from a new `SettingsService.scriptStyle` (persisted, defaults to `'immersive'`) through `analysis_runner.dart` → `AudioGuideService.analyzeAndPlay()` → both `GeminiApiService`/`GeminiNanoService`. `GeminiApiService._styleGuidance()` swaps the tone/structure instruction and word-count target (concise: 100-150 words vs. the default 300-400) in the single JSON prompt; `GeminiNanoPlugin.kt`'s three segment-prompt builders (`buildSeg1/2/3Prompt`) each gained a `style` parameter adjusting tone and sentence count. The default (`null`/`'immersive'`) case reuses the exact original prompt text verbatim in both, so the default experience is unchanged
+  - **Settings UI**: new "Style du script" section (`settings_screen.dart`) — a `Wrap` of 4 `ChoiceChip`s (not a `SegmentedButton`, to avoid overflow risk with 4 labelled options on narrow screens, unlike the existing 2-option voice picker)
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 117/117 (5 new tests in `script_style_test.dart` asserting the actual outgoing prompt text per style, via the `fake_dio_adapter` support helper); real local Android build succeeded (native Kotlin change)
+
 - [x] **T45** 📈 ⭐⭐ - Define a **retention policy** for images, WAV files, caches, temp files
   - **Verified**: 2026-08-17 (PR #45)
   - **Scope decision**: split into "fix the actual leak" vs. "auto-expire old history entries" — chose the former only. Auto-purging saved guides after N days/entries is a real product decision with UX risk (a user could lose a guide they wanted to keep), not something to decide unilaterally; not pursued here

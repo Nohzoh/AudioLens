@@ -30,11 +30,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
-- [ ] **T75** 📈 ⭐⭐ - Add a **script style option** (a friend's suggestion)
-  - **Examples**: "academic/historical" style vs. a style that leans into **anecdotes and storytelling**
-  - **To do**: style picker in settings (and/or onboarding), pass the style to the AI prompt (`gemini_api_service.dart` + `gemini_nano_service.dart`), persistence via `SettingsService`
-  - **Related to**: T48 (tone variants) — consider merging to avoid duplication
-
 ---
 
 ## 🌱 Low impact / Long term
@@ -98,8 +93,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Needs breaking down into subtasks**: Contrast, button sizes, readability
 
 - [ ] **T24** 🌱 ⭐⭐⭐⭐ - Prepare an **internationalization (i18n) baseline**
-
-- [ ] **T48** 🌱 ⭐⭐ - Add **analysis tone variants** (child, expert, storytelling, concise)
 
 - [ ] **T49** 🌱 ⭐⭐ - Allow **choosing the output language** independently of the interface language
 

@@ -275,6 +275,7 @@ class AudioGuideService extends ChangeNotifier {
     File imageFile, {
     bool generateAudio = true,
     ({double lat, double lon, String source})? knownCoordinates,
+    String? style,
   }) async {
     if (_analysisInProgress || _state == GuideState.cancelling) {
       _errorMessage = 'Une analyse est déjà en cours.';
@@ -355,6 +356,7 @@ class AudioGuideService extends ChangeNotifier {
           imageFile,
           locationContext: locationContext.promptContext,
           cancelToken: _cancelToken,
+          style: style,
         );
       } catch (analysisError) {
         // A cancellation must abort outright, not trigger the local-model
@@ -371,6 +373,7 @@ class AudioGuideService extends ChangeNotifier {
             _lastResult = await localService.analyzeImage(
               imageFile,
               locationContext: locationContext.promptContext,
+              style: style,
             );
           } else {
             throw GuideError(GuideErrorKind.ai, 'Analyse IA impossible. $message');
