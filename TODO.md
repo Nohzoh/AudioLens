@@ -83,17 +83,13 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Needs breaking down into subtasks**: Contrast, button sizes, readability
 
 - [ ] **T24** 🌱 ⭐⭐⭐⭐ - Prepare an **internationalization (i18n) baseline**
+  - **Updated (2026-08-17)**: T67 delivered most of this baseline as a side effect of doing string extraction properly — French/English ARB files, `flutter gen-l10n` wired up, and the app now follows the device's system locale automatically (English fallback for anything else, chosen to reach more non-French speakers). **Remaining for this task**: screens/widgets' error-producing utilities (`lib/utils/user_message_utils.dart`, `lib/utils/build_info.dart`) and all service-layer error strings (`GuideError`/`Exception` messages surfaced via SnackBar) are still French-only — T67 deliberately scoped those out. `about_analysis_screen.dart` (a debug screen) was also left untranslated. No in-app language picker exists (by design, T67) — only automatic system-locale following.
 
 - [ ] **T49** 🌱 ⭐⭐ - Allow **choosing the output language** independently of the interface language
 
 - [ ] **T50** 🌱 ⭐⭐⭐ - **Re-run an old analysis** with a new style/length/language/model
 
 - [ ] **T51** 🌱 ⭐⭐⭐ - Add **favorites or trip collections** (e.g. Louvre, Rome, personal trip)
-
-- [ ] **T67** 🌱 ⭐⭐⭐ - **Extract all static strings** for i18n
-  - Lays the groundwork for T24 (internationalization)
-  - Use the `intl` package (already present)
-  - Create `.arb` files for French/English
 
 ---
 
