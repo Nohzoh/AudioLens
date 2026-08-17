@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart' as dio;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'remote_config_service.dart';
@@ -37,7 +38,7 @@ class GeminiTtsService {
   ];
 
   final String apiKey;
-  final http.Client _client;
+  final dio.Dio _dio;
   Function()? onComplete;
   bool _isPlaying = false;
   String? _lastWavPath;
@@ -45,9 +46,10 @@ class GeminiTtsService {
 
   bool get isPlaying => _isPlaying;
 
-  /// [client] allows injecting a mock HTTP client in tests.
-  GeminiTtsService({required this.apiKey, http.Client? client})
-      : _client = client ?? http.Client();
+  /// [dioClient] allows injecting a mock Dio instance in tests — see
+  /// `test/support/fake_dio_adapter.dart`.
+  GeminiTtsService({required this.apiKey, dio.Dio? dioClient})
+      : _dio = dioClient ?? dio.Dio();
 
   Future<void> speak(String text, {CancelToken? cancelToken}) async {
     // Check cancellation before starting
@@ -57,7 +59,7 @@ class GeminiTtsService {
 
     final tmpDir = await getTemporaryDirectory();
     final wavPath = p.join(tmpDir.path, 'gemini_tts_output.wav');
-    await synthesizeToFile(text, wavPath);
+    await synthesizeToFile(text, wavPath, cancelToken: cancelToken);
 
     AppLogger.tts('Gemini TTS playing $wavPath...');
     _isPlaying = true;
@@ -71,7 +73,11 @@ class GeminiTtsService {
   /// Synthesizes [text] and writes the resulting WAV to [outputPath],
   /// without playing it (T76 — chunked playback synthesizes the next
   /// chunk while the previous one is still playing).
-  Future<void> synthesizeToFile(String text, String outputPath) async {
+  Future<void> synthesizeToFile(
+    String text,
+    String outputPath, {
+    CancelToken? cancelToken,
+  }) async {
     final started = DateTime.now();
     AppLogger.tts('synthesizeToFile start -> $outputPath (${text.length} chars)');
     final cfg = RemoteConfigService.current;
@@ -105,9 +111,7 @@ class GeminiTtsService {
       },
     });
 
-    var response = await _client
-        .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
-        .timeout(const Duration(seconds: 60));
+    var response = await _post(uri, body: body, cancelToken: cancelToken);
 
     // A chunk hitting a rate limit shouldn't force the rest of the script
     // into a different voice than the one the user is hearing — retry
@@ -119,9 +123,7 @@ class GeminiTtsService {
       if (response.statusCode != 429) break;
       AppLogger.tts('synthesizeToFile got 429, retrying in ${delay.inSeconds}s');
       await Future.delayed(delay);
-      response = await _client
-          .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
-          .timeout(const Duration(seconds: 60));
+      response = await _post(uri, body: body, cancelToken: cancelToken);
     }
 
     if (response.statusCode != 200) {
@@ -151,6 +153,45 @@ class GeminiTtsService {
     _lastWavPath = outputPath;
     final elapsed = DateTime.now().difference(started).inMilliseconds;
     AppLogger.tts('synthesizeToFile done -> $outputPath: ${pcmBytes.length} bytes in ${elapsed}ms');
+  }
+
+  /// Posts [body] via dio, whose [dio.CancelToken] actually aborts the
+  /// in-flight request when [cancelToken] cancels — unlike the old `http`
+  /// client + `Future.timeout` combo, which stopped *waiting* but left a
+  /// chunk's synthesis running in the background regardless (T70).
+  Future<({int statusCode, String body})> _post(
+    Uri uri, {
+    required String body,
+    CancelToken? cancelToken,
+  }) async {
+    final dioToken = dio.CancelToken();
+    cancelToken?.onCancel.then((_) => dioToken.cancel());
+    try {
+      final resp = await _dio
+          .postUri<String>(
+            uri,
+            data: body,
+            cancelToken: dioToken,
+            options: dio.Options(
+              headers: {'Content-Type': 'application/json'},
+              responseType: dio.ResponseType.plain,
+              validateStatus: (_) => true,
+            ),
+          )
+          .timeout(
+            const Duration(seconds: 60),
+            onTimeout: () {
+              dioToken.cancel();
+              throw TimeoutException('Gemini TTS: délai dépassé');
+            },
+          );
+      return (statusCode: resp.statusCode ?? 0, body: resp.data ?? '');
+    } on dio.DioException catch (e) {
+      if (e.type == dio.DioExceptionType.cancel) {
+        throw const CancelledException();
+      }
+      rethrow;
+    }
   }
 
   /// Plays an already-synthesized WAV file, awaiting playback completion

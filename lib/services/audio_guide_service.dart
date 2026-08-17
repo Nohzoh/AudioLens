@@ -343,8 +343,13 @@ class AudioGuideService extends ChangeNotifier {
         _lastResult = await service.analyzeImage(
           imageFile,
           locationContext: locationContext.promptContext,
+          cancelToken: _cancelToken,
         );
       } catch (analysisError) {
+        // A cancellation must abort outright, not trigger the local-model
+        // fallback below (T70) — the user asked to stop, not to keep
+        // burning time on a slower on-device retry.
+        if (analysisError is CancelledException) rethrow;
         final message = sanitizeError(analysisError.toString());
         if (_activeProvider == AIProvider.geminiApi && _nanoAvailable) {
           AppLogger.error('Cloud analysis failed, trying local fallback: $message');
@@ -401,6 +406,15 @@ class AudioGuideService extends ChangeNotifier {
       return _lastResult;
     } catch (e) {
       _progressEstimator.stop();
+      // A real cancellation (T70) lands here too now that cloud calls can
+      // actually be aborted mid-flight — treat it like the cooperative
+      // isCancelled checks above (back to idle), not a failure.
+      if (e is CancelledException) {
+        _state = GuideState.idle;
+        _analysisInProgress = false;
+        notifyListeners();
+        return null;
+      }
       _state = GuideState.error;
       _errorMessage = sanitizeError(e.toString());
       notifyListeners();
@@ -466,6 +480,11 @@ class AudioGuideService extends ChangeNotifier {
 
       return _lastResult;
     } catch (e) {
+      if (e is CancelledException) {
+        _state = GuideState.idle;
+        notifyListeners();
+        return null;
+      }
       _state = GuideState.error;
       _errorMessage = sanitizeError(e.toString());
       notifyListeners();

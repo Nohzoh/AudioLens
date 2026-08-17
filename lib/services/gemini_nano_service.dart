@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import '../utils/cancel_token.dart';
 import 'ai_service.dart';
 
 const _channel = MethodChannel('audio_guide/gemini_nano');
@@ -28,8 +29,11 @@ class GeminiNanoService implements AIService {
   }
 
   @override
-  Future<AudioGuideResult> analyzeImage(File imageFile,
-      {String? locationContext}) async {
+  Future<AudioGuideResult> analyzeImage(
+    File imageFile, {
+    String? locationContext,
+    CancelToken? cancelToken,
+  }) async {
     if (!_initialized) await initialize();
 
     try {

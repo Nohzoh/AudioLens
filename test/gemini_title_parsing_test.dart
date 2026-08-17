@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:audiolens/services/gemini_api_service.dart';
+import 'support/fake_dio_adapter.dart';
 
 /// T90 — the title/script JSON parsing had "holes in the net" beyond what
 /// the original indexOf/lastIndexOf brace matching handled: markdown
@@ -42,7 +41,7 @@ void main() {
   Future<GeminiApiService> serviceReturning(String text) async {
     return GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((request) async => http.Response(_responseWithText(text), 200)),
+      dioClient: fakeDio((_) async => (statusCode: 200, body: _responseWithText(text))),
     );
   }
 

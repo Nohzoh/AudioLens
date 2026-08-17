@@ -60,7 +60,11 @@ class _FakeGeminiTts extends GeminiTtsService {
   }
 
   @override
-  Future<void> synthesizeToFile(String text, String outputPath) async {
+  Future<void> synthesizeToFile(
+    String text,
+    String outputPath, {
+    CancelToken? cancelToken,
+  }) async {
     final index = _nextIndex++;
     log.add('synth:$index');
     synthesizedTexts.add(text);
