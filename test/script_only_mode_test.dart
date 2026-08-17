@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audiolens/services/audio_guide_service.dart';
 import 'package:audiolens/services/gemini_api_service.dart';
@@ -10,6 +8,7 @@ import 'package:audiolens/services/gemini_tts_service.dart';
 import 'package:audiolens/services/settings_service.dart';
 import 'package:audiolens/services/native_tts_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
+import 'support/fake_dio_adapter.dart';
 
 class _FakeNativeTts extends NativeTtsService {
   bool speakCalled = false;
@@ -51,7 +50,7 @@ String _successJson() => jsonEncode({
 
 GeminiApiService _successApi() => GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((_) async => http.Response(_successJson(), 200)),
+      dioClient: fakeDio((_) async => (statusCode: 200, body: _successJson())),
     );
 
 void main() {

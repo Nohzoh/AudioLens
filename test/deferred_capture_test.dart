@@ -11,6 +11,7 @@ import 'package:audiolens/services/location_context_resolver.dart';
 import 'package:audiolens/services/location_service.dart';
 import 'package:audiolens/services/native_tts_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
+import 'support/fake_dio_adapter.dart';
 
 class _FakeNativeTts extends NativeTtsService {
   @override
@@ -112,7 +113,7 @@ void main() {
         geminiTtsService: _FakeGeminiTts(),
         geminiApiService: GeminiApiService(
           apiKey: 'test-key',
-          client: MockClient((_) async => http.Response(_successJson(), 200)),
+          dioClient: fakeDio((_) async => (statusCode: 200, body: _successJson())),
         ),
         locationResolver: LocationContextResolver(httpClient: client),
       );

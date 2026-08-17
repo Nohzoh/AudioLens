@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../utils/cancel_token.dart';
 
 class AudioGuideResult {
   final String title;
@@ -16,6 +17,13 @@ abstract class AIService {
   String get displayName;
   Future<bool> isAvailable();
   Future<void> initialize();
-  Future<AudioGuideResult> analyzeImage(File imageFile, {String? locationContext});
+  /// [cancelToken] lets the caller actually abort an in-flight cloud
+  /// request (T70) — implementations that don't make cancellable network
+  /// calls (e.g. on-device inference) may ignore it.
+  Future<AudioGuideResult> analyzeImage(
+    File imageFile, {
+    String? locationContext,
+    CancelToken? cancelToken,
+  });
   void dispose();
 }

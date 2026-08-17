@@ -42,6 +42,9 @@ class TtsOrchestrator {
         await geminiTts.speak(script, cancelToken: cancelToken);
         return 'gemini-tts';
       } catch (ttsError) {
+        // A cancellation must stop playback outright, not fall back to
+        // the native voice speaking a script the user asked to cancel (T70).
+        if (ttsError is CancelledException) rethrow;
         wasRateLimited = ttsError is GeminiTtsRateLimitException;
         AppLogger.error('Gemini TTS failed, falling back to native TTS: $ttsError');
         try {

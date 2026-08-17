@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import '../utils/app_logger.dart';
-import 'package:http/http.dart' as http;
+import '../utils/cancel_token.dart';
+import 'package:dio/dio.dart' as dio;
 import 'ai_service.dart';
 import 'remote_config_service.dart';
 
@@ -11,10 +13,12 @@ class GeminiApiService implements AIService {
   List<String> _lastAttempts = [];
   List<String> get lastAttempts => _lastAttempts;
   final String apiKey;
-  final http.Client? _client;
+  final dio.Dio _dio;
 
-  /// [client] allows injecting a mock HTTP client in tests (fallback logic).
-  GeminiApiService({required this.apiKey, http.Client? client}) : _client = client;
+  /// [dioClient] allows injecting a mock Dio instance in tests (fallback
+  /// logic) — see `test/support/fake_dio_adapter.dart`.
+  GeminiApiService({required this.apiKey, dio.Dio? dioClient})
+      : _dio = dioClient ?? dio.Dio();
 
   @override
   String get displayName => 'Gemini API';
@@ -34,6 +38,7 @@ class GeminiApiService implements AIService {
   Future<AudioGuideResult> analyzeImage(
     File imageFile, {
     String? locationContext,
+    CancelToken? cancelToken,
   }) async {
     final cfg = RemoteConfigService.current;
     final imageBytes = await imageFile.readAsBytes();
@@ -71,7 +76,7 @@ class GeminiApiService implements AIService {
       ...cfg.geminiModelFallbacks.where((m) => m != cfg.geminiModel),
     ];
 
-    http.Response? response;
+    ({int statusCode, String body})? response;
     final List<String> attempts = [];
 
     for (final model in modelsToTry) {
@@ -102,7 +107,8 @@ class GeminiApiService implements AIService {
               'thinkingConfig': {'thinkingBudget': cfg.geminiThinkingBudget, 'includeThoughts': false},
             },
           }),
-        ).timeout(const Duration(seconds: 30));
+          cancelToken: cancelToken,
+        );
 
         if (resp.statusCode == 200) {
           response = resp;
@@ -111,14 +117,14 @@ class GeminiApiService implements AIService {
           AppLogger.ai('Model succeeded: $model');
           break;
         } else if (resp.statusCode == 429 || resp.statusCode == 404 || resp.statusCode == 503) {
-          final err = _tryDecode(resp);
+          final err = _tryDecode(resp.body);
           final msg = err?['error']?['message'] as String? ?? 'HTTP ${resp.statusCode}';
           final short = msg.length > 80 ? msg.substring(0, 80) : msg;
           attempts.add('✗ $model (${resp.statusCode}): $short');
           AppLogger.ai('Model failed: $model (${resp.statusCode}): $short');
           continue;
         } else {
-          final err = _tryDecode(resp);
+          final err = _tryDecode(resp.body);
           final msg = (err?['error']?['message'] as String?) ?? resp.body;
           attempts.add('✗ $model (${resp.statusCode}): $msg');
           throw Exception(
@@ -126,6 +132,10 @@ class GeminiApiService implements AIService {
           );
         }
       } catch (e) {
+        // A cancellation must abort the whole retry-across-models loop, not
+        // be treated as "this model failed, try the next one" (T70) — the
+        // user asked to stop, not to keep burning quota on fallbacks.
+        if (e is CancelledException) rethrow;
         if (e is Exception && e.toString().contains('Gemini API erreur')) rethrow;
         attempts.add('✗ $model (timeout/réseau): $e');
         continue;
@@ -262,25 +272,53 @@ class GeminiApiService implements AIService {
     }
   }
 
-  Future<http.Response> _post(
+  /// Posts [body] to [uri] via dio, whose [dio.CancelToken] actually aborts
+  /// the in-flight request (unlike the old `http` client + `Future.timeout`
+  /// combo, which stopped *waiting* but left the request running in the
+  /// background to completion regardless — T70). Wires [cancelToken] (the
+  /// app's own token) to a fresh dio token for this call, and treats an
+  /// exceeded [const Duration(seconds: 30)] the same way: cancel the
+  /// socket, not just the wait.
+  Future<({int statusCode, String body})> _post(
     Uri uri, {
     required Map<String, String> headers,
     required String body,
-  }) {
-    final client = _client;
-    if (client != null) {
-      return client
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 30));
+    CancelToken? cancelToken,
+  }) async {
+    final dioToken = dio.CancelToken();
+    cancelToken?.onCancel.then((_) => dioToken.cancel());
+    try {
+      final resp = await _dio
+          .postUri<String>(
+            uri,
+            data: body,
+            cancelToken: dioToken,
+            options: dio.Options(
+              headers: headers,
+              responseType: dio.ResponseType.plain,
+              validateStatus: (_) => true,
+            ),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              dioToken.cancel();
+              throw TimeoutException('Gemini API: délai dépassé');
+            },
+          );
+      return (statusCode: resp.statusCode ?? 0, body: resp.data ?? '');
+    } on dio.DioException catch (e) {
+      if (e.type == dio.DioExceptionType.cancel) {
+        throw const CancelledException();
+      }
+      rethrow;
     }
-    return http.post(uri, headers: headers, body: body)
-        .timeout(const Duration(seconds: 30));
   }
 
   /// Safely decodes an error body: API error pages are not always JSON.
-  static Map<String, dynamic>? _tryDecode(http.Response resp) {
+  static Map<String, dynamic>? _tryDecode(String body) {
     try {
-      final decoded = jsonDecode(resp.body);
+      final decoded = jsonDecode(body);
       return decoded is Map<String, dynamic> ? decoded : null;
     } catch (_) {
       return null;

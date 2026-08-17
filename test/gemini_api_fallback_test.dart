@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:audiolens/services/gemini_api_service.dart';
 import 'package:audiolens/services/remote_config_service.dart';
+import 'support/fake_dio_adapter.dart';
 
 String _successJson() => jsonEncode({
   'candidates': [
@@ -55,13 +54,13 @@ void main() {
     final requested = <String>[];
     final service = GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((request) async {
-        final model = _modelFromPath(request.url.path);
+      dioClient: fakeDio((options) async {
+        final model = _modelFromPath(options.uri.path);
         requested.add(model);
         if (model == primary) {
-          return http.Response(_errorJson(), 429);
+          return (statusCode: 429, body: _errorJson());
         }
-        return http.Response(_successJson(), 200);
+        return (statusCode: 200, body: _successJson());
       }),
     );
 
@@ -79,13 +78,13 @@ void main() {
     final requested = <String>[];
     final service = GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((request) async {
-        final model = _modelFromPath(request.url.path);
+      dioClient: fakeDio((options) async {
+        final model = _modelFromPath(options.uri.path);
         requested.add(model);
         if (model == primary) {
-          return http.Response(_errorJson(), 404);
+          return (statusCode: 404, body: _errorJson());
         }
-        return http.Response(_successJson(), 200);
+        return (statusCode: 200, body: _successJson());
       }),
     );
 
@@ -100,13 +99,13 @@ void main() {
     final requested = <String>[];
     final service = GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((request) async {
-        final model = _modelFromPath(request.url.path);
+      dioClient: fakeDio((options) async {
+        final model = _modelFromPath(options.uri.path);
         requested.add(model);
         if (model == primary) {
-          return http.Response(_errorJson(), 503);
+          return (statusCode: 503, body: _errorJson());
         }
-        return http.Response(_successJson(), 200);
+        return (statusCode: 200, body: _successJson());
       }),
     );
 
@@ -121,13 +120,13 @@ void main() {
     final requested = <String>[];
     final service = GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((request) async {
-        final model = _modelFromPath(request.url.path);
+      dioClient: fakeDio((options) async {
+        final model = _modelFromPath(options.uri.path);
         requested.add(model);
         if (model == primary) {
           throw const SocketException('network down');
         }
-        return http.Response(_successJson(), 200);
+        return (statusCode: 200, body: _successJson());
       }),
     );
 
@@ -142,9 +141,9 @@ void main() {
     final requested = <String>[];
     final service = GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((request) async {
-        requested.add(_modelFromPath(request.url.path));
-        return http.Response(_successJson(), 200);
+      dioClient: fakeDio((options) async {
+        requested.add(_modelFromPath(options.uri.path));
+        return (statusCode: 200, body: _successJson());
       }),
     );
 
@@ -160,9 +159,9 @@ void main() {
     final requested = <String>[];
     final service = GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((request) async {
-        requested.add(_modelFromPath(request.url.path));
-        return http.Response(_errorJson(), 429);
+      dioClient: fakeDio((options) async {
+        requested.add(_modelFromPath(options.uri.path));
+        return (statusCode: 429, body: _errorJson());
       }),
     );
 
@@ -184,9 +183,9 @@ void main() {
     final requested = <String>[];
     final service = GeminiApiService(
       apiKey: 'test-key',
-      client: MockClient((request) async {
-        requested.add(_modelFromPath(request.url.path));
-        return http.Response('internal error', 500);
+      dioClient: fakeDio((options) async {
+        requested.add(_modelFromPath(options.uri.path));
+        return (statusCode: 500, body: 'internal error');
       }),
     );
 
