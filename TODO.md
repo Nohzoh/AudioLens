@@ -66,10 +66,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **CI**: new workflow (`build-ios.yml`), macOS runner (paid/limited on GitHub Actions), certificates/provisioning as secrets
   - **Recommendation**: don't treat this as a single task — break it down once the blockers above are resolved
 
-- [ ] **T12** 🌱 ⭐⭐⭐ - Merge the **home screen's "Recently visited" grid and the history screen**
-  - **Clarified (2026-08-16)**: "gallery" meant the thumbnail grid on the home screen (`home_screen.dart`), not a dedicated screen — none exists
-  - **Option**: Make history the main view, with access to a new analysis and to settings
-
 - [ ] **T17** 🌱 ⭐⭐ - Add a **more detailed or shorter analysis mode**
 
 - [ ] **T18** 🌱 ⭐⭐⭐ - Allow **choosing voice language/style**
@@ -85,7 +81,7 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Target**: `player_screen.dart`
 
 - [ ] **T22** 🌱 ⭐ - Allow **pausing** audio playback from the home screen's "Recently visited" grid
-  - **Clarified (2026-08-16)**: same clarification as T12 — "gallery" = the thumbnail grid on `home_screen.dart`
+  - **Clarified (2026-08-16)**: "gallery" means the thumbnail grid on the home screen (`home_screen.dart`), not a dedicated screen
 
 - [ ] **T23** 🌱 ⭐⭐⭐ - Improve **visual accessibility**
   - **Needs breaking down into subtasks**: Contrast, button sizes, readability
