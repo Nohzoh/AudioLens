@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'ai_service.dart';
+import 'analysis_foreground_service.dart';
+import 'audio_ready_notifier.dart';
 import 'gemini_nano_service.dart';
 import 'gemini_api_service.dart';
 import 'native_tts_service.dart';
@@ -44,14 +46,21 @@ class AudioGuideService extends ChangeNotifier {
     GeminiNanoService? nanoService,
     GuidePreferencesStore? preferencesStore,
     LocationContextResolver? locationResolver,
+    AnalysisForegroundService? foregroundService,
+    AudioReadyNotifier? audioReadyNotifier,
   })  : _nativeTtsService = nativeTtsService ?? NativeTtsService(),
         _nanoService = nanoService ?? GeminiNanoService(),
         _geminiTtsService = geminiTtsService,
         _geminiApiService = geminiApiService,
         _preferencesStore = preferencesStore ?? GuidePreferencesStore(),
-        _locationResolver = locationResolver ?? LocationContextResolver() {
+        _locationResolver = locationResolver ?? LocationContextResolver(),
+        _foregroundService = foregroundService ?? AnalysisForegroundService(),
+        _audioReadyNotifier = audioReadyNotifier ?? AudioReadyNotifier() {
     _ttsOrchestrator = TtsOrchestrator(nativeTts: _nativeTtsService);
   }
+
+  final AnalysisForegroundService _foregroundService;
+  final AudioReadyNotifier _audioReadyNotifier;
 
   final NativeTtsService _nativeTtsService;
   NativeTtsService get nativeTtsService => _nativeTtsService;
@@ -284,6 +293,8 @@ class AudioGuideService extends ChangeNotifier {
 
     _analysisInProgress = true;
     _cancelToken.reset(); // Reset cancellation for new analysis
+    await _foregroundService.start();
+    await _audioReadyNotifier.requestPermissionIfNeeded();
 
     try {
       _lastResult = null;
@@ -403,12 +414,15 @@ class AudioGuideService extends ChangeNotifier {
         _progressEstimator.analyzeDurations,
       );
 
+      await _audioReadyNotifier.notifyReady();
       return _lastResult;
     } catch (e) {
       _progressEstimator.stop();
       // A real cancellation (T70) lands here too now that cloud calls can
       // actually be aborted mid-flight — treat it like the cooperative
-      // isCancelled checks above (back to idle), not a failure.
+      // isCancelled checks above (back to idle), not a failure. The user
+      // asked to stop, so unlike a genuine error (below), this isn't worth
+      // a "failed" notification (T85).
       if (e is CancelledException) {
         _state = GuideState.idle;
         _analysisInProgress = false;
@@ -418,9 +432,11 @@ class AudioGuideService extends ChangeNotifier {
       _state = GuideState.error;
       _errorMessage = sanitizeError(e.toString());
       notifyListeners();
+      await _audioReadyNotifier.notifyFailed();
       return null;
     } finally {
       _analysisInProgress = false;
+      await _foregroundService.stop();
     }
   }
 
@@ -470,6 +486,8 @@ class AudioGuideService extends ChangeNotifier {
 
     _analysisInProgress = true;
     _cancelToken.reset();
+    await _foregroundService.start();
+    await _audioReadyNotifier.requestPermissionIfNeeded();
 
     try {
       _lastResult = AudioGuideResult(title: title, script: script, locationName: locationName);
@@ -478,6 +496,7 @@ class AudioGuideService extends ChangeNotifier {
 
       await _synthesizeAndPlay(script);
 
+      await _audioReadyNotifier.notifyReady();
       return _lastResult;
     } catch (e) {
       if (e is CancelledException) {
@@ -488,9 +507,11 @@ class AudioGuideService extends ChangeNotifier {
       _state = GuideState.error;
       _errorMessage = sanitizeError(e.toString());
       notifyListeners();
+      await _audioReadyNotifier.notifyFailed();
       return null;
     } finally {
       _analysisInProgress = false;
+      await _foregroundService.stop();
     }
   }
 

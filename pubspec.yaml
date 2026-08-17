@@ -28,6 +28,7 @@ dependencies:
   latlong2: ^0.9.1
   flutter_tts: ^4.2.5
   dio: ^5.11.0
+  flutter_local_notifications: ^22.3.0
 
 dev_dependencies:
   flutter_test:

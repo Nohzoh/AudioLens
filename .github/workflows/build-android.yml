@@ -133,6 +133,19 @@ jobs:
           DEPS
           fi
 
+          # T85: flutter_local_notifications requires core library desugaring.
+          if ! grep -q 'isCoreLibraryDesugaringEnabled' $FILE; then
+            sed -i 's|compileOptions {|compileOptions {\n        isCoreLibraryDesugaringEnabled = true|' $FILE
+          fi
+          if ! grep -q 'coreLibraryDesugaring' $FILE; then
+            cat >> $FILE << 'DEPS'
+
+          dependencies {
+              coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+          }
+          DEPS
+          fi
+
           echo "=== Patched file ==="
           cat $FILE
 
@@ -166,7 +179,16 @@ jobs:
           if ! grep -q 'TextToSpeechService' $MANIFEST; then
             sed -i 's|</manifest>|<queries><intent><action android:name="android.speech.tts.engine.TextToSpeechService" /></intent></queries>\n</manifest>|' $MANIFEST
           fi
-          echo "✅ Manifest patched (allowBackup=false, TTS engine query)"
+          # T85: a foreground service protects the app process's priority
+          # while an analysis is in flight — without it, Android can kill
+          # the process while backgrounded, silently dropping the analysis.
+          if ! grep -q 'FOREGROUND_SERVICE_DATA_SYNC' $MANIFEST; then
+            sed -i 's|<application|<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application|' $MANIFEST
+          fi
+          if ! grep -q 'AnalysisForegroundService' $MANIFEST; then
+            sed -i 's|</application>|    <service android:name=".AnalysisForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>\n    </application>|' $MANIFEST
+          fi
+          echo "✅ Manifest patched (allowBackup=false, TTS engine query, foreground service)"
 
       - name: Add FileProvider
         run: |
