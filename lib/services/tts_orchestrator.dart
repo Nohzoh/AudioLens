@@ -30,16 +30,19 @@ class TtsOrchestrator {
   /// both engines fail. Prefer [speakChunked], which uses this as its
   /// fallback for scripts too short to chunk or when Gemini TTS isn't
   /// configured.
+  /// [speed] is a playback speed multiplier (T15, 1.0 = normal), applied
+  /// regardless of which engine actually ends up playing.
   Future<String> speak(
     String script, {
     required CancelToken cancelToken,
     GeminiTtsService? geminiTts,
+    double speed = 1.0,
   }) async {
     wasRateLimited = false;
     if (geminiTts != null) {
       try {
         geminiTts.onComplete = nativeTts.onComplete;
-        await geminiTts.speak(script, cancelToken: cancelToken);
+        await geminiTts.speak(script, cancelToken: cancelToken, speed: speed);
         return 'gemini-tts';
       } catch (ttsError) {
         // A cancellation must stop playback outright, not fall back to
@@ -48,7 +51,7 @@ class TtsOrchestrator {
         wasRateLimited = ttsError is GeminiTtsRateLimitException;
         AppLogger.error('Gemini TTS failed, falling back to native TTS: $ttsError');
         try {
-          await nativeTts.speak(script, cancelToken: cancelToken);
+          await nativeTts.speak(script, cancelToken: cancelToken, speed: speed);
           return 'native-tts';
         } catch (fallbackError) {
           throw GuideError(GuideErrorKind.tts,
@@ -57,7 +60,7 @@ class TtsOrchestrator {
       }
     }
     try {
-      await nativeTts.speak(script, cancelToken: cancelToken);
+      await nativeTts.speak(script, cancelToken: cancelToken, speed: speed);
       return 'native-tts';
     } catch (ttsError) {
       throw GuideError(GuideErrorKind.tts, 'La lecture audio a échoué. ${sanitizeError(ttsError.toString())}');
@@ -88,15 +91,16 @@ class TtsOrchestrator {
     required CancelToken cancelToken,
     GeminiTtsService? geminiTts,
     void Function(int chunkIndex, int totalChunks)? onChunkStart,
+    double speed = 1.0,
   }) async {
     wasRateLimited = false;
     if (geminiTts == null) {
-      return speak(script, cancelToken: cancelToken, geminiTts: geminiTts);
+      return speak(script, cancelToken: cancelToken, geminiTts: geminiTts, speed: speed);
     }
 
     final chunks = chunkScript(script);
     if (chunks.length <= 1) {
-      return speak(script, cancelToken: cancelToken, geminiTts: geminiTts);
+      return speak(script, cancelToken: cancelToken, geminiTts: geminiTts, speed: speed);
     }
 
     final tmpDir = await getTemporaryDirectory();
@@ -111,7 +115,7 @@ class TtsOrchestrator {
       wasRateLimited = ttsError is GeminiTtsRateLimitException;
       AppLogger.error('Gemini TTS (chunk 0) failed, falling back to native TTS: $ttsError');
       try {
-        await nativeTts.speak(script, cancelToken: cancelToken);
+        await nativeTts.speak(script, cancelToken: cancelToken, speed: speed);
         return 'native-tts';
       } catch (fallbackError) {
         throw GuideError(GuideErrorKind.tts,
@@ -142,12 +146,12 @@ class TtsOrchestrator {
       if (isLast) {
         // Match speak()'s contract: don't await final playback, just kick
         // it off — onComplete fires (once) when it actually finishes.
-        unawaited(geminiTts.playFile(chunkPaths[i]));
+        unawaited(geminiTts.playFile(chunkPaths[i], speed: speed));
       } else {
         // notifyComplete: false — onComplete must fire only once, for the
         // truly last chunk, not after every intermediate one.
         await Future.any([
-          geminiTts.playFile(chunkPaths[i], notifyComplete: false),
+          geminiTts.playFile(chunkPaths[i], notifyComplete: false, speed: speed),
           cancelToken.onCancel,
         ]);
         if (cancelToken.isCancelled) return 'gemini-tts';
@@ -161,7 +165,7 @@ class TtsOrchestrator {
               'Gemini TTS (chunk ${i + 1}) failed, falling back to native TTS for the rest: $ttsError');
           final remaining = chunks.sublist(i + 1).join(' ');
           try {
-            await nativeTts.speak(remaining, cancelToken: cancelToken);
+            await nativeTts.speak(remaining, cancelToken: cancelToken, speed: speed);
           } catch (fallbackError) {
             throw GuideError(GuideErrorKind.tts,
                 'La lecture audio a échoué. ${sanitizeError(fallbackError.toString())}');

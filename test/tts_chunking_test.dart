@@ -11,7 +11,7 @@ class _FakeNativeTts extends NativeTtsService {
   final List<String> spokenTexts = [];
 
   @override
-  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+  Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     spokenTexts.add(text);
     onComplete?.call();
   }
@@ -48,7 +48,7 @@ class _FakeGeminiTts extends GeminiTtsService {
   int _nextIndex = 0;
 
   @override
-  Future<void> speak(String text, {CancelToken? cancelToken}) async {
+  Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     log.add('speak');
     synthesizedTexts.add(text);
     if (failSpeak) {
@@ -78,7 +78,7 @@ class _FakeGeminiTts extends GeminiTtsService {
   }
 
   @override
-  Future<void> playFile(String path, {bool notifyComplete = true}) async {
+  Future<void> playFile(String path, {bool notifyComplete = true, double speed = 1.0}) async {
     log.add('play:${path.split('/').last}');
     if (playDelay != null) await Future.delayed(playDelay!);
     if (notifyComplete) onComplete?.call();

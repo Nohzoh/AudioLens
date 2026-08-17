@@ -76,6 +76,8 @@ class AudioGuideService extends ChangeNotifier {
   String get lastTtsModel => _lastTtsModel;
   String _ttsVoiceGender = 'female';
   String get ttsVoiceGender => _ttsVoiceGender;
+  double _playbackSpeed = 1.0;
+  double get playbackSpeed => _playbackSpeed;
   String? _lastAiModel;
   String? get lastAiModel => _lastAiModel;
   String? _lastGpsSource;
@@ -247,6 +249,7 @@ class AudioGuideService extends ChangeNotifier {
     // its existing lazy-initialization pattern.
     _ttsVoiceGender = await _preferencesStore.loadTtsVoiceGender();
     _nativeTtsService.preferredGender = _ttsVoiceGender;
+    _playbackSpeed = await _preferencesStore.loadPlaybackSpeed();
   }
 
   /// Changes the preferred native TTS voice's gender ('female' or 'male',
@@ -257,6 +260,16 @@ class AudioGuideService extends ChangeNotifier {
     _nativeTtsService.preferredGender = gender;
     await _preferencesStore.saveTtsVoiceGender(gender);
     await _nativeTtsService.applyPreferredVoice();
+    notifyListeners();
+  }
+
+  /// Changes the narration playback speed multiplier (T15, 1.0 = normal).
+  /// Applies to both TTS engines; no live re-apply needed since it's
+  /// threaded through as a parameter at the next play, not cached engine
+  /// state (see [NativeTtsService.speak]/[GeminiTtsService.speak]).
+  Future<void> setPlaybackSpeed(double speed) async {
+    _playbackSpeed = speed;
+    await _preferencesStore.savePlaybackSpeed(speed);
     notifyListeners();
   }
 
@@ -461,6 +474,7 @@ class AudioGuideService extends ChangeNotifier {
       script,
       cancelToken: _cancelToken,
       geminiTts: _geminiTtsService,
+      speed: _playbackSpeed,
     );
 
     // Cache the generated audio for replay without re-generating

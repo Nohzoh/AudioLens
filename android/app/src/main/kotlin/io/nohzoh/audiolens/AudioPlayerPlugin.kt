@@ -1,6 +1,7 @@
 package io.nohzoh.audiolens
 
 import android.media.MediaPlayer
+import android.media.PlaybackParams
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -42,6 +43,10 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         when (call.method) {
             "playWav" -> {
                 val path = call.argument<String>("path")
+                // Multiplier on normal speed (T15), e.g. 1.5 = 50% faster.
+                // Applied via PlaybackParams, which by default (no explicit
+                // setPitch) time-stretches without changing pitch.
+                val speed = call.argument<Double>("speed")?.toFloat() ?: 1.0f
                 if (path == null) {
                     result.error("INVALID_ARGS", "path required", null)
                     return
@@ -55,6 +60,9 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         mediaPlayer = MediaPlayer().apply {
                             setDataSource(path)
                             prepare()
+                            if (speed != 1.0f) {
+                                playbackParams = PlaybackParams().setSpeed(speed)
+                            }
                             start()
                             setOnCompletionListener {
                                 scope.launch(Dispatchers.Main) { resolvePendingPlay() }

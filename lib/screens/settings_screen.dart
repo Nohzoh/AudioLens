@@ -39,8 +39,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _testVoice() async {
     final guide = context.read<AudioGuideService>();
-    final played =
-        await guide.nativeTtsService.speakAndWaitForResult(_ttsPreviewSample);
+    final played = await guide.nativeTtsService
+        .speakAndWaitForResult(_ttsPreviewSample, speed: guide.playbackSpeed);
     if (!played && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -326,6 +326,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               minimumSize: const Size(double.infinity, 44),
             ),
             onPressed: _testVoice,
+          ),
+
+          const SizedBox(height: 32),
+
+          const _SectionHeader('Vitesse de lecture'),
+          const SizedBox(height: 8),
+          Consumer<AudioGuideService>(
+            builder: (context, guide, _) => Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final option in const [
+                  (speed: 0.75, label: '0.75x'),
+                  (speed: 1.0, label: '1x'),
+                  (speed: 1.25, label: '1.25x'),
+                  (speed: 1.5, label: '1.5x'),
+                ])
+                  ChoiceChip(
+                    label: Text(option.label),
+                    selected: guide.playbackSpeed == option.speed,
+                    onSelected: (_) => guide.setPlaybackSpeed(option.speed),
+                  ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 32),
