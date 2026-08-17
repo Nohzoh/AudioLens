@@ -48,9 +48,9 @@ flowchart TD
         direction TB
         Chunk["text_chunker.dart\nsplits into sentences"]
         GTts["GeminiTtsService\n(cloud, per chunk)"]
-        Piper["TtsService / Piper\n(local, offline)"]
+        Native["NativeTtsService\n(device TTS, offline, T89)"]
         Chunk --> GTts
-        GTts -- chunk failure --> Piper
+        GTts -- chunk failure --> Native
     end
 
     TTS --> Audio["Native playback\n(AudioPlayerPlugin.kt)"]
@@ -63,17 +63,27 @@ flowchart TD
   (`idle → locating → analyzing → synthesizing → speaking`, plus
   `scriptReady`, `paused`, `cancelling`, `error`).
 - The cloud → local fallback exists at two independent levels: AI (Gemini
-  API → Gemini Nano) and TTS (Gemini TTS → Piper). An AI failure does not
-  trigger a TTS fallback, and vice versa.
+  API → Gemini Nano) and TTS (Gemini TTS → native Android TTS). An AI
+  failure does not trigger a TTS fallback, and vice versa.
 - `TtsOrchestrator.speakChunked()` synthesizes the next chunk while the
   current one plays (instead of waiting for the full script to be
   synthesized before starting playback). If a chunk fails to synthesize,
-  the Piper fallback only covers the remaining text — already-played
+  the native TTS fallback only covers the remaining text — already-played
   chunks are not replayed.
 - `CancelToken` (`lib/utils/cancel_token.dart`) is checked between each
-  pipeline step and between each TTS chunk; it does not interrupt an
-  already in-flight HTTP call (the `http` package doesn't support that —
-  see T70).
+  pipeline step and between each TTS chunk, and (T70) is also bridged to
+  a `dio.CancelToken` per request, so cancelling genuinely aborts an
+  already in-flight HTTP call instead of just abandoning the wait for it.
+- A `style` parameter (T75, `immersive`/`academic`/`anecdotal`/`concise`)
+  flows from `SettingsService` into the AI prompt (both `GeminiApiService`
+  and `GeminiNanoPlugin.kt`), and a `speed` multiplier (T15) flows into
+  both TTS engines at playback time — neither is cached engine-side
+  state, both are threaded as plain parameters on each call.
+- While `analyzeAndPlay()`/`generateAudioForScript()` run, a native
+  foreground service (`AnalysisForegroundService.kt`, T85) protects the
+  app process from being killed while backgrounded, and a local
+  notification (`AudioReadyNotifier`) reports success/failure once the
+  user isn't actively looking at the app.
 
 ## Diagram 2 — Geolocation: EXIF → GPS → Wikipedia
 
@@ -137,8 +147,12 @@ without redoing GPS/Wikipedia/AI.
 | Channel | Kotlin plugin | Role |
 |---|---|---|
 | `audio_guide/location` | `LocationPlugin.kt` | Permission + real-time GPS fix |
-| `audio_guide/audio_player` | `AudioPlayerPlugin.kt` | WAV playback (Piper and Gemini TTS share the same native player) |
+| `audio_guide/audio_player` | `AudioPlayerPlugin.kt` | Gemini TTS's WAV playback, with speed control (T15) |
 | `audio_guide/gemini_nano` | `GeminiNanoPlugin.kt` | On-device AI analysis (Google AI Core) |
+| `audio_guide/foreground_service` | `ForegroundServicePlugin.kt` | Starts/stops `AnalysisForegroundService` (T85) |
+
+Native Android TTS (the local fallback) goes through the `flutter_tts`
+plugin directly, not a hand-rolled channel — see `NativeTtsService`.
 
 `AudioPlayerPlugin.kt` resolves its `playWav` call only once playback
 finishes (or is stopped) — that's what lets `TtsOrchestrator` sequence

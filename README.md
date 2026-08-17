@@ -8,7 +8,9 @@ An AI-powered audio guide mobile app. Take a photo of a place and instantly get 
 - 🗺️ Smart geolocation: photo **EXIF** coordinates, then **real-time GPS** as a fallback
 - 📖 **Wikipedia** enrichment to add context to the place
 - 🤖 AI analysis: **Gemini API** (cloud) or **Gemini Nano** (local, on-device)
-- 🔊 Audio generation: **Gemini TTS** (cloud) with **Piper** as a fallback (offline local TTS)
+- 🔊 Audio generation: **Gemini TTS** (cloud) with the device's **native Android TTS** as a fallback (offline, female/male voice choice)
+- 🎚️ **Script style** (immersive, academic, anecdotal, concise) and **playback speed** (0.75x–1.5x), both configurable
+- 📶 **Background-safe analysis**: a foreground service keeps the analysis alive while the app is backgrounded, with a notification when the audio is ready (or if it failed)
 - 🧭 Location detection: the device needs coordinate access if the photo has no EXIF
 - 📜 Analysis **history** (SQLite) with replay and retry
 - 🧾 **Analysis detail sheet** (model, fallback, GPS, duration)
@@ -38,7 +40,7 @@ Pipeline details and diagrams in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 | Engine | Location | Role |
 |---|---|---|
 | **Gemini TTS** | Cloud | Primary when an API key is configured |
-| **Piper** (sherpa-onnx) | Local | Automatic fallback + offline mode |
+| **Native Android TTS** | Local | Automatic fallback + offline mode, female/male voice choice |
 
 ## Platforms
 
@@ -54,3 +56,7 @@ flutter build apk --debug
 ## Configuration
 
 Configuration (models, fallbacks, TTS, GPS) is centralized in [`config.json`](config.json) and fetched remotely by `RemoteConfigService`, with built-in defaults as a fallback.
+
+## License
+
+[AGPL-3.0](LICENSE)
