@@ -66,8 +66,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **CI**: new workflow (`build-ios.yml`), macOS runner (paid/limited on GitHub Actions), certificates/provisioning as secrets
   - **Recommendation**: don't treat this as a single task — break it down once the blockers above are resolved
 
-- [ ] **T18** 🌱 ⭐⭐⭐ - Allow **choosing voice language/style**
-
 - [ ] **T19** 🌱 ⭐⭐ - Add **sharing/exporting** the text or audio
 
 - [ ] **T21** 🌱 ⭐⭐⭐ - Add **richer interactions** to the playback screen
