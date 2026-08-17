@@ -7,7 +7,7 @@ This is a **Flutter mobile app** for AI-powered audio guides. The app:
 - Must remain **responsive** during long operations (AI analysis, TTS, GPS)
 - Relies on **in-app logs screen** for field debugging
 
-**Key technologies**: Flutter, Dart, Gemini Nano/API, Piper TTS, SQLite, EXIF/GPS, Wikipedia API.
+**Key technologies**: Flutter, Dart, Gemini Nano/API, native Android TTS (`flutter_tts`), SQLite, EXIF/GPS, Wikipedia API.
 
 ---
 
@@ -86,7 +86,7 @@ but doing so anyway is fine for consistency.
 
 ### Project-Specific Considerations
 - **AI Pipeline** (Gemini Nano/API): changes must remain observable and debuggable
-- **TTS** (Piper/Gemini TTS): add logs for playback issues, latency, or failures
+- **TTS** (native Android TTS/Gemini TTS): add logs for playback issues, latency, or failures
 - **GPS/Location**: handle permission denials, timeouts, and EXIF fallback
 - **Dependencies**: verify license compatibility (project uses open-source licenses)
 - **Offline support**: prioritize local-first approaches with cloud fallback
@@ -119,7 +119,7 @@ but doing so anyway is fine for consistency.
 | Area | Key Files | Log Category |
 |------|-----------|--------------|
 | AI Analysis | `lib/services/gemini_*`, `ai_service.dart` | `AI` |
-| TTS | `lib/services/tts_service.dart`, `gemini_tts_service.dart` | `TTS` |
+| TTS | `lib/services/native_tts_service.dart`, `gemini_tts_service.dart` | `TTS` |
 | GPS/Location | `lib/services/location_service.dart`, `exif_location_service.dart` | `GPS` |
 | Logging | `lib/utils/app_logger.dart` | `INFO`/`ERROR` |
 | Storage | `lib/services/history_service.dart` | `DB` |
