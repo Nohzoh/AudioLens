@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../l10n/app_localizations.dart';
 import '../services/settings_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -24,7 +25,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     final key = _controller.text.trim();
     if (key.isEmpty) {
-      setState(() => _error = 'Entrez votre clé API');
+      setState(() => _error = AppLocalizations.of(context)!.onboardingApiKeyRequired);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -34,6 +35,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -50,7 +52,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ).animate(delay: 100.ms).fadeIn(),
               const SizedBox(height: 8),
               Text(
-                'Prenez une photo d\'un lieu,\nobtenez une explication audio instantanée.',
+                l10n.onboardingTagline,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -68,13 +70,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Row(children: [
                       const Text('🔑', style: TextStyle(fontSize: 20)),
                       const SizedBox(width: 8),
-                      Text('Clé API Gemini',
+                      Text(l10n.onboardingApiKeySectionTitle,
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ]),
                     const SizedBox(height: 8),
                     Text(
-                      'Obtenez une clé gratuite sur aistudio.google.com\nRubrique "API Keys"',
+                      l10n.onboardingApiKeyInstructions,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
@@ -109,12 +111,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: _loading
                     ? const SizedBox(width: 24, height: 24,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('C\'est parti !', style: TextStyle(fontSize: 18)),
+                    : Text(l10n.onboardingLetsGo, style: const TextStyle(fontSize: 18)),
               ).animate(delay: 500.ms).fadeIn(),
               const SizedBox(height: 16),
               Center(
                 child: Text(
-                  '🔒 Clé stockée uniquement sur votre téléphone',
+                  l10n.onboardingKeyStoredLocally,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.4),

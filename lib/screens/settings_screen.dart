@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'logs_screen.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/remote_config_service.dart';
 import '../services/settings_service.dart';
@@ -43,9 +44,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .speakAndWaitForResult(_ttsPreviewSample, speed: guide.playbackSpeed);
     if (!played && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Aucun son produit — le TTS système ne semble pas disponible sur cet appareil'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.settingsNoVoiceProduced),
         ),
       );
     }
@@ -58,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _saving = false);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Paramètres sauvegardés')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.settingsSaved)),
       );
     }
   }
@@ -69,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await guide.setGeminiApiKey('');
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Clé API supprimée')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.settingsApiKeyDeleted)),
       );
     }
   }
@@ -78,10 +78,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final guide = context.watch<AudioGuideService>();
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Paramètres'),
+        title: Text(l10n.settingsTitle),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -96,12 +97,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(24),
         children: [
           // Provider status
-          const _SectionHeader('Moteur IA actif'),
+          _SectionHeader(l10n.settingsActiveAiEngine),
           const SizedBox(height: 8),
           _ProviderCard(
             icon: Icons.phone_android,
             name: 'Gemini Nano',
-            description: 'Traitement local, offline, ~180 mots',
+            description: l10n.settingsNanoDescription,
             isActive: guide.activeProvider == AIProvider.geminiNano,
             isAvailable: guide.nanoAvailable,
             onTap: guide.nanoAvailable
@@ -112,7 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _ProviderCard(
             icon: Icons.cloud_outlined,
             name: 'Gemini API',
-            description: 'Cloud, reconnaît les œuvres, ~400 mots',
+            description: l10n.settingsApiDescription,
             isActive: guide.activeProvider == AIProvider.geminiApi,
             isAvailable: guide.geminiApiKey?.isNotEmpty == true,
             onTap: guide.geminiApiKey?.isNotEmpty == true
@@ -123,10 +124,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Gemini API key
-          const _SectionHeader('Clé API Gemini'),
+          _SectionHeader(l10n.settingsApiKeySectionTitle),
           const SizedBox(height: 8),
           Text(
-            'Obtenez une clé gratuite sur aistudio.google.com',
+            l10n.settingsGetFreeKey,
             style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
           ),
           const SizedBox(height: 12),
@@ -172,13 +173,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Sauvegarder'),
+                : Text(l10n.settingsSave),
           ),
 
           const SizedBox(height: 32),
 
           // Active config section
-          const _SectionHeader('Configuration active'),
+          _SectionHeader(l10n.settingsActiveConfig),
           const SizedBox(height: 8),
           Builder(builder: (context) {
             final cfg = RemoteConfigService.current;
@@ -202,8 +203,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(width: 6),
                     Text(
                       fromRemote
-                          ? 'Config chargée depuis GitHub'
-                          : 'Config par défaut (hors ligne)',
+                          ? l10n.settingsConfigFromGithub
+                          : l10n.settingsConfigDefaultOffline,
                       style: TextStyle(
                         color: fromRemote ? Colors.greenAccent : Colors.orange,
                         fontSize: 12,
@@ -213,27 +214,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (loadedAt != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Mise à jour : ${DateFormat("dd/MM/yyyy à HH:mm").format(loadedAt)}',
+                      l10n.settingsUpdatedAt(
+                          DateFormat("dd/MM/yyyy à HH:mm").format(loadedAt)),
                       style:
                           const TextStyle(color: Colors.white38, fontSize: 11),
                     ),
                   ],
                   const SizedBox(height: 4),
                   Text(
-                    'Build : ${formatBuildDate(buildDate)}',
+                    l10n.settingsBuildLabel(formatBuildDate(buildDate)),
                     style: const TextStyle(color: Colors.white38, fontSize: 11),
                   ),
                   const Divider(height: 20, color: Colors.white12),
-                  _ConfigRow('Modèle IA', cfg.geminiModel),
-                  _ConfigRow('Fallbacks', cfg.geminiModelFallbacks.join(', ')),
-                  _ConfigRow('Modèle TTS', cfg.geminiTtsModel),
-                  _ConfigRow('Voix TTS', cfg.geminiTtsVoice),
-                  _ConfigRow('Tokens max', cfg.geminiMaxTokens.toString()),
+                  _ConfigRow(l10n.settingsConfigModel, cfg.geminiModel),
+                  _ConfigRow(l10n.settingsConfigFallbacks, cfg.geminiModelFallbacks.join(', ')),
+                  _ConfigRow(l10n.settingsConfigTtsModel, cfg.geminiTtsModel),
+                  _ConfigRow(l10n.settingsConfigTtsVoice, cfg.geminiTtsVoice),
+                  _ConfigRow(l10n.settingsConfigMaxTokens, cfg.geminiMaxTokens.toString()),
                   _ConfigRow(
-                      'Thinking budget', cfg.geminiThinkingBudget.toString()),
+                      l10n.settingsConfigThinkingBudget, cfg.geminiThinkingBudget.toString()),
                   _ConfigRow(
-                      'Rayon Wikipedia', '${cfg.wikipediaRadiusMeters}m'),
-                  _ConfigRow('Vitesse TTS', cfg.ttsSpeed.toString()),
+                      l10n.settingsConfigWikipediaRadius, '${cfg.wikipediaRadiusMeters}m'),
+                  _ConfigRow(l10n.settingsConfigTtsSpeed, cfg.ttsSpeed.toString()),
                 ],
               ),
             );
@@ -242,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Rafraîchir la config'),
+            label: Text(l10n.settingsRefreshConfig),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 44),
             ),
@@ -253,8 +255,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SnackBar(
                       content: Text(
                     RemoteConfigService.loadedFromRemote
-                        ? 'Config mise à jour depuis GitHub'
-                        : 'Impossible de joindre GitHub, config par défaut',
+                        ? l10n.settingsConfigUpdatedFromGithub
+                        : l10n.settingsConfigUnreachable,
                   )),
                 );
                 (context as Element).markNeedsBuild();
@@ -265,11 +267,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 32),
 
           // Developer tools
-          const _SectionHeader('Outils'),
+          _SectionHeader(l10n.settingsTools),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.terminal, size: 16),
-            label: const Text('Voir les logs'),
+            label: Text(l10n.settingsViewLogs),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 44),
             ),
@@ -279,17 +281,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 16),
           Consumer<SettingsService>(
             builder: (context, settings, _) => SwitchListTile(
-              title: const Text('Afficher le bouton de soutien'),
-              subtitle: const Text('Bouton Ko-fi dans l\'interface'),
+              title: Text(l10n.settingsShowKofiButton),
+              subtitle: Text(l10n.settingsKofiButtonSubtitle),
               value: settings.showKofiButton,
               onChanged: (value) => settings.setShowKofiButton(value),
             ),
           ),
           Consumer<SettingsService>(
             builder: (context, settings, _) => SwitchListTile(
-              title: const Text('Générer l\'audio automatiquement'),
-              subtitle: const Text(
-                  'Désactiver pour garder seulement le script, et générer l\'audio plus tard depuis l\'historique'),
+              title: Text(l10n.settingsAutoGenerateAudio),
+              subtitle: Text(l10n.settingsAutoGenerateAudioSubtitle),
               value: settings.autoGenerateAudio,
               onChanged: (value) => settings.setAutoGenerateAudio(value),
             ),
@@ -297,20 +298,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 24),
 
-          const _SectionHeader('Voix'),
+          _SectionHeader(l10n.settingsVoiceSection),
           const SizedBox(height: 8),
           Consumer<AudioGuideService>(
             builder: (context, guide, _) => SegmentedButton<String>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: 'female',
-                  label: Text('Féminine'),
-                  icon: Icon(Icons.face_3),
+                  label: Text(l10n.settingsVoiceFemale),
+                  icon: const Icon(Icons.face_3),
                 ),
                 ButtonSegment(
                   value: 'male',
-                  label: Text('Masculine'),
-                  icon: Icon(Icons.face_6),
+                  label: Text(l10n.settingsVoiceMale),
+                  icon: const Icon(Icons.face_6),
                 ),
               ],
               selected: {guide.ttsVoiceGender},
@@ -321,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.play_arrow, size: 16),
-            label: const Text('Tester la voix'),
+            label: Text(l10n.settingsTestVoice),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 44),
             ),
@@ -330,7 +331,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 32),
 
-          const _SectionHeader('Vitesse de lecture'),
+          _SectionHeader(l10n.settingsPlaybackSpeed),
           const SizedBox(height: 8),
           Consumer<AudioGuideService>(
             builder: (context, guide, _) => Wrap(
@@ -354,10 +355,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 32),
 
-          const _SectionHeader('Style du script'),
+          _SectionHeader(l10n.settingsScriptStyleSection),
           const SizedBox(height: 4),
           Text(
-            'Le ton et la longueur du texte lu par le guide.',
+            l10n.settingsScriptStyleSubtitle,
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
@@ -367,22 +368,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               runSpacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text('Immersif'),
+                  label: Text(l10n.settingsStyleImmersive),
                   selected: settings.scriptStyle == 'immersive',
                   onSelected: (_) => settings.setScriptStyle('immersive'),
                 ),
                 ChoiceChip(
-                  label: const Text('Académique'),
+                  label: Text(l10n.settingsStyleAcademic),
                   selected: settings.scriptStyle == 'academic',
                   onSelected: (_) => settings.setScriptStyle('academic'),
                 ),
                 ChoiceChip(
-                  label: const Text('Anecdotique'),
+                  label: Text(l10n.settingsStyleAnecdotal),
                   selected: settings.scriptStyle == 'anecdotal',
                   onSelected: (_) => settings.setScriptStyle('anecdotal'),
                 ),
                 ChoiceChip(
-                  label: const Text('Concis'),
+                  label: Text(l10n.settingsStyleConcise),
                   selected: settings.scriptStyle == 'concise',
                   onSelected: (_) => settings.setScriptStyle('concise'),
                 ),
@@ -406,17 +407,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Icon(Icons.info_outline,
                       size: 16, color: Colors.white54),
                   const SizedBox(width: 8),
-                  Text('À propos de Gemini API',
+                  Text(l10n.settingsAboutGeminiApi,
                       style: theme.textTheme.labelMedium),
                 ]),
                 const SizedBox(height: 8),
-                const Text(
-                  '• Gratuit : 15 requêtes/min, 1500/jour\n'
-                  '• Reconnaît les œuvres d\'art et monuments\n'
-                  '• Textes 2× plus longs et précis\n'
-                  '• Nécessite une connexion internet\n'
-                  '• Clé stockée cryptée sur cet appareil',
-                  style: TextStyle(
+                Text(
+                  l10n.settingsGeminiApiBullets,
+                  style: const TextStyle(
                       color: Colors.white54, fontSize: 13, height: 1.6),
                 ),
               ],
@@ -464,6 +461,7 @@ class _ProviderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
@@ -493,7 +491,7 @@ class _ProviderCard extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          isAvailable ? description : '$description\n(non configuré)',
+          isAvailable ? description : '$description\n${l10n.settingsNotConfiguredSuffix}',
           style: TextStyle(
             color: isAvailable ? Colors.white54 : Colors.white24,
             fontSize: 12,

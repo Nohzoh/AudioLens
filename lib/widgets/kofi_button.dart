@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/app_localizations.dart';
 
 /// A discrete Ko-fi support button widget.
 ///
@@ -28,7 +29,7 @@ class KofiButton extends StatelessWidget {
         color: iconColor ?? Colors.grey[600],
         size: iconSize ?? 20,
       ),
-      tooltip: 'Soutenir AudioLens',
+      tooltip: AppLocalizations.of(context)!.kofiButtonTooltip,
       onPressed: () => launchUrl(
         Uri.parse('https://ko-fi.com/tarnaud'),
         mode: LaunchMode.externalApplication,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../l10n/app_localizations.dart';
 import '../services/location_service.dart';
 
 /// Lets the user tap a spot on a map to indicate where a photo was taken
@@ -39,13 +40,14 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Indiquer le lieu sur la carte'),
+        title: Text(l10n.mapPickerTitle),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Passer'),
+            child: Text(l10n.mapPickerSkip),
           ),
         ],
       ),
@@ -84,8 +86,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                     ? null
                     : () => Navigator.pop(context, _picked),
                 child: Text(_picked == null
-                    ? 'Touchez la carte pour indiquer le lieu'
-                    : 'Confirmer cet emplacement'),
+                    ? l10n.mapPickerHint
+                    : l10n.mapPickerConfirm),
               ),
             ),
           ),
