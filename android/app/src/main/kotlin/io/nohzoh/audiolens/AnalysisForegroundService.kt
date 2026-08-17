@@ -40,7 +40,7 @@ class AnalysisForegroundService : Service() {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("AudioLens")
             .setContentText("AudioLens est actif en arrière-plan")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.mipmap.ic_notification)
             .setOngoing(true)
             .setSilent(true)
             .build()
