@@ -11,6 +11,13 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T45** 📈 ⭐⭐ - Define a **retention policy** for images, WAV files, caches, temp files
+  - **Verified**: 2026-08-17 (PR #45)
+  - **Scope decision**: split into "fix the actual leak" vs. "auto-expire old history entries" — chose the former only. Auto-purging saved guides after N days/entries is a real product decision with UX risk (a user could lose a guide they wanted to keep), not something to decide unilaterally; not pursued here
+  - **Root cause**: `HistoryService._copyImageToPermanentStorage()` copies the `image_picker` temp capture to permanent storage but never deletes the source — every photo taken left an orphaned temp file behind indefinitely, with no bound
+  - **What was done**: the temp file can only be deleted once nothing still reads from it — `_captureOnly()` (T78's offline-capture flow) deletes it right after the permanent copy, since nothing else touches it afterward. The main analyze-now flow is trickier: `PlayerScreen` displays `imageFile` directly and offers "save to gallery" from it for the screen's whole lifetime, and the *same* `imageFile` parameter is reused by retry/captured-launch flows where it's already the entry's *permanent* image (must never be deleted). Added an explicit `deleteImageOnDispose` flag (`PlayerScreen` → `runAnalysisAndNavigate` → `AudioGuideService`'s `home_screen.dart`/`_pickImage` call site), defaulting `false` everywhere except the one call site that genuinely owns a temp file — retry/captured-launch flows (both screens) leave it at the default, so history thumbnails are never at risk
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 112/112 (pure Dart change, no native/manifest/build-script edits, so no local Android build needed). No existing test covers `PlayerScreen` (this codebase has no widget tests yet) — spot-checked the file-existence guards logically; worth confirming on-device that a temp capture disappears after leaving the player and that a history retry still shows its thumbnail afterward
+
 - [x] **T85** 📈 ⭐⭐⭐⭐ - Run the **analysis in the background** and **notify** when the audio is ready
   - **Verified**: 2026-08-17 (PR #43)
   - **Context**: user reports of the app freezing/dying when backgrounded alongside GPS-heavy apps (AllTrails, Ingress) during an analysis. Nothing protected the process before this — no foreground service, no wakelock — so Android could kill it at any point (memory pressure, Doze, battery optimization), silently dropping the analysis with no signal beyond a `pending` history entry the user might find later

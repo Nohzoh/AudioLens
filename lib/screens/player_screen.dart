@@ -11,7 +11,18 @@ import '../widgets/kofi_button.dart';
 
 class PlayerScreen extends StatefulWidget {
   final File imageFile;
-  const PlayerScreen({super.key, required this.imageFile});
+  /// Whether [imageFile] is a throwaway temp file (a fresh camera/gallery
+  /// pick, already copied to permanent history storage before this screen
+  /// was pushed) that this screen should delete once it's done with it
+  /// (T45) — vs. an existing history entry's own permanent image, which
+  /// must never be deleted here (retry/captured-launch flows pass that in
+  /// as [imageFile] too, but leave this false).
+  final bool deleteImageOnDispose;
+  const PlayerScreen({
+    super.key,
+    required this.imageFile,
+    this.deleteImageOnDispose = false,
+  });
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -51,6 +62,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    if (widget.deleteImageOnDispose) {
+      try {
+        if (widget.imageFile.existsSync()) widget.imageFile.deleteSync();
+      } catch (_) {}
+    }
     super.dispose();
   }
 

@@ -18,13 +18,17 @@ Future<void> runAnalysisAndNavigate({
   required int entryId,
   required String source,
   ({double lat, double lon, String source})? knownCoordinates,
+  bool deleteImageOnDispose = false,
 }) async {
   final guide = context.read<AudioGuideService>();
   final history = context.read<HistoryService>();
   final settings = context.read<SettingsService>();
 
   Navigator.push(context, MaterialPageRoute(
-    builder: (_) => PlayerScreen(imageFile: imageFile),
+    builder: (_) => PlayerScreen(
+      imageFile: imageFile,
+      deleteImageOnDispose: deleteImageOnDispose,
+    ),
   ));
 
   final result = await guide.analyzeAndPlay(

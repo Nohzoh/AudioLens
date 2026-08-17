@@ -100,6 +100,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       entryId: pendingEntry.id!,
       source: analysisSource,
       knownCoordinates: knownCoordinates,
+      // imageFile is image_picker's own temp capture — addPendingEntry
+      // already copied it to permanent history storage, so once
+      // PlayerScreen is done with it (display + "save to gallery"), it's
+      // just an orphaned temp file (T45).
+      isTempImage: true,
     );
   }
 
@@ -129,6 +134,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       gpsLongitude: lon,
       gpsSource: gpsSource,
     );
+
+    // imageFile is image_picker's own temp capture — addCapturedEntry
+    // already copied it to permanent history storage, and unlike the
+    // analyze-now flow, nothing else needs it after this point (T45).
+    try {
+      if (imageFile.existsSync()) imageFile.deleteSync();
+    } catch (_) {}
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -211,6 +223,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required int entryId,
     required String source,
     ({double lat, double lon, String source})? knownCoordinates,
+    bool isTempImage = false,
   }) async {
     await runAnalysisAndNavigate(
       context: context,
@@ -218,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       entryId: entryId,
       source: source,
       knownCoordinates: knownCoordinates,
+      deleteImageOnDispose: isTempImage,
     );
     if (mounted) {
       final guide = context.read<AudioGuideService>();
