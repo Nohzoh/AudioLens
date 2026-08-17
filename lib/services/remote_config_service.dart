@@ -124,7 +124,7 @@ class RemoteConfig {
 
 class RemoteConfigService {
   static const _configUrl =
-      'https://raw.githubusercontent.com/Nohzoh/audio-guide/main/config.json';
+      'https://raw.githubusercontent.com/Nohzoh/AudioLens/main/config.json';
   static const _cacheKey = 'remote_config_cache';
 
   /// Hosts the Gemini API URL is allowed to point to. The remote config is

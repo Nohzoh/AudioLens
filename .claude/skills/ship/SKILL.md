@@ -3,7 +3,7 @@ name: ship
 description: Run the full PR lifecycle for this repo - branch, Conventional Commits, push, open PR, wait for the Test + Build Android APK checks, merge, and clean up. Also handles closing a TODO.md task (moving its entry to CHANGELOG.md) in the same PR. Use whenever a code or docs change in this repo is ready to go out, or when the user asks to "push", "open a PR", "ship this", or close out a task.
 ---
 
-# Ship a change on audio-guide (AudioLens)
+# Ship a change on AudioLens
 
 This encodes the git/PR workflow already documented in `AGENTS.md` —
 follow it exactly rather than improvising branch names, commit formats,
