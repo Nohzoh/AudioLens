@@ -33,15 +33,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 - [ ] **T45** 📈 ⭐⭐ - Define a **retention policy** for images, WAV files, caches, temp files
   - **Includes**: temp file cleanup (ex-T11)
 
-- [ ] **T85** 📈 ⭐⭐⭐⭐ - Run the **analysis in the background** and **notify** when the audio is ready
-  - **Added**: 2026-08-16
-  - **Context**: user request following a history of freezes when used alongside GPS-heavy apps (AllTrails, Ingress). Code analysis (2026-08-16): no background mechanism today — no foreground service, no `WorkManager`, no wakelock. The Android process generally keeps running while the app is backgrounded, but nothing protects it: the OS can kill it at any time (memory pressure, Doze, battery optimization), in which case the analysis stops dead, with no notification. The only existing safety net: `home_screen.dart:72` writes a `pending` entry to the DB before starting the analysis, so at worst the user finds an entry to retry manually in the history (T13) — but no automatic resume and no notification
-  - **To do**:
-    - **Android foreground service** (persistent notification during the analysis) to make background execution reliable — required by Android 8+ for guaranteed background work beyond a few minutes
-    - **Local notification** when the audio is ready (e.g. `flutter_local_notifications`, not yet in `pubspec.yaml`)
-    - Patch `AndroidManifest.xml` (not committed, CI bootstrap — see `scripts/patch_signing.py` for the existing pattern) for the `FOREGROUND_SERVICE` permission and the service declaration
-  - **Out of scope for now**: resuming an analysis interrupted mid-way (full restart from scratch, as today)
-
 - [ ] **T75** 📈 ⭐⭐ - Add a **script style option** (a friend's suggestion)
   - **Examples**: "academic/historical" style vs. a style that leans into **anecdotes and storytelling**
   - **To do**: style picker in settings (and/or onboarding), pass the style to the AI prompt (`gemini_api_service.dart` + `gemini_nano_service.dart`), persistence via `SettingsService`
