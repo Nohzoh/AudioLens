@@ -8,6 +8,7 @@ class SettingsService extends ChangeNotifier {
   String _geminiApiKey = '';
   bool _showKofiButton = true;
   bool _autoGenerateAudio = true;
+  String _scriptStyle = 'immersive';
 
   bool get isOnboardingComplete => _isOnboardingComplete;
   String get geminiApiKey => _geminiApiKey;
@@ -18,12 +19,18 @@ class SettingsService extends ChangeNotifier {
   /// can be generated later on demand from the history entry.
   bool get autoGenerateAudio => _autoGenerateAudio;
 
+  /// One of 'immersive' (default), 'academic', 'anecdotal', 'concise' —
+  /// passed to the AI prompt (both cloud and on-device) to steer the
+  /// script's tone and length (T75/T48).
+  String get scriptStyle => _scriptStyle;
+
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _isOnboardingComplete = _prefs.getBool('onboarding_complete') ?? false;
     _geminiApiKey = await SecureKeyStorage.readApiKey() ?? '';
     _showKofiButton = _prefs.getBool('show_kofi_button') ?? true;
     _autoGenerateAudio = _prefs.getBool('auto_generate_audio') ?? true;
+    _scriptStyle = _prefs.getString('script_style') ?? 'immersive';
   }
 
   Future<void> completeOnboarding({required String apiKey}) async {
@@ -41,6 +48,7 @@ class SettingsService extends ChangeNotifier {
     _geminiApiKey = '';
     _showKofiButton = true;
     _autoGenerateAudio = true;
+    _scriptStyle = 'immersive';
     notifyListeners();
   }
 
@@ -53,6 +61,12 @@ class SettingsService extends ChangeNotifier {
   Future<void> setAutoGenerateAudio(bool value) async {
     _autoGenerateAudio = value;
     await _prefs.setBool('auto_generate_audio', value);
+    notifyListeners();
+  }
+
+  Future<void> setScriptStyle(String value) async {
+    _scriptStyle = value;
+    await _prefs.setString('script_style', value);
     notifyListeners();
   }
 }

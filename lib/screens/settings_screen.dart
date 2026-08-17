@@ -330,6 +330,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 32),
 
+          const _SectionHeader('Style du script'),
+          const SizedBox(height: 4),
+          Text(
+            'Le ton et la longueur du texte lu par le guide.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Immersif'),
+                  selected: settings.scriptStyle == 'immersive',
+                  onSelected: (_) => settings.setScriptStyle('immersive'),
+                ),
+                ChoiceChip(
+                  label: const Text('Académique'),
+                  selected: settings.scriptStyle == 'academic',
+                  onSelected: (_) => settings.setScriptStyle('academic'),
+                ),
+                ChoiceChip(
+                  label: const Text('Anecdotique'),
+                  selected: settings.scriptStyle == 'anecdotal',
+                  onSelected: (_) => settings.setScriptStyle('anecdotal'),
+                ),
+                ChoiceChip(
+                  label: const Text('Concis'),
+                  selected: settings.scriptStyle == 'concise',
+                  onSelected: (_) => settings.setScriptStyle('concise'),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
           // Info box
           Container(
             padding: const EdgeInsets.all(16),

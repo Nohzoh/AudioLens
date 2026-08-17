@@ -35,6 +35,7 @@ Future<void> runAnalysisAndNavigate({
     imageFile,
     generateAudio: settings.autoGenerateAudio,
     knownCoordinates: knownCoordinates,
+    style: settings.scriptStyle,
   );
 
   AppLogger.info('result: ${result?.title}');

@@ -53,6 +53,7 @@ class _FakeNano extends GeminiNanoService {
     File imageFile, {
     String? locationContext,
     CancelToken? cancelToken,
+    String? style,
   }) async {
     analyzeCalled = true;
     return const AudioGuideResult(

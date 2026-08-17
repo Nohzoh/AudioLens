@@ -20,10 +20,14 @@ abstract class AIService {
   /// [cancelToken] lets the caller actually abort an in-flight cloud
   /// request (T70) — implementations that don't make cancellable network
   /// calls (e.g. on-device inference) may ignore it.
+  ///
+  /// [style] is one of 'immersive' (default), 'academic', 'anecdotal',
+  /// 'concise' (T75/T48) — steers the script's tone and length.
   Future<AudioGuideResult> analyzeImage(
     File imageFile, {
     String? locationContext,
     CancelToken? cancelToken,
+    String? style,
   });
   void dispose();
 }
