@@ -292,6 +292,7 @@ creating a new task, check the highest ID across both files
 - [x] **T72** 📈 ⭐ - Add an **"AI-generated content" disclaimer** (EU AI Act transparency)
   - **Verified**: 2026-08-12 (`_AiGeneratedBanner` banner at the top of the "About this analysis" screen in `about_analysis_screen.dart`)
   - **Note**: Copy: "AI-generated content: this analysis's script and voice were automatically created by an artificial intelligence model."
+  - **Fast-follow (2026-08-18, Play Store prep)**: the disclaimer had two gaps surfaced while reviewing T84 (Play Store publication) — it was still French-only (`about_analysis_screen.dart` was deliberately excluded from T67's i18n extraction as a debug screen), and only reachable via a small "info" icon on the history detail screen, not shown where the AI-generated content is actually delivered. Fixed both: the existing banner's text is now localized (`AppLocalizations.aboutAnalysisAiDisclaimer`), and a second, shorter disclosure ("Contenu généré par IA" / "AI-generated content", `playerAiGeneratedDisclosure`) now shows persistently on `player_screen.dart` itself, next to the title/location metadata, for every guide played
 
 - [x] **T73** 📈 ⭐ - Replace the **Ko-fi icon** (heart) with the **standard coffee cup**
   - **Verified**: 2026-08-12 (`Icons.favorite_border` → `Icons.local_cafe_outlined` in `lib/widgets/kofi_button.dart`)

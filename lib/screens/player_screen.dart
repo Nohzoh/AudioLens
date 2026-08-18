@@ -223,6 +223,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                               const SizedBox(height: 4),
 
+                              // AI-generated content disclosure — shown
+                              // wherever the AI-generated script/audio is
+                              // actually delivered, not just buried in the
+                              // detail sheet (_AiGeneratedBanner in
+                              // about_analysis_screen.dart, which stays too).
+                              Row(children: [
+                                const Icon(Icons.auto_awesome,
+                                    color: Colors.white54, size: 12),
+                                const SizedBox(width: 4),
+                                Text(
+                                  l10n.playerAiGeneratedDisclosure,
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 11),
+                                ),
+                              ]),
+
+                              const SizedBox(height: 4),
+
                               // Action buttons row
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
