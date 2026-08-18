@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
@@ -255,7 +256,7 @@ class _AiGeneratedBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Contenu généré par IA : le script de cette analyse et sa voix ont été créés automatiquement par un modèle d\'intelligence artificielle.',
+              AppLocalizations.of(context)!.aboutAnalysisAiDisclaimer,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

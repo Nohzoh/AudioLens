@@ -131,5 +131,8 @@
   "settingsStyleConcise": "Concise",
   "settingsNotConfiguredSuffix": "(not configured)",
   "settingsAboutGeminiApi": "About Gemini API",
-  "settingsGeminiApiBullets": "• Free: 15 requests/min, 1500/day\n• Recognizes artworks and landmarks\n• Texts 2× longer and more accurate\n• Requires an internet connection\n• Key stored encrypted on this device"
+  "settingsGeminiApiBullets": "• Free: 15 requests/min, 1500/day\n• Recognizes artworks and landmarks\n• Texts 2× longer and more accurate\n• Requires an internet connection\n• Key stored encrypted on this device",
+
+  "playerAiGeneratedDisclosure": "AI-generated content",
+  "aboutAnalysisAiDisclaimer": "AI-generated content: this analysis' script and voice were created automatically by an artificial intelligence model."
 }
