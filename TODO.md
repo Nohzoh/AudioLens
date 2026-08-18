@@ -37,17 +37,15 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 
 - [ ] **T84** 🌱 ⭐⭐⭐⭐⭐ - **Play Store publication**
   - **Added**: 2026-08-15
-  - **Already in place** (good starting point): working release signing (T79), `allowBackup=false` (T80), API key protected by allowlist (T81), secure key storage (T10), "AI-generated content" disclaimer already in the app (T72), stable `applicationId` `io.nohzoh.audiolens` (T63)
-  - **Non-technical decisions/steps to handle first**:
+  - **Already in place** (good starting point): working release signing (T79), `allowBackup=false` (T80), API key protected by allowlist (T81), secure key storage (T10), "AI-generated content" disclaimer, now localized and shown on the player screen itself, not just buried in a detail sub-screen (T72), stable `applicationId` `io.nohzoh.audiolens` (T63), a real custom app icon (headphone/soundwave design, `android/app/src/main/res/mipmap-*/ic_launcher.png` — the "missing icon" note below was stale, corrected 2026-08-18), English localization alongside French (T67)
+  - **Updated (2026-08-18)**: CI now also builds a `.aab` (`Build App Bundle (release)` step, right after the existing APK build, reusing the same signing) and both the APK and AAB get a strictly increasing `versionCode` via `--build-number=${{ github.run_number }}` — the two "technical" items below are done
+  - **Non-technical decisions/steps to handle first** — still blocking, nothing further to automate until these exist:
     - Create a **Google Play developer account** ($25, one-time payment) — absolute prerequisite, no technical task can be tested for real before this
-    - **Privacy policy** hosted publicly, with a link to provide in the Play Console listing — mandatory given the requested permissions (camera, location) and the fact that photos + position are sent to the Gemini API (third-party data sharing)
+    - **Privacy policy** hosted publicly, with a link to provide in the Play Console listing — mandatory given the requested permissions (camera, location) and the fact that photos + position are sent to the Gemini API (third-party data sharing). Can be hosted directly in this repo (a Markdown file, or GitHub Pages) — no separate site needed
     - Play Console **"Data safety" form**: precisely declare what data is collected/shared (photo, GPS, script) and with whom (Google Gemini)
-    - **Sensitive permissions declaration** (`ACCESS_FINE_LOCATION`, `CAMERA`) — justification required by Google, location is especially scrutinized
+    - **Sensitive permissions declaration** — justification required by Google, location is especially scrutinized. Now also covers `FOREGROUND_SERVICE`/`FOREGROUND_SERVICE_DATA_SYNC`/`POST_NOTIFICATIONS` (T85), not just `ACCESS_FINE_LOCATION`/`CAMERA` as originally noted
     - Check whether **Play policies on generative AI apps** require additional disclosures beyond the existing disclaimer (T72)
   - **To do, technical**:
-    - **AAB instead of APK**: the Play Store requires a `.aab` (`flutter build appbundle --release`), not the current APK — new job or dedicated CI step
-    - **versionCode strategy**: `pubspec.yaml` has been stuck at `0.1.0+1` since the start, never bumped — every Play Console upload needs a strictly increasing `versionCode`, needs automating (e.g. `versionCode` based on the CI run number or a committed counter)
-    - **Missing app icon**: `assets/images/` is empty (just a `.gitkeep`) — the app currently runs with the default Flutter icon (`android/app/src/main/res/mipmap-*/ic_launcher.png`, regenerated on every CI bootstrap). A real icon is required before any submission
     - **Store listing assets**: short/long description, category, feature graphic, screenshots
     - **Automate the upload** to Play Console from CI (e.g. `r0adkll/upload-google-play` action, service account key as a secret) — only once the developer account exists
   - **Recommendation**: don't treat this as a single task — the non-technical steps (account, privacy policy, data safety) are blocking and must happen before any CI automation

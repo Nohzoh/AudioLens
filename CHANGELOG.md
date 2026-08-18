@@ -11,6 +11,11 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- **2026-08-18 (T84 prep, PR #55)**: two of T84's (Play Store publication) technical prerequisites, done ahead of the full task since they're small and self-contained
+  - **AAB build**: CI now also builds `build/app/outputs/bundle/release/app-release.aab` via a new "Build App Bundle (release)" step right after the existing APK build, in the same job — reuses the already-bootstrapped/patched `android/` project and signing config rather than a separate job. The `.apk` build stays too, for direct-sideload testing (`adb install`)
+  - **versionCode**: both the APK and AAB builds now pass `--build-number=${{ github.run_number }}`, giving every release a strictly increasing `versionCode` (Play Console rejects any upload whose versionCode isn't higher than the last one) without needing to hand-edit `pubspec.yaml`'s committed `0.1.0+1` per upload
+  - **Verified**: real local build of both the debug APK (bootstrap) and a release AAB (`flutter build appbundle --release --build-number=999`, throwaway keystore) — confirmed a well-formed `.aab` (60.8MB, correct `BUNDLE-METADATA`/`base/manifest` structure)
+
 - [x] **T67** 🌱 ⭐⭐⭐ - **Extract all static strings** for i18n
   - **Verified**: 2026-08-17 (PR #53)
   - **Scope decisions**: screens and widgets only (~159 strings across 8 files: `settings_screen.dart`, `history_screen.dart`, `player_screen.dart`, `home_screen.dart`, `logs_screen.dart`, `onboarding_screen.dart`, `map_picker_screen.dart`, `kofi_button.dart`) — service-layer error strings (`GuideError`/`Exception` messages) and two small error-formatting utilities (`user_message_utils.dart`, `build_info.dart`) stay French for now, a natural follow-up rather than part of this task. `about_analysis_screen.dart` (a dev/debug screen, already partly English/technical) left untranslated. `_ttsPreviewSample` (Settings' voice-test sentence) deliberately kept French-only and unextracted — the native TTS engine itself is hardcoded to `fr-FR` regardless of UI language, so an English sentence would be mispronounced
