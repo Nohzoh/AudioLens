@@ -159,5 +159,7 @@
   "settingsGeminiApiBullets": "• Gratuit : 15 requêtes/min, 1500/jour\n• Reconnaît les œuvres d'art et monuments\n• Textes 2× plus longs et précis\n• Nécessite une connexion internet\n• Clé stockée cryptée sur cet appareil",
 
   "playerAiGeneratedDisclosure": "Contenu généré par IA",
-  "aboutAnalysisAiDisclaimer": "Contenu généré par IA : le script de cette analyse et sa voix ont été créés automatiquement par un modèle d'intelligence artificielle."
+  "aboutAnalysisAiDisclaimer": "Contenu généré par IA : le script de cette analyse et sa voix ont été créés automatiquement par un modèle d'intelligence artificielle.",
+
+  "settingsViewSourceCode": "Voir le code source"
 }
