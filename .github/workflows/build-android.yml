@@ -239,8 +239,14 @@ jobs:
           BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           # T83: only real-device ABIs — x86/x86_64 are emulator-only and
           # sherpa_onnx has real native code per ABI to compile/link/package.
+          # T84: --build-number gives every release a strictly increasing
+          # versionCode (the run number always goes up), without needing to
+          # hand-edit pubspec.yaml's committed "0.1.0+1" per upload — Play
+          # Console rejects any upload whose versionCode isn't higher than
+          # the last one.
           flutter build apk --release \
             --target-platform android-arm,android-arm64 \
+            --build-number="${{ github.run_number }}" \
             --dart-define=BUILD_DATE="$BUILD_DATE" \
             2>&1 | tee build_output.txt
           exit ${PIPESTATUS[0]}
@@ -288,4 +294,42 @@ jobs:
         with:
           name: AudioLens-release-${{ github.sha }}
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      # T84: the Play Store requires a .aab, not the .apk built above (which
+      # stays around for direct-sideload testing, e.g. via adb). Reuses this
+      # same job's already-bootstrapped/patched android/ project and signing
+      # config rather than a separate job, so it's a cheap addition.
+      - name: Build App Bundle (release)
+        run: |
+          BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          flutter build appbundle --release \
+            --build-number="${{ github.run_number }}" \
+            --dart-define=BUILD_DATE="$BUILD_DATE" \
+            2>&1 | tee build_output_aab.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Show AAB errors on failure
+        if: failure()
+        run: |
+          echo "## AAB build errors" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          [ -f build_output_aab.txt ] && tail -150 build_output_aab.txt >> $GITHUB_STEP_SUMMARY || echo "No build output file" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify AAB exists
+        run: |
+          AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
+          if [ ! -s "$AAB_PATH" ]; then
+            echo "::error::AAB not found or empty at $AAB_PATH"
+            exit 1
+          fi
+          echo "✅ AAB build verified: $AAB_PATH ($(stat -f%z "$AAB_PATH" 2>/dev/null || stat -c%s "$AAB_PATH") bytes)"
+
+      - name: Upload AAB
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: AudioLens-release-${{ github.sha }}-aab
+          path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
