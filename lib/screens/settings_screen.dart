@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'logs_screen.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
@@ -277,6 +278,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             onPressed: () => Navigator.push(
                 context, MaterialPageRoute(builder: (_) => const LogsScreen())),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.code, size: 16),
+            label: Text(l10n.settingsViewSourceCode),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+            ),
+            onPressed: () => launchUrl(
+              Uri.parse('https://github.com/Nohzoh/AudioLens'),
+              mode: LaunchMode.externalApplication,
+            ),
           ),
           const SizedBox(height: 16),
           Consumer<SettingsService>(
