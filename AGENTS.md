@@ -54,6 +54,28 @@ PR titles aren't required to follow this format (this repo uses
 `--merge`, not squash, so the PR title never becomes a commit message),
 but doing so anyway is fine for consistency.
 
+### Version Numbering (2026-08-19 onward)
+
+`pubspec.yaml`'s `version: X.Y.Z+build` — the two halves are independent
+and never touched for the same reason:
+
+- **`+build`** (the Android `versionCode`) is **fully automatic**, set at
+  build time via `--build-number=${{ github.run_number }}` in both CI
+  workflows. Never hand-edit it — it only has to strictly increase for
+  Play Console to accept an upload, and the run number already
+  guarantees that.
+- **`X.Y.Z`** (the human-readable version name) follows these rules:
+  - **Z (patch)**: bump on every publish to *any* Play Store track
+    (internal, closed, open, production) — mechanical, no judgment
+    call, one bump per `workflow_dispatch` "Publish to Play Store" run.
+  - **Y (minor)**: bump instead of Z when that release ships a genuine
+    new user-facing feature (not just a fix/polish) — the one judgment
+    call, made when writing that release's CHANGELOG.md entry. Resets
+    Z to 0.
+  - **X (major)**: reserved for `1.0.0` = the first production
+    (public) release, and afterward for major redesigns or breaking
+    changes. Resets Y and Z to 0.
+
 ---
 
 ## Global Guidelines for All Agents
