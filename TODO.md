@@ -30,13 +30,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
-- [ ] **T100** 📈 ⭐ - **Bump the pinned Kotlin version (deprecation warning in CI)**
-  - **Added**: 2026-08-19
-  - **Source**: full log review of the first successful `workflow_dispatch` Play Store publish run (build 32287754331), requested after the user spotted a Kotlin warning live in the logs.
-  - **Warning**: "Flutter support for your project's Kotlin version (2.2.10) will soon be dropped. Please upgrade your Kotlin version to a version of at least 2.2.20 soon."
-  - **Odd detail to check first**: both `.github/workflows/build-android.yml` and `scripts/build_android_local.sh` patch the Kotlin version to `"2.2.0"` via sed — but the build actually reports **2.2.10**, not 2.2.0. Worth understanding why the patched value doesn't match the observed one (maybe the patch isn't matching/applying as intended, or another source overrides it) before just bumping the target string, so the fix doesn't just paper over a patch that silently isn't taking effect.
-  - **Fix**: update the pinned version in both places to `>= 2.2.20` once the discrepancy above is understood.
-
 - [ ] **T95** 📈 ⭐⭐⭐ - **Optional auto-purge of history after N days**
   - **Added**: 2026-08-19
   - **Source**: UX feedback from a closed-testing tester (fast turnaround — first feedback within minutes of the invite).

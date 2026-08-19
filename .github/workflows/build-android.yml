@@ -160,11 +160,17 @@ jobs:
           echo "=== Patched file ==="
           cat $FILE
 
+      # T100: pinning 2.2.0 here still built with Kotlin 2.2.10 effectively
+      # (Gradle's default "highest version wins" conflict resolution —
+      # kotlinx-coroutines-android/play-services below likely pull in a
+      # newer Kotlin stdlib transitively than the plugin version we declare)
+      # — Flutter's own deprecation warning wants >= 2.2.20, so pin there
+      # directly instead of a version Gradle silently overrides anyway.
       - name: Patch Kotlin version
         run: |
           for f in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-            [ -f "$f" ] && sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.0"/' $f && echo "✅ Patched $f"
-            [ -f "$f" ] && sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.0"/' $f
+            [ -f "$f" ] && sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.20"/' $f && echo "✅ Patched $f"
+            [ -f "$f" ] && sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.20"/' $f
           done
 
       - name: Patch AndroidManifest

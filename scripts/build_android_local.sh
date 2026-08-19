@@ -98,10 +98,10 @@ dependencies {
 DEPS
 fi
 
-echo "==> Patch version Kotlin (2.2.0)"
+echo "==> Patch version Kotlin (2.2.20)"
 for f in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-  [ -f "$f" ] && $SED -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.0"/' "$f"
-  [ -f "$f" ] && $SED -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.0"/' "$f"
+  [ -f "$f" ] && $SED -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.20"/' "$f"
+  [ -f "$f" ] && $SED -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.20"/' "$f"
 done
 
 echo "==> Patch AndroidManifest.xml (permissions + label + FileProvider)"

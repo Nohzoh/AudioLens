@@ -11,6 +11,12 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T100** 📈 ⭐ - **Bump the pinned Kotlin version (deprecation warning in CI)**
+  - **Verified**: 2026-08-19 (PR #73)
+  - **Warning**: "Flutter support for your project's Kotlin version (2.2.10) will soon be dropped. Please upgrade your Kotlin version to a version of at least 2.2.20 soon" — seen in the first successful automated Play Store publish run's logs.
+  - **Investigated first**: both build scripts pinned `"2.2.0"`, yet the build reported 2.2.10 — likely Gradle's default "highest version wins" dependency conflict resolution, since `kotlinx-coroutines-android`/`play-services` (added in the same patched file) can pull in a newer Kotlin stdlib transitively than the plugin version declared. Rather than chase the exact transitive culprit, pinned directly to the version Flutter actually wants (2.2.20) so it's compliant regardless of what Gradle resolves around it.
+  - **What was done**: bumped the sed-patched Kotlin Gradle Plugin version from `2.2.0` to `2.2.20` in both `.github/workflows/build-android.yml` and `scripts/build_android_local.sh`.
+
 - [x] **T101** 📈 ⭐ - **Migrate `upload-google-play`'s deprecated `track:` input to `tracks:`**
   - **Verified**: 2026-08-19 (PR #72)
   - **What was done**: `r0adkll/upload-google-play@v1`'s `track:` input (added earlier tonight) was already flagged as deprecated in its own logs — renamed to `tracks:` (same value format, plain string; comma-separated for multiple tracks per the action's docs).
