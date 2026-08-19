@@ -292,6 +292,7 @@ class HistoryDetailScreen extends StatefulWidget {
 class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   bool _isPlaying = false;
   bool _isUpgrading = false;
+  bool _photoMode = false; // T94: show the plain photo instead of the script overlay
 
   /// Always read the latest version from the service (not the stale widget.entry)
   HistoryEntry _liveEntry(BuildContext context) {
@@ -432,17 +433,33 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
           if (File(live.imagePath).existsSync())
             Image.file(File(live.imagePath), fit: BoxFit.cover),
 
-          // Gradient overlay
+          // Gradient overlay — T96: the previous 2-stop version barely
+          // darkened the very top of the screen, leaving the top bar icons
+          // (esp. the red delete icon) hard to read over a bright photo
+          // (sky, light walls). A 3-stop vignette protects both the top bar
+          // and the bottom text without hiding the middle of the photo.
+          // T94: much lighter in photo mode, matching player_screen.dart's
+          // own photo-mode gradient, since there's no text left to protect.
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.3),
-                  Colors.black.withValues(alpha: 0.95),
-                ],
-                stops: const [0.3, 1.0],
+                colors: _photoMode
+                    ? [
+                        Colors.black.withValues(alpha: 0.35),
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.35),
+                      ]
+                    : [
+                        Colors.black.withValues(alpha: 0.45),
+                        Colors.black.withValues(alpha: 0.15),
+                        Colors.black.withValues(alpha: 0.95),
+                      ],
+                stops: _photoMode
+                    ? const [0.0, 0.15, 0.85, 1.0]
+                    : const [0.0, 0.3, 1.0],
               ),
             ),
           ),
@@ -451,29 +468,44 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top bar
+                // Top bar — each icon gets its own scrim (T96) so it stays
+                // legible regardless of gradient tuning or photo content.
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      _ScrimIconButton(
+                        icon: Icons.arrow_back,
+                        color: Colors.white,
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.info_outline,
-                            color: Colors.white54),
+                      _ScrimIconButton(
+                        icon: _photoMode
+                            ? Icons.article_outlined
+                            : Icons.image_outlined,
+                        color: Colors.white70,
+                        tooltip: _photoMode
+                            ? l10n.playerShowText
+                            : l10n.playerPhotoMode,
+                        onPressed: () =>
+                            setState(() => _photoMode = !_photoMode),
+                      ),
+                      const SizedBox(width: 4),
+                      _ScrimIconButton(
+                        icon: Icons.info_outline,
+                        color: Colors.white70,
                         onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
                                 builder: (_) =>
                                     AboutAnalysisScreen(entry: widget.entry))),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            color: Colors.redAccent),
+                      const SizedBox(width: 4),
+                      _ScrimIconButton(
+                        icon: Icons.delete_outline,
+                        color: Colors.redAccent,
                         onPressed: () => _deleteEntry(context),
                       ),
                     ],
@@ -487,6 +519,11 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // T94: everything but the play/generate button below
+                        // is hidden in photo mode, matching player_screen.dart
+                        // — playback stays controllable while the photo is
+                        // shown unobstructed.
+                        if (!_photoMode) ...[
                         // Date
                         Text(
                           dateStr,
@@ -692,6 +729,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                               );
                             },
                           ),
+                        ], // end if (!_photoMode)
 
                         // Play / generate button
                         FilledButton.icon(
@@ -722,6 +760,38 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A top-bar icon button with its own subtle circular scrim (T96) — keeps
+/// it legible over any photo content, independent of the screen's own
+/// background gradient.
+class _ScrimIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String? tooltip;
+  final VoidCallback onPressed;
+
+  const _ScrimIconButton({
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+    this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.black.withValues(alpha: 0.35),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: color),
+        tooltip: tooltip,
+        onPressed: onPressed,
       ),
     );
   }

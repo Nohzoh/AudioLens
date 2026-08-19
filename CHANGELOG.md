@@ -11,6 +11,17 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T96** 📈 ⭐ - **History detail screen: top bar icons hard to see over bright photos**
+  - **Verified**: 2026-08-19 (PR #74)
+  - **Source**: closed-testing tester — didn't recognize the top-right delete icon as a trash icon over a bright-sky photo.
+  - **Root cause**: the gradient overlay barely darkened the very top of the screen, and the delete icon's `Colors.redAccent` had weak contrast against light backgrounds specifically.
+  - **What was done**: 3-stop vignette gradient (protects both the top bar and bottom text without hiding the photo's middle) plus a dedicated `_ScrimIconButton` — a subtle circular dark scrim behind every top-bar icon, independent of the gradient or photo content. Bundled with T94 since both touch the same top bar.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 168/168
+
+- [x] **T94** 🌱 ⭐⭐ - **History detail screen: add the "view photo full-screen while listening" toggle**
+  - **Verified**: 2026-08-19 (PR #74)
+  - **What was done**: added the same `_photoMode` toggle `player_screen.dart` already has (icon in the top bar, `Icons.image_outlined`/`Icons.article_outlined`, reusing its `playerShowText`/`playerPhotoMode` l10n keys) — hides title/date/location/action buttons/script/upgrade button while photo mode is on, but keeps the play/generate button visible so playback stays controllable, matching the player screen's own behavior.
+
 - [x] **T100** 📈 ⭐ - **Bump the pinned Kotlin version (deprecation warning in CI)**
   - **Verified**: 2026-08-19 (PR #73)
   - **Warning**: "Flutter support for your project's Kotlin version (2.2.10) will soon be dropped. Please upgrade your Kotlin version to a version of at least 2.2.20 soon" — seen in the first successful automated Play Store publish run's logs.
