@@ -430,10 +430,7 @@ class AudioGuideService extends ChangeNotifier {
 
       if (generateAudio && isBackgrounded) {
         deferredForBackground = true;
-        _lastAudioPath = null;
-        _state = GuideState.scriptReady;
-        _progressEstimator.stepProgress = 1.0;
-        notifyListeners();
+        await _synthesizeOnlyForBackground(_lastResult!.script);
       } else if (generateAudio) {
         await _synthesizeAndPlay(_lastResult!.script);
       } else {
@@ -501,6 +498,42 @@ class AudioGuideService extends ChangeNotifier {
     _lastAudioPath = await _getLastWavPath();
 
     _state = GuideState.speaking;
+    _progressEstimator.stepProgress = 1.0;
+    notifyListeners();
+  }
+
+  /// Synthesizes [script] via Gemini TTS without playing it — used instead
+  /// of [_synthesizeAndPlay] when the app is backgrounded at completion
+  /// time, so the notification's tap can start playback instantly from the
+  /// cached file rather than re-synthesizing from scratch. Only Gemini TTS
+  /// is worth pre-generating this way: the native engine synthesizes and
+  /// speaks in one live step with no separate "render to file" mode, and
+  /// its replay is instant/free anyway (see [_getLastWavPath]'s doc), so
+  /// there's nothing to pre-generate for it — the script is simply left
+  /// ready, and native TTS will speak it live whenever the user does ask.
+  /// Best-effort: a synthesis failure (rate limit, network) just leaves the
+  /// script audio-less, same as if Gemini TTS wasn't configured at all.
+  Future<void> _synthesizeOnlyForBackground(String script) async {
+    _state = GuideState.synthesizing;
+    _progressEstimator.stepProgress = -1.0;
+    notifyListeners();
+
+    if (_geminiTtsService != null) {
+      try {
+        final path = await _getGeminiWavPath();
+        await _geminiTtsService!.synthesizeToFile(script, path, cancelToken: _cancelToken);
+        _lastAudioPath = path;
+        _lastTtsModel = 'gemini-tts';
+      } catch (e) {
+        if (e is CancelledException) rethrow;
+        AppLogger.error('Background pre-synthesis failed, deferring to on-demand: $e');
+        _lastAudioPath = null;
+      }
+    } else {
+      _lastAudioPath = null;
+    }
+
+    _state = GuideState.scriptReady;
     _progressEstimator.stepProgress = 1.0;
     notifyListeners();
   }
@@ -619,11 +652,19 @@ class AudioGuideService extends ChangeNotifier {
   /// unlike Gemini TTS's quota-limited cloud calls.
   Future<String?> _getLastWavPath() async {
     try {
-      final tmpDir = await getTemporaryDirectory();
-      final geminiWav = File('${tmpDir.path}/gemini_tts_output.wav');
+      final geminiWav = File(await _getGeminiWavPath());
       if (await geminiWav.exists()) return geminiWav.path;
     } catch (_) {}
     return null;
+  }
+
+  /// The conventional path Gemini TTS synthesis writes to, shared by
+  /// [_synthesizeAndPlay] (via [GeminiTtsService.speak]/[_getLastWavPath])
+  /// and [_synthesizeOnlyForBackground] (via
+  /// [GeminiTtsService.synthesizeToFile]) so both land on the same file.
+  Future<String> _getGeminiWavPath() async {
+    final tmpDir = await getTemporaryDirectory();
+    return '${tmpDir.path}/gemini_tts_output.wav';
   }
 
   @override
