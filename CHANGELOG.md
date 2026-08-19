@@ -11,6 +11,11 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T99** 📈 ⭐ - **Rename the ambiguous "Modèle IA" label**
+  - **Verified**: 2026-08-19 (PR #71)
+  - **What was done**: renamed "Modèle IA"/"AI model" to "Modèle d'analyse"/"Analysis model" in all 3 places it appeared (player fallback banner, Settings config display, analysis detail debug screen) — it read as the only AI involved when TTS (Gemini TTS) is AI too.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 168/168
+
 - **2026-08-18 (T84 prep, PR #55)**: two of T84's (Play Store publication) technical prerequisites, done ahead of the full task since they're small and self-contained
   - **AAB build**: CI now also builds `build/app/outputs/bundle/release/app-release.aab` via a new "Build App Bundle (release)" step right after the existing APK build, in the same job — reuses the already-bootstrapped/patched `android/` project and signing config rather than a separate job. The `.apk` build stays too, for direct-sideload testing (`adb install`)
   - **versionCode**: both the APK and AAB builds now pass `--build-number=${{ github.run_number }}`, giving every release a strictly increasing `versionCode` (Play Console rejects any upload whose versionCode isn't higher than the last one) without needing to hand-edit `pubspec.yaml`'s committed `0.1.0+1` per upload
