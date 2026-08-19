@@ -11,6 +11,12 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T97** 📈 ⭐⭐⭐ - **Register AudioLens as a share target for photos**
+  - **Verified**: 2026-08-19 (PR #77)
+  - **Source**: closed-testing tester feedback.
+  - **What was done**: a second `<intent-filter>` (`ACTION_SEND`, `image/*`) on `MainActivity`, so AudioLens appears in Android's native "Share via..." sheet from other apps. New `SharePlugin.kt` bridges the shared image to Dart — a method channel for the cold-start case (app launched directly by the share) and an event channel for the warm-start case (`onNewIntent`, app already running — `launchMode="singleTop"` already in place). The content:// URI is copied to the app's cache dir since the rest of the pipeline expects a real file path. New `lib/services/share_intent_service.dart` on the Dart side; `home_screen.dart`'s gallery-pick logic (EXIF check → map picker fallback → pending entry → analysis) was factored into a shared `_processImageForAnalysis` used by both the picker and the new share handler, landing on Home with the photo already flowing through the same path as a gallery pick.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 169/169; real local build (`scripts/build_android_local.sh`) confirms the native Kotlin compiles. Functional verification of the actual OS share-sheet integration needs a real device — not possible from this environment.
+
 - [x] **T95** 📈 ⭐⭐⭐ - **Optional auto-purge of history after N days**
   - **Verified**: 2026-08-19 (PR #78)
   - **Source**: UX feedback from a closed-testing tester (fast turnaround — first feedback within minutes of the invite).
