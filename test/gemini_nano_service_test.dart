@@ -159,6 +159,28 @@ void main() {
     );
   });
 
+  test(
+      'analyzeImage() maps the AICore "background usage blocked" message to '
+      'GeminiNanoBackgroundRestrictedException', () async {
+    handler = (call) async {
+      calls.add(call);
+      if (call.method == 'describeImage') {
+        throw PlatformException(
+          code: 'INFERENCE_ERROR',
+          message: '[ErrorCode 30] Background usage is blocked. '
+              'Please use the API when your app is in the foreground instead.',
+        );
+      }
+      return true;
+    };
+    final service = GeminiNanoService();
+
+    await expectLater(
+      service.analyzeImage(tempImage()),
+      throwsA(isA<GeminiNanoBackgroundRestrictedException>()),
+    );
+  });
+
   test('dispose() resets init state so a later analyzeImage() re-initializes',
       () async {
     final service = GeminiNanoService();

@@ -37,9 +37,10 @@ class _FakeGeminiTts extends GeminiTtsService {
 }
 
 class _FakeNano extends GeminiNanoService {
-  _FakeNano({required this.available});
+  _FakeNano({required this.available, this.throwBackgroundRestricted = false});
 
   final bool available;
+  final bool throwBackgroundRestricted;
   bool analyzeCalled = false;
 
   @override
@@ -56,6 +57,9 @@ class _FakeNano extends GeminiNanoService {
     String? style,
   }) async {
     analyzeCalled = true;
+    if (throwBackgroundRestricted) {
+      throw const GeminiNanoBackgroundRestrictedException();
+    }
     return const AudioGuideResult(
       title: 'Nano',
       script: 'Script local de secours.',
@@ -180,6 +184,45 @@ void main() {
     expect(service.lastGpsLatitude, isNull);
     expect(service.lastGpsLongitude, isNull);
     expect(service.state, GuideState.speaking);
+  });
+
+  test('Gemini Nano rejects background usage -> clear, actionable error message',
+      () async {
+    final nano = _FakeNano(available: true, throwBackgroundRestricted: true);
+    final service = AudioGuideService(
+      geminiTtsService: _FakeGeminiTts(fail: false),
+      nanoService: nano,
+    );
+    await service.init();
+    await service.setActiveProvider(AIProvider.geminiNano);
+
+    final result = await service.analyzeAndPlay(tempImage());
+
+    expect(result, isNull);
+    expect(service.state, GuideState.error);
+    expect(service.errorMessage, contains('premier plan'));
+    expect(service.errorMessage, isNot(contains('ErrorCode')));
+  });
+
+  test(
+      'Cloud AI failure -> Nano fallback also rejects background usage -> '
+      'clear error, not the raw native message', () async {
+    final nano = _FakeNano(available: true, throwBackgroundRestricted: true);
+    final service = AudioGuideService(
+      geminiTtsService: _FakeGeminiTts(fail: false),
+      geminiApiService: _failingApi(),
+      nanoService: nano,
+    );
+    await service.init();
+    await service.setActiveProvider(AIProvider.geminiApi);
+
+    final result = await service.analyzeAndPlay(tempImage());
+
+    expect(result, isNull);
+    expect(nano.analyzeCalled, isTrue);
+    expect(service.state, GuideState.error);
+    expect(service.errorMessage, contains('premier plan'));
+    expect(service.errorMessage, isNot(contains('ErrorCode')));
   });
 
   test('No AI service available -> clear error, no crash', () async {
