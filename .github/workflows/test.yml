@@ -40,9 +40,20 @@ jobs:
       # sqflite_common_ffi (T09, history_service_migration_test.dart) needs
       # a system SQLite lib to dlopen. Usually already present on
       # ubuntu-latest, but pinned explicitly so this doesn't depend on an
-      # unstated assumption about the runner image.
+      # unstated assumption about the runner image. `apt-get update` has
+      # been seen hanging for 40+ minutes on an unresponsive Ubuntu mirror
+      # (2026-08-19) instead of failing — timeout-minutes plus a few quick
+      # retries turns that into a fast failure/self-heal instead.
       - name: Install libsqlite3
-        run: sudo apt-get update -qq && sudo apt-get install -y libsqlite3-0
+        timeout-minutes: 3
+        run: |
+          for i in 1 2 3; do
+            sudo apt-get update -qq && sudo apt-get install -y libsqlite3-0 && exit 0
+            echo "apt-get attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "apt-get failed after 3 attempts"
+          exit 1
 
       - name: Analyze
         run: flutter analyze
