@@ -143,6 +143,14 @@
   "settingsKofiButtonSubtitle": "Bouton Ko-fi dans l'interface",
   "settingsAutoGenerateAudio": "Générer l'audio automatiquement",
   "settingsAutoGenerateAudioSubtitle": "Désactiver pour garder seulement le script, et générer l'audio plus tard depuis l'historique",
+  "settingsAutoPurge": "Purger automatiquement l'historique",
+  "settingsAutoPurgeSubtitle": "Supprime automatiquement les photos, scripts et audios plus anciens que la durée choisie. Désactivé par défaut — la suppression reste manuelle.",
+  "settingsAutoPurgeDaysOption": "{days} jours",
+  "@settingsAutoPurgeDaysOption": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
   "settingsVoiceSection": "Voix",
   "settingsVoiceFemale": "Féminine",
   "settingsVoiceMale": "Masculine",

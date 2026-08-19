@@ -308,6 +308,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) => settings.setAutoGenerateAudio(value),
             ),
           ),
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => Column(
+              children: [
+                SwitchListTile(
+                  title: Text(l10n.settingsAutoPurge),
+                  subtitle: Text(l10n.settingsAutoPurgeSubtitle),
+                  value: settings.autoPurgeEnabled,
+                  onChanged: (value) => settings.setAutoPurgeEnabled(value),
+                ),
+                if (settings.autoPurgeEnabled)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final days in const [7, 14, 30, 90])
+                          ChoiceChip(
+                            label: Text(l10n.settingsAutoPurgeDaysOption(days)),
+                            selected: settings.autoPurgeDays == days,
+                            onSelected: (_) => settings.setAutoPurgeDays(days),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 24),
 

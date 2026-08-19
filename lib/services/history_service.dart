@@ -531,6 +531,23 @@ class HistoryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Deletes every entry older than [days] (T95) — same deletion mechanics
+  /// as [deleteEntry] (photo/audio files + DB row), just triggered
+  /// automatically instead of by a user tap. Meant to be called once per
+  /// app startup, only when the user has opted into auto-purge
+  /// (SettingsService.autoPurgeEnabled) — manual deletion stays the
+  /// default otherwise.
+  Future<void> purgeEntriesOlderThan(int days) async {
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    final expiredIds = _entries
+        .where((e) => e.createdAt.isBefore(cutoff))
+        .map((e) => e.id!)
+        .toList();
+    for (final id in expiredIds) {
+      await deleteEntry(id);
+    }
+  }
+
   Future<String> _copyImageToPermanentStorage(String sourcePath) async {
     final dir = await getApplicationDocumentsDirectory();
     final historyDir = Directory('${dir.path}/history_images');
