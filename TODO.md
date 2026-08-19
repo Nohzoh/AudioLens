@@ -37,11 +37,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Odd detail to check first**: both `.github/workflows/build-android.yml` and `scripts/build_android_local.sh` patch the Kotlin version to `"2.2.0"` via sed — but the build actually reports **2.2.10**, not 2.2.0. Worth understanding why the patched value doesn't match the observed one (maybe the patch isn't matching/applying as intended, or another source overrides it) before just bumping the target string, so the fix doesn't just paper over a patch that silently isn't taking effect.
   - **Fix**: update the pinned version in both places to `>= 2.2.20` once the discrepancy above is understood.
 
-- [ ] **T101** 📈 ⭐ - **Migrate `upload-google-play`'s deprecated `track:` input to `tracks:`**
-  - **Added**: 2026-08-19
-  - **Source**: same log review — `##[warning]WARNING!! 'track' is deprecated and will be removed in a future release. Please migrate to 'tracks'`, from `r0adkll/upload-google-play@v1` (added earlier tonight in `build-android.yml`'s "Publish to Play Store" step).
-  - **Fix**: replace the single `track: ${{ inputs.track }}` input with the plural `tracks: [${{ inputs.track }}]` (or whatever list syntax the action's current docs specify) before `track` is actually removed and breaks the workflow outright.
-
 - [ ] **T95** 📈 ⭐⭐⭐ - **Optional auto-purge of history after N days**
   - **Added**: 2026-08-19
   - **Source**: UX feedback from a closed-testing tester (fast turnaround — first feedback within minutes of the invite).

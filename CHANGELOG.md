@@ -11,6 +11,10 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T101** 📈 ⭐ - **Migrate `upload-google-play`'s deprecated `track:` input to `tracks:`**
+  - **Verified**: 2026-08-19 (PR #72)
+  - **What was done**: `r0adkll/upload-google-play@v1`'s `track:` input (added earlier tonight) was already flagged as deprecated in its own logs — renamed to `tracks:` (same value format, plain string; comma-separated for multiple tracks per the action's docs).
+
 - [x] **T99** 📈 ⭐ - **Rename the ambiguous "Modèle IA" label**
   - **Verified**: 2026-08-19 (PR #71)
   - **What was done**: renamed "Modèle IA"/"AI model" to "Modèle d'analyse"/"Analysis model" in all 3 places it appeared (player fallback banner, Settings config display, analysis detail debug screen) — it read as the only AI involved when TTS (Gemini TTS) is AI too.
