@@ -30,30 +30,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
-- [ ] **T93** 📈 ⭐⭐ - **TTS model not persisted when Gemini TTS falls back to native with no cached audio**
-  - **Added**: 2026-08-19
-  - **Found via real-device testing**: with the daily Gemini API quota exhausted, an analysis still completes (script generated), TTS falls back to the native engine as expected — but revisiting the entry in History later shows "Modèle TTS : Inconnu" and only a "Générer l'audio" button, as if nothing had been recorded at all.
-  - **Likely cause**: `analysis_runner.dart`'s `runAnalysisAndNavigate()` only calls `history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel)` `if (audioPath != null)` — but native TTS legitimately never produces a cached file (by design, see `AudioGuideService._getLastWavPath`'s doc), so `ttsModel` never gets persisted for that case even though `guide.lastTtsModel` ('native-tts') is known right after the call. The missing "Générer l'audio" → cached-file behavior for native TTS is expected/by design; the missing `ttsModel` value is the actual bug.
-  - **Fix direction**: persist `ttsModel` (and `ttsFallback`) independently of whether `audioPath` is non-null, instead of gating the whole call on `audioPath != null`.
-
-- [ ] **T99** 📈 ⭐ - **Rename the ambiguous "Modèle IA" label**
-  - **Added**: 2026-08-19
-  - **Source**: user's own observation while reviewing an analysis. "Modèle IA" (used for the image-analysis/script-generation model) reads as if it's the only AI involved, when TTS ("Modèle TTS") is also AI (Gemini TTS) — confusing side by side.
-  - **Locations found**: `about_analysis_screen.dart:75` (hardcoded, this screen is out of scope for T67's l10n extraction), `lib/l10n/app_fr.arb`'s `settingsConfigModel` (Settings' active-config display), and `playerAiFallbackMessage` ("Modèle IA : {model} (fallback)" banner in the player). All three should probably be renamed together for consistency.
-  - **Direction**: something like "Modèle d'analyse" (analysis model) — clearly distinct from "Modèle TTS" without implying it's the only AI in the pipeline.
-
-- [ ] **T100** 📈 ⭐ - **Bump the pinned Kotlin version (deprecation warning in CI)**
-  - **Added**: 2026-08-19
-  - **Source**: full log review of the first successful `workflow_dispatch` Play Store publish run (build 32287754331), requested after the user spotted a Kotlin warning live in the logs.
-  - **Warning**: "Flutter support for your project's Kotlin version (2.2.10) will soon be dropped. Please upgrade your Kotlin version to a version of at least 2.2.20 soon."
-  - **Odd detail to check first**: both `.github/workflows/build-android.yml` and `scripts/build_android_local.sh` patch the Kotlin version to `"2.2.0"` via sed — but the build actually reports **2.2.10**, not 2.2.0. Worth understanding why the patched value doesn't match the observed one (maybe the patch isn't matching/applying as intended, or another source overrides it) before just bumping the target string, so the fix doesn't just paper over a patch that silently isn't taking effect.
-  - **Fix**: update the pinned version in both places to `>= 2.2.20` once the discrepancy above is understood.
-
-- [ ] **T101** 📈 ⭐ - **Migrate `upload-google-play`'s deprecated `track:` input to `tracks:`**
-  - **Added**: 2026-08-19
-  - **Source**: same log review — `##[warning]WARNING!! 'track' is deprecated and will be removed in a future release. Please migrate to 'tracks'`, from `r0adkll/upload-google-play@v1` (added earlier tonight in `build-android.yml`'s "Publish to Play Store" step).
-  - **Fix**: replace the single `track: ${{ inputs.track }}` input with the plural `tracks: [${{ inputs.track }}]` (or whatever list syntax the action's current docs specify) before `track` is actually removed and breaks the workflow outright.
-
 - [ ] **T95** 📈 ⭐⭐⭐ - **Optional auto-purge of history after N days**
   - **Added**: 2026-08-19
   - **Source**: UX feedback from a closed-testing tester (fast turnaround — first feedback within minutes of the invite).

@@ -200,6 +200,29 @@ void main() {
     expect(updated.ttsModel, 'native-tts');
   });
 
+  test('saveTtsModel records the tts model without touching audioPath (T93)', () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final pending = await service.addPendingEntry(imagePath: sourceImagePath);
+    await service.completeEntry(entryId: pending.id!, title: 't', script: 's');
+
+    await service.saveTtsModel(pending.id!, 'native-tts', ttsFallback: true);
+
+    final updated = service.entries.firstWhere((e) => e.id == pending.id);
+    expect(updated.ttsModel, 'native-tts');
+    expect(updated.ttsFallback, isTrue);
+    expect(updated.audioPath, isNull);
+    expect(updated.hasAudio, isFalse);
+
+    // Reload from the DB to confirm it was actually persisted, not just
+    // reflected in-memory.
+    final reloaded = HistoryService();
+    await reloaded.init(dbPath: dbPath);
+    final reloadedEntry = reloaded.entries.firstWhere((e) => e.id == pending.id);
+    expect(reloadedEntry.ttsModel, 'native-tts');
+    expect(reloadedEntry.ttsFallback, isTrue);
+  });
+
   test('deleteEntry removes the entry from the list/db and deletes its image file',
       () async {
     final service = HistoryService();

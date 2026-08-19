@@ -72,7 +72,7 @@ class AboutAnalysisScreen extends StatelessWidget {
           ]),
 
           _Section(title: 'MODÈLES', children: [
-            _Row('Modèle IA', live.aiModel ?? 'Inconnu'),
+            _Row('Modèle d\'analyse', live.aiModel ?? 'Inconnu'),
             _Row('Modèle TTS', live.ttsModel ?? 'Inconnu'),
             _Row('Source image', _sourceLabel(live.analysisSource)),
             if (live.aiFallback)
