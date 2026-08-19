@@ -377,6 +377,22 @@ class AudioGuideService extends ChangeNotifier {
         // fallback below (T70) — the user asked to stop, not to keep
         // burning time on a slower on-device retry.
         if (analysisError is CancelledException) rethrow;
+        // Gemini Nano inference is an OS-enforced foreground-only
+        // operation (unlike the cloud API) — if the app was backgrounded
+        // mid-analysis, the native call fails outright and there's no
+        // retry that fixes it here. No auto-fallback to the cloud API
+        // either: the user chose on-device processing, often for privacy
+        // (see PRIVACY.md), so silently sending their photo to Gemini API
+        // instead would be a real overstep — just report it clearly.
+        if (analysisError is GeminiNanoBackgroundRestrictedException) {
+          throw const GuideError(
+            GuideErrorKind.ai,
+            'L\'analyse hors-ligne (Gemini Nano) nécessite que l\'application '
+            'reste au premier plan. Réessayez en gardant AudioLens ouvert, ou '
+            'configurez une clé Gemini API dans les réglages pour permettre '
+            'l\'analyse en arrière-plan.',
+          );
+        }
         final message = sanitizeError(analysisError.toString());
         if (_activeProvider == AIProvider.geminiApi && _nanoAvailable) {
           AppLogger.error('Cloud analysis failed, trying local fallback: $message');
@@ -384,11 +400,20 @@ class AudioGuideService extends ChangeNotifier {
           _updateProviderName();
           final localService = _currentService;
           if (localService != null) {
-            _lastResult = await localService.analyzeImage(
-              imageFile,
-              locationContext: locationContext.promptContext,
-              style: style,
-            );
+            try {
+              _lastResult = await localService.analyzeImage(
+                imageFile,
+                locationContext: locationContext.promptContext,
+                style: style,
+              );
+            } on GeminiNanoBackgroundRestrictedException {
+              throw const GuideError(
+                GuideErrorKind.ai,
+                'L\'analyse a échoué et le repli hors-ligne (Gemini Nano) '
+                'nécessite que l\'application reste au premier plan. '
+                'Réessayez en gardant AudioLens ouvert.',
+              );
+            }
           } else {
             throw GuideError(GuideErrorKind.ai, 'Analyse IA impossible. $message');
           }
