@@ -131,6 +131,10 @@ fi
 if ! grep -q 'AnalysisForegroundService' "$MANIFEST"; then
   $SED -i 's|</application>|    <service android:name=".AnalysisForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>\n    </application>|' "$MANIFEST"
 fi
+# T97: register as a share target for photos from other apps.
+if ! grep -q 'android.intent.action.SEND' "$MANIFEST"; then
+  $SED -i 's|</intent-filter>|</intent-filter>\n            <intent-filter>\n                <action android:name="android.intent.action.SEND"/>\n                <category android:name="android.intent.category.DEFAULT"/>\n                <data android:mimeType="image/*"/>\n            </intent-filter>|' "$MANIFEST"
+fi
 if ! grep -q 'FileProvider' "$MANIFEST"; then
   $SED -i 's|</application>|    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/></provider>\n    </application>|' "$MANIFEST"
 fi

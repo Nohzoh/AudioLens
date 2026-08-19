@@ -42,12 +42,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Not blocking** — this is a quality/size score, not a review requirement.
   - **Risk to plan for**: enabling `isMinifyEnabled`/`isShrinkResources` in the release `buildType` is a classic Flutter footgun if ProGuard keep rules are incomplete — native plugins relying on reflection (ML Kit GenAI for Gemini Nano, JSON model parsing, etc.) can silently break at runtime in ways `flutter analyze`/`flutter test` won't catch. Needs a full real-device pass across every feature (both AI providers, both TTS engines, history, settings) after enabling, not just a build-success check. Also remember to upload the resulting `mapping.txt` to Play Console once this ships (closes the earlier warning for real).
 
-- [ ] **T97** 📈 ⭐⭐⭐ - **Register AudioLens as a share target for photos**
-  - **Added**: 2026-08-19
-  - **Source**: closed-testing tester feedback.
-  - **Ask**: appear in Android's native "Share via..." sheet when sharing a photo from another app (Gallery, another photo viewer, etc.), instead of only being reachable by opening AudioLens first and picking from the gallery.
-  - **Implementation direction**: an `ACTION_SEND`/`ACTION_SEND_MULTIPLE` (`image/*`) intent filter in `AndroidManifest.xml`, plus handling the incoming share intent on the Flutter side (likely via a package like `receive_sharing_intent`, or a native platform-channel handler like the app's other integrations). Needs a UX decision: land on Home with the shared photo pre-loaded (closer to today's gallery-pick flow, including the no-EXIF-GPS map picker path), or jump straight into analysis.
-
 ---
 
 ## 🌱 Low impact / Long term
