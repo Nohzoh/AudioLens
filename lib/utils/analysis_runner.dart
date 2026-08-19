@@ -68,6 +68,29 @@ Future<void> runAnalysisAndNavigate({
       await history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel);
     }
   } else {
-    await history.failEntry(entryId);
+    // Persist whatever location was actually resolved for this attempt
+    // (even though the analysis itself failed) so a retry can reuse it —
+    // see HistoryService.failEntry's doc.
+    await history.failEntry(
+      entryId,
+      gpsLatitude: guide.lastGpsLatitude,
+      gpsLongitude: guide.lastGpsLongitude,
+      gpsSource: guide.lastGpsSource,
+    );
   }
+}
+
+/// Builds [AudioGuideService.analyzeAndPlay]'s `knownCoordinates` param
+/// from a history entry's saved GPS fields, if any — shared by every
+/// retry/re-launch flow (T78 captured entries, a failed analysis retry) so
+/// a previously resolved location (live GPS, EXIF, or a manually picked
+/// map point) is reused instead of re-resolving the device's current
+/// position from scratch.
+({double lat, double lon, String source})? knownCoordinatesFromEntry(HistoryEntry entry) {
+  if (entry.gpsLatitude == null || entry.gpsLongitude == null) return null;
+  return (
+    lat: entry.gpsLatitude!,
+    lon: entry.gpsLongitude!,
+    source: entry.gpsSource ?? 'realtime',
+  );
 }

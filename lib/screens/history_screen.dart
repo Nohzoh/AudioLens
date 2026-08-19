@@ -25,23 +25,19 @@ Future<void> _launchAnalysis(BuildContext context, HistoryEntry entry) async {
     );
     return;
   }
-  ({double lat, double lon, String source})? knownCoordinates;
-  if (entry.gpsLatitude != null && entry.gpsLongitude != null) {
-    knownCoordinates = (
-      lat: entry.gpsLatitude!,
-      lon: entry.gpsLongitude!,
-      source: entry.gpsSource ?? 'realtime',
-    );
-  }
   await runAnalysisAndNavigate(
     context: context,
     imageFile: imageFile,
     entryId: entry.id!,
     source: 'captured',
-    knownCoordinates: knownCoordinates,
+    knownCoordinates: knownCoordinatesFromEntry(entry),
   );
 }
 
+/// Retries a failed analysis, reusing whatever location was resolved for
+/// the original attempt (live GPS, EXIF, or a manually picked map point)
+/// instead of re-resolving the device's current position from scratch —
+/// see HistoryService.failEntry's doc.
 Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
   final imageFile = File(entry.imagePath);
   if (!imageFile.existsSync()) {
@@ -55,6 +51,7 @@ Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
     imageFile: imageFile,
     entryId: entry.id!,
     source: 'retry',
+    knownCoordinates: knownCoordinatesFromEntry(entry),
   );
 }
 

@@ -141,6 +141,46 @@ void main() {
     expect(updated.status, AnalysisStatus.failed);
   });
 
+  test('failEntry persists the resolved GPS so a retry can reuse it', () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final pending = await service.addPendingEntry(imagePath: sourceImagePath);
+
+    await service.failEntry(
+      pending.id!,
+      gpsLatitude: 48.86,
+      gpsLongitude: 2.33,
+      gpsSource: 'map',
+    );
+
+    final updated = service.entries.firstWhere((e) => e.id == pending.id);
+    expect(updated.status, AnalysisStatus.failed);
+    expect(updated.gpsLatitude, 48.86);
+    expect(updated.gpsLongitude, 2.33);
+    expect(updated.gpsSource, 'map');
+
+    // Reload from the DB (not just the in-memory list) to confirm the
+    // columns were actually persisted, not only reflected in-memory.
+    final reloaded = HistoryService();
+    await reloaded.init(dbPath: dbPath);
+    final reloadedEntry = reloaded.entries.firstWhere((e) => e.id == pending.id);
+    expect(reloadedEntry.gpsLatitude, 48.86);
+    expect(reloadedEntry.gpsLongitude, 2.33);
+    expect(reloadedEntry.gpsSource, 'map');
+  });
+
+  test('failEntry without GPS args leaves gps fields null (no partial write)', () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final pending = await service.addPendingEntry(imagePath: sourceImagePath);
+
+    await service.failEntry(pending.id!);
+
+    final updated = service.entries.firstWhere((e) => e.id == pending.id);
+    expect(updated.gpsLatitude, isNull);
+    expect(updated.gpsLongitude, isNull);
+  });
+
   test('saveAudioPath copies the WAV to permanent storage and records the tts model',
       () async {
     final service = HistoryService();
