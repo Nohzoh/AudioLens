@@ -70,6 +70,8 @@ void main() {
     await settings.setShowKofiButton(false);
     await settings.setAutoGenerateAudio(false);
     await settings.setScriptStyle('concise');
+    await settings.setAutoPurgeEnabled(true);
+    await settings.setAutoPurgeDays(7);
 
     await settings.resetOnboarding();
 
@@ -78,5 +80,31 @@ void main() {
     expect(settings.showKofiButton, isTrue);
     expect(settings.autoGenerateAudio, isTrue);
     expect(settings.scriptStyle, 'immersive');
+    expect(settings.autoPurgeEnabled, isFalse);
+    expect(settings.autoPurgeDays, 30);
+  });
+
+  test('auto-purge defaults to disabled, 30 days (T95)', () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    expect(settings.autoPurgeEnabled, isFalse);
+    expect(settings.autoPurgeDays, 30);
+  });
+
+  test('setAutoPurgeEnabled/setAutoPurgeDays persist across a reload (T95)',
+      () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    await settings.setAutoPurgeEnabled(true);
+    await settings.setAutoPurgeDays(14);
+    expect(settings.autoPurgeEnabled, isTrue);
+    expect(settings.autoPurgeDays, 14);
+
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.autoPurgeEnabled, isTrue);
+    expect(reloaded.autoPurgeDays, 14);
   });
 }

@@ -257,4 +257,40 @@ void main() {
 
     expect(File(audioPath).existsSync(), isFalse);
   });
+
+  test('purgeEntriesOlderThan deletes only entries past the cutoff (T95)',
+      () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final oldEntry = await service.addPendingEntry(imagePath: sourceImagePath);
+    // _copyImageToPermanentStorage names files by millisecond timestamp —
+    // without this delay, two calls in the same millisecond collide on
+    // the same destination path (a real latent bug, logged for the audit).
+    await Future.delayed(const Duration(milliseconds: 2));
+    final recentSource = join(tmpDir.path, 'recent.jpg');
+    File(recentSource).writeAsBytesSync([0xFF, 0xD8, 0xFF, 0xD9]);
+    final recentEntry = await service.addPendingEntry(imagePath: recentSource);
+
+    // addPendingEntry always stamps createdAt as DateTime.now() — reach
+    // into the DB directly to backdate one entry, the only way to
+    // exercise the cutoff without adding test-only production API.
+    final raw = await databaseFactory.openDatabase(dbPath);
+    await raw.update(
+      'history',
+      {'createdAt': DateTime.now().subtract(const Duration(days: 40)).toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [oldEntry.id],
+    );
+    await raw.close();
+
+    final reloaded = HistoryService();
+    await reloaded.init(dbPath: dbPath);
+    final oldImagePath = reloaded.entries.firstWhere((e) => e.id == oldEntry.id).imagePath;
+
+    await reloaded.purgeEntriesOlderThan(30);
+
+    expect(reloaded.entries.map((e) => e.id), [recentEntry.id]);
+    expect(File(oldImagePath).existsSync(), isFalse);
+    expect(File(recentEntry.imagePath).existsSync(), isTrue);
+  });
 }

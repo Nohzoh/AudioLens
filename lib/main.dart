@@ -35,6 +35,14 @@ void main() async {
   final history = HistoryService();
   await history.init();
 
+  // T95: opt-in only (off by default) — deletes history entries older
+  // than the configured threshold once per app startup. A startup delay
+  // proportional to old-entry count is an acceptable tradeoff for not
+  // needing any background scheduling infrastructure.
+  if (settings.autoPurgeEnabled) {
+    await history.purgeEntriesOlderThan(settings.autoPurgeDays);
+  }
+
   // Tapping a "ready" notification for an entry whose playback was
   // deferred (app backgrounded when analysis finished) opens it and starts
   // playback immediately, reusing HistoryDetailScreen's own
