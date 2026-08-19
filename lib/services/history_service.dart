@@ -493,6 +493,28 @@ class HistoryService extends ChangeNotifier {
     }
   }
 
+  /// Persists which TTS engine spoke an entry's script when there's no
+  /// audio file to go with it (T93) — the native engine speaks live and
+  /// never produces a file to cache (see [HistoryEntry.hasLowQualityTts]'s
+  /// doc), so [saveAudioPath] — which requires a real file to copy — never
+  /// runs for it, leaving `ttsModel` unset ("Inconnu" in the UI) otherwise.
+  Future<void> saveTtsModel(int entryId, String ttsModel, {bool? ttsFallback}) async {
+    await _db!.update(
+      'history',
+      {
+        'ttsModel': ttsModel,
+        if (ttsFallback != null) 'ttsFallback': ttsFallback ? 1 : 0,
+      },
+      where: 'id = ?',
+      whereArgs: [entryId],
+    );
+    final idx = _entries.indexWhere((e) => e.id == entryId);
+    if (idx != -1) {
+      _entries[idx] = _entries[idx].copyWith(ttsModel: ttsModel, ttsFallback: ttsFallback);
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteEntry(int id) async {
     final entry = _entries.firstWhere((e) => e.id == id);
     try {

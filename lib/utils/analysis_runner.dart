@@ -66,6 +66,14 @@ Future<void> runAnalysisAndNavigate({
     final audioPath = guide.lastAudioPath;
     if (audioPath != null) {
       await history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel);
+    } else if (guide.state == GuideState.speaking) {
+      // TTS actually ran for this entry (native engine, which never
+      // produces a cacheable file — see HistoryService.saveTtsModel's doc)
+      // — persist which model spoke it even without an audio file (T93).
+      // Guarded on GuideState.speaking so a script-only entry (T16) or one
+      // deferred while backgrounded (T85) — where TTS never ran at all —
+      // doesn't get a stale ttsModel carried over from a previous entry.
+      await history.saveTtsModel(entryId, guide.lastTtsModel, ttsFallback: guide.ttsWasFallback);
     }
   } else {
     // Persist whatever location was actually resolved for this attempt
