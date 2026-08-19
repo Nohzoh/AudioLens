@@ -17,6 +17,22 @@ creating a new task, check the highest ID across both files
   - **Investigated first**: both build scripts pinned `"2.2.0"`, yet the build reported 2.2.10 — likely Gradle's default "highest version wins" dependency conflict resolution, since `kotlinx-coroutines-android`/`play-services` (added in the same patched file) can pull in a newer Kotlin stdlib transitively than the plugin version declared. Rather than chase the exact transitive culprit, pinned directly to the version Flutter actually wants (2.2.20) so it's compliant regardless of what Gradle resolves around it.
   - **What was done**: bumped the sed-patched Kotlin Gradle Plugin version from `2.2.0` to `2.2.20` in both `.github/workflows/build-android.yml` and `scripts/build_android_local.sh`.
 
+- [x] **T101** 📈 ⭐ - **Migrate `upload-google-play`'s deprecated `track:` input to `tracks:`**
+  - **Verified**: 2026-08-19 (PR #72)
+  - **What was done**: `r0adkll/upload-google-play@v1`'s `track:` input (added earlier tonight) was already flagged as deprecated in its own logs — renamed to `tracks:` (same value format, plain string; comma-separated for multiple tracks per the action's docs).
+
+- [x] **T99** 📈 ⭐ - **Rename the ambiguous "Modèle IA" label**
+  - **Verified**: 2026-08-19 (PR #71)
+  - **What was done**: renamed "Modèle IA"/"AI model" to "Modèle d'analyse"/"Analysis model" in all 3 places it appeared (player fallback banner, Settings config display, analysis detail debug screen) — it read as the only AI involved when TTS (Gemini TTS) is AI too.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 168/168
+
+- [x] **T93** 📈 ⭐⭐ - **TTS model not persisted when Gemini TTS falls back to native with no cached audio**
+  - **Verified**: 2026-08-19 (PR #70)
+  - **Found via real-device testing**: with the daily Gemini API quota exhausted, an analysis still completed (script generated), TTS fell back to the native engine as expected — but revisiting the entry in History showed "Modèle TTS : Inconnu" and only a "Générer l'audio" button, as if nothing had been recorded at all.
+  - **Root cause**: `saveAudioPath()` was the only place `ttsModel` got persisted, but it requires a real file to copy — native TTS legitimately never produces one, so the model used was silently dropped whenever there was nothing to cache.
+  - **What was done**: added `HistoryService.saveTtsModel()` to persist just the model (and fallback flag) independently of any audio file, called from `analysis_runner.dart` when TTS genuinely ran (`GuideState.speaking`) but produced no cacheable path — guarded so a script-only entry (T16) or one deferred while backgrounded (T85), where TTS never ran, doesn't get a stale value carried over from a previous entry.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 169/169
+
 - **2026-08-18 (T84 prep, PR #55)**: two of T84's (Play Store publication) technical prerequisites, done ahead of the full task since they're small and self-contained
   - **AAB build**: CI now also builds `build/app/outputs/bundle/release/app-release.aab` via a new "Build App Bundle (release)" step right after the existing APK build, in the same job — reuses the already-bootstrapped/patched `android/` project and signing config rather than a separate job. The `.apk` build stays too, for direct-sideload testing (`adb install`)
   - **versionCode**: both the APK and AAB builds now pass `--build-number=${{ github.run_number }}`, giving every release a strictly increasing `versionCode` (Play Console rejects any upload whose versionCode isn't higher than the last one) without needing to hand-edit `pubspec.yaml`'s committed `0.1.0+1` per upload
