@@ -36,6 +36,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Likely cause**: `analysis_runner.dart`'s `runAnalysisAndNavigate()` only calls `history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel)` `if (audioPath != null)` — but native TTS legitimately never produces a cached file (by design, see `AudioGuideService._getLastWavPath`'s doc), so `ttsModel` never gets persisted for that case even though `guide.lastTtsModel` ('native-tts') is known right after the call. The missing "Générer l'audio" → cached-file behavior for native TTS is expected/by design; the missing `ttsModel` value is the actual bug.
   - **Fix direction**: persist `ttsModel` (and `ttsFallback`) independently of whether `audioPath` is non-null, instead of gating the whole call on `audioPath != null`.
 
+- [ ] **T95** 📈 ⭐⭐⭐ - **Optional auto-purge of history after N days**
+  - **Added**: 2026-08-19
+  - **Source**: UX feedback from a closed-testing tester (fast turnaround — first feedback within minutes of the invite).
+  - **Ask**: a Settings option to automatically delete photos, scripts, and audio for history entries older than N days (user-configurable). Default stays **manual only** (no auto-purge) — this only kicks in if the user explicitly opts in and picks a value.
+  - **Related**: this is the broader retention-policy scope that was deliberately descoped from **T45** at the time (T45 stayed narrow — just the `image_picker` temp-file leak fix, not a general expiry policy) per explicit user choice. Revisit T45's notes before designing this.
+
 ---
 
 ## 🌱 Low impact / Long term
