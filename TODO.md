@@ -30,12 +30,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
-- [ ] **T99** 📈 ⭐ - **Rename the ambiguous "Modèle IA" label**
-  - **Added**: 2026-08-19
-  - **Source**: user's own observation while reviewing an analysis. "Modèle IA" (used for the image-analysis/script-generation model) reads as if it's the only AI involved, when TTS ("Modèle TTS") is also AI (Gemini TTS) — confusing side by side.
-  - **Locations found**: `about_analysis_screen.dart:75` (hardcoded, this screen is out of scope for T67's l10n extraction), `lib/l10n/app_fr.arb`'s `settingsConfigModel` (Settings' active-config display), and `playerAiFallbackMessage` ("Modèle IA : {model} (fallback)" banner in the player). All three should probably be renamed together for consistency.
-  - **Direction**: something like "Modèle d'analyse" (analysis model) — clearly distinct from "Modèle TTS" without implying it's the only AI in the pipeline.
-
 - [ ] **T100** 📈 ⭐ - **Bump the pinned Kotlin version (deprecation warning in CI)**
   - **Added**: 2026-08-19
   - **Source**: full log review of the first successful `workflow_dispatch` Play Store publish run (build 32287754331), requested after the user spotted a Kotlin warning live in the logs.

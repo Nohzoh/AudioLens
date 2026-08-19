@@ -53,7 +53,7 @@
   "playerSave": "Sauvegarder",
   "playerTextCopied": "Texte copié",
   "playerCopy": "Copier",
-  "playerAiFallbackMessage": "Modèle IA : {model} (fallback)",
+  "playerAiFallbackMessage": "Modèle d'analyse : {model} (fallback)",
   "@playerAiFallbackMessage": {
     "placeholders": {
       "model": {"type": "String"}
@@ -126,7 +126,7 @@
       "value": {"type": "String"}
     }
   },
-  "settingsConfigModel": "Modèle IA",
+  "settingsConfigModel": "Modèle d'analyse",
   "settingsConfigFallbacks": "Fallbacks",
   "settingsConfigTtsModel": "Modèle TTS",
   "settingsConfigTtsVoice": "Voix TTS",

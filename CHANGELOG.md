@@ -11,6 +11,11 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T99** 📈 ⭐ - **Rename the ambiguous "Modèle IA" label**
+  - **Verified**: 2026-08-19 (PR #71)
+  - **What was done**: renamed "Modèle IA"/"AI model" to "Modèle d'analyse"/"Analysis model" in all 3 places it appeared (player fallback banner, Settings config display, analysis detail debug screen) — it read as the only AI involved when TTS (Gemini TTS) is AI too.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 168/168
+
 - [x] **T93** 📈 ⭐⭐ - **TTS model not persisted when Gemini TTS falls back to native with no cached audio**
   - **Verified**: 2026-08-19 (PR #70)
   - **Found via real-device testing**: with the daily Gemini API quota exhausted, an analysis still completed (script generated), TTS fell back to the native engine as expected — but revisiting the entry in History showed "Modèle TTS : Inconnu" and only a "Générer l'audio" button, as if nothing had been recorded at all.
