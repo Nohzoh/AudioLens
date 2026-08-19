@@ -394,17 +394,38 @@ class HistoryService extends ChangeNotifier {
     }
   }
 
-  /// Mark a pending entry as failed
-  Future<void> failEntry(int entryId) async {
+  /// Mark a pending entry as failed. [gpsLatitude]/[gpsLongitude]/[gpsSource]
+  /// persist whatever location was actually resolved for this attempt
+  /// (live GPS, EXIF, or a manually picked map point) so a later retry can
+  /// reuse it instead of re-resolving the device's current location from
+  /// scratch — same rationale as [addCapturedEntry] (T78), for the case
+  /// where the location was known but the analysis itself failed.
+  Future<void> failEntry(
+    int entryId, {
+    double? gpsLatitude,
+    double? gpsLongitude,
+    String? gpsSource,
+  }) async {
     await _db!.update(
       'history',
-      {'status': AnalysisStatus.failed.name, 'title': 'Analyse échouée'},
+      {
+        'status': AnalysisStatus.failed.name,
+        'title': 'Analyse échouée',
+        if (gpsLatitude != null) 'gpsLatitude': gpsLatitude,
+        if (gpsLongitude != null) 'gpsLongitude': gpsLongitude,
+        if (gpsSource != null) 'gpsSource': gpsSource,
+      },
       where: 'id = ?',
       whereArgs: [entryId],
     );
     final idx = _entries.indexWhere((e) => e.id == entryId);
     if (idx != -1) {
-      _entries[idx] = _entries[idx].copyWith(status: AnalysisStatus.failed);
+      _entries[idx] = _entries[idx].copyWith(
+        status: AnalysisStatus.failed,
+        gpsLatitude: gpsLatitude,
+        gpsLongitude: gpsLongitude,
+        gpsSource: gpsSource,
+      );
       notifyListeners();
     }
   }

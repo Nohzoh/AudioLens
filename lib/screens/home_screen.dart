@@ -177,6 +177,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Retries a failed analysis, reusing whatever location was resolved for
+  /// the original attempt (live GPS, EXIF, or a manually picked map point)
+  /// instead of re-resolving the device's current position from scratch —
+  /// see HistoryService.failEntry's doc.
   Future<void> _retryAnalysis(HistoryEntry entry) async {
     final imageFile = File(entry.imagePath);
     if (!imageFile.existsSync()) {
@@ -186,7 +190,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    await _runAnalysis(imageFile: imageFile, entryId: entry.id!, source: 'retry');
+    await _runAnalysis(
+      imageFile: imageFile,
+      entryId: entry.id!,
+      source: 'retry',
+      knownCoordinates: knownCoordinatesFromEntry(entry),
+    );
   }
 
   /// Launches the analysis for a captured entry (T78), using the raw GPS
@@ -200,20 +209,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    ({double lat, double lon, String source})? knownCoordinates;
-    if (entry.gpsLatitude != null && entry.gpsLongitude != null) {
-      knownCoordinates = (
-        lat: entry.gpsLatitude!,
-        lon: entry.gpsLongitude!,
-        source: entry.gpsSource ?? 'realtime',
-      );
-    }
-
     await _runAnalysis(
       imageFile: imageFile,
       entryId: entry.id!,
       source: 'captured',
-      knownCoordinates: knownCoordinates,
+      knownCoordinates: knownCoordinatesFromEntry(entry),
     );
   }
 
