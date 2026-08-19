@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import '../utils/analysis_runner.dart';
 import '../services/exif_location_service.dart';
@@ -12,6 +13,7 @@ import '../services/history_service.dart';
 import '../services/location_service.dart';
 import '../services/remote_config_service.dart';
 import '../services/settings_service.dart';
+import '../services/share_intent_service.dart';
 import '../widgets/kofi_button.dart';
 import 'history_screen.dart';
 import 'map_picker_screen.dart';
@@ -26,18 +28,38 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   LocationPermissionStatus _permissionStatus = LocationPermissionStatus.granted;
+  StreamSubscription<String>? _shareIntentSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkLocationPermission();
+    _initShareIntentHandling();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _shareIntentSubscription?.cancel();
     super.dispose();
+  }
+
+  /// T97: picks up a photo shared to AudioLens from another app, both for
+  /// a cold start (app launched directly by the share) and a warm start
+  /// (app was already running when the share arrived).
+  Future<void> _initShareIntentHandling() async {
+    final initialPath = await ShareIntentService.getInitialSharedImage();
+    if (initialPath != null) await _handleSharedImage(initialPath);
+    _shareIntentSubscription =
+        ShareIntentService.sharedImageStream.listen(_handleSharedImage);
+  }
+
+  Future<void> _handleSharedImage(String path) async {
+    if (!mounted) return;
+    final imageFile = File(path);
+    if (!imageFile.existsSync()) return;
+    await _processImageForAnalysis(imageFile, analysisSource: 'share');
   }
 
   // Re-check permission when user comes back from settings
@@ -53,11 +75,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) setState(() => _permissionStatus = status);
   }
 
-  ImageSource? _lastSource;
-
   Future<void> _pickImage(ImageSource source, {bool analyzeNow = true}) async {
-    _lastSource = source;
-    final history = context.read<HistoryService>();
     final picker = ImagePicker();
     final cfg = RemoteConfigService.current;
     final xFile = await picker.pickImage(
@@ -74,13 +92,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    // A gallery photo could be old, or from anywhere — unlike a fresh
-    // camera capture, falling back to the device's current position when
-    // there's no EXIF GPS would be misleading. Offer picking the real
-    // spot on a map instead (T87); if declined, behavior is unchanged
-    // (LocationContextResolver falls back to real-time GPS as before).
+    await _processImageForAnalysis(
+      imageFile,
+      analysisSource: source == ImageSource.camera ? 'camera' : 'gallery',
+    );
+  }
+
+  /// Processes an image file as an analysis input — shared by the gallery/
+  /// camera picker (_pickImage) and incoming shared photos (T97), both of
+  /// which need the same "check EXIF, offer the map picker if there's
+  /// none, save as a pending entry, launch analysis" flow.
+  Future<void> _processImageForAnalysis(
+    File imageFile, {
+    required String analysisSource, // 'camera' | 'gallery' | 'share'
+  }) async {
+    final history = context.read<HistoryService>();
+
+    // A gallery/shared photo could be old, or from anywhere — unlike a
+    // fresh camera capture, falling back to the device's current position
+    // when there's no EXIF GPS would be misleading. Offer picking the
+    // real spot on a map instead (T87); if declined, behavior is
+    // unchanged (LocationContextResolver falls back to real-time GPS).
     ({double lat, double lon, String source})? knownCoordinates;
-    if (source == ImageSource.gallery) {
+    if (analysisSource != 'camera') {
       final exifCoords = await ExifLocationService.readGpsFromImage(imageFile);
       if (exifCoords == null && mounted) {
         final picked = await Navigator.push<LatLng>(
@@ -95,16 +129,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!mounted) return;
 
     final pendingEntry = await history.addPendingEntry(imagePath: imageFile.path);
-    final analysisSource = _lastSource == ImageSource.camera ? 'camera' : 'gallery';
     await _runAnalysis(
       imageFile: imageFile,
       entryId: pendingEntry.id!,
       source: analysisSource,
       knownCoordinates: knownCoordinates,
-      // imageFile is image_picker's own temp capture — addPendingEntry
-      // already copied it to permanent history storage, so once
-      // PlayerScreen is done with it (display + "save to gallery"), it's
-      // just an orphaned temp file (T45).
+      // imageFile is a temp file (image_picker's own capture, or a copy
+      // extracted from a share intent) — addPendingEntry already copied
+      // it to permanent history storage, so once PlayerScreen is done
+      // with it (display + "save to gallery"), it's just an orphaned
+      // temp file (T45).
       isTempImage: true,
     );
   }

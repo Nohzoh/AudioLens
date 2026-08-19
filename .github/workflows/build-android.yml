@@ -205,7 +205,13 @@ jobs:
           if ! grep -q 'AnalysisForegroundService' $MANIFEST; then
             sed -i 's|</application>|    <service android:name=".AnalysisForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>\n    </application>|' $MANIFEST
           fi
-          echo "✅ Manifest patched (allowBackup=false, TTS engine query, foreground service)"
+          # T97: register as a share target for photos from other apps
+          # (Gallery, etc.) — a second intent-filter on the same activity,
+          # right after the existing MAIN/LAUNCHER one.
+          if ! grep -q 'android.intent.action.SEND' $MANIFEST; then
+            sed -i 's|</intent-filter>|</intent-filter>\n            <intent-filter>\n                <action android:name="android.intent.action.SEND"/>\n                <category android:name="android.intent.category.DEFAULT"/>\n                <data android:mimeType="image/*"/>\n            </intent-filter>|' $MANIFEST
+          fi
+          echo "✅ Manifest patched (allowBackup=false, TTS engine query, foreground service, share target)"
 
       - name: Add FileProvider
         run: |
