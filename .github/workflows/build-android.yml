@@ -251,8 +251,13 @@ jobs:
         run: |
           echo "=== build.gradle.kts ==="
           cat android/app/build.gradle.kts
-          echo "=== key.properties ==="
-          cat android/key.properties 2>/dev/null || echo "NOT FOUND"
+          # key.properties holds the real keystore passwords in plaintext —
+          # never dump its contents to CI logs, only confirm it exists.
+          if [ -f android/key.properties ]; then
+            echo "=== key.properties: present ==="
+          else
+            echo "=== key.properties: NOT FOUND ==="
+          fi
 
       - name: Get dependencies
         run: flutter pub get 2>&1 | tee /tmp/pub_get.txt && cat /tmp/pub_get.txt | tail -30

@@ -42,7 +42,7 @@ Future<void> runAnalysisAndNavigate({
   AppLogger.info('result: ${result?.title}');
   AppLogger.info('aiModel: ${guide.actualAiModel} / ${guide.lastAiModel}');
   AppLogger.info('gpsSource: ${guide.lastGpsSource}');
-  AppLogger.info('gpsLat: ${guide.lastGpsLatitude}');
+  AppLogger.info('gpsResolved: ${guide.lastGpsLatitude != null}');
   AppLogger.info('wikipedia: ${guide.lastWikipediaUsed}');
   AppLogger.info('duration: ${guide.lastAnalysisDurationMs}');
 
