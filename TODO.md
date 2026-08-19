@@ -30,6 +30,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
+- [ ] **T122** 📈 ⭐ - **History detail's "Générer l'audio"/play button floats awkwardly in photo mode**
+  - **Added**: 2026-08-20
+  - **Source**: user, real device screenshot (`history_screen.dart`'s photo-mode toggle).
+  - **Finding**: entering photo mode (the image_outlined/article_outlined icon in the top bar) is meant to keep just the play/generate button visible over the photo (T94, deliberate — matches `player_screen.dart`'s intent of keeping playback controllable). But the implementation differs from `player_screen.dart`: there, the play/pause control lives as a small icon in the top bar, always naturally positioned; here, it's a full-width `FilledButton` at the end of a scrollable `Column` whose other children (title/date/actions/script) are hidden via `if (!_photoMode)` — with that content gone, the button collapses to sit high up over the middle of the photo instead of anchored at the bottom, looking like a stray/leftover element rather than an intentional control.
+  - **Fix**: anchor the button to the bottom of the screen regardless of photo mode (e.g. move it outside the conditionally-shrinking scroll content, similar in spirit to how the top bar icons stay fixed), rather than letting its position depend on how much other content is currently hidden.
+
 - [ ] **T103** 📈 ⭐⭐ - **`flutter_secure_storage` is two major versions behind (9.2.4 → 11.0.0)**
   - **Added**: 2026-08-19
   - **Source**: full-project security/tech-debt audit (`flutter pub outdated`).
