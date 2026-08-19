@@ -30,10 +30,25 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
+- [ ] **T93** 📈 ⭐⭐ - **TTS model not persisted when Gemini TTS falls back to native with no cached audio**
+  - **Added**: 2026-08-19
+  - **Found via real-device testing**: with the daily Gemini API quota exhausted, an analysis still completes (script generated), TTS falls back to the native engine as expected — but revisiting the entry in History later shows "Modèle TTS : Inconnu" and only a "Générer l'audio" button, as if nothing had been recorded at all.
+  - **Likely cause**: `analysis_runner.dart`'s `runAnalysisAndNavigate()` only calls `history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel)` `if (audioPath != null)` — but native TTS legitimately never produces a cached file (by design, see `AudioGuideService._getLastWavPath`'s doc), so `ttsModel` never gets persisted for that case even though `guide.lastTtsModel` ('native-tts') is known right after the call. The missing "Générer l'audio" → cached-file behavior for native TTS is expected/by design; the missing `ttsModel` value is the actual bug.
+  - **Fix direction**: persist `ttsModel` (and `ttsFallback`) independently of whether `audioPath` is non-null, instead of gating the whole call on `audioPath != null`.
+
 ---
 
 ## 🌱 Low impact / Long term
 *Backlog for future improvements*
+
+- [ ] **T92** 🌱 ⭐⭐ - **Map picker: lock north-up orientation + add a place search field**
+  - **Added**: 2026-08-19
+  - **Found via real-device testing**: on `map_picker_screen.dart` (shown when a gallery photo has no EXIF GPS, T87), the map currently rotates to follow device heading instead of staying fixed with north up — disorienting when picking a precise spot.
+  - Also requested: a text field to search/jump to a place by name, instead of only manual pan/tap — faster to reach a specific address or landmark than scrolling the map by hand.
+
+- [ ] **T94** 🌱 ⭐⭐ - **History detail screen: add the "view photo full-screen while listening" toggle**
+  - **Added**: 2026-08-19
+  - **Found via real-device testing**: `player_screen.dart` has a toggle (`_photoMode`, the `Icons.image_outlined`/`Icons.article_outlined` icon) to show the plain photo instead of the script overlay while listening — `history_screen.dart`'s `HistoryDetailScreen` (replaying a past entry) has no equivalent, even though it plays audio the same way. Feature-parity gap between the two playback screens.
 
 - [ ] **T84** 🌱 ⭐⭐⭐⭐⭐ - **Play Store publication**
   - **Added**: 2026-08-15
