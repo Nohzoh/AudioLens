@@ -42,6 +42,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Ask**: a Settings option to automatically delete photos, scripts, and audio for history entries older than N days (user-configurable). Default stays **manual only** (no auto-purge) — this only kicks in if the user explicitly opts in and picks a value.
   - **Related**: this is the broader retention-policy scope that was deliberately descoped from **T45** at the time (T45 stayed narrow — just the `image_picker` temp-file leak fix, not a general expiry policy) per explicit user choice. Revisit T45's notes before designing this.
 
+- [ ] **T98** 📈 ⭐⭐⭐ - **Enable R8 minification/resource shrinking for release builds**
+  - **Added**: 2026-08-19
+  - **Source**: Play Console's "App optimization" score on the uploaded AAB — "Faible" (Low), with minification/R8 config showing "-"/"Aucune métadonnée R8". Confirms and closes the earlier open question about the "no deobfuscation file" warning: it's not that a mapping.txt existed and wasn't uploaded, R8 isn't actually enabled at all on this build (the 1% obfuscation shown is negligible/incidental, not real ProGuard/R8).
+  - **Not blocking** — this is a quality/size score, not a review requirement.
+  - **Risk to plan for**: enabling `isMinifyEnabled`/`isShrinkResources` in the release `buildType` is a classic Flutter footgun if ProGuard keep rules are incomplete — native plugins relying on reflection (ML Kit GenAI for Gemini Nano, JSON model parsing, etc.) can silently break at runtime in ways `flutter analyze`/`flutter test` won't catch. Needs a full real-device pass across every feature (both AI providers, both TTS engines, history, settings) after enabling, not just a build-success check. Also remember to upload the resulting `mapping.txt` to Play Console once this ships (closes the earlier warning for real).
+
 - [ ] **T97** 📈 ⭐⭐⭐ - **Register AudioLens as a share target for photos**
   - **Added**: 2026-08-19
   - **Source**: closed-testing tester feedback.
