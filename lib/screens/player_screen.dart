@@ -9,6 +9,7 @@ import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
+import '../widgets/report_content_button.dart';
 
 class PlayerScreen extends StatefulWidget {
   final File imageFile;
@@ -285,6 +286,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         Text(l10n.playerCopy, style: const TextStyle(color: Colors.white38, fontSize: 12)),
                                       ]),
                                     ),
+                                  ),
+                                  // Report content (T91)
+                                  ReportContentButton(
+                                    title: guide.lastResult!.title,
+                                    script: guide.lastResult!.script,
+                                    aiModel: guide.actualAiModel ?? guide.lastAiModel,
+                                    date: DateTime.now(),
                                   ),
                                 ],
                               ),

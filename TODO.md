@@ -67,18 +67,11 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
     - ~~Create a Google Play developer account~~ — **done 2026-08-19**
     - Play Console **"Data safety" form**: precisely declare what data is collected/shared (photo, GPS, script) and with whom (Google Gemini)
     - **Sensitive permissions declaration** — justification required by Google, location is especially scrutinized. Now also covers `FOREGROUND_SERVICE`/`FOREGROUND_SERVICE_DATA_SYNC`/`POST_NOTIFICATIONS` (T85), not just `ACCESS_FINE_LOCATION`/`CAMERA` as originally noted
-    - ~~Check whether Play policies on generative AI apps require additional disclosures~~ — **checked 2026-08-19**: disclosure wording/placement isn't prescriptive (our T72 disclaimer on the player screen already satisfies the "reasonably understood" bar), but the policy does require an in-app content-reporting mechanism — split out as **T91** below
+    - ~~Check whether Play policies on generative AI apps require additional disclosures~~ — **checked 2026-08-19**: disclosure wording/placement isn't prescriptive (our T72 disclaimer on the player screen already satisfies the "reasonably understood" bar), but the policy does require an in-app content-reporting mechanism — split out as T91, **done 2026-08-19**
   - **To do, technical**:
     - **Store listing assets**: short/long description, category, feature graphic, screenshots — draft short/long description ready (see conversation 2026-08-19), needs review + a feature graphic + real device screenshots
     - **Automate the upload** to Play Console from CI (e.g. `r0adkll/upload-google-play` action, service account key as a secret) — only once the developer account exists
   - **Recommendation**: don't treat this as a single task — the non-technical steps (account, privacy policy, data safety) are blocking and must happen before any CI automation
-
-- [ ] **T91** 🌱 ⭐⭐ - **In-app AI content reporting/flagging**
-  - **Added**: 2026-08-19
-  - **Context**: Google Play's AI-Generated Content policy requires generative-AI apps to have an in-app way for users to report/flag offensive or problematic AI output "without needing to exit the app" (found while researching T84 — [policy source](https://support.google.com/googleplay/android-developer/answer/13985936)). AudioLens currently has no such mechanism anywhere (player screen, history detail).
-  - **User's concern**: a "real" reporting feature sounds like it needs a backend to receive/store reports, which doesn't exist today (AudioLens is 100% client + third-party APIs, no server component) and the user doesn't want to build one for this.
-  - **Backend-free option worth considering**: a "Signaler ce contenu" action that opens a pre-filled `mailto:` (or similar) to the developer contact address with the script text attached — arguably satisfies the policy's wording without any server. Whether Google's review actually accepts an email-based flow (vs. requiring something that stays fully in-app) isn't confirmed by the policy text found so far — worth a closer look or a support inquiry before building it.
-  - Not blocking initial submission investigation, but likely needed before/around actual submission for review.
 
 - [ ] **T77** 🌱 ⭐⭐⭐⭐⭐ - **iOS port** — get AudioLens running on iPhone
   - **Added**: 2026-08-15

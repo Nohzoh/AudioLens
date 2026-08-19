@@ -136,5 +136,16 @@
   "playerAiGeneratedDisclosure": "AI-generated content",
   "aboutAnalysisAiDisclaimer": "AI-generated content: this analysis' script and voice were created automatically by an artificial intelligence model.",
 
-  "settingsViewSourceCode": "View source code"
+  "settingsViewSourceCode": "View source code",
+
+  "reportContentButton": "Report",
+  "reportContentDialogTitle": "Report this content?",
+  "reportContentDialogBody": "If this AI-generated commentary contains something inappropriate or incorrect, you can report it to us by email.",
+  "reportContentReasonHint": "Describe the issue (optional)",
+  "reportContentReasonNotSpecified": "(not specified)",
+  "reportContentCancel": "Cancel",
+  "reportContentSend": "Send",
+  "reportContentEmailSubject": "AudioLens content report",
+  "reportContentEmailBody": "Reported content: {title}\nAI model: {aiModel}\nDate: {date}\n\nScript:\n{script}\n\nReason given by the user:\n{reason}",
+  "reportContentNoEmailApp": "No email app found. Contact us at {email}"
 }

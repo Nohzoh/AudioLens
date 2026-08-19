@@ -11,6 +11,13 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T91** 🌱 ⭐⭐ - **In-app AI content reporting/flagging**
+  - **Verified**: 2026-08-19 (PR #76)
+  - **Context**: Google Play's AI-Generated Content policy requires generative-AI apps to have an in-app way for users to report/flag offensive or problematic AI output "without needing to exit the app". AudioLens had no such mechanism anywhere.
+  - **What was done**: a "Signaler" action (flag icon, matching the existing Save/Copy action rows) on both `player_screen.dart` and `history_screen.dart`'s detail view — opens a confirmation dialog with an optional free-text reason, then composes a pre-filled `mailto:` to the developer contact address (script, AI model, date, reason) via `url_launcher`, with a snackbar fallback if no mail app is available. No backend — the user sees exactly what's sent before choosing to send it. New shared `lib/widgets/report_content_button.dart`, fully localized (FR/EN).
+  - **Known residual risk**: whether Google's review accepts an email-handoff flow as satisfying "without needing to exit the app" isn't confirmed — noted at design time, to revisit if flagged during the production-access review.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 169/169
+
 - [x] **T96** 📈 ⭐ - **History detail screen: top bar icons hard to see over bright photos**
   - **Verified**: 2026-08-19 (PR #74)
   - **Source**: closed-testing tester — didn't recognize the top-right delete icon as a trash icon over a bright-sky photo.
