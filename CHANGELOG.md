@@ -11,6 +11,10 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T101** 📈 ⭐ - **Migrate `upload-google-play`'s deprecated `track:` input to `tracks:`**
+  - **Verified**: 2026-08-19 (PR #72)
+  - **What was done**: `r0adkll/upload-google-play@v1`'s `track:` input (added earlier tonight) was already flagged as deprecated in its own logs — renamed to `tracks:` (same value format, plain string; comma-separated for multiple tracks per the action's docs).
+
 - **2026-08-18 (T84 prep, PR #55)**: two of T84's (Play Store publication) technical prerequisites, done ahead of the full task since they're small and self-contained
   - **AAB build**: CI now also builds `build/app/outputs/bundle/release/app-release.aab` via a new "Build App Bundle (release)" step right after the existing APK build, in the same job — reuses the already-bootstrapped/patched `android/` project and signing config rather than a separate job. The `.apk` build stays too, for direct-sideload testing (`adb install`)
   - **versionCode**: both the APK and AAB builds now pass `--build-number=${{ github.run_number }}`, giving every release a strictly increasing `versionCode` (Play Console rejects any upload whose versionCode isn't higher than the last one) without needing to hand-edit `pubspec.yaml`'s committed `0.1.0+1` per upload
