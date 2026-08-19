@@ -42,6 +42,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Ask**: a Settings option to automatically delete photos, scripts, and audio for history entries older than N days (user-configurable). Default stays **manual only** (no auto-purge) — this only kicks in if the user explicitly opts in and picks a value.
   - **Related**: this is the broader retention-policy scope that was deliberately descoped from **T45** at the time (T45 stayed narrow — just the `image_picker` temp-file leak fix, not a general expiry policy) per explicit user choice. Revisit T45's notes before designing this.
 
+- [ ] **T96** 📈 ⭐ - **History detail screen: top bar icons hard to see over bright photos**
+  - **Added**: 2026-08-19
+  - **Source**: same closed-testing tester — didn't recognize the top-right delete icon as a trash icon over a bright-sky photo (Kelpies of Falkirk screenshot).
+  - **Root cause found**: `history_screen.dart`'s `HistoryDetailScreen` gradient overlay (`stops: [0.3, 1.0]`, black 0.3→0.95) barely darkens the very top of the screen — the top bar (back/info/delete icons) sits almost directly on the raw photo, no real scrim behind it. The delete icon's `Colors.redAccent` also has weak contrast against light backgrounds (sky, light walls) specifically.
+  - **Fix direction**: strengthen the gradient's top stop (e.g. add a stop near 0.0 with non-zero opacity, not just starting at 0.3) and/or give each top-bar icon its own subtle circular scrim background, independent of photo content — same class of fix would help **T94**'s planned photo-mode toggle icon too, worth doing together.
+
 ---
 
 ## 🌱 Low impact / Long term
