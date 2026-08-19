@@ -11,6 +11,17 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T96** 📈 ⭐ - **History detail screen: top bar icons hard to see over bright photos**
+  - **Verified**: 2026-08-19 (PR #74)
+  - **Source**: closed-testing tester — didn't recognize the top-right delete icon as a trash icon over a bright-sky photo.
+  - **Root cause**: the gradient overlay barely darkened the very top of the screen, and the delete icon's `Colors.redAccent` had weak contrast against light backgrounds specifically.
+  - **What was done**: 3-stop vignette gradient (protects both the top bar and bottom text without hiding the photo's middle) plus a dedicated `_ScrimIconButton` — a subtle circular dark scrim behind every top-bar icon, independent of the gradient or photo content. Bundled with T94 since both touch the same top bar.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 168/168
+
+- [x] **T94** 🌱 ⭐⭐ - **History detail screen: add the "view photo full-screen while listening" toggle**
+  - **Verified**: 2026-08-19 (PR #74)
+  - **What was done**: added the same `_photoMode` toggle `player_screen.dart` already has (icon in the top bar, `Icons.image_outlined`/`Icons.article_outlined`, reusing its `playerShowText`/`playerPhotoMode` l10n keys) — hides title/date/location/action buttons/script/upgrade button while photo mode is on, but keeps the play/generate button visible so playback stays controllable, matching the player screen's own behavior.
+
 - **2026-08-18 (T84 prep, PR #55)**: two of T84's (Play Store publication) technical prerequisites, done ahead of the full task since they're small and self-contained
   - **AAB build**: CI now also builds `build/app/outputs/bundle/release/app-release.aab` via a new "Build App Bundle (release)" step right after the existing APK build, in the same job — reuses the already-bootstrapped/patched `android/` project and signing config rather than a separate job. The `.apk` build stays too, for direct-sideload testing (`adb install`)
   - **versionCode**: both the APK and AAB builds now pass `--build-number=${{ github.run_number }}`, giving every release a strictly increasing `versionCode` (Play Console rejects any upload whose versionCode isn't higher than the last one) without needing to hand-edit `pubspec.yaml`'s committed `0.1.0+1` per upload

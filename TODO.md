@@ -72,12 +72,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Ask**: appear in Android's native "Share via..." sheet when sharing a photo from another app (Gallery, another photo viewer, etc.), instead of only being reachable by opening AudioLens first and picking from the gallery.
   - **Implementation direction**: an `ACTION_SEND`/`ACTION_SEND_MULTIPLE` (`image/*`) intent filter in `AndroidManifest.xml`, plus handling the incoming share intent on the Flutter side (likely via a package like `receive_sharing_intent`, or a native platform-channel handler like the app's other integrations). Needs a UX decision: land on Home with the shared photo pre-loaded (closer to today's gallery-pick flow, including the no-EXIF-GPS map picker path), or jump straight into analysis.
 
-- [ ] **T96** 📈 ⭐ - **History detail screen: top bar icons hard to see over bright photos**
-  - **Added**: 2026-08-19
-  - **Source**: same closed-testing tester — didn't recognize the top-right delete icon as a trash icon over a bright-sky photo (Kelpies of Falkirk screenshot).
-  - **Root cause found**: `history_screen.dart`'s `HistoryDetailScreen` gradient overlay (`stops: [0.3, 1.0]`, black 0.3→0.95) barely darkens the very top of the screen — the top bar (back/info/delete icons) sits almost directly on the raw photo, no real scrim behind it. The delete icon's `Colors.redAccent` also has weak contrast against light backgrounds (sky, light walls) specifically.
-  - **Fix direction**: strengthen the gradient's top stop (e.g. add a stop near 0.0 with non-zero opacity, not just starting at 0.3) and/or give each top-bar icon its own subtle circular scrim background, independent of photo content — same class of fix would help **T94**'s planned photo-mode toggle icon too, worth doing together.
-
 ---
 
 ## 🌱 Low impact / Long term
@@ -87,10 +81,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Added**: 2026-08-19
   - **Found via real-device testing**: on `map_picker_screen.dart` (shown when a gallery photo has no EXIF GPS, T87), the map currently rotates to follow device heading instead of staying fixed with north up — disorienting when picking a precise spot.
   - Also requested: a text field to search/jump to a place by name, instead of only manual pan/tap — faster to reach a specific address or landmark than scrolling the map by hand.
-
-- [ ] **T94** 🌱 ⭐⭐ - **History detail screen: add the "view photo full-screen while listening" toggle**
-  - **Added**: 2026-08-19
-  - **Found via real-device testing**: `player_screen.dart` has a toggle (`_photoMode`, the `Icons.image_outlined`/`Icons.article_outlined` icon) to show the plain photo instead of the script overlay while listening — `history_screen.dart`'s `HistoryDetailScreen` (replaying a past entry) has no equivalent, even though it plays audio the same way. Feature-parity gap between the two playback screens.
 
 - [ ] **T84** 🌱 ⭐⭐⭐⭐⭐ - **Play Store publication**
   - **Added**: 2026-08-15
