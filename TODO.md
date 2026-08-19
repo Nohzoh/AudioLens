@@ -42,13 +42,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Locations found**: `about_analysis_screen.dart:75` (hardcoded, this screen is out of scope for T67's l10n extraction), `lib/l10n/app_fr.arb`'s `settingsConfigModel` (Settings' active-config display), and `playerAiFallbackMessage` ("Modèle IA : {model} (fallback)" banner in the player). All three should probably be renamed together for consistency.
   - **Direction**: something like "Modèle d'analyse" (analysis model) — clearly distinct from "Modèle TTS" without implying it's the only AI in the pipeline.
 
-- [ ] **T100** 📈 ⭐ - **Bump the pinned Kotlin version (deprecation warning in CI)**
-  - **Added**: 2026-08-19
-  - **Source**: full log review of the first successful `workflow_dispatch` Play Store publish run (build 32287754331), requested after the user spotted a Kotlin warning live in the logs.
-  - **Warning**: "Flutter support for your project's Kotlin version (2.2.10) will soon be dropped. Please upgrade your Kotlin version to a version of at least 2.2.20 soon."
-  - **Odd detail to check first**: both `.github/workflows/build-android.yml` and `scripts/build_android_local.sh` patch the Kotlin version to `"2.2.0"` via sed — but the build actually reports **2.2.10**, not 2.2.0. Worth understanding why the patched value doesn't match the observed one (maybe the patch isn't matching/applying as intended, or another source overrides it) before just bumping the target string, so the fix doesn't just paper over a patch that silently isn't taking effect.
-  - **Fix**: update the pinned version in both places to `>= 2.2.20` once the discrepancy above is understood.
-
 - [ ] **T101** 📈 ⭐ - **Migrate `upload-google-play`'s deprecated `track:` input to `tracks:`**
   - **Added**: 2026-08-19
   - **Source**: same log review — `##[warning]WARNING!! 'track' is deprecated and will be removed in a future release. Please migrate to 'tracks'`, from `r0adkll/upload-google-play@v1` (added earlier tonight in `build-android.yml`'s "Publish to Play Store" step).
