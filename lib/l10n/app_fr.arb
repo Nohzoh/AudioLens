@@ -161,5 +161,30 @@
   "playerAiGeneratedDisclosure": "Contenu généré par IA",
   "aboutAnalysisAiDisclaimer": "Contenu généré par IA : le script de cette analyse et sa voix ont été créés automatiquement par un modèle d'intelligence artificielle.",
 
-  "settingsViewSourceCode": "Voir le code source"
+  "settingsViewSourceCode": "Voir le code source",
+
+  "reportContentButton": "Signaler",
+  "reportContentDialogTitle": "Signaler ce contenu ?",
+  "reportContentDialogBody": "Si ce commentaire généré par IA contient quelque chose d'inapproprié ou incorrect, vous pouvez nous le signaler par e-mail.",
+  "reportContentReasonHint": "Préciser le problème (optionnel)",
+  "reportContentReasonNotSpecified": "(non précisé)",
+  "reportContentCancel": "Annuler",
+  "reportContentSend": "Envoyer",
+  "reportContentEmailSubject": "Signalement de contenu AudioLens",
+  "reportContentEmailBody": "Contenu signalé : {title}\nModèle IA : {aiModel}\nDate : {date}\n\nScript :\n{script}\n\nMotif indiqué par l'utilisateur :\n{reason}",
+  "@reportContentEmailBody": {
+    "placeholders": {
+      "title": {"type": "String"},
+      "aiModel": {"type": "String"},
+      "date": {"type": "String"},
+      "script": {"type": "String"},
+      "reason": {"type": "String"}
+    }
+  },
+  "reportContentNoEmailApp": "Aucune application e-mail trouvée. Contactez-nous à {email}",
+  "@reportContentNoEmailApp": {
+    "placeholders": {
+      "email": {"type": "String"}
+    }
+  }
 }

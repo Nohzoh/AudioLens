@@ -12,6 +12,7 @@ import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
+import '../widgets/report_content_button.dart';
 import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
 
@@ -622,6 +623,13 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                               fontSize: 12)),
                                     ]),
                               ),
+                            ),
+                            // Report content (T91)
+                            ReportContentButton(
+                              title: live.title,
+                              script: live.script,
+                              aiModel: live.aiModel,
+                              date: live.analyzedAt ?? live.createdAt,
                             ),
                           ],
                         ),
