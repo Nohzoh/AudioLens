@@ -42,6 +42,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Ask**: a Settings option to automatically delete photos, scripts, and audio for history entries older than N days (user-configurable). Default stays **manual only** (no auto-purge) — this only kicks in if the user explicitly opts in and picks a value.
   - **Related**: this is the broader retention-policy scope that was deliberately descoped from **T45** at the time (T45 stayed narrow — just the `image_picker` temp-file leak fix, not a general expiry policy) per explicit user choice. Revisit T45's notes before designing this.
 
+- [ ] **T97** 📈 ⭐⭐⭐ - **Register AudioLens as a share target for photos**
+  - **Added**: 2026-08-19
+  - **Source**: closed-testing tester feedback.
+  - **Ask**: appear in Android's native "Share via..." sheet when sharing a photo from another app (Gallery, another photo viewer, etc.), instead of only being reachable by opening AudioLens first and picking from the gallery.
+  - **Implementation direction**: an `ACTION_SEND`/`ACTION_SEND_MULTIPLE` (`image/*`) intent filter in `AndroidManifest.xml`, plus handling the incoming share intent on the Flutter side (likely via a package like `receive_sharing_intent`, or a native platform-channel handler like the app's other integrations). Needs a UX decision: land on Home with the shared photo pre-loaded (closer to today's gallery-pick flow, including the no-EXIF-GPS map picker path), or jump straight into analysis.
+
 - [ ] **T96** 📈 ⭐ - **History detail screen: top bar icons hard to see over bright photos**
   - **Added**: 2026-08-19
   - **Source**: same closed-testing tester — didn't recognize the top-right delete icon as a trash icon over a bright-sky photo (Kelpies of Falkirk screenshot).
