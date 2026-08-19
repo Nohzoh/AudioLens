@@ -36,6 +36,30 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Likely cause**: `analysis_runner.dart`'s `runAnalysisAndNavigate()` only calls `history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel)` `if (audioPath != null)` — but native TTS legitimately never produces a cached file (by design, see `AudioGuideService._getLastWavPath`'s doc), so `ttsModel` never gets persisted for that case even though `guide.lastTtsModel` ('native-tts') is known right after the call. The missing "Générer l'audio" → cached-file behavior for native TTS is expected/by design; the missing `ttsModel` value is the actual bug.
   - **Fix direction**: persist `ttsModel` (and `ttsFallback`) independently of whether `audioPath` is non-null, instead of gating the whole call on `audioPath != null`.
 
+- [ ] **T95** 📈 ⭐⭐⭐ - **Optional auto-purge of history after N days**
+  - **Added**: 2026-08-19
+  - **Source**: UX feedback from a closed-testing tester (fast turnaround — first feedback within minutes of the invite).
+  - **Ask**: a Settings option to automatically delete photos, scripts, and audio for history entries older than N days (user-configurable). Default stays **manual only** (no auto-purge) — this only kicks in if the user explicitly opts in and picks a value.
+  - **Related**: this is the broader retention-policy scope that was deliberately descoped from **T45** at the time (T45 stayed narrow — just the `image_picker` temp-file leak fix, not a general expiry policy) per explicit user choice. Revisit T45's notes before designing this.
+
+- [ ] **T98** 📈 ⭐⭐⭐ - **Enable R8 minification/resource shrinking for release builds**
+  - **Added**: 2026-08-19
+  - **Source**: Play Console's "App optimization" score on the uploaded AAB — "Faible" (Low), with minification/R8 config showing "-"/"Aucune métadonnée R8". Confirms and closes the earlier open question about the "no deobfuscation file" warning: it's not that a mapping.txt existed and wasn't uploaded, R8 isn't actually enabled at all on this build (the 1% obfuscation shown is negligible/incidental, not real ProGuard/R8).
+  - **Not blocking** — this is a quality/size score, not a review requirement.
+  - **Risk to plan for**: enabling `isMinifyEnabled`/`isShrinkResources` in the release `buildType` is a classic Flutter footgun if ProGuard keep rules are incomplete — native plugins relying on reflection (ML Kit GenAI for Gemini Nano, JSON model parsing, etc.) can silently break at runtime in ways `flutter analyze`/`flutter test` won't catch. Needs a full real-device pass across every feature (both AI providers, both TTS engines, history, settings) after enabling, not just a build-success check. Also remember to upload the resulting `mapping.txt` to Play Console once this ships (closes the earlier warning for real).
+
+- [ ] **T97** 📈 ⭐⭐⭐ - **Register AudioLens as a share target for photos**
+  - **Added**: 2026-08-19
+  - **Source**: closed-testing tester feedback.
+  - **Ask**: appear in Android's native "Share via..." sheet when sharing a photo from another app (Gallery, another photo viewer, etc.), instead of only being reachable by opening AudioLens first and picking from the gallery.
+  - **Implementation direction**: an `ACTION_SEND`/`ACTION_SEND_MULTIPLE` (`image/*`) intent filter in `AndroidManifest.xml`, plus handling the incoming share intent on the Flutter side (likely via a package like `receive_sharing_intent`, or a native platform-channel handler like the app's other integrations). Needs a UX decision: land on Home with the shared photo pre-loaded (closer to today's gallery-pick flow, including the no-EXIF-GPS map picker path), or jump straight into analysis.
+
+- [ ] **T96** 📈 ⭐ - **History detail screen: top bar icons hard to see over bright photos**
+  - **Added**: 2026-08-19
+  - **Source**: same closed-testing tester — didn't recognize the top-right delete icon as a trash icon over a bright-sky photo (Kelpies of Falkirk screenshot).
+  - **Root cause found**: `history_screen.dart`'s `HistoryDetailScreen` gradient overlay (`stops: [0.3, 1.0]`, black 0.3→0.95) barely darkens the very top of the screen — the top bar (back/info/delete icons) sits almost directly on the raw photo, no real scrim behind it. The delete icon's `Colors.redAccent` also has weak contrast against light backgrounds (sky, light walls) specifically.
+  - **Fix direction**: strengthen the gradient's top stop (e.g. add a stop near 0.0 with non-zero opacity, not just starting at 0.3) and/or give each top-bar icon its own subtle circular scrim background, independent of photo content — same class of fix would help **T94**'s planned photo-mode toggle icon too, worth doing together.
+
 ---
 
 ## 🌱 Low impact / Long term
