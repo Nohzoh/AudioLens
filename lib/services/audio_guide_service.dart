@@ -5,7 +5,7 @@ import '../utils/error_sanitizer.dart';
 import '../models/guide_error.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'ai_service.dart';
 import 'analysis_foreground_service.dart';
 import 'audio_ready_notifier.dart';
@@ -289,6 +289,7 @@ class AudioGuideService extends ChangeNotifier {
     bool generateAudio = true,
     ({double lat, double lon, String source})? knownCoordinates,
     String? style,
+    int? entryId,
   }) async {
     if (_analysisInProgress || _state == GuideState.cancelling) {
       _errorMessage = 'Une analyse est déjà en cours.';
@@ -416,7 +417,24 @@ class AudioGuideService extends ChangeNotifier {
         return null;
       }
 
-      if (generateAudio) {
+      // Skip auto-play if the app was backgrounded while analysis ran — the
+      // user may be doing something else by the time it finishes, so
+      // starting audio unprompted would be disruptive. The script is kept
+      // ready instead, and the "ready" notification below carries the
+      // entry ID so tapping it starts playback deliberately. `null`
+      // lifecycleState (never set — the case in every test that doesn't
+      // simulate backgrounding) is treated as foreground, not backgrounded.
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      final isBackgrounded = lifecycle != null && lifecycle != AppLifecycleState.resumed;
+      var deferredForBackground = false;
+
+      if (generateAudio && isBackgrounded) {
+        deferredForBackground = true;
+        _lastAudioPath = null;
+        _state = GuideState.scriptReady;
+        _progressEstimator.stepProgress = 1.0;
+        notifyListeners();
+      } else if (generateAudio) {
         await _synthesizeAndPlay(_lastResult!.script);
       } else {
         _lastAudioPath = null;
@@ -430,7 +448,9 @@ class AudioGuideService extends ChangeNotifier {
         _progressEstimator.analyzeDurations,
       );
 
-      await _audioReadyNotifier.notifyReady();
+      await _audioReadyNotifier.notifyReady(
+        payload: deferredForBackground ? entryId?.toString() : null,
+      );
       return _lastResult;
     } catch (e) {
       _progressEstimator.stop();
