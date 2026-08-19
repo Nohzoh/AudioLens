@@ -36,6 +36,12 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Likely cause**: `analysis_runner.dart`'s `runAnalysisAndNavigate()` only calls `history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel)` `if (audioPath != null)` — but native TTS legitimately never produces a cached file (by design, see `AudioGuideService._getLastWavPath`'s doc), so `ttsModel` never gets persisted for that case even though `guide.lastTtsModel` ('native-tts') is known right after the call. The missing "Générer l'audio" → cached-file behavior for native TTS is expected/by design; the missing `ttsModel` value is the actual bug.
   - **Fix direction**: persist `ttsModel` (and `ttsFallback`) independently of whether `audioPath` is non-null, instead of gating the whole call on `audioPath != null`.
 
+- [ ] **T99** 📈 ⭐ - **Rename the ambiguous "Modèle IA" label**
+  - **Added**: 2026-08-19
+  - **Source**: user's own observation while reviewing an analysis. "Modèle IA" (used for the image-analysis/script-generation model) reads as if it's the only AI involved, when TTS ("Modèle TTS") is also AI (Gemini TTS) — confusing side by side.
+  - **Locations found**: `about_analysis_screen.dart:75` (hardcoded, this screen is out of scope for T67's l10n extraction), `lib/l10n/app_fr.arb`'s `settingsConfigModel` (Settings' active-config display), and `playerAiFallbackMessage` ("Modèle IA : {model} (fallback)" banner in the player). All three should probably be renamed together for consistency.
+  - **Direction**: something like "Modèle d'analyse" (analysis model) — clearly distinct from "Modèle TTS" without implying it's the only AI in the pipeline.
+
 - [ ] **T95** 📈 ⭐⭐⭐ - **Optional auto-purge of history after N days**
   - **Added**: 2026-08-19
   - **Source**: UX feedback from a closed-testing tester (fast turnaround — first feedback within minutes of the invite).
