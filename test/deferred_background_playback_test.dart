@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,13 +23,25 @@ class _FakeNativeTts extends NativeTtsService {
 }
 
 class _FakeGeminiTts extends GeminiTtsService {
-  _FakeGeminiTts() : super(apiKey: 'test-key');
+  _FakeGeminiTts({this.failSynthesis = false}) : super(apiKey: 'test-key');
 
+  final bool failSynthesis;
   bool speakCalled = false;
+  bool synthesizeToFileCalled = false;
 
   @override
   Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     speakCalled = true;
+  }
+
+  // Overridden so the background pre-synthesis path (T85 follow-up) never
+  // makes a real network call in tests — the base implementation isn't
+  // stubbed here since only speak() was previously exercised in this file.
+  @override
+  Future<void> synthesizeToFile(String text, String outputPath, {CancelToken? cancelToken}) async {
+    synthesizeToFileCalled = true;
+    if (failSynthesis) throw Exception('Gemini TTS 429');
+    await File(outputPath).writeAsBytes([0, 1, 2, 3]);
   }
 }
 
@@ -66,6 +79,8 @@ GeminiApiService _successApi() => GeminiApiService(
       dioClient: fakeDio((_) async => (statusCode: 200, body: _successJson())),
     );
 
+const _pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -74,9 +89,16 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     tmpDir = Directory.systemTemp.createTempSync('deferred-background-playback');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_pathProviderChannel, (call) async {
+      if (call.method == 'getTemporaryDirectory') return tmpDir.path;
+      return null;
+    });
   });
 
   tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_pathProviderChannel, null);
     tmpDir.deleteSync(recursive: true);
   });
 
@@ -87,8 +109,9 @@ void main() {
   }
 
   group('analyzeAndPlay auto-play deferred while backgrounded', () {
-    test('backgrounded: ends scriptReady, TTS never called, notifyReady carries entryId',
-        () async {
+    test(
+        'backgrounded with Gemini TTS: pre-synthesizes (not played), '
+        'notifyReady carries entryId', () async {
       TestWidgetsFlutterBinding.instance
           .handleAppLifecycleStateChanged(AppLifecycleState.paused);
 
@@ -107,11 +130,60 @@ void main() {
 
       expect(result, isNotNull);
       expect(service.state, GuideState.scriptReady);
-      expect(service.lastAudioPath, isNull);
+      // Pre-synthesized and cached so a notification tap can play it
+      // instantly, but never actually played while backgrounded.
+      expect(geminiTts.synthesizeToFileCalled, isTrue);
+      expect(service.lastAudioPath, isNotNull);
+      expect(service.lastTtsModel, 'gemini-tts');
       expect(native.speakCalled, isFalse);
       expect(geminiTts.speakCalled, isFalse);
       expect(notifier.readyCalls, 1);
       expect(notifier.lastPayload, '42');
+    });
+
+    test('backgrounded, pre-synthesis fails: falls back to script-only, no crash', () async {
+      TestWidgetsFlutterBinding.instance
+          .handleAppLifecycleStateChanged(AppLifecycleState.paused);
+
+      final native = _FakeNativeTts();
+      final geminiTts = _FakeGeminiTts(failSynthesis: true);
+      final notifier = _SpyAudioReadyNotifier();
+      final service = AudioGuideService(
+        nativeTtsService: native,
+        geminiTtsService: geminiTts,
+        geminiApiService: _successApi(),
+        audioReadyNotifier: notifier,
+      );
+      await service.setActiveProvider(AIProvider.geminiApi);
+
+      final result = await service.analyzeAndPlay(tempImage(), entryId: 5);
+
+      expect(result, isNotNull);
+      expect(service.state, GuideState.scriptReady);
+      expect(service.lastAudioPath, isNull);
+      expect(notifier.lastPayload, '5');
+    });
+
+    test('backgrounded without Gemini TTS configured: script-only as before', () async {
+      TestWidgetsFlutterBinding.instance
+          .handleAppLifecycleStateChanged(AppLifecycleState.paused);
+
+      final native = _FakeNativeTts();
+      final notifier = _SpyAudioReadyNotifier();
+      final service = AudioGuideService(
+        nativeTtsService: native,
+        geminiApiService: _successApi(),
+        audioReadyNotifier: notifier,
+      );
+      await service.setActiveProvider(AIProvider.geminiApi);
+
+      final result = await service.analyzeAndPlay(tempImage(), entryId: 6);
+
+      expect(result, isNotNull);
+      expect(service.state, GuideState.scriptReady);
+      expect(service.lastAudioPath, isNull);
+      expect(native.speakCalled, isFalse);
+      expect(notifier.lastPayload, '6');
     });
 
     test('resumed: auto-play unaffected (regression guard)', () async {
