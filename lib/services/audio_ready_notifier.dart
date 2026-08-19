@@ -14,6 +14,14 @@ class AudioReadyNotifier {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
+  /// Called with the entry ID carried in a "ready" notification's payload
+  /// when the user taps it — only set when that entry's playback was
+  /// deferred because the app was backgrounded at completion time. The app
+  /// process stays alive throughout thanks to the T85 foreground service,
+  /// so this plain (foreground) callback is enough — no background isolate
+  /// handling needed.
+  void Function(int entryId)? onPlayRequested;
+
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
     try {
@@ -21,6 +29,10 @@ class AudioReadyNotifier {
         settings: const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_notification'),
         ),
+        onDidReceiveNotificationResponse: (response) {
+          final id = int.tryParse(response.payload ?? '');
+          if (id != null) onPlayRequested?.call(id);
+        },
       );
       _initialized = true;
     } catch (_) {
@@ -42,8 +54,18 @@ class AudioReadyNotifier {
     }
   }
 
-  Future<void> notifyReady() =>
-      _show(title: 'AudioLens', body: 'Votre audioguide est prêt.');
+  /// [payload], when set, is the ID of a history entry whose playback was
+  /// deferred because the app was backgrounded when it finished — tapping
+  /// the notification then starts playback for it (see [onPlayRequested]).
+  /// Left null for the deliberate "script only" case (T16) — that
+  /// notification must not trigger auto-play.
+  Future<void> notifyReady({String? payload}) => _show(
+        title: 'AudioLens',
+        body: payload != null
+            ? 'Votre audioguide est prêt. Touchez pour l\'écouter.'
+            : 'Votre audioguide est prêt.',
+        payload: payload,
+      );
 
   Future<void> notifyFailed() =>
       _show(title: 'AudioLens', body: 'L\'analyse a échoué.');
@@ -51,7 +73,7 @@ class AudioReadyNotifier {
   /// Only shows while the user isn't actively looking at the app —
   /// avoids a redundant popup on top of a screen already displaying the
   /// same result.
-  Future<void> _show({required String title, required String body}) async {
+  Future<void> _show({required String title, required String body, String? payload}) async {
     if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
       return;
     }
@@ -69,6 +91,7 @@ class AudioReadyNotifier {
             priority: Priority.high,
           ),
         ),
+        payload: payload,
       );
     } catch (_) {
       // Best-effort — see class doc.

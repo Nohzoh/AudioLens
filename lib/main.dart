@@ -6,9 +6,11 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'l10n/app_localizations.dart';
 import 'services/settings_service.dart';
 import 'services/audio_guide_service.dart';
+import 'services/audio_ready_notifier.dart';
 import 'services/history_service.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/history_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,11 +26,31 @@ void main() async {
   final settings = SettingsService();
   await settings.init();
 
-  final guide = AudioGuideService();
+  final navigatorKey = GlobalKey<NavigatorState>();
+  final audioReadyNotifier = AudioReadyNotifier();
+
+  final guide = AudioGuideService(audioReadyNotifier: audioReadyNotifier);
   await guide.init();
 
   final history = HistoryService();
   await history.init();
+
+  // Tapping a "ready" notification for an entry whose playback was
+  // deferred (app backgrounded when analysis finished) opens it and starts
+  // playback immediately, reusing HistoryDetailScreen's own
+  // generate-then-play logic (_toggleAudio) instead of duplicating it.
+  audioReadyNotifier.onPlayRequested = (entryId) {
+    HistoryEntry? entry;
+    try {
+      entry = history.entries.firstWhere((e) => e.id == entryId);
+    } catch (_) {
+      entry = null;
+    }
+    if (entry == null) return;
+    navigatorKey.currentState?.push(MaterialPageRoute(
+      builder: (_) => HistoryDetailScreen(entry: entry!, autoPlay: true),
+    ));
+  };
 
   runApp(
     MultiProvider(
@@ -37,17 +59,19 @@ void main() async {
         ChangeNotifierProvider.value(value: guide),
         ChangeNotifierProvider.value(value: history),
       ],
-      child: const AudioGuideApp(),
+      child: AudioGuideApp(navigatorKey: navigatorKey),
     ),
   );
 }
 
 class AudioGuideApp extends StatelessWidget {
-  const AudioGuideApp({super.key});
+  final GlobalKey<NavigatorState> navigatorKey;
+  const AudioGuideApp({super.key, required this.navigatorKey});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'AudioLens',
       debugShowCheckedModeBanner: false,
       localizationsDelegates: AppLocalizations.localizationsDelegates,

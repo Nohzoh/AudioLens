@@ -281,7 +281,12 @@ class _HistoryCard extends StatelessWidget {
 
 class HistoryDetailScreen extends StatefulWidget {
   final HistoryEntry entry;
-  const HistoryDetailScreen({super.key, required this.entry});
+  /// Starts playback automatically once this screen is shown — used when
+  /// arriving here from a "ready" notification tap for an analysis that
+  /// finished while the app was backgrounded (playback was deliberately
+  /// deferred, see [AudioGuideService.analyzeAndPlay]'s background gating).
+  final bool autoPlay;
+  const HistoryDetailScreen({super.key, required this.entry, this.autoPlay = false});
 
   @override
   State<HistoryDetailScreen> createState() => _HistoryDetailScreenState();
@@ -317,6 +322,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.autoPlay) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _toggleAudio());
+    }
   }
 
   @override
