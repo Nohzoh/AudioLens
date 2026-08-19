@@ -42,12 +42,13 @@ result = re.sub(r'(android\s*\{)', r'\1' + signing_config, result, count=1)
 
 # Replace the entire buildTypes block with one that has both debug and release
 #
-# isMinifyEnabled/isShrinkResources are explicitly disabled on release (T79):
-# R8 fails on this project with "Missing class javax.lang.model..." coming
-# from a shaded autovalue/javapoet dependency, pulled in transitively by the
-# native MediaPipe/genai dependencies added above — which are themselves
-# dead code slated for removal in T82. Revisit re-enabling minification once
-# those are gone.
+# isMinifyEnabled/isShrinkResources were disabled on release (T79) because R8
+# failed with "Missing class javax.lang.model..." from a shaded
+# autovalue/javapoet dependency pulled in transitively by the native
+# MediaPipe/genai dependencies added above. T82 dropped that MediaPipe
+# dependency (dead code, only used by the removed MediaPipePlugin.kt), which
+# was the actual blocker — re-enabled here (T98) with proguard-rules.pro
+# covering the remaining reflection-based dependencies (ML Kit GenAI, Gson).
 new_build_types = (
     'buildTypes {\n'
     '        debug {\n'
@@ -55,8 +56,9 @@ new_build_types = (
     '        }\n'
     '        release {\n'
     '            signingConfig = signingConfigs.getByName("audiolens")\n'
-    '            isMinifyEnabled = false\n'
-    '            isShrinkResources = false\n'
+    '            isMinifyEnabled = true\n'
+    '            isShrinkResources = true\n'
+    '            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")\n'
     '        }\n'
     '    }'
 )

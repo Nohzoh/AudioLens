@@ -30,11 +30,7 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
-- [ ] **T98** 📈 ⭐⭐⭐ - **Enable R8 minification/resource shrinking for release builds**
-  - **Added**: 2026-08-19
-  - **Source**: Play Console's "App optimization" score on the uploaded AAB — "Faible" (Low), with minification/R8 config showing "-"/"Aucune métadonnée R8". Confirms and closes the earlier open question about the "no deobfuscation file" warning: it's not that a mapping.txt existed and wasn't uploaded, R8 isn't actually enabled at all on this build (the 1% obfuscation shown is negligible/incidental, not real ProGuard/R8).
-  - **Not blocking** — this is a quality/size score, not a review requirement.
-  - **Risk to plan for**: enabling `isMinifyEnabled`/`isShrinkResources` in the release `buildType` is a classic Flutter footgun if ProGuard keep rules are incomplete — native plugins relying on reflection (ML Kit GenAI for Gemini Nano, JSON model parsing, etc.) can silently break at runtime in ways `flutter analyze`/`flutter test` won't catch. Needs a full real-device pass across every feature (both AI providers, both TTS engines, history, settings) after enabling, not just a build-success check. Also remember to upload the resulting `mapping.txt` to Play Console once this ships (closes the earlier warning for real).
+*No medium-impact tasks in progress.*
 
 ---
 

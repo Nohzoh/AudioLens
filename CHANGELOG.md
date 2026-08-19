@@ -11,6 +11,14 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T98** 📈 ⭐⭐⭐ - **Enable R8 minification/resource shrinking for release builds**
+  - **Verified**: 2026-08-19 (PR #79)
+  - **Source**: Play Console's "App optimization" score on the uploaded AAB — "Faible" (Low), R8 not enabled at all.
+  - **What was done**: `isMinifyEnabled`/`isShrinkResources` flipped to `true` on the release `buildType` (`scripts/patch_signing.py`, the only place that writes it — `android/` isn't committed, see repo convention). The blocker that forced them off in the first place (T79 — R8 failing on a shaded autovalue/javapoet dependency pulled in transitively by `com.google.mediapipe:tasks-genai`) no longer applies: T82 dropped that dependency entirely (dead code, only used by the already-removed `MediaPipePlugin.kt`). New `android/app/proguard-rules.pro` (tracked, unlike the rest of `android/app/`) keeps ML Kit GenAI (`com.google.mlkit.**`, `com.google.android.gms.**`) and Gson's reflection-based (de)serialization, both used transitively by the Gemini Nano dependency. CI also now uploads the resulting `mapping.txt` as a build artifact and feeds it to the Play Store publish step (`r0adkll/upload-google-play`'s `mappingFile` input) so future crash reports can be de-obfuscated.
+  - **Verification performed from this environment**: real signed release APK **and** AAB built locally end-to-end with R8 enabled (`isMinifyEnabled`/`isShrinkResources` true, same patch scripts as CI) — both succeed, `mapping.txt` is generated. Installed the release APK on an Android emulator and smoke-tested: cold start (no `FATAL EXCEPTION` in logcat), Settings screen (remote GitHub config fetch + JSON parsing renders correctly), the existing encrypted Gemini API key decrypts via `flutter_secure_storage`, the new T95 auto-purge toggle persists a `SharedPreferences` write/read across navigation, History screen opens an empty `sqflite` database with no error, and `flutter_tts` successfully dispatches to the system TTS engine.
+  - **Not verified (needs the user's physical device)**: the actual Gemini Nano / ML Kit GenAI on-device inference path — AICore isn't available on the test emulator, so this specific reflection-heavy path (the main risk this task called out) couldn't be exercised here. Also not covered: Gemini API cloud analysis (needs a live network key + quota), Gemini/native TTS full audio generation and playback, camera capture, and share-target intent handling (T97). Please run a real device pass across at least: taking a photo → analysis (both AI engines) → audio generation (both TTS engines) → playback, before the next Play Store publish.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 172/172
+
 - [x] **T97** 📈 ⭐⭐⭐ - **Register AudioLens as a share target for photos**
   - **Verified**: 2026-08-19 (PR #77)
   - **Source**: closed-testing tester feedback.

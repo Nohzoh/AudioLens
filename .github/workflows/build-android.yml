@@ -357,6 +357,16 @@ jobs:
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
+      # T98: R8 is enabled on release builds — upload the mapping file so
+      # crash reports (Play Console, Crashlytics, etc.) can be de-obfuscated.
+      - name: Upload R8 mapping file
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: AudioLens-release-${{ github.sha }}-mapping
+          path: build/app/outputs/mapping/release/mapping.txt
+          retention-days: 30
+
       # Deliberately manual-only (workflow_dispatch), not on every push/PR —
       # an automatic upload on every merge would spam closed-testing testers
       # with a new build for every doc/config change. Track is chosen at
@@ -372,3 +382,4 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           tracks: ${{ inputs.track }}
           status: completed
+          mappingFile: build/app/outputs/mapping/release/mapping.txt
