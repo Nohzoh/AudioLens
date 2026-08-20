@@ -8,6 +8,7 @@
   "mapPickerConfirm": "Confirmer cet emplacement",
 
   "onboardingApiKeyRequired": "Entrez votre clé API",
+  "secureStorageUnavailable": "Impossible d'enregistrer votre clé en sécurité sur cet appareil. Réessayez, ou redémarrez l'application.",
   "onboardingTagline": "Prenez une photo d'un lieu,\nobtenez une explication audio instantanée.",
   "onboardingApiKeySectionTitle": "Clé API Gemini",
   "onboardingApiKeyInstructions": "Obtenez une clé gratuite sur aistudio.google.com\nRubrique \"API Keys\"",

@@ -46,10 +46,14 @@ class SettingsService extends ChangeNotifier {
     _autoPurgeDays = _prefs.getInt('auto_purge_days') ?? 30;
   }
 
+  /// Throws [SecureStorageUnavailableException] if the key can't be
+  /// persisted securely — onboarding isn't marked complete in that case,
+  /// so the user sees the same screen again rather than an app that
+  /// silently forgot its key was ever entered.
   Future<void> completeOnboarding({required String apiKey}) async {
+    await SecureKeyStorage.writeApiKey(apiKey);
     _geminiApiKey = apiKey;
     _isOnboardingComplete = true;
-    await SecureKeyStorage.writeApiKey(apiKey);
     await _prefs.setBool('onboarding_complete', true);
     notifyListeners();
   }

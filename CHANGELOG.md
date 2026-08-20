@@ -11,6 +11,12 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T124** 📈 ⭐⭐ - **Stop degrading the Gemini API key to plaintext when secure storage fails**
+  - **Verified**: 2026-08-20
+  - **Source**: comparison with an external audit (ChatGPT) — flagged that `SecureKeyStorage.writeApiKey` silently fell back to plaintext `SharedPreferences` if the platform's secure storage (Android Keystore-backed) failed to write. Presented to the user as a robustness-vs-security tradeoff; the user chose strict security.
+  - **What was done**: `writeApiKey` now throws `SecureStorageUnavailableException` instead of falling back — nothing is persisted insecurely. `AudioGuideService.setGeminiApiKey` and `SettingsService.completeOnboarding` now persist before mutating in-memory state, so a failed write never leaves the app pretending the key was saved. Both call sites (`settings_screen.dart`, `onboarding_screen.dart`) catch the exception and show a clear, localized message (FR/EN) instead of the app silently continuing.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 178/178 (2 new: a real write/read round-trip against a mocked secure-storage channel, and a write-failure case asserting no plaintext trace is ever left in `SharedPreferences`)
+
 - [x] **T123** 🔥 ⭐⭐⭐ - **Sign `config.json` (Ed25519) so CI/repo write access alone can't push a trusted config change**
   - **Verified**: 2026-08-20
   - **Source**: comparison with an external audit (ChatGPT) — flagged the remote config's integrity as protected only by a host allowlist, not a signature. Discussed and refined into a specific threat model: `config.json` is fetched live at every app startup and applied immediately to every installed build, unlike a code change (which must go through CI, review, staged rollout) — it's the fastest path an attacker with repo/CI write access would have to affect real users.

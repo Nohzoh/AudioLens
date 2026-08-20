@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/remote_config_service.dart';
+import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import '../utils/build_info.dart';
@@ -55,12 +56,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     final guide = context.read<AudioGuideService>();
-    await guide.setGeminiApiKey(_apiKeyController.text.trim());
-    setState(() => _saving = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.settingsSaved)),
-      );
+    try {
+      await guide.setGeminiApiKey(_apiKeyController.text.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.settingsSaved)),
+        );
+      }
+    } on SecureStorageUnavailableException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.secureStorageUnavailable),
+            backgroundColor: Colors.orange.shade800,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
