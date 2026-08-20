@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../services/app_update_service.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/location_service.dart';
@@ -29,6 +30,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   LocationPermissionStatus _permissionStatus = LocationPermissionStatus.granted;
   StreamSubscription<String>? _shareIntentSubscription;
+  final _appUpdateService = AppUpdateService();
+  bool _updateReady = false;
 
   @override
   void initState() {
@@ -36,12 +39,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _checkLocationPermission();
     _initShareIntentHandling();
+    _appUpdateService.onReadyToInstall = () {
+      if (mounted) setState(() => _updateReady = true);
+    };
+    _appUpdateService.checkAndStartUpdate();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _shareIntentSubscription?.cancel();
+    _appUpdateService.dispose();
     super.dispose();
   }
 
@@ -404,6 +412,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ],
                 ),
                 const SizedBox(height: 8),
+
+                // T128: discreet, non-blocking banner shown once a
+                // background-downloaded Play Store update is ready to
+                // install — never a dialog, dismissible, doesn't gate
+                // any other action on this screen.
+                if (_updateReady) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.secondaryContainer
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.system_update,
+                            size: 18,
+                            color: theme.colorScheme.onSecondaryContainer),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            l10n.homeUpdateReadyBanner,
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => _appUpdateService.completeUpdate(),
+                          child: Text(l10n.homeUpdateRestart),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () =>
+                              setState(() => _updateReady = false),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
 
                 // Provider + location status row
                 Row(

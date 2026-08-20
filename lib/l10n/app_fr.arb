@@ -47,6 +47,8 @@
   "homeTapToRetry": "Appuyer pour réessayer",
   "homeTapToAnalyze": "Appuyer pour analyser",
   "homeEmptyStateHint": "Pointez votre appareil\nvers un lieu ou un monument",
+  "homeUpdateReadyBanner": "Une mise à jour est prête à être installée",
+  "homeUpdateRestart": "Redémarrer",
 
   "playerShowText": "Afficher le texte",
   "playerPhotoMode": "Mode photo",
