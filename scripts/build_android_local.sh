@@ -47,7 +47,7 @@ SDKMANAGER="$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | he
 echo "   sdkmanager: $SDKMANAGER"
 
 echo "==> Installation des composants SDK (idempotent, peut être long)"
-"$SDKMANAGER" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973"
+"$SDKMANAGER" --install "platform-tools" "platforms;android-37.0" "build-tools;37.0.0" "ndk;27.0.12077973"
 yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 
 echo "==> Bootstrap Android (flutter create)"
@@ -57,17 +57,21 @@ echo "==> Patch build.gradle.kts (SDK / NDK / dépendances natives)"
 FILE="android/app/build.gradle.kts"
 [ -f "$FILE" ] || FILE="android/app/build.gradle"
 
-$SED -i 's|^\s*compileSdk\s*=.*|    compileSdk = 36|' "$FILE"
+# compileSdk 37 (T103): flutter_secure_storage 11.x requires compileSdk
+# >= 37 (its AAR metadata check fails the build otherwise). targetSdk
+# stays at 36 — compileSdk (API surface available at compile time) and
+# targetSdk (runtime behavior opt-in) are independent.
+$SED -i 's|^\s*compileSdk\s*=.*|    compileSdk = 37|' "$FILE"
 $SED -i 's|^\s*minSdk\s*=.*|        minSdk = 26|' "$FILE"
 $SED -i 's|^\s*targetSdk\s*=.*|        targetSdk = 36|' "$FILE"
-$SED -i 's|^\s*compileSdkVersion\s.*|    compileSdkVersion 36|' "$FILE"
+$SED -i 's|^\s*compileSdkVersion\s.*|    compileSdkVersion 37|' "$FILE"
 $SED -i 's|^\s*minSdkVersion\s.*|        minSdkVersion 26|' "$FILE"
 $SED -i 's|^\s*targetSdkVersion\s.*|        targetSdkVersion 36|' "$FILE"
 
 if grep -q 'ndkVersion' "$FILE"; then
   $SED -i 's|ndkVersion = "[^"]*"|ndkVersion = "27.0.12077973"|; s|ndkVersion = flutter.ndkVersion|ndkVersion = "27.0.12077973"|' "$FILE"
 else
-  $SED -i '/compileSdk = 36/a\        ndkVersion = "27.0.12077973"' "$FILE"
+  $SED -i '/compileSdk = 37/a\        ndkVersion = "27.0.12077973"' "$FILE"
 fi
 
 # T82: com.google.mediapipe:tasks-genai dropped — only used by the dead
