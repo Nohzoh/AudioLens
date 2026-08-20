@@ -49,7 +49,8 @@ class TtsOrchestrator {
         // the native voice speaking a script the user asked to cancel (T70).
         if (ttsError is CancelledException) rethrow;
         wasRateLimited = ttsError is GeminiTtsRateLimitException;
-        AppLogger.error('Gemini TTS failed, falling back to native TTS: $ttsError');
+        AppLogger.error('Gemini TTS failed, falling back to native TTS: '
+            '${sanitizeError(ttsError.toString())}');
         try {
           await nativeTts.speak(script, cancelToken: cancelToken, speed: speed);
           return 'native-tts';
@@ -113,7 +114,8 @@ class TtsOrchestrator {
       await geminiTts.synthesizeToFile(chunks[0], chunkPaths[0]);
     } catch (ttsError) {
       wasRateLimited = ttsError is GeminiTtsRateLimitException;
-      AppLogger.error('Gemini TTS (chunk 0) failed, falling back to native TTS: $ttsError');
+      AppLogger.error('Gemini TTS (chunk 0) failed, falling back to native TTS: '
+          '${sanitizeError(ttsError.toString())}');
       try {
         await nativeTts.speak(script, cancelToken: cancelToken, speed: speed);
         return 'native-tts';
@@ -162,7 +164,8 @@ class TtsOrchestrator {
         if (ttsError != null) {
           wasRateLimited = ttsError is GeminiTtsRateLimitException;
           AppLogger.error(
-              'Gemini TTS (chunk ${i + 1}) failed, falling back to native TTS for the rest: $ttsError');
+              'Gemini TTS (chunk ${i + 1}) failed, falling back to native TTS for the rest: '
+              '${sanitizeError(ttsError.toString())}');
           final remaining = chunks.sublist(i + 1).join(' ');
           try {
             await nativeTts.speak(remaining, cancelToken: cancelToken, speed: speed);

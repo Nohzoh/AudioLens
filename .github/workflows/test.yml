@@ -64,5 +64,11 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      # T126: cheap heuristic backstop against reintroducing a log leak
+      # like the ones found in the 2026-08-19/20 security audits (GPS
+      # coordinate, API key via an unsanitized exception).
+      - name: Log hygiene check
+        run: python3 scripts/check_log_hygiene.py
+
       - name: Test
         run: flutter test
