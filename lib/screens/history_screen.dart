@@ -383,12 +383,20 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
     final audioPath = guide.lastAudioPath;
     if (audioPath != null && live.id != null) {
-      await history.saveAudioPath(
-        live.id!,
-        audioPath,
-        ttsModel: guide.lastTtsModel,
-        ttsFallback: guide.ttsWasFallback,
-      );
+      try {
+        await history.saveAudioPath(
+          live.id!,
+          audioPath,
+          ttsModel: guide.lastTtsModel,
+          ttsFallback: guide.ttsWasFallback,
+        );
+      } on HistoryStorageException catch (e) {
+        // Playback via guide already worked — only caching the audio
+        // file for next time failed (T116).
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        }
+      }
     }
   }
 

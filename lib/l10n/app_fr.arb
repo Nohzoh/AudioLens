@@ -33,6 +33,7 @@
   "homeLater": "Plus tard",
   "homeOpenSettings": "Ouvrir les paramètres",
   "homeImageNotFound": "Image introuvable",
+  "homeImageTooLarge": "Ce fichier est trop volumineux pour être analysé.",
   "homeTakePhoto": "Prendre une photo",
   "homeChooseFromGallery": "Choisir depuis la galerie",
   "homeCaptureOnly": "Capturer sans analyser",

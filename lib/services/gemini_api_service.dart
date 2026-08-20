@@ -4,6 +4,7 @@ import 'dart:io';
 import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 import '../utils/error_sanitizer.dart';
+import '../utils/image_downscale.dart';
 import 'package:dio/dio.dart' as dio;
 import 'ai_service.dart';
 import 'remote_config_service.dart';
@@ -43,7 +44,14 @@ class GeminiApiService implements AIService {
     String? style,
   }) async {
     final cfg = RemoteConfigService.current;
-    final imageBytes = await imageFile.readAsBytes();
+    // T113: downscale before upload — a full-res phone photo (10-20MB) is
+    // real memory pressure and, base64-encoded, ~33% bigger again over
+    // the wire. The original file (used for EXIF/history) is untouched.
+    final imageBytes = await downscaleForUpload(
+      imageFile,
+      maxWidth: cfg.imageMaxWidth,
+      quality: cfg.imageQuality,
+    );
     final base64Image = base64Encode(imageBytes);
 
     final contextPart = locationContext != null && locationContext.isNotEmpty
