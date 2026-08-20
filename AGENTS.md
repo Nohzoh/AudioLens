@@ -147,6 +147,14 @@ to summarize confidently on its own.
   - `GPS` — location events
   - `DB` — persistence/storage issues
 - **Never log secrets**: API keys, tokens, or sensitive user data
+  (coordinates, addresses...). Never log a caught exception's raw
+  `toString()` directly — wrap it in `sanitizeError()`
+  (`lib/utils/error_sanitizer.dart`) first, since a failed HTTP request's
+  exception message can carry the request URL, and this project's API
+  calls put the key in the URL's query string. CI runs
+  `scripts/check_log_hygiene.py` as a cheap heuristic backstop for this
+  (T126) — a genuine false positive can be suppressed with a
+  `// log-hygiene-ok: <reason>` comment near the flagged call.
 - **Keep logs** short, structured, and actionable
 - Ask: *"Can this issue be diagnosed from the in-app logs screen?"*
 
