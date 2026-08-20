@@ -6,6 +6,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    ignore:
+      # intl is pinned to an EXACT version by flutter_localizations (part
+      # of the Flutter SDK itself, not a free dependency) — even the
+      # latest stable Flutter release pins 0.20.2, so a direct pubspec
+      # bump can never resolve. It'll move on its own whenever the
+      # Flutter SDK version this project uses bumps its own intl pin.
+      - dependency-name: "intl"
 
   # GitHub Actions used in the workflows themselves.
   - package-ecosystem: "github-actions"
