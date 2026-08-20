@@ -11,6 +11,13 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T126** 📈 ⭐⭐ - **Log hygiene: audit + CI guardrail against logging sensitive data**
+  - **Verified**: 2026-08-20
+  - **Source**: external audit (ChatGPT) — flagged that the sanitizer covering API keys isn't applied consistently to every log call. Discussed whether this should be a one-off audit or an ongoing practice; landed on both — a one-time cleanup now, plus automated enforcement so it doesn't rely on remembering to re-audit.
+  - **What was done — audit**: reviewed every `AppLogger` call site in `lib/`. Found and fixed 8 places (`tts_orchestrator.dart` ×3, `gemini_api_service.dart`, `audio_guide_service.dart`, `secure_key_storage.dart` ×4 for consistency) that logged a raw caught exception's `toString()` directly — a real risk for the two in `TtsOrchestrator`/`GeminiApiService`, since a failed Gemini TTS/API HTTP request's exception can carry the request URL, and this project puts the API key in that URL's query string. All now go through the existing `sanitizeError()` helper first.
+  - **What was done — CI guardrail**: new `scripts/check_log_hygiene.py`, wired into `test.yml` — a heuristic (not exhaustive) scan of every `AppLogger` call for (a) a raw exception variable not wrapped in `sanitizeError()`, (b) suspiciously-named interpolated values (`latitude`, `password`, `token`, etc.). False positives are expected and suppressible with a `// log-hygiene-ok: <reason>` comment (used once, for the legitimate GPS-resolved boolean log). Documented in AGENTS.md's logging guidelines.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 178/178; `python3 scripts/check_log_hygiene.py` → no issues found
+
 - [x] **T125** 📈 ⭐ - **Enable Dependabot alerts/security updates and CodeQL scanning**
   - **Verified**: 2026-08-20
   - **Source**: external audit (ChatGPT) — flagged that the repo had no automated dependency vulnerability or code scanning. Confirmed via the GitHub API that Dependabot alerts were genuinely disabled before this.

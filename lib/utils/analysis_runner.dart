@@ -42,6 +42,8 @@ Future<void> runAnalysisAndNavigate({
   AppLogger.info('result: ${result?.title}');
   AppLogger.info('aiModel: ${guide.actualAiModel} / ${guide.lastAiModel}');
   AppLogger.info('gpsSource: ${guide.lastGpsSource}');
+  // log-hygiene-ok: this logs only whether GPS resolved (a bool), never
+  // the coordinate itself — see T102/T124.
   AppLogger.info('gpsResolved: ${guide.lastGpsLatitude != null}');
   AppLogger.info('wikipedia: ${guide.lastWikipediaUsed}');
   AppLogger.info('duration: ${guide.lastAnalysisDurationMs}');
