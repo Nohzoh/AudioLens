@@ -541,37 +541,45 @@ class _ProviderCard extends StatelessWidget {
           width: 1.5,
         ),
       ),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isActive
-              ? theme.colorScheme.primary
+      // ListTile paints its background/ink splashes on the nearest Material
+      // ancestor — without this, the outer DecoratedBox (from this
+      // AnimatedContainer) hides them, making the tap ripple invisible
+      // (Flutter's own debug assertion catches this; surfaced by T105's
+      // new settings_screen_test.dart, which actually exercises a tap).
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          leading: Icon(
+            icon,
+            color: isActive
+                ? theme.colorScheme.primary
+                : isAvailable
+                    ? Colors.white70
+                    : Colors.white24,
+          ),
+          title: Text(
+            name,
+            style: TextStyle(
+              color: isAvailable ? Colors.white : Colors.white38,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          subtitle: Text(
+            isAvailable ? description : '$description\n${l10n.settingsNotConfiguredSuffix}',
+            style: TextStyle(
+              color: isAvailable ? Colors.white54 : Colors.white24,
+              fontSize: 12,
+            ),
+          ),
+          trailing: isActive
+              ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
               : isAvailable
-                  ? Colors.white70
-                  : Colors.white24,
+                  ? const Icon(Icons.radio_button_unchecked,
+                      color: Colors.white38)
+                  : const Icon(Icons.lock_outline, color: Colors.white24),
+          onTap: onTap,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        title: Text(
-          name,
-          style: TextStyle(
-            color: isAvailable ? Colors.white : Colors.white38,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-        subtitle: Text(
-          isAvailable ? description : '$description\n${l10n.settingsNotConfiguredSuffix}',
-          style: TextStyle(
-            color: isAvailable ? Colors.white54 : Colors.white24,
-            fontSize: 12,
-          ),
-        ),
-        trailing: isActive
-            ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
-            : isAvailable
-                ? const Icon(Icons.radio_button_unchecked,
-                    color: Colors.white38)
-                : const Icon(Icons.lock_outline, color: Colors.white24),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
