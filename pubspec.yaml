@@ -29,6 +29,7 @@ dependencies:
   flutter_tts: ^4.2.5
   dio: ^5.11.0
   flutter_local_notifications: ^22.3.0
+  package_info_plus: ^10.2.1
   image: ^4.9.2
   cryptography: ^2.7.0
   in_app_update: ^5.0.0

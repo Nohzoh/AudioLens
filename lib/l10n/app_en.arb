@@ -105,6 +105,7 @@
   "settingsConfigDefaultOffline": "Default config (offline)",
   "settingsUpdatedAt": "Updated: {date}",
   "settingsBuildLabel": "Build: {value}",
+  "settingsVersionLabel": "Version: {value}",
   "settingsConfigModel": "Analysis model",
   "settingsConfigFallbacks": "Fallbacks",
   "settingsConfigTtsModel": "TTS model",

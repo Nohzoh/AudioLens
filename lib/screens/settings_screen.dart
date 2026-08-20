@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'logs_screen.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
@@ -26,12 +27,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
   bool _obscure = true;
   bool _saving = false;
+  String? _appVersion;
 
   @override
   void initState() {
     super.initState();
     final guide = context.read<AudioGuideService>();
     _apiKeyController.text = guide.geminiApiKey ?? '';
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _appVersion = '${info.version} (${info.buildNumber})');
+    });
   }
 
   @override
@@ -233,6 +238,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           DateFormat("dd/MM/yyyy à HH:mm").format(loadedAt)),
                       style:
                           const TextStyle(color: Colors.white38, fontSize: 11),
+                    ),
+                  ],
+                  if (_appVersion != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.settingsVersionLabel(_appVersion!),
+                      style: const TextStyle(color: Colors.white38, fontSize: 11),
                     ),
                   ],
                   const SizedBox(height: 4),
