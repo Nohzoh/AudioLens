@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cryptography/cryptography.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_logger.dart';
@@ -138,6 +139,16 @@ class RemoteConfigService {
     return host != null && allowedApiHosts.contains(host);
   }
 
+  // Public half of the Ed25519 keypair used to sign config.json — the
+  // private half never touches CI or GitHub secrets, it's only ever used
+  // locally (scripts/sign_config.dart) before committing config.json and
+  // config.json.sig together. A compromised CI/repo write access alone
+  // can edit config.json's *content*, but can't produce a valid signature
+  // for it — the app rejects anything that doesn't verify.
+  static const _publicKeyB64 = 'PRUKkHzANB7y05yMvxk8XAM01o3e2YDTLCKy1JJm5Ys=';
+  static const _signatureUrl =
+      'https://raw.githubusercontent.com/Nohzoh/AudioLens/main/config.json.sig';
+
   static RemoteConfig _current = const RemoteConfig();
   static DateTime? _loadedAt;
   static bool _loadedFromRemote = false;
@@ -145,7 +156,27 @@ class RemoteConfigService {
   static bool get loadedFromRemote => _loadedFromRemote;
   static RemoteConfig get current => _current;
 
+  /// Verifies [bodyBytes] against [signatureB64] using the embedded public
+  /// key. Exposed statically so it can be unit-tested without a network
+  /// round-trip.
+  static Future<bool> verifySignature(
+      List<int> bodyBytes, String signatureB64) async {
+    try {
+      final algorithm = Ed25519();
+      final publicKey = SimplePublicKey(base64Decode(_publicKeyB64),
+          type: KeyPairType.ed25519);
+      final signature =
+          Signature(base64Decode(signatureB64.trim()), publicKey: publicKey);
+      return await algorithm.verify(bodyBytes, signature: signature);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Load config: always try remote, use cache only if network fails.
+  /// A remote config is only ever applied if its signature verifies —
+  /// otherwise this behaves exactly like a network failure (built-in
+  /// defaults), never silently falling back to an unsigned/tampered body.
   static Future<void> load() async {
     // Always clear stale cache first — built-in defaults are always safe
     try {
@@ -153,12 +184,21 @@ class RemoteConfigService {
       await prefs.remove(_cacheKey);
     } catch (_) {}
 
-    // Always try remote first (fast, tiny file)
+    // Always try remote first (fast, tiny files)
     try {
-      final response = await http.get(Uri.parse(_configUrl))
+      final configResponse = await http.get(Uri.parse(_configUrl))
           .timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final sigResponse = await http.get(Uri.parse(_signatureUrl))
+          .timeout(const Duration(seconds: 5));
+      if (configResponse.statusCode == 200 && sigResponse.statusCode == 200) {
+        final verified = await verifySignature(
+            configResponse.bodyBytes, sigResponse.body);
+        if (!verified) {
+          AppLogger.error(
+              'Remote config: signature verification failed, using defaults');
+          return;
+        }
+        final json = jsonDecode(configResponse.body) as Map<String, dynamic>;
         final apiUrl = json['gemini_api_url'] as String?;
         if (apiUrl != null && !isAllowedApiUrl(apiUrl)) {
           AppLogger.error(
@@ -170,13 +210,14 @@ class RemoteConfigService {
         _loadedFromRemote = true;
         // Save fresh cache
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_cacheKey, response.body);
+        await prefs.setString(_cacheKey, configResponse.body);
         return;
       }
     } catch (_) {}
 
-    // Network failed — use built-in defaults (already up to date in code)
-    // No cache fallback needed since defaults are maintained in code
+    // Network failed (or signature invalid) — use built-in defaults
+    // (already up to date in code). No cache fallback needed since
+    // defaults are maintained in code.
   }
 
   /// Force refresh (e.g. from Settings)

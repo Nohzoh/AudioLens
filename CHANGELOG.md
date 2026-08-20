@@ -11,6 +11,12 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T123** 🔥 ⭐⭐⭐ - **Sign `config.json` (Ed25519) so CI/repo write access alone can't push a trusted config change**
+  - **Verified**: 2026-08-20
+  - **Source**: comparison with an external audit (ChatGPT) — flagged the remote config's integrity as protected only by a host allowlist, not a signature. Discussed and refined into a specific threat model: `config.json` is fetched live at every app startup and applied immediately to every installed build, unlike a code change (which must go through CI, review, staged rollout) — it's the fastest path an attacker with repo/CI write access would have to affect real users.
+  - **What was done**: `RemoteConfigService` now fetches `config.json.sig` alongside `config.json` and verifies it (Ed25519, `package:cryptography`) against a public key embedded in the service before applying anything — falls back to built-in defaults (same as a network failure) on any verification failure. New `scripts/sign_config.dart` (local-only signing tool) and `scripts/generate_config_signing_key.dart` (one-off/rotation keygen). **The private key never touches CI, GitHub secrets, or this repo** — generated locally, backed up to the developer's password manager, only ever used offline to produce `config.json.sig` before committing it alongside `config.json`. Documented in `AGENTS.md` under "Remote Config Signing".
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 176/176 (4 new: valid signature accepted, tampered body rejected, malformed signature rejected, empty signature rejected)
+
 - [x] **T98** 📈 ⭐⭐⭐ - **Enable R8 minification/resource shrinking for release builds**
   - **Verified**: 2026-08-19 (PR #79)
   - **Source**: Play Console's "App optimization" score on the uploaded AAB — "Faible" (Low), R8 not enabled at all.
