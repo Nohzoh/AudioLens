@@ -1,0 +1,22 @@
+name: Temp - Export upload key certificate
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decode keystore and export public certificate
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/ks.jks
+          keytool -export -rfc \
+            -keystore /tmp/ks.jks \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.KEY_ALIAS }}" \
+            -file /tmp/upload_certificate.pem
+      - uses: actions/upload-artifact@v7
+        with:
+          name: upload_certificate
+          path: /tmp/upload_certificate.pem
+          retention-days: 1
