@@ -12,7 +12,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # See build-android.yml's "changes" job for why this is a job-level skip
+  # rather than paths-ignore on the trigger (a required check that never
+  # triggers blocks merging forever; a skipped one satisfies it).
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.decide.outputs.code }}
+    steps:
+      - name: Checkout code
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/checkout@v7
+
+      - name: Detect non-docs changes
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            code:
+              - '!**/*.md'
+
+      - name: Decide
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:

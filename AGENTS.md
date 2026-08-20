@@ -17,6 +17,16 @@ This is a **Flutter mobile app** for AI-powered audio guides. The app:
 changes go through a branch + PR. Both `Test` (flutter analyze + flutter
 test) and `Build Android APK` must pass before merging.
 
+Both `Build Android APK` and `Test` (2026-08-20 onward) skip their actual
+work — reporting `skipped`, not `pass` — when a push/PR touches only
+`.md` files. This is intentional (avoids the ~5-6 min Android build and
+the Flutter analyze/test run for docs-only changes) and still satisfies
+the required check; it does NOT use `paths-ignore` on the trigger (that
+would leave the check permanently "Expected" and block merging), it's a
+job-level skip via a fast preceding `changes` job in each workflow.
+`workflow_dispatch` (manual publish) always runs the full build
+regardless.
+
 When the work closes a TODO.md task, update TODO.md (remove the entry) and
 CHANGELOG.md (add it under "Done", with what was actually verified) in
 the **same PR** as the code — as a follow-up commit once the PR number is

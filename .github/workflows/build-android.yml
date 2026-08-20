@@ -23,7 +23,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decides whether the actual build is needed. Deliberately does NOT use
+  # paths-ignore on the triggers above: "build" is a required status check
+  # (branch protection), and a workflow that never triggers at all leaves
+  # a required check permanently "Expected", blocking merges forever. A
+  # job that runs and reports "skipped" satisfies a required check —
+  # that's the mechanism this relies on.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.decide.outputs.code }}
+    steps:
+      - name: Checkout code
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/checkout@v7
+
+      - name: Detect non-docs changes
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            code:
+              - '!**/*.md'
+
+      - name: Decide
+        id: decide
+        run: |
+          # workflow_dispatch (manual publish) always builds — there's no
+          # diff to compute a "docs only" answer from.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
