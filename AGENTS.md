@@ -76,6 +76,18 @@ and never touched for the same reason:
     (public) release, and afterward for major redesigns or breaking
     changes. Resets Y and Z to 0.
 
+### Play Store Release Notes (2026-08-20 onward)
+
+Before every `workflow_dispatch` "Publish to Play Store" run, update
+`distribution/whatsnew/whatsnew-fr-FR` and `whatsnew-en-US` with a
+short, tester-facing summary of what changed since the last publish —
+plain language, not the technical CHANGELOG.md wording. Google enforces
+a 500-character limit per file; CI passes this directory to
+`r0adkll/upload-google-play` via `whatsNewDirectory`, which shows it to
+testers as "What's new in this version." If left unchanged, testers
+just see the previous release's notes again, so treat updating these
+files as part of the release checklist, not optional.
+
 ---
 
 ## Global Guidelines for All Agents

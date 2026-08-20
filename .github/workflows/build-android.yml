@@ -388,3 +388,4 @@ jobs:
           tracks: ${{ inputs.track }}
           status: completed
           mappingFile: build/app/outputs/mapping/release/mapping.txt
+          whatsNewDirectory: distribution/whatsnew
