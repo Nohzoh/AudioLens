@@ -7,16 +7,34 @@ jobs:
   export:
     runs-on: ubuntu-latest
     steps:
-      - name: Decode keystore and export public certificate
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Decode keystore and Google's encryption public key
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/ks.jks
-          keytool -export -rfc \
-            -keystore /tmp/ks.jks \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-            -alias "${{ secrets.KEY_ALIAS }}" \
-            -file /tmp/upload_certificate.pem
+          echo "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQm9qQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FZOEFNSUlCaWdLQ0FZRUFsdTRmK3d5SVFXRmpLMkFYbmZhRApEQXJaQmtVaTdMTzFrNm5EckZ0UkJxZEhJRk5CWkpMc2c2SDgwckh5Y1hIalNNK28rQzZCV2ZvZi9GVlFVZnZ1ClR6N1pQVGVTL3MzeC9EaWxMMm1jeHU0ZTN4TWlocDkvODlXRVMzQlhPSGhEOXVOZ3lQSEE2T1dHZi9CM1VZWW4KalIrYVExTjdDL0tEbmFMelY3dlN4UFo2MkUxS1hXWnBXUnFSbncycVA3R1BWSVIyUlcwM3gvMi9VWU9scC8xVgpYYTl2STU5QUxyNUlmR3BuKzJvQXF3Y1FmdGx1VVArSlhQVjc3RXYrVWluaEJ3K1dzakx4MGpyS3Zqck9FVjFzCmR3SHpMR3lFckwwTmtobGtKdlNJUTBJY3RkcWdOMjJMYUpVUVNyWklROWphVDJ0R1VKS0IxN1loTWg3SjZ0bG4KYURXeDZBVVpzTjJFcUl3NlZJWFVNN1VENWZTUVYxWVQzZ1ROWE1HRUVRcEROUmhHSnp3UEtldXpSa0ZHMTByUwprd3pJYitjejFmcks1ZDQ3TDE5YjBSUVZ5VGYwM08yN3h1QWgybndXR0gxY0tZc1JVZWxuSTNaZ25iUENlSHNPCjhCT1JpZ2dGYXQ2cnFKS0ZPWGhpeVdmempPVnFHUHY0QXFCR2MxNDA1cHc1QWdNQkFBRT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==" | base64 -d > /tmp/encryption_public_key.pem
+
+      - name: Download PEPK tool
+        run: curl -sSL -o /tmp/pepk.jar https://storage.googleapis.com/play_public/pepk.jar
+
+      - name: Run PEPK to export the encrypted private key
+        run: |
+          java -jar /tmp/pepk.jar \
+            --keystore=/tmp/ks.jks \
+            --alias="${{ secrets.KEY_ALIAS }}" \
+            --output=/tmp/output.zip \
+            --include-cert \
+            --rsa-aes-encryption \
+            --encryption-key-path=/tmp/encryption_public_key.pem \
+            --keystore-key-password="${{ secrets.KEYSTORE_PASSWORD }}" \
+            --keystore-password="${{ secrets.KEYSTORE_PASSWORD }}"
+
       - uses: actions/upload-artifact@v7
         with:
-          name: upload_certificate
-          path: /tmp/upload_certificate.pem
+          name: output
+          path: /tmp/output.zip
           retention-days: 1
