@@ -120,6 +120,13 @@ testers as "What's new in this version." If left unchanged, testers
 just see the previous release's notes again, so treat updating these
 files as part of the release checklist, not optional.
 
+**Owned by the coding agent, not the user**: whichever agent is about
+to trigger a Play Store publish updates both files itself first —
+summarizing the CHANGELOG.md entries added since the previous publish
+in plain, tester-facing language — rather than asking the user to
+write them. Only check in with the user if a change is too ambiguous
+to summarize confidently on its own.
+
 ---
 
 ## Global Guidelines for All Agents
