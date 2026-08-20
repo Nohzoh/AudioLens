@@ -212,11 +212,15 @@ class AudioGuideService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Throws [SecureStorageUnavailableException] if the key can't be
+  /// persisted securely — nothing is changed in-memory in that case
+  /// either, so the app's active provider/key state always matches what's
+  /// actually on disk.
   Future<void> setGeminiApiKey(String key) async {
+    await SecureKeyStorage.writeApiKey(key);
     _geminiApiKey = key.isEmpty ? null : key;
     _geminiApiService = key.isNotEmpty ? GeminiApiService(apiKey: key) : null;
     _geminiTtsService = key.isNotEmpty ? GeminiTtsService(apiKey: key) : null;
-    await SecureKeyStorage.writeApiKey(key);
     // Auto-switch to Gemini API if key provided
     if (key.isNotEmpty) {
       await setActiveProvider(AIProvider.geminiApi);

@@ -8,6 +8,7 @@
   "mapPickerConfirm": "Confirm this location",
 
   "onboardingApiKeyRequired": "Enter your API key",
+  "secureStorageUnavailable": "Couldn't save your key securely on this device. Try again, or restart the app.",
   "onboardingTagline": "Take a photo of a place,\nget an instant audio explanation.",
   "onboardingApiKeySectionTitle": "Gemini API key",
   "onboardingApiKeyInstructions": "Get a free key at aistudio.google.com\nUnder \"API Keys\"",

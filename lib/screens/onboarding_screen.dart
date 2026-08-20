@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../l10n/app_localizations.dart';
+import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -29,7 +30,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
     setState(() { _loading = true; _error = null; });
-    await context.read<SettingsService>().completeOnboarding(apiKey: key);
+    try {
+      await context.read<SettingsService>().completeOnboarding(apiKey: key);
+    } on SecureStorageUnavailableException {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = AppLocalizations.of(context)!.secureStorageUnavailable;
+        });
+      }
+    }
   }
 
   @override
