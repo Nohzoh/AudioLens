@@ -32,6 +32,7 @@ dependencies:
   package_info_plus: ^10.2.1
   image: ^4.9.2
   cryptography: ^2.7.0
+  in_app_update: ^5.0.0
   flutter_localizations:
     sdk: flutter
 

@@ -42,6 +42,8 @@
   "homeTapToRetry": "Tap to retry",
   "homeTapToAnalyze": "Tap to analyze",
   "homeEmptyStateHint": "Point your device\nat a place or landmark",
+  "homeUpdateReadyBanner": "An update is ready to install",
+  "homeUpdateRestart": "Restart",
 
   "playerShowText": "Show text",
   "playerPhotoMode": "Photo mode",
