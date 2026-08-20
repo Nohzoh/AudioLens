@@ -76,6 +76,38 @@ and never touched for the same reason:
     (public) release, and afterward for major redesigns or breaking
     changes. Resets Y and Z to 0.
 
+### Remote Config Signing (2026-08-20 onward)
+
+`config.json` is fetched at every app startup from
+`raw.githubusercontent.com` and applied *immediately* to every installed
+build — unlike a code change, it bypasses the whole release pipeline
+(CI, Play Store review, staged rollout). It's therefore signed
+(Ed25519) so that write access to the repo or CI alone is not enough to
+push a config change the app will accept.
+
+**The private signing key never touches CI, GitHub secrets, or this
+repo — it lives offline (Keeper) and only ever gets used locally.**
+This is the entire point: even a fully compromised CI run can edit
+`config.json`'s content but cannot produce a valid signature for it.
+
+**Whenever `config.json` changes**, after editing it:
+```bash
+dart run scripts/sign_config.dart   # prompts for the private key (Keeper)
+git add config.json config.json.sig # always commit both together
+```
+`RemoteConfigService.load()` fetches both `config.json` and
+`config.json.sig`, verifies the signature against the public key
+embedded in `lib/services/remote_config_service.dart`, and falls back
+to the built-in defaults (same as a network failure) if verification
+fails for any reason — it never applies an unsigned or tampered body.
+
+Key rotation (only if the private key is ever suspected compromised):
+`dart run scripts/generate_config_signing_key.dart`, save the new
+private key to Keeper, update the public key constant in
+`remote_config_service.dart`, re-sign `config.json`, ship a new app
+version (old installs keep trusting the old public key until they
+update).
+
 ### Play Store Release Notes (2026-08-20 onward)
 
 Before every `workflow_dispatch` "Publish to Play Store" run, update
