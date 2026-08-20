@@ -78,12 +78,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Finding**: `GeminiApiService`'s response validation checks that `title`/`script` are present and cleans the text, but doesn't cap script length or otherwise sanity-check the output. A model returning an excessively long script would sail through, degrading TTS cost/latency and UX.
   - **Fix**: a simple length cap (reject/truncate/regenerate) on the parsed script before it reaches history/TTS.
 
-- [ ] **T119** 📈 ⭐ - **No automated dependency or secret scanning in CI**
-  - **Added**: 2026-08-19
-  - **Source**: external audit (ChatGPT).
-  - **Finding**: the CI workflows run `flutter analyze`/`flutter test` and build, but nothing scans for known-vulnerable dependencies (Dart or Gradle) or accidentally-committed secrets.
-  - **Fix**: enable GitHub's native Dependabot alerts (repo setting, near-zero effort) and add a secret-scanning step (GitHub's own secret scanning, or a `gitleaks-action` step) to catch this class of issue automatically going forward.
-
 ---
 
 ## 🌱 Low impact / Long term

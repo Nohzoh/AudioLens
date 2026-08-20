@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Dart/Flutter packages (pubspec.yaml/pubspec.lock).
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # GitHub Actions used in the workflows themselves.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # No "gradle" entry: android/ isn't committed (regenerated + patched by
+  # CI, see AGENTS.md) so there's no persistent build.gradle.kts for
+  # Dependabot to read.
