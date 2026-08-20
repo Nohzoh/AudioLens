@@ -127,6 +127,12 @@
       "value": {"type": "String"}
     }
   },
+  "settingsVersionLabel": "Version : {value}",
+  "@settingsVersionLabel": {
+    "placeholders": {
+      "value": {"type": "String"}
+    }
+  },
   "settingsConfigModel": "Modèle d'analyse",
   "settingsConfigFallbacks": "Fallbacks",
   "settingsConfigTtsModel": "Modèle TTS",
