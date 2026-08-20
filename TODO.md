@@ -153,10 +153,10 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Found**: (1) `.github/workflows/build-android.yml:264`'s ABI-restriction comment still says "sherpa_onnx has real native code per ABI to compile/link/package" — `sherpa_onnx` was fully removed by T89; the ABI restriction itself is still correct (other native deps still need it) but the justification text is wrong. (2) `AudioPlayerPlugin.kt`'s comment on `pendingPlayResult` says "since MediaPipe.stop() alone never completes it" — should say `MediaPlayer.stop()` (the actual class used in that file); likely a leftover from when MediaPipe was still part of this codebase (removed T82).
   - **Fix**: correct both comments. Purely cosmetic — no behavior change.
 
-- [ ] **T109** 🌱 ⭐⭐ - **Other dependencies trailing their latest major version**
+- [ ] **T109** 🌱 ⭐ - **`latlong2` trailing its latest major version**
   - **Added**: 2026-08-19
-  - **Source**: full-project security/tech-debt audit (`flutter pub outdated`). Excludes `flutter_secure_storage`, split out as T103 for its security relevance.
-  - **Found**: `flutter_map` (7.0.2 → 8.3.1), `google_fonts` (6.3.3 → 8.2.1), `flutter_lints` (4.0.0 → 6.0.0, dev-only), `latlong2` (0.9.1 → 0.10.1). None urgent — no known vulnerabilities, just version drift — but each major bump gets more disruptive the longer it's deferred.
+  - **Updated (2026-08-20)**: `flutter_map`, `google_fonts`, and `flutter_lints` (the other three originally listed here) are done — bumped via Dependabot (PRs #90/#93/#94), each verified locally (analyze/test/build) before merging; `flutter_lints` 6.0.0 needed one small fix (`history_screen.dart`'s `_getTts` needed an explicit `dynamic` return type for the new `strict_top_level_inference` lint).
+  - **Remaining**: `latlong2` (0.9.1 → 0.10.1) — Dependabot hasn't proposed this one yet. No known vulnerability, just version drift.
 
 - [ ] **T110** 🌱 ⭐ - **Play Store listing icon doesn't render well in dark mode**
   - **Added**: 2026-08-19
