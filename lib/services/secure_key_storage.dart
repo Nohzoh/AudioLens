@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_sanitizer.dart';
 
 /// Thrown by [SecureKeyStorage.writeApiKey] when the platform's secure
 /// storage can't be written to. Deliberately not caught internally (T123
@@ -36,7 +37,7 @@ class SecureKeyStorage {
       final secureValue = await _secure.read(key: apiKeyKey);
       if (secureValue != null && secureValue.isNotEmpty) return secureValue;
     } catch (e) {
-      AppLogger.error('Secure storage read failed: $e');
+      AppLogger.error('Secure storage read failed: ${sanitizeError(e.toString())}');
     }
 
     // Migration from the old SharedPreferences storage
@@ -49,7 +50,7 @@ class SecureKeyStorage {
           await prefs.remove(apiKeyKey);
           AppLogger.info('API key migrated to secure storage');
         } catch (e) {
-          AppLogger.error('API key migration failed: $e');
+          AppLogger.error('API key migration failed: ${sanitizeError(e.toString())}');
         }
         return legacy;
       }
@@ -73,7 +74,7 @@ class SecureKeyStorage {
     try {
       await _secure.write(key: apiKeyKey, value: value);
     } catch (e) {
-      AppLogger.error('Secure storage write failed: $e');
+      AppLogger.error('Secure storage write failed: ${sanitizeError(e.toString())}');
       throw SecureStorageUnavailableException(e);
     }
     // Remove any plaintext trace left by an earlier version
@@ -88,7 +89,7 @@ class SecureKeyStorage {
     try {
       await _secure.delete(key: apiKeyKey);
     } catch (e) {
-      AppLogger.error('Secure storage delete failed: $e');
+      AppLogger.error('Secure storage delete failed: ${sanitizeError(e.toString())}');
     }
     try {
       final prefs = await SharedPreferences.getInstance();

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
+import '../utils/error_sanitizer.dart';
 import 'package:dio/dio.dart' as dio;
 import 'ai_service.dart';
 import 'remote_config_service.dart';
@@ -135,7 +136,7 @@ class GeminiApiService implements AIService {
         // user asked to stop, not to keep burning quota on fallbacks.
         if (e is CancelledException) rethrow;
         if (e is Exception && e.toString().contains('Gemini API erreur')) rethrow;
-        attempts.add('✗ $model (timeout/réseau): $e');
+        attempts.add('✗ $model (timeout/réseau): ${sanitizeError(e.toString())}');
         continue;
       }
     }

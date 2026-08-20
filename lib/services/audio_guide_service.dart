@@ -555,7 +555,8 @@ class AudioGuideService extends ChangeNotifier {
         _lastTtsModel = 'gemini-tts';
       } catch (e) {
         if (e is CancelledException) rethrow;
-        AppLogger.error('Background pre-synthesis failed, deferring to on-demand: $e');
+        AppLogger.error('Background pre-synthesis failed, deferring to on-demand: '
+            '${sanitizeError(e.toString())}');
         _lastAudioPath = null;
       }
     } else {
