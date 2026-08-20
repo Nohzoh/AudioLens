@@ -26,8 +26,12 @@ class SecureStorageUnavailableException implements Exception {
 class SecureKeyStorage {
   static const String apiKeyKey = 'gemini_api_key';
 
+  // encryptedSharedPreferences (T103): removed here ahead of the v11 bump
+  // that will drop the option entirely — v10 already migrates existing
+  // data to its new cipher automatically on first access and ignores the
+  // flag, per the deprecation notice.
   static const FlutterSecureStorage _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
   );
 
   /// Reads the API key: first from secure storage, then (one-shot
