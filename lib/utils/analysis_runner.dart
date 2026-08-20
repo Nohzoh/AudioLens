@@ -67,7 +67,16 @@ Future<void> runAnalysisAndNavigate({
     );
     final audioPath = guide.lastAudioPath;
     if (audioPath != null) {
-      await history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel);
+      try {
+        await history.saveAudioPath(entryId, audioPath, ttsModel: guide.lastTtsModel);
+      } on HistoryStorageException catch (e) {
+        // The script/title above already saved fine — only the audio
+        // cache write failed (T116), so surface it without blocking the
+        // rest of the flow.
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        }
+      }
     } else if (guide.state == GuideState.speaking) {
       // TTS actually ran for this entry (native engine, which never
       // produces a cacheable file — see HistoryService.saveTtsModel's doc)
