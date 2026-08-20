@@ -155,12 +155,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Finding**: `AudioPlayerPlugin` uses a plain `MediaPlayer` — fine for the current use case, but it doesn't integrate with Android's audio focus (a phone call or another app's audio won't duck/pause it cleanly), doesn't expose lock-screen/notification transport controls, and has no explicit Bluetooth headset command handling.
   - **Fix**: migrate to a proper `MediaSession`-backed playback service if/when richer playback controls (T21) or background listening becomes a priority — bundle with T21 rather than doing it standalone.
 
-- [ ] **T120** 🌱 ⭐⭐⭐⭐⭐ - **Analysis pipeline isn't resumable if the app process is killed mid-analysis**
-  - **Added**: 2026-08-19
-  - **Source**: external audit (ChatGPT).
-  - **Finding**: the T85 foreground service protects process priority while an analysis runs, but doesn't make the job itself durable — it doesn't execute the pipeline independently of the Flutter engine. If Android kills the process anyway (aggressive OEM battery management, low memory, forced update), the in-flight analysis is lost with no automatic resume; the user has to notice and manually retry from history.
-  - **Fix**: a persistent job table (status/step/attempt/payload/last_error) that a resume check on app startup can pick up and retry — meaningfully bigger than a quick fix, so treat as a deliberate future project rather than an incremental patch. Not urgent at current usage scale (the failure mode is already visible and manually retryable via history), but worth doing before wider release if analysis loss reports start showing up.
-
 - [ ] **T121** 🌱 ⭐⭐⭐ - **Time-to-first-audio: consider progressive/streaming enrichment instead of "compute everything, then play"**
   - **Added**: 2026-08-19
   - **Source**: external audit (ChatGPT) — product idea, not a bug.

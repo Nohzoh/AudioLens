@@ -181,6 +181,62 @@ void main() {
     expect(updated.gpsLongitude, isNull);
   });
 
+  test('failOrphanedPendingEntries (T120) flips a leftover pending entry to failed',
+      () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final pending = await service.addPendingEntry(imagePath: sourceImagePath);
+
+    final count = await service.failOrphanedPendingEntries();
+
+    expect(count, 1);
+    final updated = service.entries.firstWhere((e) => e.id == pending.id);
+    expect(updated.status, AnalysisStatus.failed);
+    expect(updated.title, 'Analyse échouée');
+  });
+
+  test('failOrphanedPendingEntries (T120) leaves captured and complete entries untouched',
+      () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final captured = await service.addCapturedEntry(
+      imagePath: sourceImagePath,
+      gpsLatitude: 48.86,
+      gpsLongitude: 2.33,
+      gpsSource: 'exif',
+    );
+    final pending = await service.addPendingEntry(imagePath: sourceImagePath);
+    await service.completeEntry(
+      entryId: pending.id!,
+      title: 'La Joconde',
+      script: 'Bienvenue.',
+    );
+
+    final count = await service.failOrphanedPendingEntries();
+
+    expect(count, 0);
+    final reloadedCaptured = service.entries.firstWhere((e) => e.id == captured.id);
+    expect(reloadedCaptured.status, AnalysisStatus.captured);
+    final reloadedComplete = service.entries.firstWhere((e) => e.id == pending.id);
+    expect(reloadedComplete.status, AnalysisStatus.complete);
+  });
+
+  test('failOrphanedPendingEntries (T120) handles multiple orphaned entries in one call',
+      () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final first = await service.addPendingEntry(imagePath: sourceImagePath);
+    final second = await service.addPendingEntry(imagePath: sourceImagePath);
+
+    final count = await service.failOrphanedPendingEntries();
+
+    expect(count, 2);
+    expect(service.entries.firstWhere((e) => e.id == first.id).status,
+        AnalysisStatus.failed);
+    expect(service.entries.firstWhere((e) => e.id == second.id).status,
+        AnalysisStatus.failed);
+  });
+
   test('saveAudioPath copies the WAV to permanent storage and records the tts model',
       () async {
     final service = HistoryService();

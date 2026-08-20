@@ -8,6 +8,7 @@ import 'services/settings_service.dart';
 import 'services/audio_guide_service.dart';
 import 'services/audio_ready_notifier.dart';
 import 'services/history_service.dart';
+import 'utils/app_logger.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/history_screen.dart';
@@ -34,6 +35,16 @@ void main() async {
 
   final history = HistoryService();
   await history.init();
+
+  // T120: any entry still "pending" at this point is guaranteed orphaned
+  // (no analysis can be in flight this early in the process) — flip it to
+  // "failed" so it surfaces with the existing tap-to-retry UI instead of
+  // showing a perpetual, indistinguishable-from-active spinner forever.
+  final orphanedCount = await history.failOrphanedPendingEntries();
+  if (orphanedCount > 0) {
+    AppLogger.info(
+        'T120: $orphanedCount orphaned pending entr${orphanedCount == 1 ? "y" : "ies"} marked failed on startup');
+  }
 
   // T95: opt-in only (off by default) — deletes history entries older
   // than the configured threshold once per app startup. A startup delay
