@@ -304,8 +304,10 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     );
   }
 
-  // Use AudioGuideService TTS so same voice as first analysis
-  _getTts(BuildContext context) {
+  // Use AudioGuideService TTS so same voice as first analysis.
+  // dynamic: GeminiTtsService/NativeTtsService share no common interface,
+  // only the .stop()/.speak() calls this method's callers actually use.
+  dynamic _getTts(BuildContext context) {
     final guide = context.read<AudioGuideService>();
     return guide.geminiTtsService ?? guide.nativeTtsService;
   }
