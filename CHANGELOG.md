@@ -11,6 +11,14 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T120** 📈 ⭐⭐ - **Analysis pipeline isn't resumable if the app process is killed mid-analysis**
+  - **Verified**: 2026-08-20
+  - **Source**: external audit (ChatGPT).
+  - **What was done**: new `HistoryService.failOrphanedPendingEntries()`, called once at startup right after `history.init()`. Relies on a simple invariant — `init()` runs once at process start, before any analysis can possibly be in flight, so any entry still `AnalysisStatus.pending` at that moment is guaranteed orphaned (a leftover from a process that died mid-analysis: OS kill, crash, forced update). It flips those entries to `failed`, which surfaces them with the existing, already-correct "tap to retry" UI (orange icon, discoverable) instead of a perpetual spinner indistinguishable from a genuinely still-running analysis.
+  - **Scope decision**: deliberately does *not* silently re-run the analysis automatically. An entry created via `addPendingEntry()` never has GPS persisted (only written on success or on failure) — if the process died before either happened, there's no reliable saved location to resume with, and silently re-resolving *live* GPS at an unknown later time risks analyzing the wrong place entirely (the user may have moved) while burning API quota with no awareness. The existing manual retry flow already handles this correctly (reuses saved GPS when present, falls back to live resolution otherwise), so detecting-and-flagging reuses it instead of duplicating/risking that logic. Confirmed with the user before implementing.
+  - **Bug found along the way**: `failEntry`'s in-memory update never synced the new `'Analyse échouée'` title (only the DB write did) — `history_screen.dart` displays `entry.title` directly and unconditionally, so a failed entry would show its stale pre-failure title until the app restarted and reloaded from the DB. Fixed in the same PR (one-line `copyWith` fix), caught by the new test.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 185/185 (3 new: flips a leftover pending entry to failed, leaves captured/complete entries untouched, handles multiple orphaned entries in one call)
+
 - [x] **T128** 🌱 ⭐⭐ - **No in-app update detection — users had no way to know a newer version was available**
   - **Verified**: 2026-08-20
   - **Source**: user request — also asked to show the installed app version next to the build date in Settings (tracked separately, PR #105).

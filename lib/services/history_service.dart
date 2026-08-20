@@ -421,6 +421,28 @@ class HistoryService extends ChangeNotifier {
     }
   }
 
+  /// T120: any entry still [AnalysisStatus.pending] when the app starts is
+  /// guaranteed orphaned — [init] runs once at process start, before any
+  /// analysis can possibly be in flight, so a pending entry at this point
+  /// can only be a leftover from a process that died mid-analysis (OS
+  /// kill, crash, forced update). Flips it to [AnalysisStatus.failed] so
+  /// it surfaces with the existing, already-discoverable "tap to retry"
+  /// UI instead of showing a perpetual, indistinguishable-from-active
+  /// spinner. Returns the number of entries recovered this way.
+  Future<int> failOrphanedPendingEntries() async {
+    final orphaned =
+        _entries.where((e) => e.status == AnalysisStatus.pending).toList();
+    for (final entry in orphaned) {
+      await failEntry(
+        entry.id!,
+        gpsLatitude: entry.gpsLatitude,
+        gpsLongitude: entry.gpsLongitude,
+        gpsSource: entry.gpsSource,
+      );
+    }
+    return orphaned.length;
+  }
+
   /// Mark a pending entry as failed. [gpsLatitude]/[gpsLongitude]/[gpsSource]
   /// persist whatever location was actually resolved for this attempt
   /// (live GPS, EXIF, or a manually picked map point) so a later retry can
@@ -449,6 +471,7 @@ class HistoryService extends ChangeNotifier {
     if (idx != -1) {
       _entries[idx] = _entries[idx].copyWith(
         status: AnalysisStatus.failed,
+        title: 'Analyse échouée',
         gpsLatitude: gpsLatitude,
         gpsLongitude: gpsLongitude,
         gpsSource: gpsSource,
