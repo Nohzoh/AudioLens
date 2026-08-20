@@ -102,10 +102,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// camera picker (_pickImage) and incoming shared photos (T97), both of
   /// which need the same "check EXIF, offer the map picker if there's
   /// none, save as a pending entry, launch analysis" flow.
+  // T113: a truly pathological file (corrupt, or someone sharing something
+  // that isn't really a phone photo) shouldn't be read into memory for
+  // EXIF parsing at all — the upload path downscales, but EXIF reading
+  // doesn't. 50MB is generously above any real phone camera output.
+  static const _maxImageBytes = 50 * 1024 * 1024;
+
   Future<void> _processImageForAnalysis(
     File imageFile, {
     required String analysisSource, // 'camera' | 'gallery' | 'share'
   }) async {
+    final tooLarge = await imageFile.length() > _maxImageBytes;
+    if (!mounted) return;
+    if (tooLarge) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.homeImageTooLarge)),
+      );
+      return;
+    }
     final history = context.read<HistoryService>();
 
     // A gallery/shared photo could be old, or from anywhere — unlike a
@@ -128,7 +142,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     if (!mounted) return;
 
-    final pendingEntry = await history.addPendingEntry(imagePath: imageFile.path);
+    final HistoryEntry pendingEntry;
+    try {
+      pendingEntry = await history.addPendingEntry(imagePath: imageFile.path);
+    } on HistoryStorageException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return;
+    }
     await _runAnalysis(
       imageFile: imageFile,
       entryId: pendingEntry.id!,
@@ -163,12 +185,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }
 
-    await history.addCapturedEntry(
-      imagePath: imageFile.path,
-      gpsLatitude: lat,
-      gpsLongitude: lon,
-      gpsSource: gpsSource,
-    );
+    try {
+      await history.addCapturedEntry(
+        imagePath: imageFile.path,
+        gpsLatitude: lat,
+        gpsLongitude: lon,
+        gpsSource: gpsSource,
+      );
+    } on HistoryStorageException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return;
+    }
 
     // imageFile is image_picker's own temp capture — addCapturedEntry
     // already copied it to permanent history storage, and unlike the

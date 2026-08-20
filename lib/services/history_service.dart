@@ -4,6 +4,33 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Thrown when copying a photo or audio file to permanent storage fails
+/// (T116) — most commonly because the device is out of storage. Callers
+/// should catch this and show [message] to the user instead of letting a
+/// raw I/O exception surface.
+class HistoryStorageException implements Exception {
+  final String message;
+  const HistoryStorageException(this.message);
+  @override
+  String toString() => message;
+}
+
+/// ENOSPC ("no space left on device") on Linux/Android.
+const _enospc = 28;
+
+Future<void> _copyFileOrThrowStorageError(File source, String destPath) async {
+  try {
+    await source.copy(destPath);
+  } on FileSystemException catch (e) {
+    if (e.osError?.errorCode == _enospc) {
+      throw const HistoryStorageException(
+          "Espace de stockage insuffisant pour enregistrer ce fichier. Libérez de l'espace et réessayez.");
+    }
+    throw HistoryStorageException(
+        "Impossible d'enregistrer le fichier (${e.osError?.message ?? e.message}).");
+  }
+}
+
 enum AnalysisStatus {
   complete,
   pending,
@@ -470,7 +497,7 @@ class HistoryService extends ChangeNotifier {
 
     final fileName = 'audio_$entryId.wav';
     final destPath = '${audioDir.path}/$fileName';
-    await File(sourcePath).copy(destPath);
+    await _copyFileOrThrowStorageError(File(sourcePath), destPath);
 
     // Update DB
     await _db!.update(
@@ -548,14 +575,23 @@ class HistoryService extends ChangeNotifier {
     }
   }
 
+  // T104: a plain millisecond timestamp collides when two entries are
+  // created within the same millisecond (e.g. a share-intent pick and a
+  // near-simultaneous manual pick), silently aliasing one entry's photo
+  // to another's. `_fileSeq` is incremented synchronously (no `await`
+  // before it), so two overlapping calls always get distinct values
+  // regardless of how their awaited I/O interleaves afterward.
+  static int _fileSeq = 0;
+
   Future<String> _copyImageToPermanentStorage(String sourcePath) async {
+    final seq = _fileSeq++;
     final dir = await getApplicationDocumentsDirectory();
     final historyDir = Directory('${dir.path}/history_images');
     if (!await historyDir.exists()) await historyDir.create();
 
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}_$seq.jpg';
     final destPath = '${historyDir.path}/$fileName';
-    await File(sourcePath).copy(destPath);
+    await _copyFileOrThrowStorageError(File(sourcePath), destPath);
     return destPath;
   }
 

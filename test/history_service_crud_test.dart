@@ -258,15 +258,31 @@ void main() {
     expect(File(audioPath).existsSync(), isFalse);
   });
 
+  test('addPendingEntry never collides two entries created in the same '
+      'millisecond (T104)', () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final secondSource = join(tmpDir.path, 'second.jpg');
+    File(secondSource).writeAsBytesSync([0xFF, 0xD8, 0xFF, 0xD9]);
+
+    // No delay between the two calls — this is the exact scenario that
+    // used to alias one entry's photo to the other's when the
+    // destination filename was a bare millisecond timestamp.
+    final results = await Future.wait([
+      service.addPendingEntry(imagePath: sourceImagePath),
+      service.addPendingEntry(imagePath: secondSource),
+    ]);
+
+    expect(results[0].imagePath, isNot(results[1].imagePath));
+    expect(File(results[0].imagePath).existsSync(), isTrue);
+    expect(File(results[1].imagePath).existsSync(), isTrue);
+  });
+
   test('purgeEntriesOlderThan deletes only entries past the cutoff (T95)',
       () async {
     final service = HistoryService();
     await service.init(dbPath: dbPath);
     final oldEntry = await service.addPendingEntry(imagePath: sourceImagePath);
-    // _copyImageToPermanentStorage names files by millisecond timestamp —
-    // without this delay, two calls in the same millisecond collide on
-    // the same destination path (a real latent bug, logged for the audit).
-    await Future.delayed(const Duration(milliseconds: 2));
     final recentSource = join(tmpDir.path, 'recent.jpg');
     File(recentSource).writeAsBytesSync([0xFF, 0xD8, 0xFF, 0xD9]);
     final recentEntry = await service.addPendingEntry(imagePath: recentSource);

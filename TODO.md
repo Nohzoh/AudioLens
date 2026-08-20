@@ -36,12 +36,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Finding**: entering photo mode (the image_outlined/article_outlined icon in the top bar) is meant to keep just the play/generate button visible over the photo (T94, deliberate — matches `player_screen.dart`'s intent of keeping playback controllable). But the implementation differs from `player_screen.dart`: there, the play/pause control lives as a small icon in the top bar, always naturally positioned; here, it's a full-width `FilledButton` at the end of a scrollable `Column` whose other children (title/date/actions/script) are hidden via `if (!_photoMode)` — with that content gone, the button collapses to sit high up over the middle of the photo instead of anchored at the bottom, looking like a stray/leftover element rather than an intentional control.
   - **Fix**: anchor the button to the bottom of the screen regardless of photo mode (e.g. move it outside the conditionally-shrinking scroll content, similar in spirit to how the top bar icons stay fixed), rather than letting its position depend on how much other content is currently hidden.
 
-- [ ] **T104** 📈 ⭐⭐ - **`HistoryService._copyImageToPermanentStorage` filename collision on same-millisecond entries**
-  - **Added**: 2026-08-19
-  - **Source**: found while building T95 (`purgeEntriesOlderThan` test failed until a 2ms delay was added between two `addPendingEntry` calls) — deliberately left unfixed at the time and logged here for the full audit, per the CHANGELOG entry for T95.
-  - **Root cause**: destination filenames are derived from `DateTime.now().millisecondsSinceEpoch` alone — two entries created within the same millisecond (e.g. via the T97 share-intent path plus a near-simultaneous manual pick, or any future batch/automated import) collide on the same destination path, silently aliasing one entry's photo to another's. Deleting one such entry then deletes the file the other still references.
-  - **Fix**: use a collision-proof name (a monotonic counter, a UUID, or the DB row id once known) instead of a raw timestamp.
-
 - [ ] **T105** 📈 ⭐⭐⭐ - **Zero widget-level test coverage across the whole app**
   - **Added**: 2026-08-19
   - **Source**: full-project security/tech-debt audit — `grep -rl testWidgets test/` returns nothing; all 172 tests are `test()` (service/unit level), none are `testWidgets()`.
@@ -53,18 +47,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Source**: real local release build during T98 — Flutter's own build output warns that `flutter_local_notifications`, `flutter_plugin_android_lifecycle`, `flutter_secure_storage`, `flutter_tts`, `gal`, `image_picker_android`, `jni`, `jni_flutter`, `shared_preferences_android`, `sqflite_android`, and `url_launcher_android` all declare a dependency on NDK `28.2.13676358`, while both `scripts/build_android_local.sh` and `.github/workflows/build-android.yml` pin NDK `27.0.12077973` (T83).
   - **Current impact**: a warning only, build still succeeds (NDK is backward compatible per Flutter's own message) — but this is exactly the kind of drift that turns into a hard failure on a future Flutter/AGP bump.
   - **Fix**: bump the pinned NDK version in both build scripts together (they must stay in sync, per the repo's own convention), and update the CI NDK cache key (`android/app/build-android.yml`'s `Cache Android NDK` step, currently keyed on the version string) to match.
-
-- [ ] **T113** 📈 ⭐⭐ - **Image bytes fully loaded in memory with no size cap, twice (EXIF read + Gemini upload)**
-  - **Added**: 2026-08-19
-  - **Source**: external audit (ChatGPT), cross-checked against the code — confirmed real.
-  - **Finding**: `ExifLocationService` reads the complete image file into memory to parse EXIF, and the Gemini API upload path separately reads the full file and base64-encodes it (~33% size overhead). A modern phone photo can be 10-20MB; on a low-end device this is real memory/GC pressure, and there's no upfront size/dimension cap or rejection of oversized files anywhere in the pipeline.
-  - **Fix**: downscale/compress the image once right after capture/pick (before EXIF read and before upload), and reject or warn on implausibly large files. `RemoteConfig` already has unused `imageMaxWidth`/`imageQuality` fields that look intended for exactly this.
-
-- [ ] **T116** 📈 ⭐ - **No free-disk-space check before writing photo/audio/database**
-  - **Added**: 2026-08-19
-  - **Source**: external audit (ChatGPT).
-  - **Finding**: nothing in the photo copy, WAV write, or SQLite write paths checks available storage first. On a full device, these can fail partway through, potentially leaving a corrupt/partial file or an inconsistent history entry.
-  - **Fix**: a `checkFreeSpace()` guard before the write paths in `HistoryService`, surfacing a clear user-facing error ("not enough storage to generate audio") instead of whatever raw I/O exception would otherwise bubble up.
 
 - [ ] **T117** 📈 ⭐⭐ - **AI-generated script has no length/sanity validation beyond "title and script are non-empty"**
   - **Added**: 2026-08-19

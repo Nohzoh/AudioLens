@@ -11,6 +11,25 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T104** 📈 ⭐⭐ - **`HistoryService._copyImageToPermanentStorage` filename collision on same-millisecond entries**
+  - **Verified**: 2026-08-20
+  - **Source**: found while building T95 — deliberately left unfixed at the time and logged for the full audit.
+  - **What was done**: destination filenames now include a monotonically-increasing in-memory counter (`_fileSeq++`, incremented synchronously before any `await`) alongside the millisecond timestamp, guaranteeing two entries created in the same millisecond never collide, regardless of how their I/O interleaves afterward.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 182/182 (new: `addPendingEntry never collides two entries created in the same millisecond`, run with no artificial delay between the two calls — the exact scenario that used to alias one entry's photo to the other's)
+
+- [x] **T113** 📈 ⭐⭐ - **Image bytes fully loaded in memory with no size cap, twice (EXIF read + Gemini upload)**
+  - **Verified**: 2026-08-20
+  - **Source**: external audit (ChatGPT), cross-checked against the code.
+  - **What was done**: new `lib/utils/image_downscale.dart` (`downscaleForUpload`, using the new `package:image` dependency) downscales/recompresses the image to `RemoteConfig`'s `imageMaxWidth`/`imageQuality` right before the Gemini API upload — the original file is untouched, since EXIF GPS extraction and the copy saved to history both need full fidelity, and a decode/re-encode doesn't reliably preserve EXIF tags. Also added a 50MB upfront file-size sanity check in `home_screen.dart` before any processing starts (protects the EXIF read path too, which isn't touched by the downscale).
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 182/182 (3 new: downscales an oversized image while preserving aspect ratio, leaves an already-small image untouched, falls back to original bytes if decoding fails)
+
+- [x] **T116** 📈 ⭐ - **No free-disk-space check before writing photo/audio/database**
+  - **Verified**: 2026-08-20
+  - **Source**: external audit (ChatGPT).
+  - **What was done**: new `HistoryStorageException`, thrown by `HistoryService`'s file-copy paths (photo + audio) when the underlying write fails — specifically detects ENOSPC ("no space left on device") for a precise message, falls back to a still-clear generic one for any other I/O failure. All 5 call sites (`home_screen.dart` ×2, `history_screen.dart` ×2, `analysis_runner.dart`) now catch it and show a SnackBar instead of letting a raw exception surface; `formatVoiceUpgradeErrorMessage` also special-cases it.
+  - **Note**: reactive (catch-and-translate-the-write-failure) rather than the originally-proposed proactive `checkFreeSpace()` pre-check — avoids a race condition (space can run out between a check and the actual write) and needs no new dependency or native platform code.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 182/182
+
 - [x] **T84** 🌱 ⭐⭐⭐⭐⭐ - **Play Store publication**
   - **Verified**: 2026-08-20
   - **What was done**: full path from zero to a working, automated Play Store release. Non-technical: Google Play developer account created, privacy policy published (`PRIVACY.md`), Data Safety form completed, sensitive permissions justified, store listing assets (description, feature graphic, screenshots) finalized. Technical: release signing (T79), `allowBackup=false` (T80), API key allowlist protection (T81), secure key storage (T10), localized "AI-generated content" disclaimer on the player screen (T72), stable `applicationId` (T63), custom app icon, FR/EN localization (T67), in-app content reporting to satisfy Google's generative-AI policy (T91), CI-automated APK+AAB build with strictly increasing `versionCode`, and a `workflow_dispatch`-gated CI step publishing straight to Play Console (`r0adkll/upload-google-play`).

@@ -1,4 +1,10 @@
+import '../services/history_service.dart';
+
 String formatVoiceUpgradeErrorMessage(Object error) {
+  // T116: surface the specific storage message rather than the generic
+  // fallback below.
+  if (error is HistoryStorageException) return error.message;
+
   final message = error.toString().toLowerCase();
 
   if (message.contains('429') ||
