@@ -11,6 +11,11 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T84** 🌱 ⭐⭐⭐⭐⭐ - **Play Store publication**
+  - **Verified**: 2026-08-20
+  - **What was done**: full path from zero to a working, automated Play Store release. Non-technical: Google Play developer account created, privacy policy published (`PRIVACY.md`), Data Safety form completed, sensitive permissions justified, store listing assets (description, feature graphic, screenshots) finalized. Technical: release signing (T79), `allowBackup=false` (T80), API key allowlist protection (T81), secure key storage (T10), localized "AI-generated content" disclaimer on the player screen (T72), stable `applicationId` (T63), custom app icon, FR/EN localization (T67), in-app content reporting to satisfy Google's generative-AI policy (T91), CI-automated APK+AAB build with strictly increasing `versionCode`, and a `workflow_dispatch`-gated CI step publishing straight to Play Console (`r0adkll/upload-google-play`).
+  - **Real-world validation**: multiple successful closed-testing releases shipped and verified live on Play Console over the course of this project (v0.1.1 through v0.1.4), including diagnosing and fixing a real service-account permission error on the first attempt.
+
 - [x] **T103** 📈 ⭐⭐ - **`flutter_secure_storage` two major versions behind (9.2.4 → 11.0.0)**
   - **Verified**: 2026-08-20 (PRs #98 + this one)
   - **Source**: full-project security/tech-debt audit (`flutter pub outdated`) — this is the package protecting the user's Gemini API key.
