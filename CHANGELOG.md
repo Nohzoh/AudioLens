@@ -11,6 +11,13 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T103** 📈 ⭐⭐ - **`flutter_secure_storage` two major versions behind (9.2.4 → 11.0.0)**
+  - **Verified**: 2026-08-20 (PRs #98 + this one)
+  - **Source**: full-project security/tech-debt audit (`flutter pub outdated`) — this is the package protecting the user's Gemini API key.
+  - **What was done**: bumped in two steps rather than one direct jump, per the package's own changelog warning that skipping the v10 series can leave data encrypted with the old cipher unreadable under v11 (v10 auto-migrates on first access; v11 removes the old cipher path entirely). Step 1 (PR #98): 9.2.4 → 10.3.1, removed the now-deprecated `AndroidOptions(encryptedSharedPreferences: true)`. Step 2 (this PR): 10.3.1 → 11.0.0. Also required bumping `compileSdk` 36 → 37 in both `scripts/build_android_local.sh` and `.github/workflows/build-android.yml` (flutter_secure_storage 11.x's AAR metadata requires it) — `targetSdk` stays at 36, they're independent. `minSdk` 26 already exceeded v11's new minimum of 24, no change needed there.
+  - **Verification performed from this environment**: real device migration test on an Android emulator for **both hops** — stored a test API key under 9.2.4, updated the installed app in-place to 10.3.1 (same signing, real update not reinstall), confirmed the exact key read back byte-for-byte; repeated the same in-place update to 11.0.0, confirmed the key still read back correctly. Also built real signed release APK **and** AAB locally with R8 enabled at `compileSdk 37` — both succeed.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 178/178
+
 - [x] **T126** 📈 ⭐⭐ - **Log hygiene: audit + CI guardrail against logging sensitive data**
   - **Verified**: 2026-08-20
   - **Source**: external audit (ChatGPT) — flagged that the sanitizer covering API keys isn't applied consistently to every log call. Discussed whether this should be a one-off audit or an ongoing practice; landed on both — a one-time cleanup now, plus automated enforcement so it doesn't rely on remembering to re-audit.
