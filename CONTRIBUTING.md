@@ -72,10 +72,10 @@ docs: translate TODO.md and CHANGELOG.md to English
 
 ### Backlog
 
-Planned work and known issues are tracked directly in the repo:
-[`TODO.md`](TODO.md) for what's next, [`CHANGELOG.md`](CHANGELOG.md)
-for what's already shipped and how it was verified. If you're picking
-up a `TODO.md` item, mention it in your PR description.
+Planned work is tracked as [GitHub issues](https://github.com/Nohzoh/AudioLens/issues);
+[`CHANGELOG.md`](CHANGELOG.md) records what's already shipped and how it
+was verified. If you're picking up an open issue, reference it
+(`Closes #<n>`) in your PR description.
 
 ## Reporting issues
 

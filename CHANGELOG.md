@@ -1,11 +1,16 @@
 # Changelog - AudioLens
 
 History of completed tasks and test feedback. Tasks in progress or to do
-are in [`TODO.md`](TODO.md).
+are tracked as [GitHub issues](https://github.com/Nohzoh/AudioLens/issues)
+(2026-08-22 onward — this project used to track its backlog in a
+`TODO.md` file; every entry still open at the time was migrated over to
+an issue).
 
-IDs (T01, T02...) form a single sequence shared with `TODO.md` — before
-creating a new task, check the highest ID across both files
-(`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
+IDs (T01, T02...) were a sequence shared with the now-retired `TODO.md`
+— they only ever applied to work that had already landed in this file
+before the migration, and are kept as-is on those historical entries for
+continuity. New work has no T-number; it's just a GitHub issue, closed
+by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ---
 
