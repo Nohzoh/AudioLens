@@ -1,7 +1,4 @@
-Cette mise à jour ajoute :
-• Favoris et collections nommées dans l'historique
-• Un widget sur l'écran d'accueil pour capturer en un geste
-• Des contrôles de lecture depuis l'écran verrouillé (lecture/pause, avance/retour 10s)
-• Une notification in-app quand une mise à jour est disponible
-• Une meilleure gestion de la position lors d'une nouvelle tentative d'analyse
-Ainsi que des améliorations générales de fiabilité.
+Cette mise à jour corrige :
+• L'application ne reste plus bloquée sur le modèle IA hors-ligne après un souci réseau temporaire — elle retente le modèle en ligne à la prochaine photo
+• L'option « Améliorer la voix » apparaît maintenant dès qu'un commentaire a été lu avec la voix de secours, y compris en mode photo
+Corrections de fiabilité mineures, pas de nouvel écran.
