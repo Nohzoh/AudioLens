@@ -261,11 +261,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
+    final knownCoordinates = await resolveKnownCoordinatesForRelaunch(context, entry);
+    if (!mounted) return;
     await _runAnalysis(
       imageFile: imageFile,
       entryId: entry.id!,
       source: 'retry',
-      knownCoordinates: knownCoordinatesFromEntry(entry),
+      knownCoordinates: knownCoordinates,
     );
   }
 
@@ -280,11 +282,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
+    final knownCoordinates = await resolveKnownCoordinatesForRelaunch(context, entry);
+    if (!mounted) return;
     await _runAnalysis(
       imageFile: imageFile,
       entryId: entry.id!,
       source: 'captured',
-      knownCoordinates: knownCoordinatesFromEntry(entry),
+      knownCoordinates: knownCoordinates,
     );
   }
 
