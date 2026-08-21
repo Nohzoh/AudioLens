@@ -166,8 +166,60 @@ void main() {
 
     expect(result, isNotNull);
     expect(nano.analyzeCalled, isTrue);
-    expect(service.activeProvider, AIProvider.geminiNano);
     expect(result!.script, 'Script local de secours.');
+    // T132: this fallback is per-analysis only — the active provider must
+    // NOT permanently switch, or every later analysis in the session would
+    // silently and invisibly get stuck on Nano even after the cloud API
+    // recovers.
+    expect(service.activeProvider, AIProvider.geminiApi);
+    expect(service.aiModelWasFallback, isTrue);
+    expect(service.actualAiModel, 'Gemini Nano');
+  });
+
+  test('Cloud AI failure -> Nano fallback, then a later analysis retries the '
+      'same session\'s cloud API fresh instead of staying stuck on Nano '
+      '(T132)', () async {
+    // Fails every model on the first analysis (exhausting GeminiApiService's
+    // own internal per-model fallback list, so it throws up to
+    // AudioGuideService and triggers the Nano fallback), succeeds on the
+    // second — simulates a transient cloud hiccup that clears up before
+    // the next analysis.
+    var callCount = 0;
+    const modelsPerAttempt = 3; // matches RemoteConfigService's default fallback list
+    final api = GeminiApiService(
+      apiKey: 'test-key',
+      dioClient: fakeDio((_) async {
+        callCount++;
+        if (callCount <= modelsPerAttempt) {
+          return (statusCode: 429, body: jsonEncode({'error': {'message': 'quota'}}));
+        }
+        return (statusCode: 200, body: _successJson());
+      }),
+    );
+    final nano = _FakeNano(available: true);
+    final service = AudioGuideService(
+      geminiTtsService: _FakeGeminiTts(fail: false),
+      geminiApiService: api,
+      nanoService: nano,
+    );
+    await service.init();
+    await service.setActiveProvider(AIProvider.geminiApi);
+
+    final first = await service.analyzeAndPlay(tempImage());
+    expect(first, isNotNull);
+    expect(nano.analyzeCalled, isTrue);
+    expect(service.aiModelWasFallback, isTrue);
+    expect(service.activeProvider, AIProvider.geminiApi);
+
+    nano.analyzeCalled = false;
+    final second = await service.analyzeAndPlay(tempImage());
+
+    expect(second, isNotNull);
+    // The second analysis must go straight back to the cloud API — not
+    // silently reuse Nano just because the first call happened to fall
+    // back to it.
+    expect(nano.analyzeCalled, isFalse);
+    expect(service.aiModelWasFallback, isFalse);
   });
 
   test('GPS refused -> analysis still completes with gpsSource none', () async {
