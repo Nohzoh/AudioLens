@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AudioLens — AI audio guide for any place</title>
+<meta name="description" content="Take a photo of a place and get an instant AI-narrated audio guide. Open source, Android, cloud or fully on-device.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0b14;
+    --bg-elevated: #16131f;
+    --bg-card: #1c1828;
+    --border: #2a2438;
+    --text: #f2f0f7;
+    --text-dim: #b7b0c8;
+    --text-faint: #7d7690;
+    --accent: #6b4eff;
+    --accent-light: #a596ff;
+    --accent-bg: rgba(107, 78, 255, 0.14);
+    --success: #4ade80;
+    --warn: #f0a848;
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 10px;
+    --max-width: 1120px;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -5%, rgba(107,78,255,0.20), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(107,78,255,0.10), transparent 55%);
+  }
+
+  .wrap {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  a { color: var(--accent-light); }
+
+  /* ---------- Header ---------- */
+  header.site {
+    padding: 22px 0;
+  }
+  header.site .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.15rem;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .brand img { width: 32px; height: 32px; border-radius: 8px; }
+  nav.site-links {
+    display: flex;
+    gap: 28px;
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  nav.site-links a { color: var(--text-dim); text-decoration: none; }
+  nav.site-links a:hover { color: var(--text); }
+  .btn-github {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text) !important;
+    padding: 8px 16px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .btn-github:hover { border-color: var(--accent); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 56px 0 80px;
+  }
+  .hero .wrap {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent-bg);
+    color: var(--accent-light);
+    border: 1px solid rgba(107,78,255,0.35);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 22px;
+  }
+  h1 {
+    font-size: clamp(2.2rem, 4.2vw, 3.4rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin: 0 0 20px;
+    font-weight: 800;
+  }
+  h1 .grad {
+    background: linear-gradient(90deg, var(--accent-light), #ff9fd6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .lede {
+    font-size: 1.15rem;
+    color: var(--text-dim);
+    max-width: 46ch;
+    margin: 0 0 32px;
+  }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 26px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.98rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 24px rgba(107,78,255,0.35);
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    text-decoration: none;
+    padding: 14px 26px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.98rem;
+    border: 1px solid var(--border);
+  }
+
+  .hero-shot {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+  .phone {
+    width: min(300px, 78vw);
+    border-radius: 34px;
+    border: 6px solid #08070c;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04);
+    overflow: hidden;
+    transform: rotate(-2deg);
+    background: #000;
+  }
+  .phone img { width: 100%; display: block; }
+
+  /* ---------- Status callout ---------- */
+  .status {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 18px 22px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin: 0 0 8px;
+  }
+  .status .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--warn);
+    margin-top: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 4px rgba(240,168,72,0.15);
+  }
+  .status p { margin: 0; color: var(--text-dim); font-size: 0.94rem; }
+  .status strong { color: var(--text); }
+
+  /* ---------- Sections ---------- */
+  section { padding: 72px 0; }
+  section.tight { padding: 40px 0 72px; }
+  .section-head { max-width: 640px; margin: 0 0 44px; }
+  .section-head .eyebrow { margin-bottom: 14px; }
+  h2 {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    font-weight: 700;
+  }
+  .section-head p { color: var(--text-dim); font-size: 1.02rem; margin: 0; }
+
+  /* ---------- Features ---------- */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .feature {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 26px;
+  }
+  .feature .icon {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: var(--accent-bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+  }
+  .feature h3 { margin: 0 0 8px; font-size: 1.02rem; font-weight: 600; }
+  .feature p { margin: 0; color: var(--text-dim); font-size: 0.92rem; }
+
+  /* ---------- Screenshot showcase ---------- */
+  .showcase {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    padding: 8px 4px 20px;
+    scroll-snap-type: x proximity;
+  }
+  .showcase figure {
+    margin: 0;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    width: 240px;
+  }
+  .showcase .frame {
+    border-radius: 22px;
+    border: 5px solid #08070c;
+    overflow: hidden;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.5);
+  }
+  .showcase img { width: 100%; display: block; }
+  .showcase figcaption {
+    margin-top: 14px;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  /* ---------- Pipeline ---------- */
+  .pipeline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 28px;
+  }
+  .pipe-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .pipe-step .n {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.75rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .pipe-arrow { color: var(--text-faint); font-size: 1.1rem; align-self: center; }
+
+  /* ---------- Modes ---------- */
+  .modes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .mode-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    background: linear-gradient(160deg, var(--bg-card), var(--bg-elevated));
+  }
+  .mode-card .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: 10px;
+  }
+  .mode-card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+  .mode-card p { margin: 0; color: var(--text-dim); font-size: 0.9rem; }
+
+  /* ---------- Developer callout ---------- */
+  .dev-section {
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .dev-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+  .dev-links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .dev-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .dev-link:hover { border-color: var(--accent); }
+  .dev-link .t { font-weight: 600; font-size: 0.95rem; }
+  .dev-link .d { color: var(--text-faint); font-size: 0.82rem; margin-top: 2px; }
+  .dev-link .arrow { color: var(--text-faint); }
+
+  /* ---------- Footer ---------- */
+  footer {
+    padding: 40px 0 60px;
+  }
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    color: var(--text-faint);
+    font-size: 0.85rem;
+  }
+  footer nav { display: flex; gap: 22px; }
+  footer a { color: var(--text-faint); text-decoration: none; }
+  footer a:hover { color: var(--text-dim); }
+
+  @media (max-width: 860px) {
+    .hero .wrap { grid-template-columns: 1fr; }
+    .hero-shot { order: -1; }
+    .features { grid-template-columns: 1fr 1fr; }
+    .modes { grid-template-columns: 1fr; }
+    .dev-grid { grid-template-columns: 1fr; }
+    nav.site-links { display: none; }
+  }
+  @media (max-width: 520px) {
+    .features { grid-template-columns: 1fr; }
+    .phone { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <img src="assets/icon.png" alt="">
+      AudioLens
+    </a>
+    <nav class="site-links">
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#developers">Developers</a>
+    </nav>
+    <a class="btn-github" href="https://github.com/Nohzoh/AudioLens">
+      ★ GitHub
+    </a>
+  </div>
+</header>
+
+<div id="top"></div>
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="eyebrow">🎧 Open source · Android</span>
+      <h1>Point your camera. <span class="grad">Hear the story.</span></h1>
+      <p class="lede">
+        AudioLens turns a photo of a place — a monument, a museum facade, a
+        mountain ridge — into an instant, spoken guide. On-device or in the
+        cloud, your choice.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href="https://github.com/Nohzoh/AudioLens">View on GitHub →</a>
+        <a class="btn-secondary" href="#screenshots">See it in action</a>
+      </div>
+    </div>
+    <div class="hero-shot">
+      <div class="phone">
+        <img src="assets/screenshot-player.png" alt="AudioLens narrating a place, shown over the captured photo">
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="status">
+    <span class="dot"></span>
+    <p>
+      <strong>AudioLens is currently in closed testing on the Google Play Store</strong>
+      — there's no public install link yet. The project is fully open source
+      in the meantime: read the code, follow along, or build it yourself
+      from the <a href="https://github.com/Nohzoh/AudioLens">GitHub repository</a>.
+    </p>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Why AudioLens</span>
+      <h2>Built for actually visiting places</h2>
+      <p>No app-store browsing, no typing a search query while standing in
+      front of something interesting — just point, shoot, and listen.</p>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <div class="icon">📸</div>
+        <h3>One photo, one narration</h3>
+        <p>Take a photo (or pick one from your gallery) and AudioLens identifies the place and writes a script on the spot.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🗺️</div>
+        <h3>Smart geolocation</h3>
+        <p>Reads GPS from the photo's EXIF data first, falls back to real-time location — and lets you pick the spot on a map when neither is available.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">📖</div>
+        <h3>Wikipedia-enriched</h3>
+        <p>Nearby points of interest and Wikipedia context are folded into the script for real historical and cultural detail.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">📱</div>
+        <h3>Works fully offline</h3>
+        <p>Gemini Nano runs the whole pipeline on-device — no internet connection or account needed, with a shorter local-only script.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔊</div>
+        <h3>Natural narration</h3>
+        <p>Gemini TTS in the cloud, native Android TTS as an automatic offline fallback — female or male voice, adjustable speed.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">📜</div>
+        <h3>Full visit history</h3>
+        <p>Every place you've captured stays searchable and replayable, with the model, GPS source, and duration behind each one.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screenshots" class="tight">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">A look inside</span>
+      <h2>Screenshots</h2>
+      <p>Example content shown below to illustrate the interface — not live captures.</p>
+    </div>
+    <div class="showcase">
+      <figure>
+        <div class="frame"><img src="assets/screenshot-home.png" alt="AudioLens home screen with recently visited places"></div>
+        <figcaption>Home — recent captures at a glance</figcaption>
+      </figure>
+      <figure>
+        <div class="frame"><img src="assets/screenshot-player.png" alt="AudioLens narration screen for a place"></div>
+        <figcaption>Narration, overlaid on your photo</figcaption>
+      </figure>
+      <figure>
+        <div class="frame"><img src="assets/screenshot-history.png" alt="AudioLens history list of past visits"></div>
+        <figcaption>History — every place you've captured</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Under the hood</span>
+      <h2>How it works</h2>
+      <p>One pipeline, from a photo to a spoken guide — see <a href="https://github.com/Nohzoh/AudioLens/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> for the full breakdown.</p>
+    </div>
+    <div class="pipeline">
+      <div class="pipe-step"><span class="n">1</span>Photo</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step"><span class="n">2</span>EXIF / real-time GPS</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step"><span class="n">3</span>Wikipedia</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step"><span class="n">4</span>AI vision + script</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step"><span class="n">5</span>Text-to-speech</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step"><span class="n">6</span>Audio</div>
+    </div>
+
+    <div style="height:28px"></div>
+
+    <div class="modes">
+      <div class="mode-card">
+        <span class="tag">Cloud</span>
+        <h3>☁️ Gemini API</h3>
+        <p>Your own Google account — the best quality, recognizes specific artworks and landmarks, ~400-word scripts.</p>
+      </div>
+      <div class="mode-card">
+        <span class="tag">On-device</span>
+        <h3>📱 Gemini Nano</h3>
+        <p>Runs locally on supported Android phones — works without any internet connection, ~180-word scripts.</p>
+      </div>
+      <div class="mode-card">
+        <span class="tag">Hybrid</span>
+        <h3>⚡ Automatic fallback</h3>
+        <p>Cloud when available, local automatically otherwise — no manual switching needed mid-trip.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="developers" class="dev-section">
+  <div class="wrap">
+    <div class="dev-grid">
+      <div>
+        <span class="eyebrow">For developers</span>
+        <h2>Fork it, run it, contribute</h2>
+        <p style="color:var(--text-dim); font-size:1.02rem; max-width:44ch;">
+          AudioLens is a Flutter app (Android today) with a documented
+          architecture and an open contribution process — Conventional
+          Commits, PR-based review, CI on every push.
+        </p>
+      </div>
+      <div class="dev-links">
+        <a class="dev-link" href="https://github.com/Nohzoh/AudioLens#readme">
+          <div><div class="t">README</div><div class="d">Setup, features, build instructions</div></div>
+          <span class="arrow">→</span>
+        </a>
+        <a class="dev-link" href="https://github.com/Nohzoh/AudioLens/blob/main/ARCHITECTURE.md">
+          <div><div class="t">ARCHITECTURE.md</div><div class="d">Pipeline design and diagrams</div></div>
+          <span class="arrow">→</span>
+        </a>
+        <a class="dev-link" href="https://github.com/Nohzoh/AudioLens/blob/main/CONTRIBUTING.md">
+          <div><div class="t">CONTRIBUTING.md</div><div class="d">Workflow, conventions, how to submit a PR</div></div>
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>AGPL-3.0 License · © AudioLens contributors</span>
+    <nav>
+      <a href="https://github.com/Nohzoh/AudioLens/blob/main/PRIVACY.md">Privacy</a>
+      <a href="https://github.com/Nohzoh/AudioLens">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
