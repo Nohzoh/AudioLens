@@ -27,6 +27,17 @@ job-level skip via a fast preceding `changes` job in each workflow.
 `workflow_dispatch` (manual publish) always runs the full build
 regardless.
 
+Within a build that does run, the "Build Android APK" job (2026-08-22
+onward) only builds the artifact each trigger can actually use — a `pull_request`
+never gets published, so it only builds the APK (a release-build/signing
+sanity check, and useful for direct-sideload QA); a plain `push` to
+`main` only builds the AAB (what `publish-play-store.yml` actually
+consumes); `workflow_dispatch` builds both, since it publishes
+immediately after. `assembleRelease`/`bundleRelease` are separate
+Gradle invocations sharing the same build graph, so this roughly halves
+native build time on the two most frequent triggers instead of building
+both artifacts on every run for no benefit.
+
 Backlog/task tracking moved from a `TODO.md` file to
 [GitHub issues](https://github.com/Nohzoh/AudioLens/issues) (2026-08-22).
 When the work closes an issue, reference it in the PR body/commit
