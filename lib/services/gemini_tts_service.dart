@@ -276,4 +276,22 @@ class GeminiTtsService {
     await channel.invokeMethod('stop');
     _isPlaying = false;
   }
+
+  /// T118/T21 — skip ±10s within the currently playing cached WAV
+  /// (matches Icons.replay_10/forward_10 in player_screen.dart — no
+  /// _15 variant exists in the Material icon set). Meaningless for
+  /// native (on-device) TTS's live synthesis, so this only exists on
+  /// the Gemini/cached-audio path (see
+  /// AudioGuideService.skipForward/skipBack for the engine gating).
+  static const _skipMs = 10000;
+
+  Future<void> skipForward() async {
+    const channel = MethodChannel('audio_guide/audio_player');
+    await channel.invokeMethod('seekForward', {'deltaMs': _skipMs});
+  }
+
+  Future<void> skipBack() async {
+    const channel = MethodChannel('audio_guide/audio_player');
+    await channel.invokeMethod('seekBack', {'deltaMs': _skipMs});
+  }
 }

@@ -640,6 +640,26 @@ class AudioGuideService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// T118/T21 — whether skip ±10s is meaningful right now: only true for
+  /// the Gemini/cached-WAV engine (see [togglePause]'s same check), since
+  /// native TTS's live synthesis has no seekable position. The UI uses
+  /// this to hide the skip buttons entirely for native playback rather
+  /// than showing a control that would silently do nothing.
+  bool get canSkip =>
+      (_state == GuideState.speaking || _state == GuideState.paused) &&
+      _lastTtsModel == 'gemini-tts' &&
+      _geminiTtsService != null;
+
+  Future<void> skipForward() async {
+    if (!canSkip) return;
+    await _geminiTtsService!.skipForward();
+  }
+
+  Future<void> skipBack() async {
+    if (!canSkip) return;
+    await _geminiTtsService!.skipBack();
+  }
+
   Future<void> cancelCurrentAction() async {
     _progressEstimator.stop();
     _errorMessage = null;

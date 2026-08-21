@@ -89,6 +89,17 @@ dependencies {
 DEPS
 fi
 
+# T118/T21: MediaSessionCompat/PlaybackStateCompat/MediaButtonReceiver for
+# lock-screen/notification playback controls.
+if ! grep -q 'androidx.media:media' "$FILE"; then
+  cat >> "$FILE" << 'DEPS'
+
+dependencies {
+    implementation("androidx.media:media:1.7.0")
+}
+DEPS
+fi
+
 # T85: flutter_local_notifications requires core library desugaring.
 if ! grep -q 'isCoreLibraryDesugaringEnabled' "$FILE"; then
   $SED -i 's|compileOptions {|compileOptions {\n        isCoreLibraryDesugaringEnabled = true|' "$FILE"
@@ -134,6 +145,16 @@ if ! grep -q 'FOREGROUND_SERVICE_DATA_SYNC' "$MANIFEST"; then
 fi
 if ! grep -q 'AnalysisForegroundService' "$MANIFEST"; then
   $SED -i 's|</application>|    <service android:name=".AnalysisForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>\n    </application>|' "$MANIFEST"
+fi
+# T118/T21: a second, separate foreground service for lock-screen/
+# notification playback controls (MediaSession) — different foreground
+# service type from the analysis one above, Android 14+ enforces these
+# strictly per declared type.
+if ! grep -q 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' "$MANIFEST"; then
+  $SED -i 's|<application|<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>\n    <application|' "$MANIFEST"
+fi
+if ! grep -q 'PlaybackForegroundService' "$MANIFEST"; then
+  $SED -i 's|</application>|    <service android:name=".PlaybackForegroundService" android:foregroundServiceType="mediaPlayback" android:exported="false"/>\n    </application>|' "$MANIFEST"
 fi
 # T97: register as a share target for photos from other apps.
 if ! grep -q 'android.intent.action.SEND' "$MANIFEST"; then
