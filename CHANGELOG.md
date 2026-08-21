@@ -11,6 +11,13 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T132** 🔥 ⭐⭐ - **AI provider silently and permanently downgrades to Gemini Nano after one cloud failure, for the rest of the app session**
+  - **Verified**: 2026-08-22
+  - **Source**: user, after asking why native TTS was used for an analysis despite a valid API key — their Logs screen showed `aiModel: Gemini Nano` for that run but no `[ERROR]` line explaining a cloud failure. Filed as GitHub issue #118; further investigation there found the actual root cause.
+  - **Root cause**: `AudioGuideService.analyzeAndPlay`'s cloud→Nano fallback branch set `_activeProvider = AIProvider.geminiNano` directly (not through `setActiveProvider()`, which persists the choice) — a plain in-memory field assignment that's never reverted. The very first transient cloud failure (network blip, rate limit) permanently flipped the active provider for the rest of the running app process: every later analysis skipped the cloud API entirely and went straight to Nano, with no fallback log (nothing failed *that* time — Nano was already "the active provider" from the code's point of view) and no visible indication to the user. `aiModelWasFallback`/`actualAiModel` also silently reported "no fallback" for those later runs, since they read off the now-permanently-flipped `_activeProvider`.
+  - **Fix**: the fallback no longer touches `_activeProvider` at all — it calls Nano directly for that one analysis and records the fact via a new per-call `_lastProviderFallbackToNano` flag (reset at the start of every `analyzeAndPlay`), which `aiModelWasFallback`/`actualAiModel` now check first. The next analysis always retries the cloud API fresh.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 207/207 (updated the existing fallback test that had asserted the buggy sticky behavior; added a new test proving a second analysis on the same `AudioGuideService` instance goes straight back to the cloud API — and skips Nano entirely — right after the cloud recovers from a first-analysis failure).
+
 - [x] **T131** 🔥 ⭐ - **Lock-screen media controls (T118) never actually appear on the lock screen**
   - **Verified**: 2026-08-22
   - **Source**: discovered while preparing the Play Store "Foreground service permissions" declaration for `mediaPlayback` (required after T118 added it) — recording the required demo video surfaced that the playback notification never shows on a locked screen, only the generic volume control.

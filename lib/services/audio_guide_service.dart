@@ -92,8 +92,16 @@ class AudioGuideService extends ChangeNotifier {
   double? get lastGpsLongitude => _lastGpsLongitude;
   String? _lastGpsAddress;
   String? get lastGpsAddress => _lastGpsAddress;
+  // T132: whether *this specific* analysis fell back from the cloud API to
+  // on-device Nano — reset at the start of every analyzeAndPlay() call, so
+  // it never leaks stale state from a previous run. Deliberately separate
+  // from _activeProvider, which is no longer mutated by a fallback (see
+  // the catch block below) — a transient cloud hiccup must not silently
+  // and permanently downgrade every later analysis in the session.
+  bool _lastProviderFallbackToNano = false;
   // Fallback info
   bool get aiModelWasFallback {
+    if (_lastProviderFallbackToNano) return true;
     final svc = _currentService;
     if (svc is GeminiApiService) {
       final used = svc.lastUsedModel;
@@ -103,6 +111,7 @@ class AudioGuideService extends ChangeNotifier {
     return false;
   }
   String? get actualAiModel {
+    if (_lastProviderFallbackToNano) return _lastAiModel;
     final svc = _currentService;
     if (svc is GeminiApiService) return svc.lastUsedModel;
     return _lastAiModel;
@@ -317,6 +326,7 @@ class AudioGuideService extends ChangeNotifier {
 
     try {
       _lastResult = null;
+      _lastProviderFallbackToNano = false;
       _state = GuideState.locating;
       _currentStep = 0;
       _progressEstimator.stepProgress = 0.0;
@@ -400,26 +410,28 @@ class AudioGuideService extends ChangeNotifier {
         final message = sanitizeError(analysisError.toString());
         if (_activeProvider == AIProvider.geminiApi && _nanoAvailable) {
           AppLogger.error('Cloud analysis failed, trying local fallback: $message');
-          _activeProvider = AIProvider.geminiNano;
-          _updateProviderName();
-          final localService = _currentService;
-          if (localService != null) {
-            try {
-              _lastResult = await localService.analyzeImage(
-                imageFile,
-                locationContext: locationContext.promptContext,
-                style: style,
-              );
-            } on GeminiNanoBackgroundRestrictedException {
-              throw const GuideError(
-                GuideErrorKind.ai,
-                'L\'analyse a échoué et le repli hors-ligne (Gemini Nano) '
-                'nécessite que l\'application reste au premier plan. '
-                'Réessayez en gardant AudioLens ouvert.',
-              );
-            }
-          } else {
-            throw GuideError(GuideErrorKind.ai, 'Analyse IA impossible. $message');
+          // T132: deliberately does NOT touch _activeProvider — this is a
+          // one-off fallback for *this* analysis only. Permanently
+          // switching the active provider here used to silently and
+          // invisibly strand every later analysis on Nano for the rest of
+          // the app session, even after the cloud API recovered, with no
+          // fallback log/UI indication on those later runs (nothing had
+          // actually failed *this* time, from the code's point of view).
+          try {
+            _lastResult = await _nanoService.analyzeImage(
+              imageFile,
+              locationContext: locationContext.promptContext,
+              style: style,
+            );
+            _lastProviderFallbackToNano = true;
+            _lastAiModel = 'Gemini Nano';
+          } on GeminiNanoBackgroundRestrictedException {
+            throw const GuideError(
+              GuideErrorKind.ai,
+              'L\'analyse a échoué et le repli hors-ligne (Gemini Nano) '
+              'nécessite que l\'application reste au premier plan. '
+              'Réessayez en gardant AudioLens ouvert.',
+            );
           }
         } else {
           throw GuideError(GuideErrorKind.ai, 'Analyse IA impossible. $message');
