@@ -192,6 +192,12 @@ class PlaybackForegroundService : Service() {
             .setContentText("AudioLens")
             .setSmallIcon(R.mipmap.ic_notification)
             .setOngoing(isPlaying)
+            // Without this, the notification defaults to VISIBILITY_PRIVATE
+            // and never renders on the lock screen at all (not even
+            // redacted) — playback controls silently disappear the moment
+            // the screen locks. Media controls aren't sensitive content,
+            // matching every other media app's behavior here.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(
                 android.R.drawable.ic_media_rew, "-10s",
                 MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_REWIND),
