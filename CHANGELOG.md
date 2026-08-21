@@ -11,6 +11,14 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T131** 🔥 ⭐ - **Lock-screen media controls (T118) never actually appear on the lock screen**
+  - **Verified**: 2026-08-22
+  - **Source**: discovered while preparing the Play Store "Foreground service permissions" declaration for `mediaPlayback` (required after T118 added it) — recording the required demo video surfaced that the playback notification never shows on a locked screen, only the generic volume control.
+  - **Root cause**: `PlaybackForegroundService.buildNotification()` never called `setVisibility(...)`, so the notification defaulted to `NotificationCompat.VISIBILITY_PRIVATE` — on a locked screen with the device's "hide sensitive content" setting active, that's enough to suppress the notification entirely rather than showing a redacted version, silently dropping the lock-screen transport controls that were the whole point of T118's MediaSession work.
+  - **Fix**: added `.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)` — playback controls aren't sensitive content, matching every other media app's notification (Spotify, YouTube Music, etc.).
+  - **Verification performed from this environment**: real signed debug build, installed on a real Android emulator with an actual PIN lock configured (not "swipe"/"none", which don't reliably reproduce a genuine locked keyguard). Seeded a history entry directly with a real synthesized WAV (macOS `say`, converted to PCM WAV) via `run-as`/SQLite, since no live Gemini API key is available in this environment — same technique as T127's landing-page screenshots. Confirmed via `adb shell dumpsys media_session` that the session was genuinely `active`/`PLAYING`, then locked the screen and confirmed via screen recording: before the fix, nothing but the generic volume rocker appeared on the lock screen; after the fix, the "Now Playing" AudioLens card renders correctly with a working pause/play button (tapping it on the lock screen toggles the icon and the underlying playback state, confirmed round-tripping through `MediaSessionCallback` → `AudioPlayerPlugin`).
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 206/206 (no Dart code touched — pure native Kotlin fix, no new Dart-visible behavior to cover).
+
 - [x] **T51** 🌱 ⭐⭐⭐ - **Favorites or trip collections** (e.g. Louvre, Rome, personal trip)
   - **Verified**: 2026-08-21
   - **Source**: long-standing backlog item, mixing two related ideas (simple favorites and named collections). Asked the user which to scope this iteration to — chose both.
