@@ -1,0 +1,122 @@
+name: Publish to Play Store (from existing build)
+
+# Publishes an AAB that was already built by a "Build Android APK" run,
+# instead of rebuilding from scratch. Every push to main already produces
+# a fresh, tested AAB artifact (30-day retention) — this workflow just
+# grabs one and uploads it, saving the ~8-10 min rebuild that
+# build-android.yml's own workflow_dispatch path would otherwise repeat.
+#
+# Use build-android.yml's workflow_dispatch instead when you need a
+# genuinely fresh build (e.g. no recent artifact exists, or you want to
+# publish a commit that was never built on main).
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Play Store track to publish to'
+        required: true
+        default: 'alpha'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+      run_id:
+        description: 'Build Android APK run ID to publish (leave empty to use the latest successful build on main)'
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Resolve source build run
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          if [ -n "$INPUT_RUN_ID" ]; then
+            RUN_ID="$INPUT_RUN_ID"
+          else
+            RUN_ID=$(gh run list --repo "${{ github.repository }}" \
+              --workflow=build-android.yml --branch main --event push \
+              --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No successful 'Build Android APK' run found on main, and no run_id was given. Trigger build-android.yml's workflow_dispatch for a fresh build+publish instead."
+            exit 1
+          fi
+
+          SHA=$(gh run view "$RUN_ID" --repo "${{ github.repository }}" --json headSha --jq '.headSha')
+          if [ -z "$SHA" ]; then
+            echo "::error::Could not resolve the head commit for run $RUN_ID — is it a valid Build Android APK run?"
+            exit 1
+          fi
+
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "## Publishing from build run" >> "$GITHUB_STEP_SUMMARY"
+          echo "Run: https://github.com/${{ github.repository }}/actions/runs/$RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: \`$SHA\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Track: \`${{ inputs.track }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # whatsnew files + package name come from the repo at the exact
+      # commit that was built — not whatever main happens to be now.
+      - name: Checkout code at the build's commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.resolve.outputs.sha }}
+
+      - name: Download AAB
+        uses: actions/download-artifact@v7
+        with:
+          pattern: AudioLens-release-*-aab
+          run-id: ${{ steps.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: build_artifacts
+          merge-multiple: true
+
+      - name: Download R8 mapping file
+        uses: actions/download-artifact@v7
+        with:
+          pattern: AudioLens-release-*-mapping
+          run-id: ${{ steps.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: build_artifacts
+          merge-multiple: true
+
+      - name: Verify downloaded files
+        run: |
+          AAB="build_artifacts/app-release.aab"
+          MAPPING="build_artifacts/mapping.txt"
+          if [ ! -s "$AAB" ]; then
+            echo "::error::$AAB missing or empty — the source run's AAB artifact may have expired (30-day retention) or the run failed before producing one."
+            exit 1
+          fi
+          if [ ! -s "$MAPPING" ]; then
+            echo "::error::$MAPPING missing or empty."
+            exit 1
+          fi
+          echo "✅ AAB: $(stat -c%s "$AAB") bytes"
+          echo "✅ mapping: $(stat -c%s "$MAPPING") bytes"
+
+      - name: Publish to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          packageName: io.nohzoh.audiolens
+          releaseFiles: build_artifacts/app-release.aab
+          tracks: ${{ inputs.track }}
+          status: completed
+          mappingFile: build_artifacts/mapping.txt
+          whatsNewDirectory: distribution/whatsnew
