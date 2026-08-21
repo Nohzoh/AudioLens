@@ -1,8 +1,8 @@
 # Architecture — AudioLens
 
 Overview of the pipeline and data flows, to get oriented quickly in the
-code (T69). For task status, see [`TODO.md`](TODO.md) and
-[`CHANGELOG.md`](CHANGELOG.md).
+code (T69). For task status, see the [GitHub issues](https://github.com/Nohzoh/AudioLens/issues)
+and [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Overview
 
