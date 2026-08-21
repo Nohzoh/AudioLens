@@ -76,7 +76,7 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 
 - [ ] **T21** 🌱 ⭐⭐⭐ - Add **richer interactions** to the playback screen
   - **Clarified (2026-08-16)**: ideas selected —
-    - Skip forward/back by X seconds (podcast-style), instead of just play/pause
+    - ~~Skip forward/back by X seconds (podcast-style), instead of just play/pause~~ — done 2026-08-21, bundled with T118 (see CHANGELOG.md)
     - Long-press a sentence in the displayed text to jump audio playback to that spot
     - Mini-map of the GPS location, in addition to the text address
     - Swipe gesture to navigate between history entries
@@ -142,12 +142,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Source**: external audit (ChatGPT).
   - **Finding**: `HistoryEntry` already stores which AI/TTS model was used and whether fallback occurred — good — but not the prompt version, output schema version, or script style/language used for that specific analysis. As prompts evolve, an old history entry becomes hard to reproduce or reason about.
   - **Fix**: stamp a small prompt/schema version string alongside the existing `aiModel`/`ttsModel` fields when completing an entry.
-
-- [ ] **T118** 🌱 ⭐⭐⭐⭐ - **Audio playback has no audio focus handling, lock-screen controls, or `MediaSession`**
-  - **Added**: 2026-08-19
-  - **Source**: external audit (ChatGPT).
-  - **Finding**: `AudioPlayerPlugin` uses a plain `MediaPlayer` — fine for the current use case, but it doesn't integrate with Android's audio focus (a phone call or another app's audio won't duck/pause it cleanly), doesn't expose lock-screen/notification transport controls, and has no explicit Bluetooth headset command handling.
-  - **Fix**: migrate to a proper `MediaSession`-backed playback service if/when richer playback controls (T21) or background listening becomes a priority — bundle with T21 rather than doing it standalone.
 
 - [ ] **T121** 🌱 ⭐⭐⭐ - **Time-to-first-audio: consider progressive/streaming enrichment instead of "compute everything, then play"**
   - **Added**: 2026-08-19

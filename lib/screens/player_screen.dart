@@ -430,12 +430,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            // T118/T21: skip ±10s — only meaningful for the
+                            // Gemini/cached-WAV engine (see
+                            // AudioGuideService.canSkip's doc), hidden
+                            // entirely rather than shown-but-broken for
+                            // native TTS playback.
+                            if (guide.canSkip) ...[
+                              IconButton(
+                                icon: const Icon(Icons.replay_10,
+                                    color: Colors.white70, size: 32),
+                                onPressed: guide.skipBack,
+                              ),
+                              const SizedBox(width: 8),
+                            ],
                             IconButton.filled(
                               iconSize: 36,
                               icon: Icon(guide.state == GuideState.speaking
                                   ? Icons.pause : Icons.play_arrow),
                               onPressed: guide.togglePause,
                             ),
+                            if (guide.canSkip) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.forward_10,
+                                    color: Colors.white70, size: 32),
+                                onPressed: guide.skipForward,
+                              ),
+                            ],
                             const SizedBox(width: 16),
                             IconButton(
                               icon: const Icon(Icons.stop_circle_outlined,

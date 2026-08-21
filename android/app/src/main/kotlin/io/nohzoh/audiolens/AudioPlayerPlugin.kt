@@ -1,5 +1,6 @@
 package io.nohzoh.audiolens
 
+import android.content.Context
 import android.media.MediaPlayer
 import android.media.PlaybackParams
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -10,9 +11,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/// Owns the actual MediaPlayer for Gemini TTS's cached-WAV playback.
+/// T118/T21: lock-screen/notification transport controls and audio
+/// focus are handled by [PlaybackForegroundService], a separate,
+/// deliberately thin service that never touches the MediaPlayer
+/// directly — it only sends state updates here (notifyPlaying/Paused/
+/// Stopped) and receives button-press callbacks back
+/// (pauseFromSession/resumeFromSession/seekFromSession), via the
+/// [instance] bridge below (same pattern as SharePlugin.instance).
+/// Kept this way rather than moving the MediaPlayer into the service
+/// itself, to avoid touching the already-working play/pause/stop/error
+/// handling (in particular pendingPlayResult's completion tracking,
+/// T76) while adding a large, separately-risky native feature.
 class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
+    companion object {
+        var instance: AudioPlayerPlugin? = null
+    }
+
     private lateinit var channel: MethodChannel
+    private lateinit var appContext: Context
     private var mediaPlayer: MediaPlayer? = null
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -24,15 +42,50 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private var pendingPlayResult: MethodChannel.Result? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        appContext = binding.applicationContext
         channel = MethodChannel(binding.binaryMessenger, "audio_guide/audio_player")
         channel.setMethodCallHandler(this)
+        instance = this
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         mediaPlayer?.release()
         mediaPlayer = null
+        if (instance == this) instance = null
     }
+
+    /// Called by PlaybackForegroundService.sessionCallback when the
+    /// lock-screen/notification pause button is pressed.
+    fun pauseFromSession() {
+        mediaPlayer?.pause()
+        PlaybackForegroundService.notifyPaused(appContext)
+    }
+
+    /// Called by PlaybackForegroundService.sessionCallback when the
+    /// lock-screen/notification play button is pressed.
+    fun resumeFromSession() {
+        mediaPlayer?.start()
+        PlaybackForegroundService.notifyPlaying(appContext, currentTitle)
+    }
+
+    /// Called by PlaybackForegroundService.sessionCallback for the
+    /// rewind/fast-forward transport controls (±10s, T118/T21).
+    fun seekFromSession(deltaMs: Int) {
+        seekBy(deltaMs)
+    }
+
+    private fun seekBy(deltaMs: Int) {
+        mediaPlayer?.let {
+            val target = (it.currentPosition + deltaMs).coerceIn(0, it.duration)
+            it.seekTo(target)
+        }
+    }
+
+    // Notification/lock-screen title (T118/T21) — best-effort, defaults
+    // to a generic label since playWav's caller (GeminiTtsService) has
+    // no concept of "the analysis title", only the WAV file path.
+    private var currentTitle: String = "AudioLens"
 
     private fun resolvePendingPlay() {
         pendingPlayResult?.success(null)
@@ -65,9 +118,11 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             }
                             start()
                             setOnCompletionListener {
+                                PlaybackForegroundService.notifyStopped(appContext)
                                 scope.launch(Dispatchers.Main) { resolvePendingPlay() }
                             }
                             setOnErrorListener { _, _, _ ->
+                                PlaybackForegroundService.notifyStopped(appContext)
                                 scope.launch(Dispatchers.Main) {
                                     pendingPlayResult?.error("PLAYBACK_ERROR", "Playback failed", null)
                                     pendingPlayResult = null
@@ -75,6 +130,7 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                                 true
                             }
                         }
+                        PlaybackForegroundService.notifyPlaying(appContext, currentTitle)
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
                             pendingPlayResult?.error("PLAYBACK_ERROR", e.message, null)
@@ -83,11 +139,28 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     }
                 }
             }
-            "pause" -> { mediaPlayer?.pause(); result.success(null) }
-            "play" -> { mediaPlayer?.start(); result.success(null) }
+            "pause" -> {
+                mediaPlayer?.pause()
+                PlaybackForegroundService.notifyPaused(appContext)
+                result.success(null)
+            }
+            "play" -> {
+                mediaPlayer?.start()
+                PlaybackForegroundService.notifyPlaying(appContext, currentTitle)
+                result.success(null)
+            }
+            "seekForward" -> {
+                seekBy(call.argument<Int>("deltaMs") ?: 10000)
+                result.success(null)
+            }
+            "seekBack" -> {
+                seekBy(-(call.argument<Int>("deltaMs") ?: 10000))
+                result.success(null)
+            }
             "stop" -> {
                 mediaPlayer?.stop(); mediaPlayer?.release()
                 mediaPlayer = null
+                PlaybackForegroundService.notifyStopped(appContext)
                 resolvePendingPlay()
                 result.success(null)
             }
