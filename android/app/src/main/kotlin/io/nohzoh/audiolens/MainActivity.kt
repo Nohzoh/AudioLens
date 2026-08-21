@@ -16,10 +16,16 @@ class MainActivity : FlutterActivity() {
         flutterEngine.plugins.add(AudioPlayerPlugin())
         flutterEngine.plugins.add(ForegroundServicePlugin())
         flutterEngine.plugins.add(SharePlugin())
+        flutterEngine.plugins.add(QuickCapturePlugin())
         // Cold start (T97): the app was launched directly by a share
         // intent — extract now so getInitialSharedImage (called right
         // after the engine attaches, from Dart) already has it ready.
         extractSharedImage(intent)?.let { SharePlugin.pendingInitialPath = it }
+        // Cold start, quick-capture widget: same idea, see SharePlugin's
+        // comment above and QuickCaptureWidgetProvider.kt.
+        if (intent?.action == QuickCaptureWidgetProvider.ACTION_QUICK_CAPTURE) {
+            QuickCapturePlugin.pendingCapture = true
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -27,6 +33,11 @@ class MainActivity : FlutterActivity() {
         // Warm start (T97): the app (launchMode="singleTop") was already
         // running when the user shared a photo from another app.
         extractSharedImage(intent)?.let { SharePlugin.instance?.emitSharedImage(it) }
+        // Warm start, quick-capture widget: the app was already running
+        // when the widget was tapped.
+        if (intent.action == QuickCaptureWidgetProvider.ACTION_QUICK_CAPTURE) {
+            QuickCapturePlugin.instance?.emitCapture()
+        }
     }
 
     /// ACTION_SEND with an image delivers a content:// URI in EXTRA_STREAM

@@ -13,6 +13,7 @@ import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/location_service.dart';
 import '../services/remote_config_service.dart';
+import '../services/quick_capture_service.dart';
 import '../services/settings_service.dart';
 import '../services/share_intent_service.dart';
 import '../widgets/kofi_button.dart';
@@ -30,6 +31,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   LocationPermissionStatus _permissionStatus = LocationPermissionStatus.granted;
   StreamSubscription<String>? _shareIntentSubscription;
+  StreamSubscription<void>? _quickCaptureSubscription;
   final _appUpdateService = AppUpdateService();
   bool _updateReady = false;
 
@@ -39,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _checkLocationPermission();
     _initShareIntentHandling();
+    _initQuickCaptureHandling();
     _appUpdateService.onReadyToInstall = () {
       if (mounted) setState(() => _updateReady = true);
     };
@@ -49,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _shareIntentSubscription?.cancel();
+    _quickCaptureSubscription?.cancel();
     _appUpdateService.dispose();
     super.dispose();
   }
@@ -68,6 +72,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final imageFile = File(path);
     if (!imageFile.existsSync()) return;
     await _processImageForAnalysis(imageFile, analysisSource: 'share');
+  }
+
+  /// Picks up a tap on the home-screen quick-capture widget, both for a
+  /// cold start (app launched directly by the widget) and a warm start
+  /// (app was already running when it was tapped) — jumps straight to
+  /// the camera, same as the "Take a photo" button.
+  Future<void> _initQuickCaptureHandling() async {
+    final pending = await QuickCaptureService.consumePendingCapture();
+    if (pending) await _handleQuickCapture();
+    _quickCaptureSubscription =
+        QuickCaptureService.captureStream.listen((_) => _handleQuickCapture());
+  }
+
+  Future<void> _handleQuickCapture() async {
+    if (!mounted) return;
+    await _pickImage(ImageSource.camera);
   }
 
   // Re-check permission when user comes back from settings

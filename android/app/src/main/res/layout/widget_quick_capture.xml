@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One-tap capture widget (T-new). A single full-bleed ImageView is the
+     whole tappable area — see QuickCaptureWidgetProvider.kt. -->
+<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_quick_capture_button"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:src="@drawable/widget_quick_capture"
+    android:contentDescription="@string/widget_quick_capture_description"
+    android:scaleType="fitCenter" />
