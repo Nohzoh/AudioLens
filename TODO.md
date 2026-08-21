@@ -149,12 +149,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Idea**: today the full pipeline (GPS → geocoding → POI → Wikipedia → AI → TTS) completes before any audio plays. A "first sentence fast, rest streamed in" experience — start speaking as soon as there's enough context, keep enriching in the background — would make the wait feel much shorter without necessarily reducing total latency.
   - **Note**: this is a real UX bet worth discussing before committing effort — it changes the pipeline's shape (streaming AI/TTS output) rather than being a bolt-on, so effort is likely underestimated by the star rating above.
 
-- [ ] **T127** 🌱 ⭐⭐⭐ - **Public-facing documentation + possibly a GitHub Pages site**
-  - **Added**: 2026-08-20
-  - **Source**: user — relates to the broader idea of making the repo more discoverable/shared (motivated the earlier English localization and Conventional Commits switch).
-  - **Idea**: beyond the existing README.md/ARCHITECTURE.md/PRIVACY.md, put together proper public-facing documentation (setup, architecture overview, screenshots, feature tour) and consider a GitHub Pages site as a project landing page.
-  - **To clarify before starting**: audience (developers wanting to contribute/fork vs. potential users/testers), and whether a GitHub Pages site is meant as a real landing page (needs design effort) or just rendered docs (much cheaper, e.g. GitHub Pages from `/docs` or the wiki).
-
 ---
 
 ## 📝 To fill in as the project goes

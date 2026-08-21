@@ -2,6 +2,16 @@
 
 An AI-powered audio guide mobile app. Take a photo of a place and instantly get an audio explanation.
 
+**[📄 Project site & screenshots](https://nohzoh.github.io/AudioLens/)** · [ARCHITECTURE.md](ARCHITECTURE.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
+
+<p align="center">
+  <img src="docs/assets/screenshot-home.png" width="220" alt="Home screen with recently visited places">
+  <img src="docs/assets/screenshot-player.png" width="220" alt="Narration screen for a place">
+  <img src="docs/assets/screenshot-history.png" width="220" alt="History of past visits">
+</p>
+
+<sup>Screenshots show example content used to illustrate the interface, not live captures.</sup>
+
 ## Features
 
 - 📸 Photo capture to identify places
