@@ -752,29 +752,37 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             },
                           ),
                         ], // end if (!_photoMode)
-
-                        // Play / generate button
-                        FilledButton.icon(
-                          onPressed: _toggleAudio,
-                          icon: Icon(_isPlaying
-                              ? Icons.stop
-                              : (live.hasAudio
-                                  ? Icons.play_arrow
-                                  : Icons.auto_awesome)),
-                          label: Text(_isPlaying
-                              ? l10n.historyStop
-                              : (live.hasAudio
-                                  ? l10n.historyListen
-                                  : l10n.historyGenerateAudio)),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 52),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
                       ],
+                    ),
+                  ),
+                ),
+
+                // Play / generate button — deliberately kept out of the
+                // scrollable content above and anchored here instead
+                // (T122): when _photoMode hides everything else, a
+                // scroll view's remaining content aligns to its top, not
+                // the bottom of the screen — the button used to float
+                // awkwardly over the middle of the photo instead of
+                // sitting at the bottom like a real control, matching
+                // player_screen.dart's own playback controls.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: FilledButton.icon(
+                    onPressed: _toggleAudio,
+                    icon: Icon(_isPlaying
+                        ? Icons.stop
+                        : (live.hasAudio
+                            ? Icons.play_arrow
+                            : Icons.auto_awesome)),
+                    label: Text(_isPlaying
+                        ? l10n.historyStop
+                        : (live.hasAudio
+                            ? l10n.historyListen
+                            : l10n.historyGenerateAudio)),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
                 ),

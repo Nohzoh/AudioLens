@@ -30,18 +30,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 ## 📈 Medium impact / Medium term
 *To handle within 1-2 months*
 
-- [ ] **T122** 📈 ⭐ - **History detail's "Générer l'audio"/play button floats awkwardly in photo mode**
-  - **Added**: 2026-08-20
-  - **Source**: user, real device screenshot (`history_screen.dart`'s photo-mode toggle).
-  - **Finding**: entering photo mode (the image_outlined/article_outlined icon in the top bar) is meant to keep just the play/generate button visible over the photo (T94, deliberate — matches `player_screen.dart`'s intent of keeping playback controllable). But the implementation differs from `player_screen.dart`: there, the play/pause control lives as a small icon in the top bar, always naturally positioned; here, it's a full-width `FilledButton` at the end of a scrollable `Column` whose other children (title/date/actions/script) are hidden via `if (!_photoMode)` — with that content gone, the button collapses to sit high up over the middle of the photo instead of anchored at the bottom, looking like a stray/leftover element rather than an intentional control.
-  - **Fix**: anchor the button to the bottom of the screen regardless of photo mode (e.g. move it outside the conditionally-shrinking scroll content, similar in spirit to how the top bar icons stay fixed), rather than letting its position depend on how much other content is currently hidden.
-
-- [ ] **T106** 📈 ⭐ - **NDK version pinned below what 11 plugins declare they need**
-  - **Added**: 2026-08-19
-  - **Source**: real local release build during T98 — Flutter's own build output warns that `flutter_local_notifications`, `flutter_plugin_android_lifecycle`, `flutter_secure_storage`, `flutter_tts`, `gal`, `image_picker_android`, `jni`, `jni_flutter`, `shared_preferences_android`, `sqflite_android`, and `url_launcher_android` all declare a dependency on NDK `28.2.13676358`, while both `scripts/build_android_local.sh` and `.github/workflows/build-android.yml` pin NDK `27.0.12077973` (T83).
-  - **Current impact**: a warning only, build still succeeds (NDK is backward compatible per Flutter's own message) — but this is exactly the kind of drift that turns into a hard failure on a future Flutter/AGP bump.
-  - **Fix**: bump the pinned NDK version in both build scripts together (they must stay in sync, per the repo's own convention), and update the CI NDK cache key (`android/app/build-android.yml`'s `Cache Android NDK` step, currently keyed on the version string) to match.
-
 - [ ] **T117** 📈 ⭐⭐ - **AI-generated script has no length/sanity validation beyond "title and script are non-empty"**
   - **Added**: 2026-08-19
   - **Source**: external audit (ChatGPT), scoped down from its broader "semantic/factual validator" proposal (see the audit comparison note in the same conversation — the full validator is a bigger, more speculative undertaking not queued here).
@@ -112,12 +100,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
   - **Added**: 2026-08-19
   - **Updated (2026-08-20)**: `flutter_map`, `google_fonts`, and `flutter_lints` (the other three originally listed here) are done — bumped via Dependabot (PRs #90/#93/#94), each verified locally (analyze/test/build) before merging; `flutter_lints` 6.0.0 needed one small fix (`history_screen.dart`'s `_getTts` needed an explicit `dynamic` return type for the new `strict_top_level_inference` lint).
   - **Remaining**: `latlong2` (0.9.1 → 0.10.1) — Dependabot hasn't proposed this one yet. No known vulnerability, just version drift.
-
-- [ ] **T110** 🌱 ⭐ - **Play Store listing icon doesn't render well in dark mode**
-  - **Added**: 2026-08-19
-  - **Source**: user, real device screenshot (Play Store app detail page, dark theme).
-  - **Finding**: the launcher icon used for the Play Store listing looks off against the store's dark background — needs a visual check of the icon's edges/background against both light and dark Play Store themes, not just the home-screen launcher context it was originally designed for.
-  - **Fix**: review/adjust the icon asset (or provide an adaptive-icon background suited to both themes) and re-check the listing in both Play Store display modes before the next store-listing update.
 
 - [ ] **T111** 🌱 ⭐ - **`RemoteConfigService`'s cache is write-only — never actually used as a fallback**
   - **Added**: 2026-08-19

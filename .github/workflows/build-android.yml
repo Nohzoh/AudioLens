@@ -94,10 +94,10 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.ANDROID_HOME }}/ndk
-          key: ${{ runner.os }}-ndk-27.0.12077973
+          key: ${{ runner.os }}-ndk-28.2.13676358
 
       - name: Install Android SDK 37 + NDK 27
-        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "ndk;27.0.12077973"
+        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "ndk;28.2.13676358"
 
       - name: Setup Flutter 3.44.9
         uses: subosito/flutter-action@v2
@@ -157,14 +157,14 @@ jobs:
           # Add ndkVersion after compileSdk line
           # Set ndkVersion - replace entire line or add after compileSdk
           if grep -q 'ndkVersion' $FILE; then
-            sed -i 's/ndkVersion = "[^"]*"/ndkVersion = "27.0.12077973"/' $FILE
+            sed -i 's/ndkVersion = "[^"]*"/ndkVersion = "28.2.13676358"/' $FILE
           else
             # Add ndkVersion
           if grep -q ndkVersion $FILE; then
-            sed -i 's|ndkVersion = ".*"|ndkVersion = "27.0.12077973"|' $FILE
+            sed -i 's|ndkVersion = ".*"|ndkVersion = "28.2.13676358"|' $FILE
           else
-            echo '        ndkVersion = "27.0.12077973"' >> $FILE
-            sed -i '/compileSdk = 37/{n;s/.*/        ndkVersion = "27.0.12077973"/}' $FILE
+            echo '        ndkVersion = "28.2.13676358"' >> $FILE
+            sed -i '/compileSdk = 37/{n;s/.*/        ndkVersion = "28.2.13676358"/}' $FILE
           fi
           fi
 
