@@ -1,4 +1,7 @@
-Cette mise à jour :
-• Renforce la sécurité du stockage de votre clé API et de la configuration à distance
-• Corrige plusieurs points de fiabilité internes
-Aucun changement visible dans l'interface.
+Cette mise à jour ajoute :
+• Favoris et collections nommées dans l'historique
+• Un widget sur l'écran d'accueil pour capturer en un geste
+• Des contrôles de lecture depuis l'écran verrouillé (lecture/pause, avance/retour 10s)
+• Une notification in-app quand une mise à jour est disponible
+• Une meilleure gestion de la position lors d'une nouvelle tentative d'analyse
+Ainsi que des améliorations générales de fiabilité.
