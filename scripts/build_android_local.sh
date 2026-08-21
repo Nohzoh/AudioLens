@@ -47,7 +47,7 @@ SDKMANAGER="$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | he
 echo "   sdkmanager: $SDKMANAGER"
 
 echo "==> Installation des composants SDK (idempotent, peut être long)"
-"$SDKMANAGER" --install "platform-tools" "platforms;android-37.0" "build-tools;37.0.0" "ndk;27.0.12077973"
+"$SDKMANAGER" --install "platform-tools" "platforms;android-37.0" "build-tools;37.0.0" "ndk;28.2.13676358"
 yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
 
 echo "==> Bootstrap Android (flutter create)"
@@ -69,9 +69,9 @@ $SED -i 's|^\s*minSdkVersion\s.*|        minSdkVersion 26|' "$FILE"
 $SED -i 's|^\s*targetSdkVersion\s.*|        targetSdkVersion 36|' "$FILE"
 
 if grep -q 'ndkVersion' "$FILE"; then
-  $SED -i 's|ndkVersion = "[^"]*"|ndkVersion = "27.0.12077973"|; s|ndkVersion = flutter.ndkVersion|ndkVersion = "27.0.12077973"|' "$FILE"
+  $SED -i 's|ndkVersion = "[^"]*"|ndkVersion = "28.2.13676358"|; s|ndkVersion = flutter.ndkVersion|ndkVersion = "28.2.13676358"|' "$FILE"
 else
-  $SED -i '/compileSdk = 37/a\        ndkVersion = "27.0.12077973"' "$FILE"
+  $SED -i '/compileSdk = 37/a\        ndkVersion = "28.2.13676358"' "$FILE"
 fi
 
 # T82: com.google.mediapipe:tasks-genai dropped — only used by the dead

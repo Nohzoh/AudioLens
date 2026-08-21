@@ -137,6 +137,19 @@ in plain, tester-facing language — rather than asking the user to
 write them. Only check in with the user if a change is too ambiguous
 to summarize confidently on its own.
 
+### Play Store Listing Icon (2026-08-21 onward)
+
+`distribution/play-store/icon-512.png` is the source of truth for the
+Play Console store listing icon — a flat, opaque 512×512 PNG (T110:
+the original mipmap launcher icon has transparent corners around a
+white body, which Play Console flattens to a stark white square that
+reads badly against its dark theme; this asset uses the app's brand
+purple `#6B4EFF` background instead, which works in both themes).
+This is **not** wired into any automated upload — Play Console's app
+icon isn't part of what `r0adkll/upload-google-play` manages, so after
+regenerating this file, upload it manually via Play Console → your app
+→ Grow → Store presence → Main store listing → App icon.
+
 ---
 
 ## Global Guidelines for All Agents

@@ -11,6 +11,25 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T122** 📈 ⭐ - **History detail's "Générer l'audio"/play button floats awkwardly in photo mode**
+  - **Verified**: 2026-08-21
+  - **Source**: user, real device screenshot (`history_screen.dart`'s photo-mode toggle).
+  - **What was done**: the play/generate `FilledButton` was the last child inside the scrollable `Column` that also holds the title/date/actions/script — those are hidden via `if (!_photoMode)`, and a scroll view's remaining content aligns to its *top*, not the bottom, so with everything else hidden the button floated over the middle of the photo instead of sitting at the bottom like a real control. Moved the button out of the scrollable content entirely, as its own sibling anchored after the `Expanded(SingleChildScrollView(...))`, matching `player_screen.dart`'s own fixed-position playback controls.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 201/201 (pure layout change, no new test coverage needed — verified visually on a real emulator: normal mode unchanged, photo mode now shows the button correctly anchored at the bottom).
+
+- [x] **T106** 📈 ⭐ - **NDK version pinned below what 11 plugins declare they need**
+  - **Verified**: 2026-08-21
+  - **Source**: real local release build during T98 — Flutter's own build output warned that 11 plugins declare a dependency on NDK `28.2.13676358`, while both build scripts pinned NDK `27.0.12077973` (T83).
+  - **What was done**: bumped the pinned NDK version to `28.2.13676358` in both `scripts/build_android_local.sh` and `.github/workflows/build-android.yml` (8 occurrences total, including the CI NDK cache key), keeping them in sync per the repo's own convention.
+  - **Final validation**: real local release build with R8 minification, using the new NDK version — succeeds, and the Flutter build output's NDK-version-mismatch warning is gone (confirmed by comparing build output before/after).
+
+- [x] **T110** 🌱 ⭐ - **Play Store listing icon doesn't render well in dark mode**
+  - **Verified**: 2026-08-21
+  - **Source**: user, real device screenshot (Play Store app detail page, dark theme).
+  - **Finding, confirmed**: the tracked launcher icon (`android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png`) is RGBA with transparent corners around an opaque *white* body — fine for Android's adaptive-icon masking, but Play Console requires a flat, fully-opaque icon and flattens transparency to white, producing a stark white square against the store's dark theme.
+  - **What was done**: new `scripts/generate_play_store_icon.py` draws the same headphone+waveform glyph procedurally at native 512×512 resolution (crisper than upscaling the 192px mipmap source — tried first, visibly blocky) on the app's brand purple `#6B4EFF` background (matches `lib/main.dart`'s `ColorScheme.fromSeed` and the T127 docs landing page) instead of white. Output committed at `distribution/play-store/icon-512.png`. New "Play Store Listing Icon" section in `AGENTS.md` documenting the asset and that it needs a **manual upload** to Play Console (Store presence → Main store listing → App icon) — this isn't part of what `r0adkll/upload-google-play` automates.
+  - **Final validation**: script re-run produces a byte-identical file (`md5` match) — reproducible. Visually reviewed the generated icon directly.
+
 - [x] **T127** 🌱 ⭐⭐⭐ - **Public-facing documentation + GitHub Pages landing page**
   - **Verified**: 2026-08-21
   - **Source**: user — relates to the broader idea of making the repo more discoverable/shared (motivated the earlier English localization and Conventional Commits switch). Clarified before starting: audience is both developers and potential users/testers, and the GitHub Pages site should be a real designed landing page, not just rendered markdown.
