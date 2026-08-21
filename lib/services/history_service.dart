@@ -63,6 +63,7 @@ class HistoryEntry {
   final String? gpsAddress;
   final bool aiFallback; // a fallback model was used for the analysis
   final bool ttsFallback; // Gemini TTS failed → fell back to the native engine
+  final bool isFavorite; // T51
 
   const HistoryEntry({
     this.id,
@@ -86,6 +87,7 @@ class HistoryEntry {
     this.gpsAddress,
     this.aiFallback = false,
     this.ttsFallback = false,
+    this.isFavorite = false,
   });
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
@@ -125,6 +127,7 @@ class HistoryEntry {
     'gpsAddress': gpsAddress,
     'aiFallback': aiFallback ? 1 : 0,
     'ttsFallback': ttsFallback ? 1 : 0,
+    'isFavorite': isFavorite ? 1 : 0,
   };
 
   factory HistoryEntry.fromMap(Map<String, dynamic> map) => HistoryEntry(
@@ -148,6 +151,7 @@ class HistoryEntry {
     gpsAddress: map['gpsAddress'] as String?,
     aiFallback: (map['aiFallback'] as int? ?? 0) == 1,
     ttsFallback: (map['ttsFallback'] as int? ?? 0) == 1,
+    isFavorite: (map['isFavorite'] as int? ?? 0) == 1,
     status: AnalysisStatus.values.firstWhere(
       (s) => s.name == (map['status'] as String? ?? 'complete'),
       orElse: () => AnalysisStatus.complete,
@@ -173,6 +177,7 @@ class HistoryEntry {
     String? gpsAddress,
     bool? aiFallback,
     bool? ttsFallback,
+    bool? isFavorite,
   }) => HistoryEntry(
     id: id,
     imagePath: imagePath,
@@ -195,14 +200,43 @@ class HistoryEntry {
     gpsAddress: gpsAddress ?? this.gpsAddress,
     aiFallback: aiFallback ?? this.aiFallback,
     ttsFallback: ttsFallback ?? this.ttsFallback,
+    isFavorite: isFavorite ?? this.isFavorite,
+  );
+}
+
+/// A named group of history entries (T51), e.g. "Louvre" or "Rome trip" —
+/// many-to-many via the `history_collections` join table, so one entry can
+/// belong to several collections.
+class Collection {
+  final int? id;
+  final String name;
+  final DateTime createdAt;
+
+  const Collection({this.id, required this.name, required this.createdAt});
+
+  Map<String, dynamic> toMap() => {
+    if (id != null) 'id': id,
+    'name': name,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  factory Collection.fromMap(Map<String, dynamic> map) => Collection(
+    id: map['id'] as int?,
+    name: map['name'] as String,
+    createdAt: DateTime.parse(map['createdAt'] as String),
   );
 }
 
 class HistoryService extends ChangeNotifier {
   Database? _db;
   List<HistoryEntry> _entries = [];
+  List<Collection> _collections = [];
+  Map<int, Set<int>> _entryCollectionIds = {};
 
   List<HistoryEntry> get entries => _entries;
+  List<Collection> get collections => _collections;
+  Set<int> collectionIdsForEntry(int entryId) =>
+      _entryCollectionIds[entryId] ?? const {};
 
   /// [dbPath] allows pointing at an isolated database file in tests
   /// instead of the app's real one.
@@ -210,9 +244,9 @@ class HistoryService extends ChangeNotifier {
     final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
       path,
-      version: 6,
-      onCreate: (db, version) {
-        return db.execute('''
+      version: 7,
+      onCreate: (db, version) async {
+        await db.execute('''
           CREATE TABLE history(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             imagePath TEXT NOT NULL,
@@ -234,9 +268,12 @@ class HistoryService extends ChangeNotifier {
             gpsAddress TEXT,
             aiFallback INTEGER NOT NULL DEFAULT 0,
             ttsFallback INTEGER NOT NULL DEFAULT 0,
+            isFavorite INTEGER NOT NULL DEFAULT 0,
             createdAt TEXT NOT NULL
           )
         ''');
+        await db.execute(_createCollectionsTableSql);
+        await db.execute(_createHistoryCollectionsTableSql);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -268,14 +305,50 @@ class HistoryService extends ChangeNotifier {
           await db.execute('ALTER TABLE history ADD COLUMN aiFallback INTEGER NOT NULL DEFAULT 0');
           await db.execute('ALTER TABLE history ADD COLUMN ttsFallback INTEGER NOT NULL DEFAULT 0');
         }
+        if (oldVersion < 7) {
+          await db.execute('ALTER TABLE history ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0');
+          await db.execute(_createCollectionsTableSql);
+          await db.execute(_createHistoryCollectionsTableSql);
+        }
       },
     );
     await _loadEntries();
+    await _loadCollectionsAndMemberships();
   }
+
+  static const _createCollectionsTableSql = '''
+    CREATE TABLE collections(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    )
+  ''';
+
+  static const _createHistoryCollectionsTableSql = '''
+    CREATE TABLE history_collections(
+      historyId INTEGER NOT NULL,
+      collectionId INTEGER NOT NULL,
+      PRIMARY KEY (historyId, collectionId)
+    )
+  ''';
 
   Future<void> _loadEntries() async {
     final maps = await _db!.query('history', orderBy: 'createdAt DESC');
     _entries = maps.map(HistoryEntry.fromMap).toList();
+    notifyListeners();
+  }
+
+  Future<void> _loadCollectionsAndMemberships() async {
+    final collectionMaps = await _db!.query('collections', orderBy: 'createdAt ASC');
+    _collections = collectionMaps.map(Collection.fromMap).toList();
+
+    final joinRows = await _db!.query('history_collections');
+    _entryCollectionIds = {};
+    for (final row in joinRows) {
+      final historyId = row['historyId'] as int;
+      final collectionId = row['collectionId'] as int;
+      (_entryCollectionIds[historyId] ??= <int>{}).add(collectionId);
+    }
     notifyListeners();
   }
 
@@ -416,6 +489,7 @@ class HistoryService extends ChangeNotifier {
         gpsAddress: gpsAddress,
         aiFallback: aiFallback,
         ttsFallback: ttsFallback,
+        isFavorite: _entries[idx].isFavorite,
       );
       notifyListeners();
     }
@@ -577,7 +651,68 @@ class HistoryService extends ChangeNotifier {
     } catch (_) {}
 
     await _db!.delete('history', where: 'id = ?', whereArgs: [id]);
+    await _db!.delete('history_collections', where: 'historyId = ?', whereArgs: [id]);
     _entries.removeWhere((e) => e.id == id);
+    _entryCollectionIds.remove(id);
+    notifyListeners();
+  }
+
+  /// T51: toggles a single entry's favorite flag.
+  Future<void> toggleFavorite(int entryId) async {
+    final idx = _entries.indexWhere((e) => e.id == entryId);
+    if (idx == -1) return;
+    final newValue = !_entries[idx].isFavorite;
+    await _db!.update(
+      'history',
+      {'isFavorite': newValue ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [entryId],
+    );
+    _entries[idx] = _entries[idx].copyWith(isFavorite: newValue);
+    notifyListeners();
+  }
+
+  /// T51: creates a new named collection (e.g. "Rome trip").
+  Future<Collection> createCollection(String name) async {
+    final collection = Collection(name: name, createdAt: DateTime.now());
+    final id = await _db!.insert('collections', collection.toMap());
+    final withId = Collection(id: id, name: name, createdAt: collection.createdAt);
+    _collections.add(withId);
+    notifyListeners();
+    return withId;
+  }
+
+  /// T51: deletes a collection and its memberships — entries themselves
+  /// are untouched, only the association with this collection is removed.
+  Future<void> deleteCollection(int id) async {
+    await _db!.delete('history_collections', where: 'collectionId = ?', whereArgs: [id]);
+    await _db!.delete('collections', where: 'id = ?', whereArgs: [id]);
+    _collections.removeWhere((c) => c.id == id);
+    for (final memberships in _entryCollectionIds.values) {
+      memberships.remove(id);
+    }
+    notifyListeners();
+  }
+
+  /// T51: adds or removes a single entry from a single collection —
+  /// entries can belong to several collections at once.
+  Future<void> setEntryInCollection(
+      int entryId, int collectionId, bool inCollection) async {
+    if (inCollection) {
+      await _db!.insert(
+        'history_collections',
+        {'historyId': entryId, 'collectionId': collectionId},
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+      (_entryCollectionIds[entryId] ??= <int>{}).add(collectionId);
+    } else {
+      await _db!.delete(
+        'history_collections',
+        where: 'historyId = ? AND collectionId = ?',
+        whereArgs: [entryId, collectionId],
+      );
+      _entryCollectionIds[entryId]?.remove(collectionId);
+    }
     notifyListeners();
   }
 

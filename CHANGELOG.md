@@ -11,6 +11,13 @@ creating a new task, check the highest ID across both files
 
 ## ✅ Done
 
+- [x] **T51** 🌱 ⭐⭐⭐ - **Favorites or trip collections** (e.g. Louvre, Rome, personal trip)
+  - **Verified**: 2026-08-21
+  - **Source**: long-standing backlog item, mixing two related ideas (simple favorites and named collections). Asked the user which to scope this iteration to — chose both.
+  - **What was done**: `history.isFavorite` (bool column, DB v6→v7) plus a new many-to-many `collections`/`history_collections` schema (a `HistoryEntry` can belong to several named collections at once, e.g. "Rome" and "Best of"). History screen gained a horizontal filter row (All / ★ Favorites / one chip per collection / "+ New collection"), a per-card favorite star overlaid on the thumbnail, and long-press on a card (or a dedicated button in the detail screen's top bar) opens a bottom sheet to check/uncheck which collections an entry belongs to, with inline collection creation. Long-pressing a collection chip offers to delete it (membership only — entries are never deleted). `HistoryService` gained `toggleFavorite`, `createCollection`/`deleteCollection`, `setEntryInCollection`, `collections`, `collectionIdsForEntry`.
+  - **Caught during implementation**: `completeEntry`'s in-memory update rebuilds a full `HistoryEntry` from scratch (rather than `copyWith`) — same shape as the T120 in-memory-sync bug — which would have silently reset `isFavorite` to `false` every time an entry finished analysis after being favorited while still pending/captured. Fixed by threading the existing value through explicitly; covered by a new test.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 206/206 (5 new: favorite toggle + persistence across a reload, collection create/add/remove/delete + persistence, `deleteEntry` also cleans up its collection memberships, `completeEntry` preserves a favorite set before analysis finished; `history_service_migration_test.dart` updated for the v6→v7 migration, including a new v6 fixture). No native code touched — pure Dart/SQL/UI, so no real-device build verification needed (same reasoning as T129).
+
 - [x] **T130** 🌱 ⭐⭐ - **Home-screen quick-capture widget**
   - **Verified**: 2026-08-21
   - **Source**: user idea, motivated by the app's actual use case — pointing the phone at something interesting while walking and wanting to capture it without first opening the app and navigating to the camera button.

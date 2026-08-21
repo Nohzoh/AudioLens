@@ -60,8 +60,144 @@ Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
   );
 }
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  // T51: mutually exclusive with each other and with "all" (both null).
+  bool _favoritesOnly = false;
+  int? _selectedCollectionId;
+
+  void _selectAll() =>
+      setState(() { _favoritesOnly = false; _selectedCollectionId = null; });
+  void _selectFavorites() =>
+      setState(() { _favoritesOnly = true; _selectedCollectionId = null; });
+  void _selectCollection(int id) =>
+      setState(() { _favoritesOnly = false; _selectedCollectionId = id; });
+
+  List<HistoryEntry> _filteredEntries(HistoryService history) {
+    if (_favoritesOnly) {
+      return history.entries.where((e) => e.isFavorite).toList();
+    }
+    if (_selectedCollectionId != null) {
+      final id = _selectedCollectionId!;
+      return history.entries
+          .where((e) => e.id != null && history.collectionIdsForEntry(e.id!).contains(id))
+          .toList();
+    }
+    return history.entries;
+  }
+
+  Future<void> _createCollection(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(l10n.historyNewCollection),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(hintText: l10n.historyNewCollectionHint),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.historyCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: Text(l10n.historyCreateCollection),
+          ),
+        ],
+      ),
+    );
+    final trimmed = name?.trim();
+    if (trimmed != null && trimmed.isNotEmpty && context.mounted) {
+      await context.read<HistoryService>().createCollection(trimmed);
+    }
+  }
+
+  Future<void> _confirmDeleteCollection(
+      BuildContext context, Collection collection) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(l10n.historyDeleteCollection),
+        content: Text(l10n.historyDeleteCollectionConfirm(collection.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.historyCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.historyDeleteCollection,
+                style: const TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      if (_selectedCollectionId == collection.id) {
+        setState(() => _selectedCollectionId = null);
+      }
+      await context.read<HistoryService>().deleteCollection(collection.id!);
+    }
+  }
+
+  Widget _buildFilterRow(BuildContext context, HistoryService history) {
+    final l10n = AppLocalizations.of(context)!;
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(l10n.historyAllFilter),
+              selected: !_favoritesOnly && _selectedCollectionId == null,
+              onSelected: (_) => _selectAll(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              avatar: const Icon(Icons.star, size: 16),
+              label: Text(l10n.historyFavoritesFilter),
+              selected: _favoritesOnly,
+              onSelected: (_) => _selectFavorites(),
+            ),
+          ),
+          for (final c in history.collections)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onLongPress: () => _confirmDeleteCollection(context, c),
+                child: FilterChip(
+                  label: Text(c.name),
+                  selected: _selectedCollectionId == c.id,
+                  onSelected: (_) => _selectCollection(c.id!),
+                ),
+              ),
+            ),
+          ActionChip(
+            avatar: const Icon(Icons.add, size: 16),
+            label: Text(l10n.historyNewCollection),
+            onPressed: () => _createCollection(context),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,16 +243,142 @@ class HistoryScreen extends StatelessWidget {
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: history.entries.length,
-            itemBuilder: (context, index) {
-              final entry = history.entries[index];
-              return _HistoryCard(key: ValueKey(entry.id), entry: entry)
-                  .animate(delay: (index * 50).ms)
-                  .fadeIn()
-                  .slideY(begin: 0.1);
-            },
+          final filtered = _filteredEntries(history);
+
+          return Column(
+            children: [
+              _buildFilterRow(context, history),
+              const SizedBox(height: 8),
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          l10n.historyNoFilterResults,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white38,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final entry = filtered[index];
+                          return _HistoryCard(key: ValueKey(entry.id), entry: entry)
+                              .animate(delay: (index * 50).ms)
+                              .fadeIn()
+                              .slideY(begin: 0.1);
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// T51: bottom sheet to add/remove [entry] from any number of collections,
+/// with inline creation of a new one. Shared by the history card's
+/// long-press and the detail screen's collections button.
+Future<void> _openCollectionsSheet(BuildContext context, HistoryEntry entry) async {
+  if (entry.id == null) return;
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => _CollectionsSheet(entryId: entry.id!),
+  );
+}
+
+class _CollectionsSheet extends StatefulWidget {
+  final int entryId;
+  const _CollectionsSheet({required this.entryId});
+
+  @override
+  State<_CollectionsSheet> createState() => _CollectionsSheetState();
+}
+
+class _CollectionsSheetState extends State<_CollectionsSheet> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _create(HistoryService history) async {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+    final collection = await history.createCollection(name);
+    await history.setEntryInCollection(widget.entryId, collection.id!, true);
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SafeArea(
+      child: Consumer<HistoryService>(
+        builder: (context, history, _) {
+          final memberIds = history.collectionIdsForEntry(widget.entryId);
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.historyAddToCollection,
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                if (history.collections.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(l10n.historyNoCollectionsYet,
+                        style: const TextStyle(color: Colors.white38)),
+                  )
+                else
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (final c in history.collections)
+                          CheckboxListTile(
+                            value: memberIds.contains(c.id),
+                            title: Text(c.name),
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (checked) => history.setEntryInCollection(
+                                widget.entryId, c.id!, checked ?? false),
+                          ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration:
+                            InputDecoration(hintText: l10n.historyNewCollectionHint),
+                        onSubmitted: (_) => _create(history),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () => _create(history),
+                      child: Text(l10n.historyCreateCollection),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -158,27 +420,59 @@ class _HistoryCard extends StatelessWidget {
               );
             }
           },
+          // T51: long-press anywhere on the card to assign it to collections.
+          onLongPress: entry.id == null
+              ? null
+              : () => _openCollectionsSheet(context, entry),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 // Thumbnail
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SizedBox(
-                    width: 72,
-                    height: 72,
-                    child: File(entry.imagePath).existsSync()
-                        ? Image.file(
-                            File(entry.imagePath),
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: const Icon(Icons.image_not_supported,
-                                color: Colors.white24),
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox(
+                        width: 72,
+                        height: 72,
+                        child: File(entry.imagePath).existsSync()
+                            ? Image.file(
+                                File(entry.imagePath),
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                child: const Icon(Icons.image_not_supported,
+                                    color: Colors.white24),
+                              ),
+                      ),
+                    ),
+                    if (entry.id != null)
+                      Positioned(
+                        top: 2,
+                        left: 2,
+                        child: GestureDetector(
+                          onTap: () => context
+                              .read<HistoryService>()
+                              .toggleFavorite(entry.id!),
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                              color: Colors.black45,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              entry.isFavorite ? Icons.star : Icons.star_border,
+                              size: 14,
+                              color: entry.isFavorite
+                                  ? Colors.amberAccent
+                                  : Colors.white70,
+                            ),
                           ),
-                  ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 12),
 
@@ -496,6 +790,23 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Spacer(),
+                      _ScrimIconButton(
+                        icon: live.isFavorite ? Icons.star : Icons.star_border,
+                        color: live.isFavorite ? Colors.amberAccent : Colors.white70,
+                        tooltip: live.isFavorite
+                            ? l10n.historyRemoveFromFavorites
+                            : l10n.historyAddToFavorites,
+                        onPressed: () =>
+                            context.read<HistoryService>().toggleFavorite(live.id!),
+                      ),
+                      const SizedBox(width: 4),
+                      _ScrimIconButton(
+                        icon: Icons.playlist_add,
+                        color: Colors.white70,
+                        tooltip: l10n.historyAddToCollection,
+                        onPressed: () => _openCollectionsSheet(context, live),
+                      ),
+                      const SizedBox(width: 4),
                       _ScrimIconButton(
                         icon: _photoMode
                             ? Icons.article_outlined

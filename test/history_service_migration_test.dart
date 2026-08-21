@@ -50,6 +50,10 @@ Future<String> _createOldSchemaDb(Directory dir, int version) async {
             await db.execute(col);
           }
         }
+        if (v >= 6) {
+          await db.execute('ALTER TABLE history ADD COLUMN aiFallback INTEGER NOT NULL DEFAULT 0');
+          await db.execute('ALTER TABLE history ADD COLUMN ttsFallback INTEGER NOT NULL DEFAULT 0');
+        }
       },
     ),
   );
@@ -80,8 +84,8 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  for (final oldVersion in [1, 2, 3, 4, 5]) {
-    test('migrates cleanly from schema v$oldVersion to v6, keeping data (T09)', () async {
+  for (final oldVersion in [1, 2, 3, 4, 5, 6]) {
+    test('migrates cleanly from schema v$oldVersion to v7, keeping data (T09)', () async {
       final path = await _createOldSchemaDb(tempDir, oldVersion);
 
       final service = HistoryService();
@@ -98,28 +102,31 @@ void main() {
       expect(entry.aiFallback, isFalse);
       expect(entry.ttsFallback, isFalse);
       expect(entry.wikipediaUsed, isFalse);
+      expect(entry.isFavorite, isFalse); // T51
+      expect(service.collections, isEmpty); // T51
 
       final version = await databaseFactoryFfi.openDatabase(path).then((db) async {
         final v = await db.getVersion();
         await db.close();
         return v;
       });
-      expect(version, 6);
+      expect(version, 7);
     });
   }
 
-  test('a fresh install (no prior db) creates schema v6 directly', () async {
+  test('a fresh install (no prior db) creates schema v7 directly', () async {
     final path = join(tempDir.path, 'fresh.db');
     final service = HistoryService();
     await service.init(dbPath: path);
 
     expect(service.entries, isEmpty);
+    expect(service.collections, isEmpty); // T51
     final version = await databaseFactoryFfi.openDatabase(path).then((db) async {
       final v = await db.getVersion();
       await db.close();
       return v;
     });
-    expect(version, 6);
+    expect(version, 7);
   });
 
   test('onUpgrade runs inside a single transaction: a mid-migration failure '
