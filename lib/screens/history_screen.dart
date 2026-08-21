@@ -26,12 +26,14 @@ Future<void> _launchAnalysis(BuildContext context, HistoryEntry entry) async {
     );
     return;
   }
+  final knownCoordinates = await resolveKnownCoordinatesForRelaunch(context, entry);
+  if (!context.mounted) return;
   await runAnalysisAndNavigate(
     context: context,
     imageFile: imageFile,
     entryId: entry.id!,
     source: 'captured',
-    knownCoordinates: knownCoordinatesFromEntry(entry),
+    knownCoordinates: knownCoordinates,
   );
 }
 
@@ -47,12 +49,14 @@ Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
     );
     return;
   }
+  final knownCoordinates = await resolveKnownCoordinatesForRelaunch(context, entry);
+  if (!context.mounted) return;
   await runAnalysisAndNavigate(
     context: context,
     imageFile: imageFile,
     entryId: entry.id!,
     source: 'retry',
-    knownCoordinates: knownCoordinatesFromEntry(entry),
+    knownCoordinates: knownCoordinates,
   );
 }
 

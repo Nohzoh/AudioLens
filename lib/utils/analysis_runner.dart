@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import '../screens/map_picker_screen.dart';
 import '../screens/player_screen.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
@@ -112,4 +114,29 @@ Future<void> runAnalysisAndNavigate({
     lon: entry.gpsLongitude!,
     source: entry.gpsSource ?? 'realtime',
   );
+}
+
+/// Same as [knownCoordinatesFromEntry], but when [entry] has no saved GPS
+/// (never resolved at capture time, or the original attempt's own GPS
+/// resolution failed — see HistoryService.failEntry's doc), offers
+/// picking the real spot on a map instead of silently falling through to
+/// the device's *current* real-time position — which could be a
+/// different place entirely if time has passed since the original
+/// capture/attempt (same rationale as T87's gallery/share map-picker
+/// fallback in home_screen.dart, extended here to retry and deferred
+/// "captured" launches). Declining the map picker preserves today's
+/// behavior: falls through to a fresh real-time GPS resolution.
+Future<({double lat, double lon, String source})?> resolveKnownCoordinatesForRelaunch(
+  BuildContext context,
+  HistoryEntry entry,
+) async {
+  final known = knownCoordinatesFromEntry(entry);
+  if (known != null) return known;
+  if (!context.mounted) return null;
+  final picked = await Navigator.push<LatLng>(
+    context,
+    MaterialPageRoute(builder: (_) => const MapPickerScreen()),
+  );
+  if (picked == null) return null;
+  return (lat: picked.latitude, lon: picked.longitude, source: 'map');
 }
