@@ -330,7 +330,19 @@ jobs:
       - name: Get dependencies
         run: flutter pub get 2>&1 | tee /tmp/pub_get.txt && cat /tmp/pub_get.txt | tail -30
 
+      # The APK is only ever consumed for direct-sideload testing/manual
+      # QA (e.g. via adb) or as a release-build sanity check (aapt can
+      # inspect an APK, not an AAB) — never for the actual Play Store
+      # publish, which needs the AAB below. A PR is never published, so
+      # building it there is purely that sanity check; skip it on a plain
+      # push to main, where the AAB is what actually matters and doing
+      # both doubles the native build time (assembleRelease *and*
+      # bundleRelease are separate Gradle invocations sharing the same
+      # build graph) for no benefit. workflow_dispatch keeps both, since
+      # that path is a full manual build+publish where having the APK for
+      # a quick manual check before publishing is still useful.
       - name: Build APK (release)
+        if: github.event_name != 'push'
         run: |
           BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           # T83: only real-device ABIs — x86/x86_64 are emulator-only and
@@ -348,7 +360,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Show errors on failure
-        if: failure()
+        if: failure() && github.event_name != 'push'
         run: |
           echo "## Build errors" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -356,6 +368,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Verify APK exists and is valid
+        if: github.event_name != 'push'
         run: |
           APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
           if [ ! -f "$APK_PATH" ]; then
@@ -385,7 +398,7 @@ jobs:
           echo "✅ APK build verified: $APK_PATH ($(stat -f%z "$APK_PATH" 2>/dev/null || stat -c%s "$APK_PATH") bytes)"
 
       - name: Upload APK
-        if: success()
+        if: success() && github.event_name != 'push'
         uses: actions/upload-artifact@v7
         with:
           name: AudioLens-release-${{ github.sha }}
@@ -396,7 +409,13 @@ jobs:
       # stays around for direct-sideload testing, e.g. via adb). Reuses this
       # same job's already-bootstrapped/patched android/ project and signing
       # config rather than a separate job, so it's a cheap addition.
+      #
+      # Skipped on pull_request: a PR is never published, so there's
+      # nothing to consume the AAB for there — only push (main, feeds
+      # publish-play-store.yml) and workflow_dispatch (full manual
+      # build+publish) actually need it.
       - name: Build App Bundle (release)
+        if: github.event_name != 'pull_request'
         run: |
           BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           flutter build appbundle --release \
@@ -406,7 +425,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Show AAB errors on failure
-        if: failure()
+        if: failure() && github.event_name != 'pull_request'
         run: |
           echo "## AAB build errors" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -414,6 +433,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Verify AAB exists
+        if: github.event_name != 'pull_request'
         run: |
           AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
           if [ ! -s "$AAB_PATH" ]; then
@@ -423,7 +443,7 @@ jobs:
           echo "✅ AAB build verified: $AAB_PATH ($(stat -f%z "$AAB_PATH" 2>/dev/null || stat -c%s "$AAB_PATH") bytes)"
 
       - name: Upload AAB
-        if: success()
+        if: success() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: AudioLens-release-${{ github.sha }}-aab
@@ -432,8 +452,10 @@ jobs:
 
       # T98: R8 is enabled on release builds — upload the mapping file so
       # crash reports (Play Console, Crashlytics, etc.) can be de-obfuscated.
+      # Tied to the AAB path for the same reason as the AAB itself — only
+      # ever needed for something that might get published.
       - name: Upload R8 mapping file
-        if: success()
+        if: success() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: AudioLens-release-${{ github.sha }}-mapping
