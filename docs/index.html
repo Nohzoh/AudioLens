@@ -208,6 +208,17 @@
   }
   .status p { margin: 0; color: var(--text-dim); font-size: 0.94rem; }
   .status strong { color: var(--text); }
+  .status-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent-light) !important;
+    text-decoration: none;
+  }
+  .status-link:hover { text-decoration: underline; }
 
   /* ---------- Sections ---------- */
   section { padding: 72px 0; }
@@ -438,12 +449,18 @@
 <div class="wrap">
   <div class="status">
     <span class="dot"></span>
-    <p>
-      <strong>AudioLens is currently in closed testing on the Google Play Store</strong>
-      — there's no public install link yet. The project is fully open source
-      in the meantime: read the code, follow along, or build it yourself
-      from the <a href="https://github.com/Nohzoh/AudioLens">GitHub repository</a>.
-    </p>
+    <div>
+      <p>
+        <strong>AudioLens is currently in internal testing on the Google Play Store</strong>
+        — the listing isn't public yet, so there's no install link to share.
+        The project is fully open source in the meantime: read the code,
+        follow along, or build it yourself from the
+        <a href="https://github.com/Nohzoh/AudioLens">GitHub repository</a>.
+      </p>
+      <a class="status-link" href="mailto:thomas.arnaud@gmail.com?subject=AudioLens%20beta%20tester">
+        ✉️ Want to help test it? Get in touch →
+      </a>
+    </div>
   </div>
 </div>
 
