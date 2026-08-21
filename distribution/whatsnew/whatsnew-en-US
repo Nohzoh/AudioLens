@@ -1,4 +1,7 @@
-This update:
-• Strengthens API key storage and remote config security
-• Fixes several internal reliability issues
-No visible interface changes.
+This update adds:
+• Favorites and named collections in your history
+• A home-screen widget for one-tap capture
+• Lock-screen playback controls (play/pause, skip ±10s)
+• In-app notifications when an update is available
+• Smarter location handling when retrying a failed analysis
+Plus general reliability improvements.
