@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 1x1 home-screen widget for one-tap capture (T-new). See
+     QuickCaptureWidgetProvider.kt. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="40dp"
+    android:minHeight="40dp"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_quick_capture"
+    android:previewImage="@drawable/widget_quick_capture"
+    android:resizeMode="none"
+    android:widgetCategory="home_screen" />

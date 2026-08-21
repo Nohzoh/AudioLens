@@ -80,6 +80,15 @@ android/gradle.properties
 android/gradle/
 android/settings.gradle.kts
 
+# ...except the tracked quick-capture widget assets living inside those
+# otherwise-ignored directories (new feature) — un-ignore the specific
+# files, not the whole (mostly Flutter-generated) directories.
+!android/app/src/main/res/values/
+android/app/src/main/res/values/*
+!android/app/src/main/res/values/strings.xml
+!android/app/src/main/res/drawable-nodpi/
+!android/app/src/main/res/drawable-nodpi/*.png
+
 # Generated localization code (T67) — regenerated from lib/l10n/*.arb by
 # `flutter gen-l10n` (triggered automatically via `generate: true` on every
 # `flutter pub get`); only the .arb source files are versioned.

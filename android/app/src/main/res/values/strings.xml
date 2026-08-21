@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Quick-capture widget (T-new) -->
+    <string name="widget_quick_capture_description">Take a photo with AudioLens</string>
+</resources>
