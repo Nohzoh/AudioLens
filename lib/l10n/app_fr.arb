@@ -104,6 +104,23 @@
   "historyStop": "Arrêter",
   "historyListen": "Écouter le commentaire",
   "historyGenerateAudio": "Générer l'audio",
+  "historyAllFilter": "Tout",
+  "historyFavoritesFilter": "Favoris",
+  "historyAddToFavorites": "Ajouter aux favoris",
+  "historyRemoveFromFavorites": "Retirer des favoris",
+  "historyAddToCollection": "Ajouter à une collection",
+  "historyNewCollection": "Nouvelle collection",
+  "historyNewCollectionHint": "Nom de la collection",
+  "historyCreateCollection": "Créer",
+  "historyNoCollectionsYet": "Aucune collection pour le moment",
+  "historyDeleteCollection": "Supprimer la collection",
+  "historyDeleteCollectionConfirm": "Supprimer la collection « {name} » ? Les entrées ne seront pas supprimées.",
+  "@historyDeleteCollectionConfirm": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "historyNoFilterResults": "Aucune entrée ici pour l'instant",
 
   "settingsNoVoiceProduced": "Aucun son produit — le TTS système ne semble pas disponible sur cet appareil",
   "settingsSaved": "Paramètres sauvegardés",

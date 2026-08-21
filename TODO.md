@@ -83,8 +83,6 @@ Completed tasks and test results are archived in [`CHANGELOG.md`](CHANGELOG.md).
 
 - [ ] **T50** 🌱 ⭐⭐⭐ - **Re-run an old analysis** with a new style/length/language/model
 
-- [ ] **T51** 🌱 ⭐⭐⭐ - Add **favorites or trip collections** (e.g. Louvre, Rome, personal trip)
-
 - [ ] **T107** 🌱 ⭐ - **`ShareIntentService` (T97) has no dedicated test**
   - **Added**: 2026-08-19
   - **Source**: full-project security/tech-debt audit — every other service under `lib/services/` has a matching `test/*_test.dart`; `share_intent_service.dart` (added in T97) is the one exception.
