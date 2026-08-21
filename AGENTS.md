@@ -27,20 +27,22 @@ job-level skip via a fast preceding `changes` job in each workflow.
 `workflow_dispatch` (manual publish) always runs the full build
 regardless.
 
-When the work closes a TODO.md task, update TODO.md (remove the entry) and
-CHANGELOG.md (add it under "Done", with what was actually verified) in
-the **same PR** as the code — as a follow-up commit once the PR number is
-known, so the changelog entry can reference it. This halves PR/CI-run count
+Backlog/task tracking moved from a `TODO.md` file to
+[GitHub issues](https://github.com/Nohzoh/AudioLens/issues) (2026-08-22).
+When the work closes an issue, reference it in the PR body/commit
+(`Closes #<n>`) — GitHub closes it automatically on merge — and add an
+entry to CHANGELOG.md under "Done" (with what was actually verified) in
+the **same PR** as the code, as a follow-up commit once the PR number is
+known so the changelog entry can reference it. This halves PR/CI-run count
 versus a separate docs-only PR per task (2026-08-16).
 
 ```
 git checkout -b <branch-name>
 # ... commit the code change(s) ...
 git push -u origin <branch-name>
-gh pr create --title "..." --body "..."
-# if this closes a TODO task: update TODO.md + CHANGELOG.md now,
-# referencing the PR number, commit + push to the same branch
-# wait for both checks to go green, then:
+gh pr create --title "..." --body "...\n\nCloses #<n>"
+# update CHANGELOG.md now, referencing the PR number, commit + push to
+# the same branch; wait for both checks to go green, then:
 gh pr merge <number> --merge --delete-branch
 ```
 

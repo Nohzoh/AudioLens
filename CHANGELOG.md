@@ -1,11 +1,16 @@
 # Changelog - AudioLens
 
 History of completed tasks and test feedback. Tasks in progress or to do
-are in [`TODO.md`](TODO.md).
+are tracked as [GitHub issues](https://github.com/Nohzoh/AudioLens/issues)
+(2026-08-22 onward — this project used to track its backlog in a
+`TODO.md` file; every entry still open at the time was migrated over to
+an issue).
 
-IDs (T01, T02...) form a single sequence shared with `TODO.md` — before
-creating a new task, check the highest ID across both files
-(`grep -o 'T[0-9]\+' TODO.md CHANGELOG.md`).
+IDs (T01, T02...) were a sequence shared with the now-retired `TODO.md`
+— they only ever applied to work that had already landed in this file
+before the migration, and are kept as-is on those historical entries for
+continuity. New work has no T-number; it's just a GitHub issue, closed
+by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ---
 
@@ -18,6 +23,13 @@ creating a new task, check the highest ID across both files
   - **Root cause, part 2**: even when `hasLowQualityTts` *was* true (the legacy piper case), the whole "Améliorer la voix" button lived inside `history_screen.dart`'s `if (!_photoMode) ...[` block (T94) — so it was invisible whenever the user was viewing the photo instead of the script, which is exactly how the user originally encountered this.
   - **Fix**: extended `hasLowQualityTts` to also cover `ttsModel == 'native-tts' && ttsFallback`; moved the upgrade button out of the photo-mode-hidden scroll content to sit next to the main play/generate button (T122's fixed-position anchor), so it's always reachable regardless of photo mode. The main button's behavior also changed for this case: previously "no cached audio" always meant "re-run the full Gemini→native pipeline and auto-play" — now, when the entry's last known voice was already a native fallback, the main button just replays it live (`nativeTtsService.speak(...)` directly), leaving the explicit Gemini retry to the dedicated upgrade button.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 207/207 (1 new test covering `hasLowQualityTts`'s full truth table: legacy piper with/without a file, native-tts with/without `ttsFallback`, plain gemini-tts).
+
+- [x] **T132** 🔥 ⭐⭐ - **AI provider silently and permanently downgrades to Gemini Nano after one cloud failure, for the rest of the app session**
+  - **Verified**: 2026-08-22
+  - **Source**: user, after asking why native TTS was used for an analysis despite a valid API key — their Logs screen showed `aiModel: Gemini Nano` for that run but no `[ERROR]` line explaining a cloud failure. Filed as GitHub issue #118; further investigation there found the actual root cause.
+  - **Root cause**: `AudioGuideService.analyzeAndPlay`'s cloud→Nano fallback branch set `_activeProvider = AIProvider.geminiNano` directly (not through `setActiveProvider()`, which persists the choice) — a plain in-memory field assignment that's never reverted. The very first transient cloud failure (network blip, rate limit) permanently flipped the active provider for the rest of the running app process: every later analysis skipped the cloud API entirely and went straight to Nano, with no fallback log (nothing failed *that* time — Nano was already "the active provider" from the code's point of view) and no visible indication to the user. `aiModelWasFallback`/`actualAiModel` also silently reported "no fallback" for those later runs, since they read off the now-permanently-flipped `_activeProvider`.
+  - **Fix**: the fallback no longer touches `_activeProvider` at all — it calls Nano directly for that one analysis and records the fact via a new per-call `_lastProviderFallbackToNano` flag (reset at the start of every `analyzeAndPlay`), which `aiModelWasFallback`/`actualAiModel` now check first. The next analysis always retries the cloud API fresh.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 207/207 (updated the existing fallback test that had asserted the buggy sticky behavior; added a new test proving a second analysis on the same `AudioGuideService` instance goes straight back to the cloud API — and skips Nano entirely — right after the cloud recovers from a first-analysis failure).
 
 - [x] **T131** 🔥 ⭐ - **Lock-screen media controls (T118) never actually appear on the lock screen**
   - **Verified**: 2026-08-22

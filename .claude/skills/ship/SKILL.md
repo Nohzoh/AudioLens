@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Run the full PR lifecycle for this repo - branch, Conventional Commits, push, open PR, wait for the Test + Build Android APK checks, merge, and clean up. Also handles closing a TODO.md task (moving its entry to CHANGELOG.md) in the same PR. Use whenever a code or docs change in this repo is ready to go out, or when the user asks to "push", "open a PR", "ship this", or close out a task.
+description: Run the full PR lifecycle for this repo - branch, Conventional Commits, push, open PR, wait for the Test + Build Android APK checks, merge, and clean up. Also handles closing a GitHub issue (referencing it in the PR, adding a CHANGELOG.md entry) in the same PR. Use whenever a code or docs change in this repo is ready to go out, or when the user asks to "push", "open a PR", "ship this", or close out a task.
 ---
 
 # Ship a change on AudioLens
@@ -13,8 +13,8 @@ or the merge command.
 
 Sync `main` first, then branch with a prefix that matches the change:
 `feature/`, `fix/`, `docs/`, `chore/`, `cleanup/`, `ci/`, followed by a
-short kebab-case description (add the task ID if there is one, e.g.
-`feature/t76-chunked-tts`).
+short kebab-case description (add the issue number if there is one, e.g.
+`fix/122-script-length-cap`).
 
 ```
 git checkout main && git pull origin main -q
@@ -55,26 +55,25 @@ the Conventional Commits prefix (this repo uses `--merge`, not squash,
 so the PR title never becomes a commit message), but matching it is
 fine.
 
-## 4. If this closes a TODO.md task
+## 4. If this closes a GitHub issue
 
-Update `TODO.md` (remove the entry) and `CHANGELOG.md` (add it under
+Reference the issue in the PR body (`Closes #<n>` — GitHub closes it
+automatically on merge) and add an entry to `CHANGELOG.md` (under
 `## ✅ Done`, most-recent-first) in the **same PR**, as a follow-up
 commit once the PR number is known so the changelog entry can reference
 it (`PR #<n>`). This is why it's a separate commit instead of amending.
 
+Task tracking moved from `TODO.md` to GitHub issues (2026-08-22) — the
+old `**T<n>**` ID scheme is retired; new CHANGELOG entries reference the
+issue number instead.
+
 CHANGELOG entry format:
 ```
-- [x] **T<n>** <priority-emoji> <effort-stars> - <title>
+- [x] <priority-emoji> <effort-stars> - <title> (issue #<n>)
   - **Verified**: YYYY-MM-DD (PR #<n>, commit `<hash>`)
   - **What was done**: ...
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → N/N
 ```
-
-Before pushing, check for duplicate task IDs:
-```
-grep -o '\*\*T[0-9]\+\*\*' TODO.md CHANGELOG.md | sed 's/.*://' | sort | uniq -d
-```
-(should print nothing).
 
 ## 5. Wait for checks
 
