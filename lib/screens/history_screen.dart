@@ -651,6 +651,19 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       return;
     }
 
+    if (live.hasLowQualityTts) {
+      // T133: this entry's last known voice was the native fallback
+      // (Gemini TTS failed at analysis time) and there's no cached file
+      // (native TTS speaks live, never caches) — just replay it live
+      // instead of silently re-attempting Gemini here too. The dedicated
+      // "Améliorer la voix" button below is the explicit way to retry
+      // Gemini.
+      final guide = context.read<AudioGuideService>();
+      guide.nativeTtsService.onComplete = () => setState(() => _isPlaying = false);
+      await guide.nativeTtsService.speak(live.script);
+      return;
+    }
+
     // No cached audio (T16 — script-only entry, or a missing cache file):
     // generate via the orchestrated pipeline (cloud TTS + native fallback)
     // and persist the result so it's cached from now on.
@@ -979,94 +992,90 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                         ),
 
                         const SizedBox(height: 20),
-
-                        // Upgrade TTS button
-                        if (_liveEntry(context).hasLowQualityTts)
-                          Consumer<AudioGuideService>(
-                            builder: (context, guide, _) {
-                              if (guide.geminiTtsService == null) {
-                                return const SizedBox.shrink();
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: OutlinedButton.icon(
-                                  icon: _isUpgrading
-                                      ? const SizedBox(
-                                          width: 14,
-                                          height: 14,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.amber))
-                                      : const Icon(Icons.auto_awesome,
-                                          size: 16),
-                                  label: Text(_isUpgrading
-                                      ? l10n.historyUpgradingVoice
-                                      : l10n.historyUpgradeVoice),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.amber,
-                                    side: const BorderSide(color: Colors.amber),
-                                    minimumSize:
-                                        const Size(double.infinity, 40),
-                                  ),
-                                  onPressed: _isUpgrading
-                                      ? null
-                                      : () async {
-                                          final history =
-                                              context.read<HistoryService>();
-                                          setState(() => _isUpgrading = true);
-                                          try {
-                                            final tts = guide.geminiTtsService!;
-                                            tts.onComplete = () => setState(
-                                                () => _isPlaying = false);
-                                            // Generate audio first, then play
-                                            await tts.speak(live.script);
-                                            // Save upgraded audio
-                                            final lastPath = tts.lastWavPath;
-                                            AppLogger.tts(
-                                                'upgrade lastAudioPath: $lastPath, entry.id: ${live.id}');
-                                            if (lastPath != null &&
-                                                live.id != null) {
-                                              await history.saveAudioPath(
-                                                  live.id!, lastPath,
-                                                  ttsModel: 'gemini-tts',
-                                                  ttsFallback: false);
-                                              AppLogger.tts('saveAudioPath OK');
-                                            } else {
-                                              AppLogger.error(
-                                                  'saveAudioPath skipped: lastPath=$lastPath id=${live.id}');
-                                            }
-                                            setState(() => _isPlaying = true);
-                                          } catch (error) {
-                                            setState(() => _isPlaying = false);
-                                            if (context.mounted) {
-                                              final message =
-                                                  formatVoiceUpgradeErrorMessage(
-                                                      error);
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content: Text(message),
-                                                  duration: const Duration(
-                                                      seconds: 4),
-                                                  backgroundColor:
-                                                      Colors.orange.shade800,
-                                                ),
-                                              );
-                                            }
-                                          } finally {
-                                            setState(
-                                                () => _isUpgrading = false);
-                                          }
-                                        },
-                                ),
-                              );
-                            },
-                          ),
                         ], // end if (!_photoMode)
                       ],
                     ),
                   ),
                 ),
+
+                // Upgrade TTS button — deliberately kept out of the
+                // scrollable content above (T133): it used to live inside
+                // the `if (!_photoMode)` section, so it silently vanished
+                // in photo mode, and for a native-TTS-fallback entry (no
+                // cached audioPath) it was the ONLY way back to Gemini's
+                // better voice — same reasoning as the play/generate
+                // button below (T122).
+                if (_liveEntry(context).hasLowQualityTts)
+                  Consumer<AudioGuideService>(
+                    builder: (context, guide, _) {
+                      if (guide.geminiTtsService == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                        child: OutlinedButton.icon(
+                          icon: _isUpgrading
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.amber))
+                              : const Icon(Icons.auto_awesome, size: 16),
+                          label: Text(_isUpgrading
+                              ? l10n.historyUpgradingVoice
+                              : l10n.historyUpgradeVoice),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.amber,
+                            side: const BorderSide(color: Colors.amber),
+                            minimumSize: const Size(double.infinity, 40),
+                          ),
+                          onPressed: _isUpgrading
+                              ? null
+                              : () async {
+                                  final history = context.read<HistoryService>();
+                                  setState(() => _isUpgrading = true);
+                                  try {
+                                    final tts = guide.geminiTtsService!;
+                                    tts.onComplete =
+                                        () => setState(() => _isPlaying = false);
+                                    // Generate audio first, then play
+                                    await tts.speak(live.script);
+                                    // Save upgraded audio
+                                    final lastPath = tts.lastWavPath;
+                                    AppLogger.tts(
+                                        'upgrade lastAudioPath: $lastPath, entry.id: ${live.id}');
+                                    if (lastPath != null && live.id != null) {
+                                      await history.saveAudioPath(
+                                          live.id!, lastPath,
+                                          ttsModel: 'gemini-tts',
+                                          ttsFallback: false);
+                                      AppLogger.tts('saveAudioPath OK');
+                                    } else {
+                                      AppLogger.error(
+                                          'saveAudioPath skipped: lastPath=$lastPath id=${live.id}');
+                                    }
+                                    setState(() => _isPlaying = true);
+                                  } catch (error) {
+                                    setState(() => _isPlaying = false);
+                                    if (context.mounted) {
+                                      final message =
+                                          formatVoiceUpgradeErrorMessage(error);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(message),
+                                          duration: const Duration(seconds: 4),
+                                          backgroundColor: Colors.orange.shade800,
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    setState(() => _isUpgrading = false);
+                                  }
+                                },
+                        ),
+                      );
+                    },
+                  ),
 
                 // Play / generate button — deliberately kept out of the
                 // scrollable content above and anchored here instead
@@ -1082,12 +1091,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                     onPressed: _toggleAudio,
                     icon: Icon(_isPlaying
                         ? Icons.stop
-                        : (live.hasAudio
+                        : ((live.hasAudio || live.hasLowQualityTts)
                             ? Icons.play_arrow
                             : Icons.auto_awesome)),
                     label: Text(_isPlaying
                         ? l10n.historyStop
-                        : (live.hasAudio
+                        : ((live.hasAudio || live.hasLowQualityTts)
                             ? l10n.historyListen
                             : l10n.historyGenerateAudio)),
                     style: FilledButton.styleFrom(

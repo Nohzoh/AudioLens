@@ -93,11 +93,14 @@ class HistoryEntry {
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
   bool get isPending => status == AnalysisStatus.pending;
   bool get isCaptured => status == AnalysisStatus.captured;
-  // Only checks for the old "piper" value: post-T89 native-tts entries
-  // never have a cached audioPath (they're re-synthesized on replay
-  // instead, being instant and free), so this condition is naturally
-  // moot for them regardless.
-  bool get hasLowQualityTts => ttsModel == "piper" && audioPath != null;
+  // True for two distinct "can be upgraded to a better voice" cases (T133):
+  // the legacy "piper" engine (pre-T89, cached audioPath) — and the
+  // current native-TTS fallback (Gemini TTS failed at analysis time,
+  // ttsFallback records that; native TTS never caches a file, so
+  // audioPath is always null for this case).
+  bool get hasLowQualityTts =>
+      (ttsModel == "piper" && audioPath != null) ||
+      (ttsModel == "native-tts" && ttsFallback);
   String get audioDurationEstimate {
     if (wordCount == null) return '';
     final seconds = (wordCount! / 2.5).round(); // ~150 words/min

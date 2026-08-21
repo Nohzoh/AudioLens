@@ -16,6 +16,14 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] **T133** 📈 ⭐⭐ - **No way to explicitly request a voice upgrade after a native-TTS fallback**
+  - **Verified**: 2026-08-22
+  - **Source**: user — opening a history entry whose analysis fell back to native TTS (Gemini TTS failed at the time) showed only "Générer l'audio", which re-ran the full Gemini→native fallback pipeline and auto-played whatever won, with no way to just replay the native voice or explicitly request the better one. Filed as GitHub issue #117; further investigation there found a second, compounding bug.
+  - **Root cause, part 1**: `HistoryEntry.hasLowQualityTts` only recognized the legacy `'piper'` engine (pre-T89, always has a cached file) — a *current* native-TTS-fallback entry (`ttsModel == 'native-tts'`, `ttsFallback == true`, no cached file since native TTS speaks live and never caches) never qualified, so the dedicated "Améliorer la voix" button never appeared for the case that actually happens today.
+  - **Root cause, part 2**: even when `hasLowQualityTts` *was* true (the legacy piper case), the whole "Améliorer la voix" button lived inside `history_screen.dart`'s `if (!_photoMode) ...[` block (T94) — so it was invisible whenever the user was viewing the photo instead of the script, which is exactly how the user originally encountered this.
+  - **Fix**: extended `hasLowQualityTts` to also cover `ttsModel == 'native-tts' && ttsFallback`; moved the upgrade button out of the photo-mode-hidden scroll content to sit next to the main play/generate button (T122's fixed-position anchor), so it's always reachable regardless of photo mode. The main button's behavior also changed for this case: previously "no cached audio" always meant "re-run the full Gemini→native pipeline and auto-play" — now, when the entry's last known voice was already a native fallback, the main button just replays it live (`nativeTtsService.speak(...)` directly), leaving the explicit Gemini retry to the dedicated upgrade button.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 207/207 (1 new test covering `hasLowQualityTts`'s full truth table: legacy piper with/without a file, native-tts with/without `ttsFallback`, plain gemini-tts).
+
 - [x] **T132** 🔥 ⭐⭐ - **AI provider silently and permanently downgrades to Gemini Nano after one cloud failure, for the rest of the app session**
   - **Verified**: 2026-08-22
   - **Source**: user, after asking why native TTS was used for an analysis despite a valid API key — their Logs screen showed `aiModel: Gemini Nano` for that run but no `[ERROR]` line explaining a cloud failure. Filed as GitHub issue #118; further investigation there found the actual root cause.
