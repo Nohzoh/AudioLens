@@ -250,6 +250,13 @@ def main() -> int:
     parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
     parser.add_argument("--thinking-budget", type=int, default=DEFAULT_THINKING_BUDGET)
     parser.add_argument("--prompt-override", default=None, help="For ad hoc prompt experiments (see PROTOCOL.md)")
+    parser.add_argument(
+        "--strip-location-context",
+        action="store_true",
+        help="Ignore each case's location_context (send the prompt as if GPS/location "
+        "context were unavailable), to isolate its effect on script quality — see "
+        "PROTOCOL.md, 'Question ouverte : impact du contexte de localisation'.",
+    )
     parser.add_argument("--prompt-variant-id", default="baseline")
     parser.add_argument("--manifest", default=str(DATASET_DIR / "manifest.json"))
     args = parser.parse_args()
@@ -278,7 +285,8 @@ def main() -> int:
             continue
 
         image_bytes = photo_path.read_bytes()
-        prompt = build_prompt(case.get("location_context"), case.get("style"), args.prompt_override)
+        location_context = None if args.strip_location_context else case.get("location_context")
+        prompt = build_prompt(location_context, case.get("style"), args.prompt_override)
 
         print(f"[run] {case['id']} (style={case.get('style', 'immersive')}) ...", file=sys.stderr)
         result = call_gemini(
@@ -307,6 +315,7 @@ def main() -> int:
             "max_tokens": args.max_tokens,
             "temperature": args.temperature,
             "thinking_budget": args.thinking_budget,
+            "location_context_stripped": args.strip_location_context,
         },
         "results": results,
     }

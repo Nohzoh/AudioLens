@@ -166,6 +166,27 @@ le run trimestriel de référence) :
    `is_quarterly_baseline`), mais permettent de comparer une variante à
    la référence du trimestre en cours.
 
+## Question ouverte : impact du contexte de localisation
+
+Hypothèse de départ (à confirmer/infirmer empiriquement, pas à prendre
+pour acquis) : l'apport du GPS/`location_context` devrait varier
+fortement selon que le sujet est déjà reconnaissable par la seule image
+(un monument mondialement connu) ou non (un lieu local, peu documenté).
+Sans localisation, le modèle risque de rester générique dans le second
+cas, mais de s'en sortir presque aussi bien dans le premier.
+
+Pour tester ça sur le jeu de données fixe, sans créer une seconde
+"version" du dataset : lancer le script cloud avec
+`--strip-location-context` (ou cocher l'option équivalente dans le
+workflow GitHub Actions), qui envoie exactement le même prompt que le
+run normal mais sans le bloc de contexte — chaque case garde son
+`location_context` dans `manifest.json` (pour le run de référence), il
+est juste ignoré pour ce run-là. Donner à ce run un
+`prompt_variant_id` du type `no_location_context` et
+`is_quarterly_baseline = non` dans le tracker, pour comparer côte à côte
+avec le run `baseline` du même trimestre sans polluer la moyenne
+officielle.
+
 ## Cadence
 
 Un run "officiel" par trimestre (viser le même mois calendaire à chaque

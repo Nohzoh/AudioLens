@@ -23,10 +23,10 @@
       "category": "lieu_local_peu_connu",
       "photo_file": "photos/notre_dame_vincennes.jpg",
       "gps": {
-        "latitude": 48.8477,
-        "longitude": 2.4362,
+        "latitude": 48.847519478020935,
+        "longitude": 2.438335750689276,
         "source": "manual",
-        "note": "Pas de GPS EXIF exploitable dans le fichier (tags présents mais vides) — coordonnées connues saisies manuellement pour ce lieu réel."
+        "note": "Pas de GPS EXIF exploitable dans le fichier (tags présents mais vides) — coordonnées précises fournies par l'utilisateur."
       },
       "location_context": "Lieu identifié à proximité : Église Notre-Dame de Vincennes\n\nÀ Vincennes (94300, Val-de-Marne), à proximité du château de Vincennes.\n\nÉglise paroissiale catholique de style néoclassique, construite au XIXe siècle alors que Vincennes connaissait une forte croissance démographique liée à sa proximité avec Paris.",
       "style": "immersive",
@@ -39,10 +39,10 @@
       "category": "monument_celebre",
       "photo_file": "photos/notre_dame_paris.jpg",
       "gps": {
-        "latitude": 48.852968,
-        "longitude": 2.349902,
+        "latitude": 48.85324532365652,
+        "longitude": 2.34787351701391,
         "source": "manual",
-        "note": "Pas de GPS EXIF dans le fichier — coordonnées publiques connues du monument saisies manuellement."
+        "note": "Pas de GPS EXIF dans le fichier — coordonnées précises fournies par l'utilisateur."
       },
       "location_context": "Lieu identifié à proximité : Cathédrale Notre-Dame de Paris\n\nÀ Paris (75004), sur l'Île de la Cité.\n\nCathédrale catholique de style gothique, construite pour l'essentiel entre le XIIe et le XIVe siècle. Célèbre pour sa rosace, ses tours jumelles et sa flèche, reconstruite après l'incendie de 2019.",
       "style": "immersive",
