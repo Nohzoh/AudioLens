@@ -13,6 +13,11 @@ on:
         description: 'Modèle Gemini à tester (laisser vide = défaut de production)'
         required: false
         default: ''
+      strip_location_context:
+        description: 'Ignorer le contexte de localisation (test GPS vs sans GPS — voir PROTOCOL.md)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   benchmark:
@@ -37,6 +42,9 @@ jobs:
           ARGS="--api-key $GEMINI_API_KEY --prompt-variant-id '${{ inputs.prompt_variant_id }}'"
           if [ -n "${{ inputs.model }}" ]; then
             ARGS="$ARGS --model '${{ inputs.model }}'"
+          fi
+          if [ "${{ inputs.strip_location_context }}" = "true" ]; then
+            ARGS="$ARGS --strip-location-context"
           fi
           eval python3 benchmark/scripts/run_cloud_benchmark.py "$ARGS"
 
