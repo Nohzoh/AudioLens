@@ -1,7 +1,4 @@
-This update adds:
-• Favorites and named collections in your history
-• A home-screen widget for one-tap capture
-• Lock-screen playback controls (play/pause, skip ±10s)
-• In-app notifications when an update is available
-• Smarter location handling when retrying a failed analysis
-Plus general reliability improvements.
+This update fixes:
+• The app no longer gets stuck on the offline AI model after a temporary network issue — it retries the online model on your next photo
+• The "Improve voice" option now appears whenever a narration used the backup voice, including while viewing the photo
+Small reliability fixes, no new screens.
