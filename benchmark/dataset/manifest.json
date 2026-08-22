@@ -15,6 +15,38 @@
       "location_context": "Lieu identifié à proximité : Église Notre-Dame de Vincennes\n\nÀ Vincennes (94300), à proximité du Château de Vincennes.\n\nL'église Notre-Dame de Vincennes est une église catholique de style néoclassique construite au XIXe siècle...",
       "style": "immersive",
       "notes": "Contexte gelé au 2026-08-22 — ne pas re-résoudre en direct (voir PROTOCOL.md)"
+    },
+    {
+      "id": "notre_dame_vincennes",
+      "is_example": false,
+      "description": "Capture réelle de terrain (Pixel 10, portrait) — église Notre-Dame de Vincennes",
+      "category": "lieu_local_peu_connu",
+      "photo_file": "photos/notre_dame_vincennes.jpg",
+      "gps": {
+        "latitude": 48.8477,
+        "longitude": 2.4362,
+        "source": "manual",
+        "note": "Pas de GPS EXIF exploitable dans le fichier (tags présents mais vides) — coordonnées connues saisies manuellement pour ce lieu réel."
+      },
+      "location_context": "Lieu identifié à proximité : Église Notre-Dame de Vincennes\n\nÀ Vincennes (94300, Val-de-Marne), à proximité du château de Vincennes.\n\nÉglise paroissiale catholique de style néoclassique, construite au XIXe siècle alors que Vincennes connaissait une forte croissance démographique liée à sa proximité avec Paris.",
+      "style": "immersive",
+      "notes": "Photo prise et fournie par l'utilisateur (2026-08-17). Contexte gelé au 2026-08-22 — ne pas re-résoudre en direct."
+    },
+    {
+      "id": "notre_dame_paris",
+      "is_example": false,
+      "description": "Photo Wikimedia Commons, format paysage — cathédrale Notre-Dame de Paris",
+      "category": "monument_celebre",
+      "photo_file": "photos/notre_dame_paris.jpg",
+      "gps": {
+        "latitude": 48.852968,
+        "longitude": 2.349902,
+        "source": "manual",
+        "note": "Pas de GPS EXIF dans le fichier — coordonnées publiques connues du monument saisies manuellement."
+      },
+      "location_context": "Lieu identifié à proximité : Cathédrale Notre-Dame de Paris\n\nÀ Paris (75004), sur l'Île de la Cité.\n\nCathédrale catholique de style gothique, construite pour l'essentiel entre le XIIe et le XIVe siècle. Célèbre pour sa rosace, ses tours jumelles et sa flèche, reconstruite après l'incendie de 2019.",
+      "style": "immersive",
+      "notes": "Format paysage — sert aussi de cas de test pour le bug de recadrage BoxFit.cover (issue #151). Photo publique (Wikimedia Commons, appareil Nikon D300, 2011)."
     }
   ],
   "categories_reference": [
