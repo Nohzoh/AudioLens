@@ -1,0 +1,32 @@
+{
+  "_readme": "Chaque entrée de 'cases' est un cas de test fixe. Ne PAS modifier une entrée existante d'un trimestre à l'autre (voir PROTOCOL.md). L'entrée id='EXAMPLE' ci-dessous est un gabarit commenté, ignoré par le script (is_example=true) — dupliquez-la pour ajouter un vrai cas, changez l'id, retirez is_example, et ajoutez la photo correspondante dans dataset/photos/.",
+  "cases": [
+    {
+      "id": "EXAMPLE",
+      "is_example": true,
+      "description": "Gabarit — dupliquer cette entrée pour un vrai cas de test",
+      "category": "monument_celebre",
+      "photo_file": "photos/EXAMPLE_notre_dame_vincennes.jpg",
+      "gps": {
+        "latitude": 48.8476,
+        "longitude": 2.4362,
+        "source": "exif"
+      },
+      "location_context": "Lieu identifié à proximité : Église Notre-Dame de Vincennes\n\nÀ Vincennes (94300), à proximité du Château de Vincennes.\n\nL'église Notre-Dame de Vincennes est une église catholique de style néoclassique construite au XIXe siècle...",
+      "style": "immersive",
+      "notes": "Contexte gelé au 2026-08-22 — ne pas re-résoudre en direct (voir PROTOCOL.md)"
+    }
+  ],
+  "categories_reference": [
+    "monument_celebre",
+    "lieu_local_peu_connu",
+    "architecture_moderne",
+    "site_naturel",
+    "interieur_musee",
+    "galerie_sans_gps",
+    "format_paysage",
+    "orientation_exif_non_standard",
+    "sujet_ambigu",
+    "meme_lieu_multi_styles"
+  ]
+}

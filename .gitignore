@@ -97,3 +97,4 @@ lib/l10n/app_localizations_*.dart
 
 # Local project planning
 .aider*
+__pycache__/
