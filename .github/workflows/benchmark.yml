@@ -1,0 +1,48 @@
+name: Gemini Benchmark
+
+# Manual only — this calls the real Gemini API and burns quota/cost, so
+# it must never run on push/PR triggers. See benchmark/PROTOCOL.md.
+on:
+  workflow_dispatch:
+    inputs:
+      prompt_variant_id:
+        description: 'Identifiant de variante (laisser "baseline" pour un run trimestriel officiel)'
+        required: false
+        default: 'baseline'
+      model:
+        description: 'Modèle Gemini à tester (laisser vide = défaut de production)'
+        required: false
+        default: ''
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run cloud benchmark
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::Secret GEMINI_API_KEY manquant — voir benchmark/README.md pour le configurer (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          ARGS="--api-key $GEMINI_API_KEY --prompt-variant-id '${{ inputs.prompt_variant_id }}'"
+          if [ -n "${{ inputs.model }}" ]; then
+            ARGS="$ARGS --model '${{ inputs.model }}'"
+          fi
+          eval python3 benchmark/scripts/run_cloud_benchmark.py "$ARGS"
+
+      - name: Upload results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemini-benchmark-results-${{ github.run_id }}
+          path: benchmark/results/cloud_*.json
+          retention-days: 90
