@@ -32,6 +32,8 @@ jobs:
           filters: |
             code:
               - '!**/*.md'
+              - '!benchmark/**'
+              - '!.github/workflows/benchmark.yml'
 
       - name: Decide
         id: decide
