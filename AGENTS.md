@@ -19,13 +19,15 @@ test) and `Build Android APK` must pass before merging.
 
 Both `Build Android APK` and `Test` (2026-08-20 onward) skip their actual
 work — reporting `skipped`, not `pass` — when a push/PR touches only
-`.md` files. This is intentional (avoids the ~5-6 min Android build and
-the Flutter analyze/test run for docs-only changes) and still satisfies
-the required check; it does NOT use `paths-ignore` on the trigger (that
-would leave the check permanently "Expected" and block merging), it's a
-job-level skip via a fast preceding `changes` job in each workflow.
-`workflow_dispatch` (manual publish) always runs the full build
-regardless.
+`.md` files, or only files under `benchmark/`
+(including its own `.github/workflows/benchmark.yml`) — none of that has
+any bearing on the app itself. This is intentional (avoids the ~5-6 min
+Android build and the Flutter analyze/test run for changes that don't
+touch the app) and still satisfies the required check; it does NOT use
+`paths-ignore` on the trigger (that would leave the check permanently
+"Expected" and block merging), it's a job-level skip via a fast
+preceding `changes` job in each workflow. `workflow_dispatch` (manual
+publish) always runs the full build regardless.
 
 Within a build that does run, the "Build Android APK" job (2026-08-22
 onward) only builds the artifact each trigger can actually use — a `pull_request`
