@@ -1,0 +1,22 @@
+{
+  "_readme": "Copier ce fichier en results/nano_<date>.json et remplir manuellement après un run on-device (voir PROTOCOL.md, section 'Exécution — côté Nano').",
+  "run_started_utc": "",
+  "engine": "gemini_nano_on_device",
+  "device": {
+    "model": "",
+    "android_version": "",
+    "aicore_version": ""
+  },
+  "results": [
+    {
+      "case_id": "",
+      "category": "",
+      "style": "",
+      "title": "",
+      "script": "",
+      "word_count": null,
+      "latency_ms_total": null,
+      "error": null
+    }
+  ]
+}

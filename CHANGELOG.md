@@ -16,6 +16,13 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] **Recurring Gemini API vs Gemini Nano benchmark**
+  - **Verified**: 2026-08-22
+  - **Source**: user — wanted a way to track how the cloud model and the on-device model compare on AudioLens's actual audio-guide generation task (photo + GPS + location context), reusable every quarter, and reusable for ad hoc prompt experiments too.
+  - **What was added**: `benchmark/` — `PROTOCOL.md` (methodology, fixed dataset composition, scoring rubric, quarterly cadence), a `dataset/manifest.json` schema (with a `location_context` frozen at dataset-creation time rather than re-resolved live, to isolate the model as the only variable across quarters), `scripts/run_cloud_benchmark.py` (reproduces `GeminiApiService`'s exact prompt/request shape, so a future change to that prompt shows up as a diff in both places), a manual-logging template for Nano results (on-device inference can't be automated or run in CI), and `tracker/audiolens_benchmark_tracker.xlsx` (per-run log + auto-computed quarterly averages via `AVERAGEIFS`, filtered so ad hoc prompt-variant runs never pollute the quarterly trend).
+  - **CI**: `.github/workflows/benchmark.yml`, `workflow_dispatch`-only (never on push/PR, since it spends real API quota), reads a `GEMINI_API_KEY` repository secret and uploads results as a build artifact.
+  - **Note**: the dataset ships with only a commented example entry — real test photos/cases still need to be added to `benchmark/dataset/` before the first real run.
+
 - [x] **T133** 📈 ⭐⭐ - **No way to explicitly request a voice upgrade after a native-TTS fallback**
   - **Verified**: 2026-08-22
   - **Source**: user — opening a history entry whose analysis fell back to native TTS (Gemini TTS failed at the time) showed only "Générer l'audio", which re-ran the full Gemini→native fallback pipeline and auto-played whatever won, with no way to just replay the native voice or explicitly request the better one. Filed as GitHub issue #117; further investigation there found a second, compounding bug.
