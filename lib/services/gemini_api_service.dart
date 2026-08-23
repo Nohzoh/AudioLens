@@ -91,6 +91,13 @@ class GeminiApiService implements AIService {
     ({int statusCode, String body})? response;
     final List<String> attempts = [];
     _parsedResult = null;
+    // Why the most recent model attempt failed, kept structured (rather
+    // than only as the display string in `attempts`) so the final error
+    // can be phrased for the user. Only the last attempt's reason is
+    // used: failures often differ across models (the primary may be out
+    // of quota while a fallback is simply retired), and stitching several
+    // causes into one message helps nobody.
+    _GeminiFailure? lastFailure;
 
     for (final model in modelsToTry) {
       final fullUrl =
@@ -147,6 +154,7 @@ class GeminiApiService implements AIService {
             final reason = sanitizeError(e.message);
             attempts.add('✗ $model (200, réponse inexploitable): $reason');
             AppLogger.ai('Model returned unusable 200: $model ($reason)');
+            lastFailure = _GeminiFailure.unusableResponse;
             continue;
           }
         } else if (resp.statusCode == 429 || resp.statusCode == 404 || resp.statusCode == 503) {
@@ -155,6 +163,11 @@ class GeminiApiService implements AIService {
           final short = msg.length > 80 ? msg.substring(0, 80) : msg;
           attempts.add('✗ $model (${resp.statusCode}): $short');
           AppLogger.ai('Model failed: $model (${resp.statusCode}): $short');
+          lastFailure = switch (resp.statusCode) {
+            429 => _GeminiFailure.quotaExceeded,
+            404 => _GeminiFailure.modelUnavailable,
+            _ => _GeminiFailure.serviceUnavailable,
+          };
           continue;
         } else {
           final err = _tryDecode(resp.body);
@@ -171,18 +184,51 @@ class GeminiApiService implements AIService {
         if (e is CancelledException) rethrow;
         if (e is Exception && e.toString().contains('Gemini API erreur')) rethrow;
         attempts.add('✗ $model (timeout/réseau): ${sanitizeError(e.toString())}');
+        lastFailure = _GeminiFailure.network;
         continue;
       }
     }
 
     _lastAttempts = attempts;
     if (response == null) {
-      final trace = attempts.join('\n');
-      throw Exception('Gemini: tous les modèles ont échoué:\n$trace');
+      // The thrown message is what the user actually sees (AudioGuideService
+      // surfaces it as-is via errorMessage), so phrase it for them rather
+      // than dumping the per-model trace — that trace stays available in
+      // lastAttempts for the debug screen.
+      AppLogger.ai('All models failed:\n${attempts.join('\n')}');
+      throw Exception(_userFacingFailureMessage(lastFailure));
     }
 
     // Non-null whenever response is: both are set together in the loop above.
     return _parsedResult!;
+  }
+
+  /// Message shown to the user when no model produced a usable answer,
+  /// based on the *last* attempt's failure.
+  static String _userFacingFailureMessage(_GeminiFailure? failure) {
+    switch (failure) {
+      case _GeminiFailure.quotaExceeded:
+        // The most common real-world case: anyone using their own Google
+        // API key knows quotas exist, so name it plainly instead of
+        // hiding it behind a generic failure.
+        return 'Quota Google AI dépassé. Réessayez plus tard, ou vérifiez '
+            'les limites de votre clé API dans Google AI Studio.';
+      case _GeminiFailure.modelUnavailable:
+        return 'Le modèle configuré n\'est plus disponible. Vérifiez la '
+            'configuration du modèle dans les paramètres.';
+      case _GeminiFailure.serviceUnavailable:
+        return 'Le service Google AI est temporairement indisponible. '
+            'Réessayez dans quelques instants.';
+      case _GeminiFailure.unusableResponse:
+        return 'L\'IA n\'a pas renvoyé de réponse exploitable. Réessayez.';
+      case _GeminiFailure.network:
+        return 'Connexion au service Google AI impossible. Vérifiez votre '
+            'connexion internet.';
+      case null:
+        // No model was even attempted — an empty model list, which is a
+        // configuration problem rather than a runtime failure.
+        return 'Aucun modèle IA configuré.';
+    }
   }
 
   /// Parses a 200 response body into a result, or throws [FormatException]
@@ -453,4 +499,26 @@ class GeminiApiService implements AIService {
     }).toList();
     return filtered.join('\n').trim();
   }
+}
+
+/// Why a model attempt failed, kept distinct from its display string so
+/// the final user-facing error can be phrased per cause (T117/#158).
+enum _GeminiFailure {
+  /// HTTP 429 — the user's own Google AI quota, by far the most common
+  /// real-world failure for a bring-your-own-key setup.
+  quotaExceeded,
+
+  /// HTTP 404 — the configured model no longer exists (Google retires
+  /// model IDs regularly).
+  modelUnavailable,
+
+  /// HTTP 503 — transient service outage.
+  serviceUnavailable,
+
+  /// HTTP 200 but nothing usable in the body (most often thinking tokens
+  /// consuming the whole output budget).
+  unusableResponse,
+
+  /// Timeout or transport-level failure.
+  network,
 }

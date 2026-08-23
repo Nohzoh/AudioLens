@@ -182,16 +182,19 @@ void main() {
       }),
     );
 
+    // Every attempt was a 429, so the user gets the quota message rather
+    // than a raw per-model trace.
     await expectLater(
       service.analyzeImage(tempImage()),
       throwsA(isA<Exception>().having(
         (e) => e.toString(),
         'message',
-        contains('tous les modèles ont échoué'),
+        contains('Quota Google AI dépassé'),
       )),
     );
 
     expect(requested, hasLength(fallbacks.length + 1));
+    // The full trace is still available for the debug screen.
     expect(service.lastAttempts, hasLength(fallbacks.length + 1));
     expect(service.lastUsedModel, isNull);
   });
@@ -282,7 +285,7 @@ void main() {
       throwsA(isA<Exception>().having(
         (e) => e.toString(),
         'message',
-        contains('tous les modèles ont échoué'),
+        contains('pas renvoyé de réponse exploitable'),
       )),
     );
 
@@ -311,6 +314,83 @@ void main() {
     expect(requested, [primary]);
     expect(service.lastUsedModel, primary);
     expect(result.script, contains('chef-d\'oeuvre'));
+  });
+
+
+  group('user-facing failure messages', () {
+    Future<String> messageWhenAllModelsReturn(
+      Future<({int statusCode, String body})> Function(String model) respond,
+    ) async {
+      final service = GeminiApiService(
+        apiKey: 'test-key',
+        dioClient: fakeDio((options) async => respond(_modelFromPath(options.uri.path))),
+      );
+      try {
+        await service.analyzeImage(tempImage());
+        fail('expected analyzeImage to throw');
+      } on Exception catch (e) {
+        // Deliberately not a bare `catch`: fail() above throws a
+        // TestFailure, which a bare catch would swallow and return as if
+        // it were the message under test, turning a broken test green.
+        return e.toString();
+      }
+    }
+
+    test('503 everywhere -> temporary outage message', () async {
+      final msg = await messageWhenAllModelsReturn(
+          (_) async => (statusCode: 503, body: _errorJson()));
+      expect(msg, contains('temporairement indisponible'));
+    });
+
+    test('404 everywhere -> model configuration message', () async {
+      final msg = await messageWhenAllModelsReturn(
+          (_) async => (statusCode: 404, body: _errorJson()));
+      expect(msg, contains('n\'est plus disponible'));
+    });
+
+    test('network failure everywhere -> connectivity message', () async {
+      final msg = await messageWhenAllModelsReturn(
+          (_) async => throw const SocketException('network down'));
+      expect(msg, contains('Vérifiez votre connexion internet'));
+    });
+
+    // The reason genuinely differs per model in the real world: the
+    // primary can be out of quota while a fallback has simply been
+    // retired. Only the last attempt's cause is reported, rather than
+    // stitching several unrelated causes into one message.
+    test('mixed causes -> reports the last attempt, not the first', () async {
+      final service = GeminiApiService(
+        apiKey: 'test-key',
+        dioClient: fakeDio((options) async {
+          final model = _modelFromPath(options.uri.path);
+          // Primary: out of quota. Every fallback: retired model.
+          return model == primary
+              ? (statusCode: 429, body: _errorJson())
+              : (statusCode: 404, body: _errorJson());
+        }),
+      );
+
+      await expectLater(
+        service.analyzeImage(tempImage()),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          allOf(
+            contains('n\'est plus disponible'),
+            isNot(contains('Quota')),
+          ),
+        )),
+      );
+    });
+
+    test('the raw per-model trace stays out of the user-facing message', () async {
+      final msg = await messageWhenAllModelsReturn(
+          (_) async => (statusCode: 429, body: _errorJson()));
+      // The trace lives in lastAttempts for the debug screen — showing
+      // model IDs and HTTP codes to the user helps nobody.
+      expect(msg, isNot(contains('✗')));
+      expect(msg, isNot(contains(primary)));
+    });
   });
 
   test('HTTP 500 -> rethrows immediately, stops the fallback loop', () async {
