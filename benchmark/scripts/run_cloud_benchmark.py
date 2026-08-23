@@ -329,6 +329,7 @@ def main() -> int:
     if summary_path:
         with open(summary_path, "a", encoding="utf-8") as f:
             f.write(f"\n## Gemini Cloud Benchmark — {run_started}\n\n")
+            f.write(f"Prompt variant: `{args.prompt_variant_id}` | Models tried: {', '.join(models)}\n\n")
             f.write("| Cas | Modèle | Latence (ms) | Mots | Erreur |\n")
             f.write("|---|---|---|---|---|\n")
             for r in results:
@@ -337,6 +338,21 @@ def main() -> int:
                     f"{r.get('latency_ms', '-')} | {r.get('word_count', '-')} | "
                     f"{r.get('error') or ''} |\n"
                 )
+            # Full generated title/script per case, so results are readable
+            # straight from the run's Summary page without needing to
+            # download the artifact (which isn't always practical to do
+            # from every environment/client).
+            f.write("\n### Contenu généré\n")
+            for r in results:
+                f.write(f"\n#### {r.get('case_id')}\n\n")
+                if r.get("title") and r.get("script"):
+                    f.write(f"**{r['title']}**\n\n")
+                    f.write(f"{r['script']}\n")
+                elif r.get("raw_text"):
+                    f.write("_Réponse brute (JSON non extrait) :_\n\n")
+                    f.write(f"```\n{r['raw_text'][:2000]}\n```\n")
+                else:
+                    f.write(f"_Aucun contenu — erreur : {r.get('error')}_\n")
 
     return 0
 
