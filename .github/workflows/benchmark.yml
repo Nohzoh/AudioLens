@@ -23,6 +23,14 @@ on:
         type: boolean
         required: false
         default: false
+      max_tokens:
+        description: 'maxOutputTokens (laisser vide = dÃ©faut de production, 1024)'
+        required: false
+        default: ''
+      thinking_budget:
+        description: 'thinkingBudget (laisser vide = dÃ©faut de production, 512)'
+        required: false
+        default: ''
 
 jobs:
   benchmark:
@@ -32,7 +40,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -54,11 +62,17 @@ jobs:
           if [ "${{ inputs.strip_location_context }}" = "true" ]; then
             ARGS="$ARGS --strip-location-context"
           fi
+          if [ -n "${{ inputs.max_tokens }}" ]; then
+            ARGS="$ARGS --max-tokens '${{ inputs.max_tokens }}'"
+          fi
+          if [ -n "${{ inputs.thinking_budget }}" ]; then
+            ARGS="$ARGS --thinking-budget '${{ inputs.thinking_budget }}'"
+          fi
           eval python3 benchmark/scripts/run_cloud_benchmark.py "$ARGS"
 
       - name: Upload results artifact
         if: inputs.list_models_only != true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gemini-benchmark-results-${{ github.run_id }}
           path: benchmark/results/cloud_*.json
