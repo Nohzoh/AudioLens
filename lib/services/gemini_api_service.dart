@@ -14,6 +14,11 @@ class GeminiApiService implements AIService {
   String? get lastUsedModel => _lastUsedModel;
   List<String> _lastAttempts = [];
   List<String> get lastAttempts => _lastAttempts;
+
+  /// Result parsed inside analyzeImage's model loop — set together with
+  /// the winning response, so validation happens before committing to a
+  /// model rather than after the loop has already broken out of it.
+  AudioGuideResult? _parsedResult;
   final String apiKey;
   final dio.Dio _dio;
 
@@ -85,6 +90,7 @@ class GeminiApiService implements AIService {
 
     ({int statusCode, String body})? response;
     final List<String> attempts = [];
+    _parsedResult = null;
 
     for (final model in modelsToTry) {
       final fullUrl =
@@ -118,11 +124,26 @@ class GeminiApiService implements AIService {
         );
 
         if (resp.statusCode == 200) {
-          response = resp;
-          _lastUsedModel = model;
-          attempts.add('✓ $model');
-          AppLogger.ai('Model succeeded: $model');
-          break;
+          // A 200 is not by itself a success: the model can return an
+          // empty or JSON-debris body — most commonly when thinking
+          // tokens consume the whole maxOutputTokens budget, leaving
+          // nothing for the actual answer. Validate the body here, inside
+          // the loop, so an unusable response falls through to the next
+          // fallback model instead of terminating the loop with a
+          // guaranteed failure a few lines below.
+          try {
+            final parsed = _parseResponseBody(resp.body);
+            response = resp;
+            _parsedResult = parsed;
+            _lastUsedModel = model;
+            attempts.add('✓ $model');
+            AppLogger.ai('Model succeeded: $model');
+            break;
+          } on FormatException catch (e) {
+            attempts.add('✗ $model (200, réponse inexploitable): ${e.message}');
+            AppLogger.ai('Model returned unusable 200: $model: ${e.message}');
+            continue;
+          }
         } else if (resp.statusCode == 429 || resp.statusCode == 404 || resp.statusCode == 503) {
           final err = _tryDecode(resp.body);
           final msg = err?['error']?['message'] as String? ?? 'HTTP ${resp.statusCode}';
@@ -155,12 +176,36 @@ class GeminiApiService implements AIService {
       throw Exception('Gemini: tous les modèles ont échoué:\n$trace');
     }
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final text =
-        data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+    // Non-null whenever response is: both are set together in the loop above.
+    return _parsedResult!;
+  }
+
+  /// Parses a 200 response body into a result, or throws [FormatException]
+  /// if the body can't yield a usable title+script.
+  ///
+  /// Throwing [FormatException] specifically (rather than a generic
+  /// Exception) is what lets [analyzeImage]'s model loop distinguish "this
+  /// model gave us nothing usable, try the next one" from a hard error
+  /// that should abort the whole call.
+  AudioGuideResult _parseResponseBody(String body) {
+    final data = jsonDecode(body) as Map<String, dynamic>;
+    // Indexed access rather than [0] directly: a response can legitimately
+    // carry an empty candidates/parts list (e.g. everything was filtered
+    // out), and a RangeError here would escape the FormatException
+    // contract this method promises, landing in analyzeImage's generic
+    // catch and getting mislabelled as a network failure.
+    final candidates = data['candidates'];
+    final firstCandidate =
+        (candidates is List && candidates.isNotEmpty) ? candidates.first : null;
+    final parts = (firstCandidate as Map<String, dynamic>?)?['content']?['parts'];
+    final firstPart = (parts is List && parts.isNotEmpty) ? parts.first : null;
+    final text = (firstPart as Map<String, dynamic>?)?['text'] as String?;
 
     if (text == null || text.isEmpty) {
-      throw Exception('Gemini API reponse vide');
+      // Most often: thinking tokens consumed the entire maxOutputTokens
+      // budget (they're billed against the same budget as the answer), so
+      // the model had nothing left to emit.
+      throw const FormatException('réponse vide');
     }
 
     // Try JSON response {title, script}
@@ -213,8 +258,10 @@ class GeminiApiService implements AIService {
         // showing the raw JSON debris as the title or (worse) reading it
         // aloud as the script (T90) is a worse experience than a clear
         // failure the app's existing retry flow already handles.
-        throw Exception(
-          'Gemini API: reponse JSON invalide (title/script illisibles)',
+        // FormatException (not a bare Exception) so analyzeImage's loop
+        // treats this as "try the next model" rather than aborting.
+        throw const FormatException(
+          'réponse JSON invalide (title/script illisibles)',
         );
       } else {
         // Genuinely plain-text response (model ignored the JSON
