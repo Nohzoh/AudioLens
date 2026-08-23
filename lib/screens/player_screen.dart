@@ -9,6 +9,7 @@ import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
+import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
 import '../widgets/report_content_button.dart';
 
@@ -250,7 +251,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   // Save to gallery
-                                  InkWell(
+                                  ScrimActionChip(
+                                    icon: Icons.save_alt,
+                                    label: l10n.playerSave,
                                     onTap: () async {
                                       try {
                                         await Gal.putImage(widget.imageFile.path);
@@ -264,32 +267,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         }
                                       } catch (_) {}
                                     },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.save_alt, size: 14, color: Colors.white38),
-                                        const SizedBox(width: 4),
-                                        Text(l10n.playerSave, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                                      ]),
-                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   // Copy text
-                                  InkWell(
+                                  ScrimActionChip(
+                                    icon: Icons.copy,
+                                    label: l10n.playerCopy,
                                     onTap: () {
                                       Clipboard.setData(ClipboardData(text: guide.lastResult!.script));
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(content: Text(l10n.playerTextCopied), duration: const Duration(seconds: 2)),
                                       );
                                     },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.copy, size: 14, color: Colors.white38),
-                                        const SizedBox(width: 4),
-                                        Text(l10n.playerCopy, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                                      ]),
-                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   // Report content (T91)
                                   ReportContentButton(
                                     title: guide.lastResult!.title,

@@ -13,6 +13,7 @@ import '../services/history_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
+import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
 import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
@@ -904,7 +905,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             // Save to gallery
-                            InkWell(
+                            ScrimActionChip(
+                              icon: Icons.save_alt,
+                              label: l10n.historySave,
                               onTap: () async {
                                 try {
                                   await Gal.putImage(live.imagePath);
@@ -919,24 +922,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   }
                                 } catch (_) {}
                               },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 4, horizontal: 8),
-                                child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.save_alt,
-                                          size: 14, color: Colors.white54),
-                                      const SizedBox(width: 4),
-                                      Text(l10n.historySave,
-                                          style: const TextStyle(
-                                              color: Colors.white54,
-                                              fontSize: 12)),
-                                    ]),
-                              ),
                             ),
+                            const SizedBox(width: 8),
                             // Copy button
-                            InkWell(
+                            ScrimActionChip(
+                              icon: Icons.copy,
+                              label: l10n.historyCopy,
                               onTap: () {
                                 Clipboard.setData(
                                     ClipboardData(text: live.script));
@@ -947,22 +938,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   ),
                                 );
                               },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 4, horizontal: 8),
-                                child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.copy,
-                                          size: 14, color: Colors.white54),
-                                      const SizedBox(width: 4),
-                                      Text(l10n.historyCopy,
-                                          style: const TextStyle(
-                                              color: Colors.white54,
-                                              fontSize: 12)),
-                                    ]),
-                              ),
                             ),
+                            const SizedBox(width: 8),
                             // Report content (T91)
                             ReportContentButton(
                               title: live.title,
