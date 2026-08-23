@@ -209,6 +209,34 @@ void main() {
       );
     });
 
+    // hasAudio alone gates cached playback — deliberately not
+    // `hasAudio && ttsModel == 'gemini-tts'`: a legacy 'piper' cached file
+    // plays through the same MediaPlayer and seeks just as well.
+    testWidgets('appear for a legacy piper cached file too', (tester) async {
+      await tester.runAsync(() async {
+        final e = await history.addEntry(
+          imagePath: imagePath,
+          title: 'La Joconde',
+          script: 'Bienvenue.',
+        );
+        final wav = join(tmpDir.path, 'legacy.wav');
+        File(wav).writeAsBytesSync(List.filled(64, 0));
+        await history.saveAudioPath(e.id!, wav, ttsModel: 'piper');
+      });
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_audioPlayerChannel, (call) async => null);
+      addTearDown(() => TestDefaultBinaryMessengerBinding
+          .instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_audioPlayerChannel, null));
+
+      await openDetail(tester);
+      await tester.tap(find.text('Écouter le commentaire'));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.replay_10), findsOneWidget);
+    });
+
     testWidgets('stay hidden for a native-TTS entry, which has no seekable position',
         (tester) async {
       await tester.runAsync(() async {

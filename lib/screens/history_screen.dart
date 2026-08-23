@@ -595,17 +595,21 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   /// GeminiTtsService drives, so play/stop/seek all go through one place.
   static const channel = MethodChannel('audio_guide/audio_player');
 
-  /// Whether what's playing right now is the cached WAV (seekable via the
-  /// audio_guide/audio_player channel) rather than native TTS speaking
-  /// live (no seekable position at all).
+  /// Whether skip ±10s is meaningful for what's playing right now.
   ///
-  /// Mirrors AudioGuideService.canSkip's reasoning on the player screen:
-  /// hide the skip buttons entirely for native playback rather than show
-  /// controls that would silently do nothing. Tracked per-playback rather
-  /// than derived from the entry alone, because the same entry can be
-  /// played either way — a script-only entry synthesises on first listen
-  /// and may fall back to native mid-flight.
-  bool _isSeekablePlayback = false;
+  /// Mirrors [AudioGuideService.canSkip]'s reasoning rather than
+  /// re-deriving it: skipping needs a seekable position, which native TTS
+  /// speaking live doesn't have. Two ways playback *is* seekable here:
+  ///  - [HistoryEntry.hasAudio] — a cached file replayed via `playWav`.
+  ///    Note this is `hasAudio` alone, deliberately not
+  ///    `hasAudio && ttsModel == 'gemini-tts'`: legacy 'piper' cached
+  ///    files go through the very same MediaPlayer and seek just as well,
+  ///    so gating on the model would needlessly exclude them.
+  ///  - [AudioGuideService.canSkip] — audio generated on the fly for a
+  ///    script-only entry (T16) and played by GeminiTtsService, which is
+  ///    seekable but has no cached file on this entry yet.
+  bool _canSkip(HistoryEntry live, AudioGuideService guide) =>
+      _isPlaying && (live.hasAudio || guide.canSkip);
   bool _isUpgrading = false;
   bool _photoMode = false; // T94: show the plain photo instead of the script overlay
 
@@ -630,10 +634,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   Future<void> _playCachedAudio(String path) async {
     channel.invokeMethod('playWav', {'path': path}).then((_) {
       if (!mounted) return;
-      setState(() {
-        _isPlaying = false;
-        _isSeekablePlayback = false;
-      });
+      setState(() => _isPlaying = false);
     });
   }
 
@@ -668,10 +669,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     if (_isPlaying) {
       final tts = _getTts(context);
       await tts.stop();
-      setState(() {
-        _isPlaying = false;
-        _isSeekablePlayback = false;
-      });
+      setState(() => _isPlaying = false);
       return;
     }
 
@@ -680,7 +678,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
     if (live.hasAudio) {
       // Use cached audio — no TTS regeneration needed
-      setState(() => _isSeekablePlayback = true);
       await _playCachedAudio(live.audioPath!);
       return;
     }
@@ -777,6 +774,11 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final live = _liveEntry(context);
+    // watch, not read: canSkip flips as the service's own playback state
+    // changes (e.g. synthesis finishing for a script-only entry), and the
+    // skip buttons need to appear when it does.
+    final guide = context.watch<AudioGuideService>();
+    final showSkip = _canSkip(live, guide);
     final dateStr = DateFormat('EEEE d MMMM yyyy · HH:mm',
             Localizations.localeOf(context).toString())
         .format(live.createdAt);
@@ -1123,9 +1125,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                   child: Row(
                     children: [
-                      // Skip controls only while the seekable cached WAV is
-                      // playing — see _isSeekablePlayback.
-                      if (_isPlaying && _isSeekablePlayback) ...[
+                      // Skip only when the current playback is seekable —
+                      // see _canSkip.
+                      if (showSkip) ...[
                         IconButton(
                           icon: const Icon(Icons.replay_10),
                           iconSize: 32,
@@ -1153,7 +1155,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           ),
                         ),
                       ),
-                      if (_isPlaying && _isSeekablePlayback) ...[
+                      if (showSkip) ...[
                         const SizedBox(width: 4),
                         IconButton(
                           icon: const Icon(Icons.forward_10),
