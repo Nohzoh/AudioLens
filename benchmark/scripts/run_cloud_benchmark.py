@@ -259,7 +259,39 @@ def main() -> int:
     )
     parser.add_argument("--prompt-variant-id", default="baseline")
     parser.add_argument("--manifest", default=str(DATASET_DIR / "manifest.json"))
+    parser.add_argument(
+        "--list-models",
+        action="store_true",
+        help="Ignore the dataset entirely; just call ListModels with the given "
+        "--api-key and print which models actually support generateContent "
+        "today. Useful when models_tried_in_order starts returning 404s, "
+        "since Google's model lineup/deprecations move faster than any "
+        "hardcoded list here can track.",
+    )
     args = parser.parse_args()
+
+    if args.list_models:
+        req = urllib.request.Request(
+            f"{args.api_url}/models?key={args.api_key}",
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        live = [
+            m["name"].removeprefix("models/")
+            for m in data.get("models", [])
+            if "generateContent" in m.get("supportedGenerationMethods", [])
+        ]
+        print("Models supporting generateContent today:", file=sys.stderr)
+        for m in sorted(live):
+            print(f"  {m}", file=sys.stderr)
+        summary_path = __import__("os").environ.get("GITHUB_STEP_SUMMARY")
+        if summary_path:
+            with open(summary_path, "a", encoding="utf-8") as f:
+                f.write("\n## Live models (generateContent) as of this run\n\n")
+                for m in sorted(live):
+                    f.write(f"- `{m}`\n")
+        return 0
 
     manifest_path = Path(args.manifest)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
