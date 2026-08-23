@@ -140,8 +140,13 @@ class GeminiApiService implements AIService {
             AppLogger.ai('Model succeeded: $model');
             break;
           } on FormatException catch (e) {
-            attempts.add('✗ $model (200, réponse inexploitable): ${e.message}');
-            AppLogger.ai('Model returned unusable 200: $model: ${e.message}');
+            // sanitizeError even though these messages are ours and short:
+            // the log-hygiene guardrail (T126) treats any raw exception
+            // interpolation as a leak risk, and keeping the rule absolute
+            // is worth more than the couple of characters it costs here.
+            final reason = sanitizeError(e.message);
+            attempts.add('✗ $model (200, réponse inexploitable): $reason');
+            AppLogger.ai('Model returned unusable 200: $model ($reason)');
             continue;
           }
         } else if (resp.statusCode == 429 || resp.statusCode == 404 || resp.statusCode == 503) {
