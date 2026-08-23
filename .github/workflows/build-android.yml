@@ -90,16 +90,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android/sdk/ndk
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo apt-get clean
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/free_disk_space.sh
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -157,167 +148,20 @@ jobs:
       - name: Show pubspec after bootstrap
         run: head -30 pubspec.yaml
 
+      # The patching steps below are extracted into scripts/ci/ (rather than
+      # inline here) purely to keep this workflow file short and each
+      # patch independently readable/testable â€” no change in behavior.
       - name: Patch build.gradle.kts
-        run: |
-          FILE="android/app/build.gradle.kts"
-          [ ! -f "$FILE" ] && FILE="android/app/build.gradle"
-          echo "Patching $FILE"
+        run: scripts/ci/patch_build_gradle.sh
 
-          # Replace full lines containing flutter.xxxSdkVersion or plain numbers
-          # compileSdk 37 (T103): flutter_secure_storage 11.x requires
-          # compileSdk >= 37 (its AAR metadata check fails the build
-          # otherwise). targetSdk stays at 36 â€” compileSdk (API surface
-          # available at compile time) and targetSdk (runtime behavior
-          # opt-in) are independent.
-          sed -i 's|^\s*compileSdk\s*=.*|    compileSdk = 37|' $FILE
-          sed -i 's|^\s*minSdk\s*=.*|        minSdk = 26|' $FILE
-          sed -i 's|^\s*targetSdk\s*=.*|        targetSdk = 36|' $FILE
-          sed -i 's|^\s*compileSdkVersion\s.*|    compileSdkVersion 37|' $FILE
-          sed -i 's|^\s*minSdkVersion\s.*|        minSdkVersion 26|' $FILE
-          sed -i 's|^\s*targetSdkVersion\s.*|        targetSdkVersion 36|' $FILE
-
-          # Add ndkVersion after compileSdk line
-          # Set ndkVersion - replace entire line or add after compileSdk
-          if grep -q 'ndkVersion' $FILE; then
-            sed -i 's/ndkVersion = "[^"]*"/ndkVersion = "28.2.13676358"/' $FILE
-          else
-            # Add ndkVersion
-          if grep -q ndkVersion $FILE; then
-            sed -i 's|ndkVersion = ".*"|ndkVersion = "28.2.13676358"|' $FILE
-          else
-            echo '        ndkVersion = "28.2.13676358"' >> $FILE
-            sed -i '/compileSdk = 37/{n;s/.*/        ndkVersion = "28.2.13676358"/}' $FILE
-          fi
-          fi
-
-          # Add our dependencies at end of file
-          # T82: com.google.mediapipe:tasks-genai dropped â€” only used by the
-          # dead MediaPipePlugin.kt (mediapipe_service.dart, its Dart caller,
-          # was removed in T06). Gemini Nano uses com.google.mlkit:genai-prompt
-          # instead (GeminiNanoPlugin.kt), which stays.
-          if ! grep -q 'genai-prompt' $FILE; then
-            cat >> $FILE << 'DEPS'
-
-          dependencies {
-              implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
-              implementation("com.google.guava:guava:32.1.3-android")
-              implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-              implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
-              implementation("com.google.android.gms:play-services-location:21.3.0")
-          }
-          DEPS
-          fi
-
-          # T118/T21: MediaSessionCompat/PlaybackStateCompat/MediaButtonReceiver
-          # for lock-screen/notification playback controls.
-          if ! grep -q 'androidx.media:media' $FILE; then
-            cat >> $FILE << 'DEPS'
-
-          dependencies {
-              implementation("androidx.media:media:1.7.0")
-          }
-          DEPS
-          fi
-
-          # T85: flutter_local_notifications requires core library desugaring.
-          if ! grep -q 'isCoreLibraryDesugaringEnabled' $FILE; then
-            sed -i 's|compileOptions {|compileOptions {\n        isCoreLibraryDesugaringEnabled = true|' $FILE
-          fi
-          if ! grep -q 'coreLibraryDesugaring' $FILE; then
-            cat >> $FILE << 'DEPS'
-
-          dependencies {
-              coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-          }
-          DEPS
-          fi
-
-          echo "=== Patched file ==="
-          cat $FILE
-
-      # T100: pinning 2.2.0 here still built with Kotlin 2.2.10 effectively
-      # (Gradle's default "highest version wins" conflict resolution â€”
-      # kotlinx-coroutines-android/play-services below likely pull in a
-      # newer Kotlin stdlib transitively than the plugin version we declare)
-      # â€” Flutter's own deprecation warning wants >= 2.2.20, so pin there
-      # directly instead of a version Gradle silently overrides anyway.
       - name: Patch Kotlin version
-        run: |
-          for f in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-            [ -f "$f" ] && sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.20"/' $f && echo "âœ… Patched $f"
-            [ -f "$f" ] && sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.20"/' $f
-          done
+        run: scripts/ci/patch_kotlin_version.sh
 
       - name: Patch AndroidManifest
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q 'ACCESS_FINE_LOCATION' $MANIFEST; then
-            sed -i 's/<application/<uses-permission android:name="android.permission.CAMERA"\/>\n    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"\/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"\/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"\/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"\/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"\/>\n    <application/' $MANIFEST
-          fi
-          sed -i 's/android:label="[^"]*"/android:label="AudioLens"/' $MANIFEST
-          # allowBackup=false (T80): history contains GPS coordinates and
-          # photos â€” Android's default is allowBackup=true, which would let
-          # adb backup extract it on an unlocked device with USB debugging.
-          # Guarded (T82 fix): re-running this against an already-patched
-          # manifest (e.g. a local build not starting from a fresh bootstrap)
-          # duplicated the attribute and broke manifest merging.
-          if ! grep -q 'allowBackup' $MANIFEST; then
-            sed -i 's/android:label="AudioLens"/android:label="AudioLens" android:allowBackup="false"/' $MANIFEST
-          fi
-          # T89: Android 11+ (targetSdk 30+) hides other apps/services from
-          # package queries by default â€” without this <queries> entry,
-          # flutter_tts's isLanguageAvailable()/speak() can silently fail
-          # to find the system TTS engine on some devices.
-          if ! grep -q 'TextToSpeechService' $MANIFEST; then
-            sed -i 's|</manifest>|<queries><intent><action android:name="android.speech.tts.engine.TextToSpeechService" /></intent></queries>\n</manifest>|' $MANIFEST
-          fi
-          # T85: a foreground service protects the app process's priority
-          # while an analysis is in flight â€” without it, Android can kill
-          # the process while backgrounded, silently dropping the analysis.
-          if ! grep -q 'FOREGROUND_SERVICE_DATA_SYNC' $MANIFEST; then
-            sed -i 's|<application|<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application|' $MANIFEST
-          fi
-          if ! grep -q 'AnalysisForegroundService' $MANIFEST; then
-            sed -i 's|</application>|    <service android:name=".AnalysisForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>\n    </application>|' $MANIFEST
-          fi
-          # T118/T21: a second, separate foreground service for lock-screen/
-          # notification playback controls (MediaSession) â€” different
-          # foreground service type from the analysis one above, Android
-          # 14+ enforces these strictly per declared type.
-          if ! grep -q 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' $MANIFEST; then
-            sed -i 's|<application|<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>\n    <application|' $MANIFEST
-          fi
-          if ! grep -q 'PlaybackForegroundService' $MANIFEST; then
-            sed -i 's|</application>|    <service android:name=".PlaybackForegroundService" android:foregroundServiceType="mediaPlayback" android:exported="false"/>\n    </application>|' $MANIFEST
-          fi
-          # Home-screen quick-capture widget (new feature): jumps
-          # straight to the camera on tap, see QuickCaptureWidgetProvider.kt.
-          if ! grep -q 'QuickCaptureWidgetProvider' $MANIFEST; then
-            sed -i 's|</application>|    <receiver android:name=".QuickCaptureWidgetProvider" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_capture_widget_info"/></receiver>\n    </application>|' $MANIFEST
-          fi
-          # T97: register as a share target for photos from other apps
-          # (Gallery, etc.) â€” a second intent-filter on the same activity,
-          # right after the existing MAIN/LAUNCHER one.
-          if ! grep -q 'android.intent.action.SEND' $MANIFEST; then
-            sed -i 's|</intent-filter>|</intent-filter>\n            <intent-filter>\n                <action android:name="android.intent.action.SEND"/>\n                <category android:name="android.intent.category.DEFAULT"/>\n                <data android:mimeType="image/*"/>\n            </intent-filter>|' $MANIFEST
-          fi
-          echo "âœ… Manifest patched (allowBackup=false, TTS engine query, foreground service, share target)"
+        run: scripts/ci/patch_android_manifest.sh
 
       - name: Add FileProvider
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q 'FileProvider' $MANIFEST; then
-            sed -i 's|</application>|    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/></provider>\n    </application>|' $MANIFEST
-          fi
-          mkdir -p android/app/src/main/res/xml
-          cat > android/app/src/main/res/xml/file_paths.xml << 'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <paths>
-              <external-path name="external_files" path="."/>
-              <cache-path name="cache" path="."/>
-          </paths>
-          XML
-          echo "âœ… FileProvider configured"
+        run: scripts/ci/add_file_provider.sh
 
       - name: Setup keystore
         run: |
