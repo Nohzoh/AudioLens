@@ -1,0 +1,51 @@
+{
+  "run_started_utc": "2026-08-23T08:04:08.642710+00:00",
+  "engine": "gemini_api_cloud",
+  "prompt_variant_id": "debug_more_tokens",
+  "config": {
+    "models_tried_in_order": [
+      "gemini-3.5-flash",
+      "gemini-2.5-flash-preview-05-20",
+      "gemini-1.5-flash"
+    ],
+    "api_url": "https://generativelanguage.googleapis.com/v1",
+    "max_tokens": 4096,
+    "temperature": 0.7,
+    "thinking_budget": 512,
+    "location_context_stripped": false
+  },
+  "results": [
+    {
+      "model_used": "gemini-3.5-flash",
+      "latency_ms": 9683,
+      "title": "Le temple néoclassique de l'église Notre-Dame de Vincennes",
+      "script": "Imaginez le Vincennes des années 1830 : une petite commune encore largement rurale qui, sous l'impulsion de la révolution industrielle et de sa proximité immédiate avec Paris, voit sa population grimper en flèche. C'est pour répondre à ce besoin spirituel et social pressant que s'élèvent ces murs majestueux. Vous vous tenez face à l'église Notre-Dame de Vincennes, un chef-d'œuvre de l'architecture néoclassique qui semble tout droit sorti de la Rome antique. Remarquez la rigueur et la pureté des lignes qui structurent cette façade monumentale. Conçue par l'architecte François-Auguste Brunet-Debaines, elle incarne à merveille le goût de l'époque pour l'ordre, la symétrie et la clarté. Le grand fronton triangulaire, orné en son centre d'une horloge solennelle, couronne l'édifice comme un temple républicain autant que religieux. Juste en dessous, le portail d'entrée s'encadre de colonnes cannelées aux chapiteaux ioniques d'une grande finesse. Cette porte rouge flamboyant, légèrement entrouverte, invite le visiteur à franchir le seuil du profane pour entrer dans le sacré. L'histoire de ce lieu est intimement liée au célèbre château de Vincennes tout proche. Pendant des siècles, les habitants devaient se contenter de la Sainte-Chapelle du château ou de paroisses éloignées pour pratiquer leur culte. La construction de Notre-Dame de Vincennes marque l'émancipation de la communauté locale, affirmant son identité propre face au pouvoir royal historique. Le chantier, financé en partie par une souscription publique et des aides de l'État sous Louis-Philippe, témoigne de la ferveur et de la solidarité des Vincennois de l'époque. En observant les détails sculptés au-dessus de la corniche, vous pouvez presque ressentir le souffle de cette époque de transition, où le sacré s'adapte à la modernité urbaine. Ce monument n'est pas seulement un lieu de prière, c'est le cœur battant d'une ville en de venir, un repère de pierre et de lumière qui continue, aujourd'hui encore, de veiller sur le quotidien des passants avec une sereine bienveillance.",
+      "word_count": 312,
+      "raw_text": null,
+      "error": null,
+      "attempts": [
+        "✓ gemini-3.5-flash"
+      ],
+      "case_id": "notre_dame_vincennes",
+      "category": "lieu_local_peu_connu",
+      "style": "immersive",
+      "prompt_variant_id": "debug_more_tokens"
+    },
+    {
+      "model_used": "gemini-3.5-flash",
+      "latency_ms": 9725,
+      "title": "La majestueuse Cathédrale Notre-Dame de Paris",
+      "script": "En l'an de grâce 1163, sous l'impulsion de l'évêque Maurice de Sully, la première pierre de ce géant de pierre fut posée sur l'Île de la Cité, le cœur battant de Paris. Vous vous trouvez face à la cathédrale Notre-Dame de Paris, un chef-d'œuvre absolu de l'art gothique qui a nécessité plus de deux siècles de labeur pour atteindre cette silhouette si reconnaissable. Laissez votre regard s'élever le long de cette façade occidentale, conçue comme une véritable Bible de pierre pour les fidèles illettrés du Moyen Âge. Admirez la galerie des rois de Juda, ces vingt-huit statues monumentales qui furent décapitées par les révolutionnaires en 1793, ces derniers les ayant confondues avec les rois de France. Juste au-dessus, la rosace ouest, immense corolle de verre et de plomb de près de dix mètres de diamètre, forme une auréole parfaite autour de la statue de la Vierge à l'Enfant. Ce monument que vous observez a bien failli disparaître. Au début du dix-neuvième siècle, Notre-Dame tombe en ruine, boudée par les Parisiens. C’est le génie littéraire de Victor Hugo, à travers son célèbre roman publié en 1831, qui va réveiller les consciences et sauver l'édifice. En racontant les destins tragiques de Quasimodo et d'Esmeralda, Hugo fait de la cathédrale le personnage principal de son œuvre, déclenchant un immense élan populaire qui mènera à la grande restauration d'Eugène Viollet-le-Duc. Plus récemment, le 15 avril 2019, le monde entier a retenu son souffle face aux images tragiques de sa charpente en flammes et de l'effondrement de sa flèche. Mais Notre-Dame a survécu. Grâce au courage des pompiers et au talent exceptionnel des compagnons et artisans d'art, elle renaît aujourd'hui de ses cendres. En foulant ce parvis, vous marchez dans les pas de millions de pèlerins, d'écrivains et d'artistes qui, à travers les âges, ont trouvé ici une source d'inspiration éternelle et une preuve éclatante de la résilience humaine face au temps.",
+      "word_count": 317,
+      "raw_text": null,
+      "error": null,
+      "attempts": [
+        "✓ gemini-3.5-flash"
+      ],
+      "case_id": "notre_dame_paris",
+      "category": "monument_celebre",
+      "style": "immersive",
+      "prompt_variant_id": "debug_more_tokens"
+    }
+  ]
+}
