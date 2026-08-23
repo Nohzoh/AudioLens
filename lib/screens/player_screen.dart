@@ -9,6 +9,7 @@ import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
+import '../widgets/scrim_icon_button.dart';
 import '../widgets/report_content_button.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -122,8 +123,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          ScrimIconButton(
+                            icon: Icons.arrow_back,
+                            color: Colors.white,
                             onPressed: () {
                               guide.stop();
                               Navigator.pop(context);
@@ -131,25 +133,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           ),
                           const Spacer(),
                           if (guide.lastResult != null)
-                            IconButton(
-                              icon: Icon(
-                                _photoMode
-                                    ? Icons.article_outlined
-                                    : Icons.image_outlined,
-                                color: Colors.white70,
-                              ),
+                            ScrimIconButton(
+                              icon: _photoMode
+                                  ? Icons.article_outlined
+                                  : Icons.image_outlined,
+                              color: Colors.white70,
                               tooltip: _photoMode
                                   ? l10n.playerShowText
                                   : l10n.playerPhotoMode,
                               onPressed: () =>
                                   setState(() => _photoMode = !_photoMode),
                             ),
+                          const SizedBox(width: 4),
                           Consumer<SettingsService>(
                             builder: (context, settings, _) => KofiButton(
                               show: settings.showKofiButton,
                               iconColor: Colors.white70,
                             ),
                           ),
+                          const SizedBox(width: 4),
                           if (guide.state == GuideState.cancelling)
                             const SizedBox(
                               width: 24,
@@ -160,8 +162,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               ),
                             )
                           else if (guide.state == GuideState.speaking || guide.state == GuideState.paused || guide.state == GuideState.synthesizing)
-                            IconButton(
-                              icon: const Icon(Icons.cancel_outlined, color: Colors.white70),
+                            ScrimIconButton(
+                              icon: Icons.cancel_outlined,
+                              color: Colors.white70,
                               tooltip: l10n.playerCancel,
                               onPressed: () async {
                                 await guide.cancelCurrentAction();
