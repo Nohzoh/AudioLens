@@ -754,7 +754,10 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         children: [
           // Full image background
           if (File(live.imagePath).existsSync())
-            BackgroundPhoto(file: File(live.imagePath)),
+            BackgroundPhoto(
+              file: File(live.imagePath),
+              rotationQuarters: live.rotationQuarters,
+            ),
 
           // Gradient overlay — T96: the previous 2-stop version barely
           // darkened the very top of the screen, leaving the top bar icons
@@ -831,6 +834,14 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             : l10n.playerPhotoMode,
                         onPressed: () =>
                             setState(() => _photoMode = !_photoMode),
+                      ),
+                      const SizedBox(width: 4),
+                      _ScrimIconButton(
+                        icon: Icons.rotate_90_degrees_cw_outlined,
+                        color: Colors.white70,
+                        tooltip: l10n.historyRotatePhoto,
+                        onPressed: () =>
+                            context.read<HistoryService>().rotateEntry(live.id!),
                       ),
                       const SizedBox(width: 4),
                       _ScrimIconButton(

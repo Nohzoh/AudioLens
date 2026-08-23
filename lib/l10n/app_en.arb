@@ -92,6 +92,7 @@
   "historyAllFilter": "All",
   "historyFavoritesFilter": "Favorites",
   "historyAddToFavorites": "Add to favorites",
+  "historyRotatePhoto": "Rotate photo",
   "historyRemoveFromFavorites": "Remove from favorites",
   "historyAddToCollection": "Add to a collection",
   "historyNewCollection": "New collection",

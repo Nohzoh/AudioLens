@@ -25,6 +25,13 @@ import 'package:flutter/material.dart';
 class BackgroundPhoto extends StatelessWidget {
   final File file;
 
+  /// Quarter turns clockwise to apply, 0-3 (#152).
+  ///
+  /// Applied here rather than to the file on disk, so the photo's EXIF
+  /// (which GPS extraction reads) is never rewritten — see
+  /// HistoryEntry.rotationQuarters.
+  final int rotationQuarters;
+
   /// How far the photo's aspect ratio may differ from the screen's before
   /// the letterbox treatment kicks in, as a ratio of the two.
   ///
@@ -32,7 +39,11 @@ class BackgroundPhoto extends StatelessWidget {
   /// mild enough that filling the screen looks better than banding it.
   static const double _letterboxThreshold = 1.15;
 
-  const BackgroundPhoto({super.key, required this.file});
+  const BackgroundPhoto({
+    super.key,
+    required this.file,
+    this.rotationQuarters = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,17 +57,24 @@ class BackgroundPhoto extends StatelessWidget {
             // behavior — so there's no visible layout shift for the
             // common (camera capture) case where nothing changes anyway.
             if (image == null) {
-              return Image.file(file, fit: BoxFit.cover);
+              return _rotated(Image.file(file, fit: BoxFit.cover));
             }
 
-            final photoRatio = image.width / image.height;
+            // An odd number of quarter turns swaps the photo's effective
+            // width and height, which flips whether it letterboxes at all
+            // — so rotation has to be folded in before the divergence
+            // check, not applied to the finished result.
+            final rotated = rotationQuarters.isOdd;
+            final photoRatio = rotated
+                ? image.height / image.width
+                : image.width / image.height;
             final screenRatio = constraints.maxWidth / constraints.maxHeight;
             final divergence = photoRatio > screenRatio
                 ? photoRatio / screenRatio
                 : screenRatio / photoRatio;
 
             if (divergence < _letterboxThreshold) {
-              return Image.file(file, fit: BoxFit.cover);
+              return _rotated(Image.file(file, fit: BoxFit.cover));
             }
 
             return Stack(
@@ -66,12 +84,12 @@ class BackgroundPhoto extends StatelessWidget {
                 // blurred so the bands never compete with the real image.
                 ImageFiltered(
                   imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: Image.file(file, fit: BoxFit.cover),
+                  child: _rotated(Image.file(file, fit: BoxFit.cover)),
                 ),
                 // Darkened so the sharp photo above stays the focal point
                 // even when the blurred copy is bright.
                 Container(color: Colors.black.withValues(alpha: 0.35)),
-                Image.file(file, fit: BoxFit.contain),
+                _rotated(Image.file(file, fit: BoxFit.contain)),
               ],
             );
           },
@@ -79,6 +97,12 @@ class BackgroundPhoto extends StatelessWidget {
       },
     );
   }
+
+  /// Applies [rotationQuarters], or returns [child] untouched at 0 so the
+  /// common case adds no widget to the tree at all.
+  Widget _rotated(Widget child) => rotationQuarters % 4 == 0
+      ? child
+      : RotatedBox(quarterTurns: rotationQuarters, child: child);
 
   /// Resolves just the intrinsic size of [file].
   ///
