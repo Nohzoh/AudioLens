@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -183,12 +184,16 @@ void main() {
         await history.saveAudioPath(e.id!, wav, ttsModel: 'gemini-tts');
       });
 
-      // playWav never completes here, standing in for audio still playing.
+      // playWav must not complete: its completion is what flips
+      // _isPlaying back to false, which would hide the buttons again
+      // before we can assert on them. Other calls (seek/stop) return
+      // normally.
       final calls = <MethodCall>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(_audioPlayerChannel, (call) async {
+          .setMockMethodCallHandler(_audioPlayerChannel, (call) {
         calls.add(call);
-        return null;
+        if (call.method == 'playWav') return Completer<void>().future;
+        return Future<dynamic>.value(null);
       });
       addTearDown(() => TestDefaultBinaryMessengerBinding
           .instance.defaultBinaryMessenger
@@ -225,7 +230,10 @@ void main() {
       });
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(_audioPlayerChannel, (call) async => null);
+          .setMockMethodCallHandler(_audioPlayerChannel, (call) {
+        if (call.method == 'playWav') return Completer<void>().future;
+        return Future<dynamic>.value(null);
+      });
       addTearDown(() => TestDefaultBinaryMessengerBinding
           .instance.defaultBinaryMessenger
           .setMockMethodCallHandler(_audioPlayerChannel, null));
@@ -246,7 +254,7 @@ void main() {
           script: 'Bienvenue.',
         );
         // Native fallback: a ttsModel is recorded but no audio file exists.
-        await history.saveTtsModel(e.id!, 'native', ttsFallback: true);
+        await history.saveTtsModel(e.id!, 'native-tts', ttsFallback: true);
       });
 
       await openDetail(tester);
