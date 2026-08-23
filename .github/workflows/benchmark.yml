@@ -1,6 +1,6 @@
 name: Gemini Benchmark
 
-# Manual only — this calls the real Gemini API and burns quota/cost, so
+# Manual only â€” this calls the real Gemini API and burns quota/cost, so
 # it must never run on push/PR triggers. See benchmark/PROTOCOL.md.
 on:
   workflow_dispatch:
@@ -10,11 +10,16 @@ on:
         required: false
         default: 'baseline'
       model:
-        description: 'Modèle Gemini à tester (laisser vide = défaut de production)'
+        description: 'ModÃ¨le Gemini Ã  tester (laisser vide = dÃ©faut de production)'
         required: false
         default: ''
       strip_location_context:
-        description: 'Ignorer le contexte de localisation (test GPS vs sans GPS — voir PROTOCOL.md)'
+        description: 'Ignorer le contexte de localisation (test GPS vs sans GPS â€” voir PROTOCOL.md)'
+        type: boolean
+        required: false
+        default: false
+      list_models_only:
+        description: 'Ignorer le jeu de donnÃ©es, juste lister les modÃ¨les Gemini disponibles aujourd''hui'
         type: boolean
         required: false
         default: false
@@ -36,10 +41,13 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then
-            echo "::error::Secret GEMINI_API_KEY manquant — voir benchmark/README.md pour le configurer (Settings > Secrets and variables > Actions)."
+            echo "::error::Secret GEMINI_API_KEY manquant â€” voir benchmark/README.md pour le configurer (Settings > Secrets and variables > Actions)."
             exit 1
           fi
           ARGS="--api-key $GEMINI_API_KEY --prompt-variant-id '${{ inputs.prompt_variant_id }}'"
+          if [ "${{ inputs.list_models_only }}" = "true" ]; then
+            ARGS="--api-key $GEMINI_API_KEY --list-models"
+          fi
           if [ -n "${{ inputs.model }}" ]; then
             ARGS="$ARGS --model '${{ inputs.model }}'"
           fi
@@ -49,6 +57,7 @@ jobs:
           eval python3 benchmark/scripts/run_cloud_benchmark.py "$ARGS"
 
       - name: Upload results artifact
+        if: inputs.list_models_only != true
         uses: actions/upload-artifact@v4
         with:
           name: gemini-benchmark-results-${{ github.run_id }}
