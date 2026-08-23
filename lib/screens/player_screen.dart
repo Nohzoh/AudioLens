@@ -8,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
+import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
 
@@ -90,7 +91,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             fit: StackFit.expand,
             children: [
               // Background image
-              Image.file(widget.imageFile, fit: BoxFit.cover),
+              BackgroundPhoto(file: widget.imageFile),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
