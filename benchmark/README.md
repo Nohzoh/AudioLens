@@ -29,3 +29,5 @@ fois.
 
 Le run Nano (on-device) reste manuel — voir la section dédiée dans
 `PROTOCOL.md`.
+
+<!-- verification commit: confirms benchmark-only changes skip Build/Test CI -->
