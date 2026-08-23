@@ -19,6 +19,7 @@ import '../support/service_fakes.dart';
 /// this pass's scope; here we verify the "tap to retry"/"tap to analyze"
 /// treatment renders correctly instead.
 const _pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+const _audioPlayerChannel = MethodChannel('audio_guide/audio_player');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -135,5 +136,97 @@ void main() {
 
     expect(find.text('Capturé — appuyer pour analyser'), findsOneWidget);
     expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+  });
+
+  // #148 — skip controls reached parity with player_screen.dart, but only
+  // for the seekable cached-WAV path. Native TTS speaks live with no
+  // seekable position, so the buttons must stay hidden there rather than
+  // appear and silently do nothing (same reasoning as
+  // AudioGuideService.canSkip on the player screen).
+  group('skip controls', () {
+    /// Opens the detail screen for the only entry in history.
+    Future<void> openDetail(WidgetTester tester) async {
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('La Joconde'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('are hidden before playback starts', (tester) async {
+      await tester.runAsync(() async {
+        final e = await history.addEntry(
+          imagePath: imagePath,
+          title: 'La Joconde',
+          script: 'Bienvenue.',
+        );
+        final wav = join(tmpDir.path, 'cached.wav');
+        File(wav).writeAsBytesSync(List.filled(64, 0));
+        await history.saveAudioPath(e.id!, wav, ttsModel: 'gemini-tts');
+      });
+
+      await openDetail(tester);
+
+      expect(find.byIcon(Icons.replay_10), findsNothing);
+      expect(find.byIcon(Icons.forward_10), findsNothing);
+    });
+
+    testWidgets('appear while cached audio is playing', (tester) async {
+      await tester.runAsync(() async {
+        final e = await history.addEntry(
+          imagePath: imagePath,
+          title: 'La Joconde',
+          script: 'Bienvenue.',
+        );
+        final wav = join(tmpDir.path, 'cached.wav');
+        File(wav).writeAsBytesSync(List.filled(64, 0));
+        await history.saveAudioPath(e.id!, wav, ttsModel: 'gemini-tts');
+      });
+
+      // playWav never completes here, standing in for audio still playing.
+      final calls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_audioPlayerChannel, (call) async {
+        calls.add(call);
+        return null;
+      });
+      addTearDown(() => TestDefaultBinaryMessengerBinding
+          .instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_audioPlayerChannel, null));
+
+      await openDetail(tester);
+      await tester.tap(find.text('Écouter le commentaire'));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.replay_10), findsOneWidget);
+      expect(find.byIcon(Icons.forward_10), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.forward_10));
+      await tester.pump();
+      expect(
+        calls.map((c) => c.method),
+        contains('seekForward'),
+      );
+    });
+
+    testWidgets('stay hidden for a native-TTS entry, which has no seekable position',
+        (tester) async {
+      await tester.runAsync(() async {
+        final e = await history.addEntry(
+          imagePath: imagePath,
+          title: 'La Joconde',
+          script: 'Bienvenue.',
+        );
+        // Native fallback: a ttsModel is recorded but no audio file exists.
+        await history.saveTtsModel(e.id!, 'native', ttsFallback: true);
+      });
+
+      await openDetail(tester);
+      await tester.tap(find.text('Écouter le commentaire'));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.replay_10), findsNothing);
+      expect(find.byIcon(Icons.forward_10), findsNothing);
+    });
   });
 }

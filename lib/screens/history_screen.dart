@@ -590,6 +590,22 @@ class HistoryDetailScreen extends StatefulWidget {
 
 class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   bool _isPlaying = false;
+
+  /// The native side that owns cached-WAV playback — the same channel
+  /// GeminiTtsService drives, so play/stop/seek all go through one place.
+  static const channel = MethodChannel('audio_guide/audio_player');
+
+  /// Whether what's playing right now is the cached WAV (seekable via the
+  /// audio_guide/audio_player channel) rather than native TTS speaking
+  /// live (no seekable position at all).
+  ///
+  /// Mirrors AudioGuideService.canSkip's reasoning on the player screen:
+  /// hide the skip buttons entirely for native playback rather than show
+  /// controls that would silently do nothing. Tracked per-playback rather
+  /// than derived from the entry alone, because the same entry can be
+  /// played either way — a script-only entry synthesises on first listen
+  /// and may fall back to native mid-flight.
+  bool _isSeekablePlayback = false;
   bool _isUpgrading = false;
   bool _photoMode = false; // T94: show the plain photo instead of the script overlay
 
@@ -612,10 +628,25 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
   // Play cached audio file directly without re-generating TTS
   Future<void> _playCachedAudio(String path) async {
-    const channel = MethodChannel('audio_guide/audio_player');
     channel.invokeMethod('playWav', {'path': path}).then((_) {
-      setState(() => _isPlaying = false);
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = false;
+        _isSeekablePlayback = false;
+      });
     });
+  }
+
+  /// Skip playback by [deltaMs], negative to go back.
+  ///
+  /// Talks to the same audio_guide/audio_player channel GeminiTtsService
+  /// uses for its own skip controls, so this needs no new native plumbing
+  /// — the channel already defaults to a 10s delta.
+  Future<void> _skip(int deltaMs) async {
+    await channel.invokeMethod(
+      deltaMs >= 0 ? 'seekForward' : 'seekBack',
+      {'deltaMs': deltaMs.abs()},
+    );
   }
 
   @override
@@ -629,7 +660,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   void dispose() {
     // Stop playback when leaving screen
-    const channel = MethodChannel('audio_guide/audio_player');
     channel.invokeMethod('stop');
     super.dispose();
   }
@@ -638,7 +668,10 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     if (_isPlaying) {
       final tts = _getTts(context);
       await tts.stop();
-      setState(() => _isPlaying = false);
+      setState(() {
+        _isPlaying = false;
+        _isSeekablePlayback = false;
+      });
       return;
     }
 
@@ -647,6 +680,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
     if (live.hasAudio) {
       // Use cached audio — no TTS regeneration needed
+      setState(() => _isSeekablePlayback = true);
       await _playCachedAudio(live.audioPath!);
       return;
     }
@@ -1087,23 +1121,47 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 // player_screen.dart's own playback controls.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: FilledButton.icon(
-                    onPressed: _toggleAudio,
-                    icon: Icon(_isPlaying
-                        ? Icons.stop
-                        : ((live.hasAudio || live.hasLowQualityTts)
-                            ? Icons.play_arrow
-                            : Icons.auto_awesome)),
-                    label: Text(_isPlaying
-                        ? l10n.historyStop
-                        : ((live.hasAudio || live.hasLowQualityTts)
-                            ? l10n.historyListen
-                            : l10n.historyGenerateAudio)),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
+                  child: Row(
+                    children: [
+                      // Skip controls only while the seekable cached WAV is
+                      // playing — see _isSeekablePlayback.
+                      if (_isPlaying && _isSeekablePlayback) ...[
+                        IconButton(
+                          icon: const Icon(Icons.replay_10),
+                          iconSize: 32,
+                          onPressed: () => _skip(-10000),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _toggleAudio,
+                          icon: Icon(_isPlaying
+                              ? Icons.stop
+                              : ((live.hasAudio || live.hasLowQualityTts)
+                                  ? Icons.play_arrow
+                                  : Icons.auto_awesome)),
+                          label: Text(_isPlaying
+                              ? l10n.historyStop
+                              : ((live.hasAudio || live.hasLowQualityTts)
+                                  ? l10n.historyListen
+                                  : l10n.historyGenerateAudio)),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 52),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                      ),
+                      if (_isPlaying && _isSeekablePlayback) ...[
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.forward_10),
+                          iconSize: 32,
+                          onPressed: () => _skip(10000),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
