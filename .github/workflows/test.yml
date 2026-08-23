@@ -17,6 +17,8 @@ jobs:
   # triggers blocks merging forever; a skipped one satisfies it).
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     outputs:
       code: ${{ steps.decide.outputs.code }}
     steps:
@@ -24,25 +26,35 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         uses: actions/checkout@v7
 
-      - name: Detect non-docs changes
+      - name: List changed files
         if: github.event_name != 'workflow_dispatch'
         uses: dorny/paths-filter@v4
         id: filter
         with:
+          list-files: json
           filters: |
-            code:
-              - '!**/*.md'
-              - '!benchmark/**'
-              - '!.github/workflows/benchmark.yml'
+            all:
+              - '**'
 
       - name: Decide
         id: decide
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          # See build-android.yml's "changes" job for why this is plain
+          # bash rather than dorny/paths-filter's own pattern combination.
+          CODE=false
+          echo '${{ steps.filter.outputs.all_files }}' | jq -r '.[]' > /tmp/changed_files.txt
+          while IFS= read -r f; do
+            case "$f" in
+              *.md|benchmark/*|.github/workflows/benchmark.yml) ;;
+              *) echo true > /tmp/code_flag ;;
+            esac
+          done < /tmp/changed_files.txt
+          [ -f /tmp/code_flag ] && CODE=true
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
 
   test:
     needs: changes
@@ -74,11 +86,11 @@ jobs:
       # sqflite_common_ffi (T09, history_service_migration_test.dart) needs
       # a system SQLite lib to dlopen. Confirmed always already present on
       # ubuntu-latest (dpkg check below is a no-op offline confirmation in
-      # every run so far) — so the common case never has to touch the
+      # every run so far) â€” so the common case never has to touch the
       # network at all. apt-get is only a fallback for a hypothetical
       # future runner image that doesn't ship it, and `apt-get update` has
       # been seen hanging for 40+ minutes on an unresponsive Ubuntu mirror
-      # (2026-08-19) instead of failing — timeout-minutes plus a few quick
+      # (2026-08-19) instead of failing â€” timeout-minutes plus a few quick
       # retries turns that fallback path into a fast failure/self-heal.
       - name: Install libsqlite3
         timeout-minutes: 3

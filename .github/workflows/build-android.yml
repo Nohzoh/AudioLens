@@ -27,10 +27,12 @@ jobs:
   # paths-ignore on the triggers above: "build" is a required status check
   # (branch protection), and a workflow that never triggers at all leaves
   # a required check permanently "Expected", blocking merges forever. A
-  # job that runs and reports "skipped" satisfies a required check —
+  # job that runs and reports "skipped" satisfies a required check â€”
   # that's the mechanism this relies on.
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     outputs:
       code: ${{ steps.decide.outputs.code }}
     steps:
@@ -38,27 +40,45 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         uses: actions/checkout@v7
 
-      - name: Detect App changes
+      - name: List changed files
         if: github.event_name != 'workflow_dispatch'
         uses: dorny/paths-filter@v4
         id: filter
         with:
+          list-files: json
           filters: |
-            code:
-              - '!**/*.md'
-              - '!benchmark/**'
-              - '!.github/workflows/benchmark.yml'
+            all:
+              - '**'
 
       - name: Decide
         id: decide
         run: |
-          # workflow_dispatch (manual publish) always builds — there's no
-          # diff to compute a "docs only" answer from.
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          # Doing the exclusion in plain bash rather than relying on
+          # dorny/paths-filter's own pattern combination: its patterns
+          # within one filter are OR'd together (default 'some' mode), so
+          # multiple '!pattern' entries in the same list don't chain into
+          # an AND-exclusion the way .gitignore does â€” each negation
+          # independently matches "any file that isn't X", and OR-ing
+          # several such broad negations ends up matching almost
+          # everything. The 'every' mode requires ALL patterns to match a
+          # single file simultaneously, which doesn't fit multiple
+          # unrelated positive folders (a file can't be under lib/** AND
+          # android/** at once) either. Fetching the full changed-file
+          # list and filtering it explicitly here avoids both pitfalls.
+          CODE=false
+          echo '${{ steps.filter.outputs.all_files }}' | jq -r '.[]' > /tmp/changed_files.txt
+          while IFS= read -r f; do
+            case "$f" in
+              *.md|benchmark/*|.github/workflows/benchmark.yml) ;;
+              *) echo true > /tmp/code_flag ;;
+            esac
+          done < /tmp/changed_files.txt
+          [ -f /tmp/code_flag ] && CODE=true
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
 
   build:
     needs: changes
@@ -146,7 +166,7 @@ jobs:
           # Replace full lines containing flutter.xxxSdkVersion or plain numbers
           # compileSdk 37 (T103): flutter_secure_storage 11.x requires
           # compileSdk >= 37 (its AAR metadata check fails the build
-          # otherwise). targetSdk stays at 36 — compileSdk (API surface
+          # otherwise). targetSdk stays at 36 â€” compileSdk (API surface
           # available at compile time) and targetSdk (runtime behavior
           # opt-in) are independent.
           sed -i 's|^\s*compileSdk\s*=.*|    compileSdk = 37|' $FILE
@@ -171,7 +191,7 @@ jobs:
           fi
 
           # Add our dependencies at end of file
-          # T82: com.google.mediapipe:tasks-genai dropped — only used by the
+          # T82: com.google.mediapipe:tasks-genai dropped â€” only used by the
           # dead MediaPipePlugin.kt (mediapipe_service.dart, its Dart caller,
           # was removed in T06). Gemini Nano uses com.google.mlkit:genai-prompt
           # instead (GeminiNanoPlugin.kt), which stays.
@@ -216,15 +236,15 @@ jobs:
           cat $FILE
 
       # T100: pinning 2.2.0 here still built with Kotlin 2.2.10 effectively
-      # (Gradle's default "highest version wins" conflict resolution —
+      # (Gradle's default "highest version wins" conflict resolution â€”
       # kotlinx-coroutines-android/play-services below likely pull in a
       # newer Kotlin stdlib transitively than the plugin version we declare)
-      # — Flutter's own deprecation warning wants >= 2.2.20, so pin there
+      # â€” Flutter's own deprecation warning wants >= 2.2.20, so pin there
       # directly instead of a version Gradle silently overrides anyway.
       - name: Patch Kotlin version
         run: |
           for f in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-            [ -f "$f" ] && sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.20"/' $f && echo "✅ Patched $f"
+            [ -f "$f" ] && sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.20"/' $f && echo "âœ… Patched $f"
             [ -f "$f" ] && sed -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.20"/' $f
           done
 
@@ -236,7 +256,7 @@ jobs:
           fi
           sed -i 's/android:label="[^"]*"/android:label="AudioLens"/' $MANIFEST
           # allowBackup=false (T80): history contains GPS coordinates and
-          # photos — Android's default is allowBackup=true, which would let
+          # photos â€” Android's default is allowBackup=true, which would let
           # adb backup extract it on an unlocked device with USB debugging.
           # Guarded (T82 fix): re-running this against an already-patched
           # manifest (e.g. a local build not starting from a fresh bootstrap)
@@ -245,14 +265,14 @@ jobs:
             sed -i 's/android:label="AudioLens"/android:label="AudioLens" android:allowBackup="false"/' $MANIFEST
           fi
           # T89: Android 11+ (targetSdk 30+) hides other apps/services from
-          # package queries by default — without this <queries> entry,
+          # package queries by default â€” without this <queries> entry,
           # flutter_tts's isLanguageAvailable()/speak() can silently fail
           # to find the system TTS engine on some devices.
           if ! grep -q 'TextToSpeechService' $MANIFEST; then
             sed -i 's|</manifest>|<queries><intent><action android:name="android.speech.tts.engine.TextToSpeechService" /></intent></queries>\n</manifest>|' $MANIFEST
           fi
           # T85: a foreground service protects the app process's priority
-          # while an analysis is in flight — without it, Android can kill
+          # while an analysis is in flight â€” without it, Android can kill
           # the process while backgrounded, silently dropping the analysis.
           if ! grep -q 'FOREGROUND_SERVICE_DATA_SYNC' $MANIFEST; then
             sed -i 's|<application|<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <application|' $MANIFEST
@@ -261,7 +281,7 @@ jobs:
             sed -i 's|</application>|    <service android:name=".AnalysisForegroundService" android:foregroundServiceType="dataSync" android:exported="false"/>\n    </application>|' $MANIFEST
           fi
           # T118/T21: a second, separate foreground service for lock-screen/
-          # notification playback controls (MediaSession) — different
+          # notification playback controls (MediaSession) â€” different
           # foreground service type from the analysis one above, Android
           # 14+ enforces these strictly per declared type.
           if ! grep -q 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' $MANIFEST; then
@@ -276,12 +296,12 @@ jobs:
             sed -i 's|</application>|    <receiver android:name=".QuickCaptureWidgetProvider" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_capture_widget_info"/></receiver>\n    </application>|' $MANIFEST
           fi
           # T97: register as a share target for photos from other apps
-          # (Gallery, etc.) — a second intent-filter on the same activity,
+          # (Gallery, etc.) â€” a second intent-filter on the same activity,
           # right after the existing MAIN/LAUNCHER one.
           if ! grep -q 'android.intent.action.SEND' $MANIFEST; then
             sed -i 's|</intent-filter>|</intent-filter>\n            <intent-filter>\n                <action android:name="android.intent.action.SEND"/>\n                <category android:name="android.intent.category.DEFAULT"/>\n                <data android:mimeType="image/*"/>\n            </intent-filter>|' $MANIFEST
           fi
-          echo "✅ Manifest patched (allowBackup=false, TTS engine query, foreground service, share target)"
+          echo "âœ… Manifest patched (allowBackup=false, TTS engine query, foreground service, share target)"
 
       - name: Add FileProvider
         run: |
@@ -297,7 +317,7 @@ jobs:
               <cache-path name="cache" path="."/>
           </paths>
           XML
-          echo "✅ FileProvider configured"
+          echo "âœ… FileProvider configured"
 
       - name: Setup keystore
         run: |
@@ -308,7 +328,7 @@ jobs:
           keyAlias=${{ secrets.KEY_ALIAS }}
           keyPassword=${{ secrets.KEYSTORE_PASSWORD }}
           EOF
-          echo "✅ Keystore ready"
+          echo "âœ… Keystore ready"
 
       - name: Patch signing in build.gradle.kts
         run: |
@@ -321,7 +341,7 @@ jobs:
         run: |
           echo "=== build.gradle.kts ==="
           cat android/app/build.gradle.kts
-          # key.properties holds the real keystore passwords in plaintext —
+          # key.properties holds the real keystore passwords in plaintext â€”
           # never dump its contents to CI logs, only confirm it exists.
           if [ -f android/key.properties ]; then
             echo "=== key.properties: present ==="
@@ -334,7 +354,7 @@ jobs:
 
       # The APK is only ever consumed for direct-sideload testing/manual
       # QA (e.g. via adb) or as a release-build sanity check (aapt can
-      # inspect an APK, not an AAB) — never for the actual Play Store
+      # inspect an APK, not an AAB) â€” never for the actual Play Store
       # publish, which needs the AAB below. A PR is never published, so
       # building it there is purely that sanity check; skip it on a plain
       # push to main, where the AAB is what actually matters and doing
@@ -347,11 +367,11 @@ jobs:
         if: github.event_name != 'push'
         run: |
           BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          # T83: only real-device ABIs — x86/x86_64 are emulator-only and
+          # T83: only real-device ABIs â€” x86/x86_64 are emulator-only and
           # sherpa_onnx has real native code per ABI to compile/link/package.
           # T84: --build-number gives every release a strictly increasing
           # versionCode (the run number always goes up), without needing to
-          # hand-edit pubspec.yaml's committed "0.1.0+1" per upload — Play
+          # hand-edit pubspec.yaml's committed "0.1.0+1" per upload â€” Play
           # Console rejects any upload whose versionCode isn't higher than
           # the last one.
           flutter build apk --release \
@@ -382,22 +402,22 @@ jobs:
             echo "::error::APK is empty"
             exit 1
           fi
-          # aapt isn't on PATH on this runner — locate it in the installed
+          # aapt isn't on PATH on this runner â€” locate it in the installed
           # build-tools instead of silently no-op'ing the checks below.
           AAPT="$(find "$ANDROID_HOME" -name aapt -type f 2>/dev/null | head -1)"
           if [ -z "$AAPT" ]; then
-            echo "::error::aapt not found under \$ANDROID_HOME — cannot verify the APK is non-debuggable"
+            echo "::error::aapt not found under \$ANDROID_HOME â€” cannot verify the APK is non-debuggable"
             exit 1
           fi
           # Show APK info
           "$AAPT" dump badging "$APK_PATH" | grep -E "package:|version|sdkVersion"
           # T79: a release build must not be debuggable
           if "$AAPT" dump badging "$APK_PATH" | grep -qi "application-debuggable"; then
-            echo "::error::APK is flagged as debuggable — this must not ship to users"
+            echo "::error::APK is flagged as debuggable â€” this must not ship to users"
             exit 1
           fi
-          echo "✅ APK is not debuggable"
-          echo "✅ APK build verified: $APK_PATH ($(stat -f%z "$APK_PATH" 2>/dev/null || stat -c%s "$APK_PATH") bytes)"
+          echo "âœ… APK is not debuggable"
+          echo "âœ… APK build verified: $APK_PATH ($(stat -f%z "$APK_PATH" 2>/dev/null || stat -c%s "$APK_PATH") bytes)"
 
       - name: Upload APK
         if: success() && github.event_name != 'push'
@@ -413,7 +433,7 @@ jobs:
       # config rather than a separate job, so it's a cheap addition.
       #
       # Skipped on pull_request: a PR is never published, so there's
-      # nothing to consume the AAB for there — only push (main, feeds
+      # nothing to consume the AAB for there â€” only push (main, feeds
       # publish-play-store.yml) and workflow_dispatch (full manual
       # build+publish) actually need it.
       - name: Build App Bundle (release)
@@ -442,7 +462,7 @@ jobs:
             echo "::error::AAB not found or empty at $AAB_PATH"
             exit 1
           fi
-          echo "✅ AAB build verified: $AAB_PATH ($(stat -f%z "$AAB_PATH" 2>/dev/null || stat -c%s "$AAB_PATH") bytes)"
+          echo "âœ… AAB build verified: $AAB_PATH ($(stat -f%z "$AAB_PATH" 2>/dev/null || stat -c%s "$AAB_PATH") bytes)"
 
       - name: Upload AAB
         if: success() && github.event_name != 'pull_request'
@@ -452,9 +472,9 @@ jobs:
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
-      # T98: R8 is enabled on release builds — upload the mapping file so
+      # T98: R8 is enabled on release builds â€” upload the mapping file so
       # crash reports (Play Console, Crashlytics, etc.) can be de-obfuscated.
-      # Tied to the AAB path for the same reason as the AAB itself — only
+      # Tied to the AAB path for the same reason as the AAB itself â€” only
       # ever needed for something that might get published.
       - name: Upload R8 mapping file
         if: success() && github.event_name != 'pull_request'
@@ -464,7 +484,7 @@ jobs:
           path: build/app/outputs/mapping/release/mapping.txt
           retention-days: 30
 
-      # Deliberately manual-only (workflow_dispatch), not on every push/PR —
+      # Deliberately manual-only (workflow_dispatch), not on every push/PR â€”
       # an automatic upload on every merge would spam closed-testing testers
       # with a new build for every doc/config change. Track is chosen at
       # dispatch time (defaults to "alpha", the closed testing track's API
