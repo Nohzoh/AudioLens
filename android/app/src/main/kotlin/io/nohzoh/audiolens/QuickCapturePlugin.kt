@@ -11,7 +11,7 @@ import io.flutter.plugin.common.MethodChannel
 /// warm-start case (the app was already running when the widget was
 /// tapped, so Dart needs to be pushed the event live). See
 /// QuickCaptureWidgetProvider.kt (the widget itself) and
-/// MainActivity.kt (which detects ACTION_QUICK_CAPTURE and drives this).
+/// MainActivity.kt (which consumes its capture marker and drives this).
 class QuickCapturePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var methodChannel: MethodChannel
     private lateinit var eventChannel: EventChannel
