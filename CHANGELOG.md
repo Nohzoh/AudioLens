@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Add a Ko-fi link to the GitHub Pages site** (issue #157)
+  - **Verified**: 2026-08-25 (PR TBD, commit `7358506`)
+  - **What was done**: the site had no reference to Ko-fi at all despite the app itself already linking to it (`kofi_button.dart`). Added a low-key "☕ Support" button in the header (next to GitHub, matching its style) and a matching footer link, both pointing to the same `https://ko-fi.com/tarnaud` URL used in-app.
+  - **Final validation**: verified visually in a real browser (served `docs/` locally) — both placements render correctly, header stays uncluttered on mobile (nav links already hidden below 860px).
+
 - [x] 📈 ⭐ - **Pinch-to-zoom on the photo (#191) doesn't work — gradient overlay Container absorbs the gesture** (issue #204)
   - **Verified**: 2026-08-25 (PR #205, commit `d3662e1`)
   - **What was done**: `BoxDecoration.hitTest()` returns `true` unconditionally for a borderless rectangle, regardless of visual (semi-)transparency — the purely-decorative gradient vignette `Container` stacked on top of `BackgroundPhoto` in both `HistoryDetailScreen` and `PlayerScreen` silently absorbed every touch meant for the `InteractiveViewer` beneath it, breaking #191's pinch-to-zoom entirely. Wrapped both in `IgnorePointer`. Verified the new regression test actually catches the bug by temporarily reverting the fix and confirming it fails (transform stays identity), then restoring it.
