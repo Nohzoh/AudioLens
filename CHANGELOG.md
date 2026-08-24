@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ⚡ ⭐⭐⭐ - **Landscape gallery photos severely cropped as full-screen background, and a native image leak found while fixing it** (issue #151)
+  - **Verified**: 2026-08-24 (PR #182, commit `d62825b`)
+  - **What was done**: `BackgroundPhoto` (`lib/widgets/background_photo.dart`) letterboxes wide/tall photos over a blurred backdrop instead of cropping with `BoxFit.cover`, so gallery photos far from the screen's aspect ratio no longer lose their subject. Code review of the PR before merge found a real bug in the letterboxing logic itself: `_decodeSize` never disposed the `ui.Image` handle it received (leaking native/GPU memory on every call, per `ImageInfo`'s own ownership contract), and its `FutureBuilder` was fed a fresh `Future` inline on every `build()` — which `PlayerScreen` re-runs on every spoken word during narration (native TTS's word-progress callback drives `setState`), so a guide leaked one image handle per word for its entire duration. Fixed by converting `BackgroundPhoto` to a `StatefulWidget` that decodes once per file (only redecoding if the file itself changes) and disposes the image immediately after reading its size.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 208/208 (no dedicated widget test added — this is a rendering/layout behavior best confirmed on a real device with an actual wide photo, not unit-testable in isolation).
+
 - [x] **Recurring Gemini API vs Gemini Nano benchmark**
   - **Verified**: 2026-08-22
   - **Source**: user — wanted a way to track how the cloud model and the on-device model compare on AudioLens's actual audio-guide generation task (photo + GPS + location context), reusable every quarter, and reusable for ad hoc prompt experiments too.
