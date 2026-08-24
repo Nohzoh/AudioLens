@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **Allow tap-to-copy on individual property values in the analysis details screen** (issue #154)
-  - **Verified**: 2026-08-24 (PR TBD, commit `48258df`)
+  - **Verified**: 2026-08-24 (PR #196, commit `48258df`)
   - **What was done**: `_Row` in `about_analysis_screen.dart` now wraps its value in an `InkWell` that copies just that value on tap, confirmed with a distinct SnackBar (`« valeur » copié`) so it doesn't feel identical to the existing bulk "Copier les infos de debug" button, which still copies everything at once unchanged.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 272/272 (2 new tests; 1 pre-existing unrelated flaky timing test re-verified passing on its own).
 
