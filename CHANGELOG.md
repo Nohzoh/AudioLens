@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐ - **Map picker search: zoom level after selecting a result ignores the place's actual extent** (issue #201)
+  - **Verified**: 2026-08-25 (PR TBD, commit `ae81164`)
+  - **What was done**: `_selectPrediction` jumped to every search result with a hardcoded `zoom: 15` — too zoomed out for a precise address, too zoomed in for a city/region. `GeocodePrediction` now carries Nominatim's own `boundingbox` (sized to the kind of place matched); the map picker uses `MapController.fitCamera(CameraFit.bounds(...))` to derive the correct zoom from it (capped at 18 so a single-building bbox doesn't zoom in absurdly far), falling back to the old fixed-zoom `move()` on the rare result with no usable bounding box.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 289/289 (3 new tests).
+
 - [x] 🌱 ⭐ - **ShareIntentService (T97) has no dedicated test** (issue #132)
   - **Verified**: 2026-08-25 (PR #206, commit `7cc8da2`)
   - **What was done**: the one service under `lib/services/` with no matching `test/*_test.dart`. Added `test/share_intent_service_test.dart`, mocking the `MethodChannel`/`EventChannel` the way `native_tts_service_test.dart` already does for a platform-channel bridge — covers `getInitialSharedImage()`'s success/null/error/no-handler paths and `sharedImageStream`'s event mapping (single and multiple warm-start events).
