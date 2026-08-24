@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐⭐ - **App can cold-start straight into the camera from a normal icon tap** (issue #175)
+  - **Verified**: 2026-08-24 (PR #181, commit `5077a80`)
+  - **What was done**: the first fix attempt (this same PR) gated the quick-capture widget's replayed intent on `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY` — deprecated since API 21 and not set by the system on the task-recreation path this bug actually goes through, so on this app's minSdk 26 the guard was effectively always false and didn't fix anything. Replaced the whole mechanism: the widget's `PendingIntent` now broadcasts to `QuickCaptureWidgetProvider`, which records a short-lived (10s), single-use timestamp in `SharedPreferences` and only then starts `MainActivity` with a plain intent carrying no quick-capture signal at all — so there's nothing left for Android to persist as the task's base intent and replay on an unrelated later launch. `MainActivity` consumes (and clears) that marker instead of inspecting the intent, both cold (`configureFlutterEngine`) and warm (`onNewIntent`) start.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 208/208; real signed local build (`scripts/build_android_local.sh`) succeeded — no device-level repro of the original bug in this environment (it required a real process kill + relaunch cycle), so this relies on the fix eliminating the exact mechanism the code comments and issue investigation identified, not a fresh on-device repro.
+
 - [x] **Recurring Gemini API vs Gemini Nano benchmark**
   - **Verified**: 2026-08-22
   - **Source**: user — wanted a way to track how the cloud model and the on-device model compare on AudioLens's actual audio-guide generation task (photo + GPS + location context), reusable every quarter, and reusable for ad hoc prompt experiments too.
