@@ -132,44 +132,63 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             },
                           ),
                           const Spacer(),
+                          // Each trailing icon owns its own leading gap
+                          // (rather than a shared SizedBox between them)
+                          // so a hidden one — e.g. Ko-fi off in settings
+                          // — contributes zero space instead of leaving
+                          // an orphan gap or collapsing the gap next to
+                          // whatever ends up adjacent to it.
                           if (guide.lastResult != null)
-                            ScrimIconButton(
-                              icon: _photoMode
-                                  ? Icons.article_outlined
-                                  : Icons.image_outlined,
-                              color: Colors.white70,
-                              tooltip: _photoMode
-                                  ? l10n.playerShowText
-                                  : l10n.playerPhotoMode,
-                              onPressed: () =>
-                                  setState(() => _photoMode = !_photoMode),
-                            ),
-                          const SizedBox(width: 4),
-                          Consumer<SettingsService>(
-                            builder: (context, settings, _) => KofiButton(
-                              show: settings.showKofiButton,
-                              iconColor: Colors.white70,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          if (guide.state == GuideState.cancelling)
-                            const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: ScrimIconButton(
+                                icon: _photoMode
+                                    ? Icons.article_outlined
+                                    : Icons.image_outlined,
                                 color: Colors.white70,
+                                tooltip: _photoMode
+                                    ? l10n.playerShowText
+                                    : l10n.playerPhotoMode,
+                                onPressed: () =>
+                                    setState(() => _photoMode = !_photoMode),
+                              ),
+                            ),
+                          Consumer<SettingsService>(
+                            builder: (context, settings, _) =>
+                                settings.showKofiButton
+                                    ? const Padding(
+                                        padding: EdgeInsets.only(left: 4),
+                                        child: KofiButton(
+                                          show: true,
+                                          iconColor: Colors.white70,
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
+                          ),
+                          if (guide.state == GuideState.cancelling)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white70,
+                                ),
                               ),
                             )
                           else if (guide.state == GuideState.speaking || guide.state == GuideState.paused || guide.state == GuideState.synthesizing)
-                            ScrimIconButton(
-                              icon: Icons.cancel_outlined,
-                              color: Colors.white70,
-                              tooltip: l10n.playerCancel,
-                              onPressed: () async {
-                                await guide.cancelCurrentAction();
-                                if (context.mounted) Navigator.pop(context);
-                              },
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: ScrimIconButton(
+                                icon: Icons.cancel_outlined,
+                                color: Colors.white70,
+                                tooltip: l10n.playerCancel,
+                                onPressed: () async {
+                                  await guide.cancelCurrentAction();
+                                  if (context.mounted) Navigator.pop(context);
+                                },
+                              ),
                             ),
                         ],
                       ),

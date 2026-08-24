@@ -1115,7 +1115,3 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     );
   }
 }
-
-/// A top-bar icon button with its own subtle circular scrim (T96) — keeps
-/// it legible over any photo content, independent of the screen's own
-/// background gradient.
