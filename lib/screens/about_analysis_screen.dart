@@ -323,10 +323,26 @@ class _Row extends StatelessWidget {
                 style: const TextStyle(color: Colors.white54, fontSize: 13)),
           ),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(color: Colors.white, fontSize: 13)),
+            // #154: tapping a single value copies just that value —
+            // distinct from the bulk "Copier les infos de debug" button
+            // below, which copies everything at once.
+            child: InkWell(
+              onTap: () => _copyValue(context),
+              child: Text(value,
+                  style: const TextStyle(color: Colors.white, fontSize: 13)),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _copyValue(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: value));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('« $value » copié'),
+        duration: const Duration(seconds: 1),
       ),
     );
   }
