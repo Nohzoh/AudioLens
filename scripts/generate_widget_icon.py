@@ -3,24 +3,27 @@
 #150: the widget previously drew a camera glyph, unrelated to the app's
 actual headphone+waveform launcher icon (mipmap ic_launcher.png) — the
 two just didn't read as the same app. This draws the same headphone+
-waveform glyph (same colors as generate_play_store_icon.py) on a WHITE
-background — ic_launcher.png itself has no baked-in background (fully
-transparent corners), and what the launcher actually shows is a plain
-white circle behind the glyph, so white is what the app icon really
-looks like day to day, not the brand purple. A small "+" badge (brand
-purple, a bit of shine on it) in the bottom-right corner signals "start
-a new capture" at a glance.
+waveform glyph (via the shared _headphone_glyph module, also used by
+generate_app_icon.py/generate_play_store_icon.py — a single source of
+proportions, so the three can't visually drift apart from each other)
+on a white background, matching what the real app icon looks like day
+to day (ic_launcher.png has no baked-in background of its own — see
+generate_app_icon.py). A small "+" badge (brand purple, a bit of shine
+on it) in the bottom-right corner signals "start a new capture" at a
+glance — the one deliberate difference from the plain app icon.
 
 Usage: python3 scripts/generate_widget_icon.py
 Requires: pip install pillow
 """
 
-import math
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+from _headphone_glyph import draw_headphone_glyph
+
 CANVAS = 192
+SCALE = CANVAS / 512
 BRAND_PURPLE = (107, 78, 255, 255)
 DARK = (26, 26, 46, 255)
 BLUE = (74, 144, 217, 255)
@@ -31,48 +34,6 @@ OUTPUT = (
     Path(__file__).resolve().parent.parent
     / "android" / "app" / "src" / "main" / "res" / "drawable-nodpi" / "widget_quick_capture.png"
 )
-
-
-def _draw_headphone_glyph(draw: ImageDraw.ImageDraw, cx: float, cy: float) -> None:
-    # Proportions scaled down from generate_play_store_icon.py's 512px
-    # version (same glyph, same colors — that's the point).
-    band_r = 49
-    band_w = 13
-    bbox = [cx - band_r, cy - band_r - 8, cx + band_r, cy + band_r - 8]
-    draw.arc(bbox, start=200, end=340, fill=DARK, width=band_w)
-    for ang in (200, 340):
-        rad = math.radians(ang)
-        px = cx + band_r * math.cos(rad)
-        py = (cy - 8) + band_r * math.sin(rad)
-        draw.ellipse(
-            [px - band_w / 2, py - band_w / 2, px + band_w / 2, py + band_w / 2],
-            fill=DARK,
-        )
-
-    cup_w, cup_h = 23, 41
-    cup_y = cy + 11
-    left_cup = [
-        cx - band_r - cup_w / 2 + 3, cup_y - cup_h / 2,
-        cx - band_r + cup_w / 2 + 3, cup_y + cup_h / 2,
-    ]
-    right_cup = [
-        cx + band_r - cup_w / 2 - 3, cup_y - cup_h / 2,
-        cx + band_r + cup_w / 2 - 3, cup_y + cup_h / 2,
-    ]
-    draw.rounded_rectangle(left_cup, radius=10, fill=DARK)
-    draw.rounded_rectangle(right_cup, radius=10, fill=DARK)
-
-    heights = [17, 32, 49, 32, 17]
-    bar_w = 8
-    gap = 5
-    total_w = bar_w * 5 + gap * 4
-    start_x = cx - total_w / 2
-    for i, h in enumerate(heights):
-        x0 = start_x + i * (bar_w + gap)
-        x1 = x0 + bar_w
-        y0 = cy + 11 - h / 2
-        y1 = cy + 11 + h / 2
-        draw.rounded_rectangle([x0, y0, x1, y1], radius=bar_w / 2, fill=BLUE)
 
 
 def _draw_capture_badge(img: Image.Image, badge_cx: float, badge_cy: float, r: float) -> None:
@@ -116,7 +77,8 @@ def main() -> None:
 
     draw.rounded_rectangle([0, 0, CANVAS, CANVAS], radius=40, fill=WHITE)
 
-    _draw_headphone_glyph(draw, CANVAS / 2, CANVAS / 2 + 2)
+    cy = CANVAS / 2 + round(10 * SCALE)
+    draw_headphone_glyph(draw, CANVAS / 2, cy, SCALE, DARK, BLUE)
 
     badge_r = 32
     _draw_capture_badge(img, CANVAS - badge_r - 4, CANVAS - badge_r - 4, badge_r)
