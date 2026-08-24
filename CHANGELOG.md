@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐⭐ - **Widget icon doesn't visually tie back to the app icon (needs a distinguishing '+' badge)** (issue #150)
-  - **Verified**: 2026-08-24 (PR TBD, commits `b670d7e`, `2c13d8b`)
+  - **Verified**: 2026-08-24 (PR #197, commits `b670d7e`, `2c13d8b`)
   - **What was done**: checked on an emulator first (the issue's own open question) — the widget picker's `previewImage` renders correctly with no launcher-level quirk; the actual mismatch was that the widget drew a camera glyph while the app's real launcher icon (`ic_launcher.png`) is a headphone+waveform glyph, two unrelated designs. `generate_widget_icon.py` now draws that same headphone+waveform glyph (same colors as `generate_play_store_icon.py`) on a white background — `ic_launcher.png` has no baked-in background of its own (fully transparent corners); the white circle the launcher actually shows is its own fallback, so white is what the real app icon looks like day to day, not the brand purple originally used. A small shiny purple "+" badge in the bottom-right corner signals "start a new capture".
   - **Final validation**: `flutter analyze` → 0 issues; verified visually via a real local signed build installed on an emulator (widget picker preview screenshot confirms the new icon renders correctly and closely matches the real app icon).
 
