@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **ShareIntentService (T97) has no dedicated test** (issue #132)
+  - **Verified**: 2026-08-25 (PR TBD, commit `7cc8da2`)
+  - **What was done**: the one service under `lib/services/` with no matching `test/*_test.dart`. Added `test/share_intent_service_test.dart`, mocking the `MethodChannel`/`EventChannel` the way `native_tts_service_test.dart` already does for a platform-channel bridge — covers `getInitialSharedImage()`'s success/null/error/no-handler paths and `sharedImageStream`'s event mapping (single and multiple warm-start events).
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 281/281 (6 new tests).
+
 - [x] 🌱 ⭐ - **Generate the app launcher icon from the same shared glyph as the widget icon** (issue #202)
   - **Verified**: 2026-08-25 (PR #200, commit `740d7cf`)
   - **What was done**: `ic_launcher.png` had no vector/procedural source in the repo, which is why it rendered slightly differently from the newly-procedural widget icon (#150) despite being the same conceptual glyph. Extracted the headphone+waveform glyph into a shared `_headphone_glyph.py` module (proportions relative to a 512-unit canonical canvas) used by all three icon generators now: the new `generate_app_icon.py` (white circle, no badge — matches what the icon already looked like, just regenerated so it can't drift), `generate_widget_icon.py` (white rounded square + purple "+" badge), and `generate_play_store_icon.py` (purple square, refactored for consistency — verified byte-identical output).
