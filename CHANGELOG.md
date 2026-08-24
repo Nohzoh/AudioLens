@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Generate the app launcher icon from the same shared glyph as the widget icon** (follow-up to #150)
+  - **Verified**: 2026-08-25 (PR TBD, commit `740d7cf`)
+  - **What was done**: `ic_launcher.png` had no vector/procedural source in the repo, which is why it rendered slightly differently from the newly-procedural widget icon (#150) despite being the same conceptual glyph. Extracted the headphone+waveform glyph into a shared `_headphone_glyph.py` module (proportions relative to a 512-unit canonical canvas) used by all three icon generators now: the new `generate_app_icon.py` (white circle, no badge — matches what the icon already looked like, just regenerated so it can't drift), `generate_widget_icon.py` (white rounded square + purple "+" badge), and `generate_play_store_icon.py` (purple square, refactored for consistency — verified byte-identical output).
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 275/275; verified visually via a real local signed build installed on an emulator (both the home-screen/app-drawer icon and the widget picker's preview render correctly and consistently).
+
 - [x] 🌱 ⭐ - **Allow pausing audio playback from the home screen's "Recently visited" grid** (issue #127)
   - **Verified**: 2026-08-25 (PR #199, commit `63641d7`)
   - **What was done**: each grid tile with cached audio (`HistoryEntry.audioPath != null`) now shows a small play/pause overlay icon, driving the same native `audio_guide/audio_player` singleton `HistoryDetailScreen` uses — tapping starts/pauses/resumes that entry's narration in place, without opening the detail screen. Kept local to `HomeScreen`'s own state rather than synced with `HistoryDetailScreen`'s separate (and considerably larger) playback state machine — the two can never play concurrently anyway, since there's only one native `MediaPlayer` instance app-wide; opening the detail screen for any entry stops whatever the grid was playing.
