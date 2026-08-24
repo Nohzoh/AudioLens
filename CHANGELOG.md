@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐ - **Inconsistent action button styling between analysis screen and history screen** (issue #146)
+  - **Verified**: 2026-08-24 (PR #178, commit `b625598`)
+  - **What was done**: extracted `HistoryDetailScreen`'s private `_ScrimIconButton` into a shared `lib/widgets/scrim_icon_button.dart` and reused it in `PlayerScreen`'s top bar, so both screens' back/favorite/collection/photo-mode/cancel buttons render with the same contrasting circular scrim over photo content instead of `PlayerScreen`'s bare icons. Code review before merge found the extraction left a dangling doc comment for the deleted class at the end of `history_screen.dart`, and that `PlayerScreen`'s top bar had fixed spacers around the Ko-fi button regardless of whether it actually renders (hidden via settings), leaving dead space when hidden and no cancel/spinner adjacent. Fixed by removing the stale comment and giving each trailing icon its own leading gap instead of shared spacers between them.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 208/208.
+
 - [x] **Recurring Gemini API vs Gemini Nano benchmark**
   - **Verified**: 2026-08-22
   - **Source**: user — wanted a way to track how the cloud model and the on-device model compare on AudioLens's actual audio-guide generation task (photo + GPS + location context), reusable every quarter, and reusable for ad hoc prompt experiments too.
