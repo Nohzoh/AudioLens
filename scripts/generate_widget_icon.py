@@ -3,10 +3,13 @@
 #150: the widget previously drew a camera glyph, unrelated to the app's
 actual headphone+waveform launcher icon (mipmap ic_launcher.png) — the
 two just didn't read as the same app. This draws the same headphone+
-waveform glyph as generate_play_store_icon.py (same colors, same brand
-purple background) so the widget visually ties back to the real app
-icon, with a small "+" badge (a bit of shine on it) added in the
-bottom-right corner to signal "start a new capture" at a glance.
+waveform glyph (same colors as generate_play_store_icon.py) on a WHITE
+background — ic_launcher.png itself has no baked-in background (fully
+transparent corners), and what the launcher actually shows is a plain
+white circle behind the glyph, so white is what the app icon really
+looks like day to day, not the brand purple. A small "+" badge (brand
+purple, a bit of shine on it) in the bottom-right corner signals "start
+a new capture" at a glance.
 
 Usage: python3 scripts/generate_widget_icon.py
 Requires: pip install pillow
@@ -74,19 +77,25 @@ def _draw_headphone_glyph(draw: ImageDraw.ImageDraw, cx: float, cy: float) -> No
 
 def _draw_capture_badge(img: Image.Image, badge_cx: float, badge_cy: float, r: float) -> None:
     draw = ImageDraw.Draw(img)
+    # A thin white ring separates the badge from the white background
+    # behind it, so its edge doesn't disappear against it.
     draw.ellipse(
-        [badge_cx - r, badge_cy - r, badge_cx + r, badge_cy + r], fill=WHITE
+        [badge_cx - r - 4, badge_cy - r - 4, badge_cx + r + 4, badge_cy + r + 4],
+        fill=WHITE,
+    )
+    draw.ellipse(
+        [badge_cx - r, badge_cy - r, badge_cx + r, badge_cy + r], fill=BRAND_PURPLE
     )
     plus_w, plus_len = 8, 32
     draw.rounded_rectangle(
         [badge_cx - plus_len / 2, badge_cy - plus_w / 2,
          badge_cx + plus_len / 2, badge_cy + plus_w / 2],
-        radius=plus_w / 2, fill=BRAND_PURPLE,
+        radius=plus_w / 2, fill=WHITE,
     )
     draw.rounded_rectangle(
         [badge_cx - plus_w / 2, badge_cy - plus_len / 2,
          badge_cx + plus_w / 2, badge_cy + plus_len / 2],
-        radius=plus_w / 2, fill=BRAND_PURPLE,
+        radius=plus_w / 2, fill=WHITE,
     )
 
     # A small specular highlight so the badge reads as a shiny "action"
@@ -105,7 +114,7 @@ def main() -> None:
     img = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    draw.rounded_rectangle([0, 0, CANVAS, CANVAS], radius=40, fill=BRAND_PURPLE)
+    draw.rounded_rectangle([0, 0, CANVAS, CANVAS], radius=40, fill=WHITE)
 
     _draw_headphone_glyph(draw, CANVAS / 2, CANVAS / 2 + 2)
 
