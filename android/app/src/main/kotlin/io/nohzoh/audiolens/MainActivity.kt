@@ -3,17 +3,12 @@ package io.nohzoh.audiolens
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : FlutterActivity() {
-    companion object {
-        private const val TAG = "AudioLens"
-    }
-
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         flutterEngine.plugins.add(GeminiNanoPlugin())
@@ -26,35 +21,12 @@ class MainActivity : FlutterActivity() {
         // intent — extract now so getInitialSharedImage (called right
         // after the engine attaches, from Dart) already has it ready.
         extractSharedImage(intent)?.let { SharePlugin.pendingInitialPath = it }
-        // Cold start, quick-capture widget: same idea, see SharePlugin's
-        // comment above and QuickCaptureWidgetProvider.kt.
-        if (isFreshQuickCapture(intent)) {
+        // Cold start, quick-capture widget: QuickCaptureWidgetProvider
+        // records a short-lived marker before launching us (see its
+        // class doc for why this isn't driven by the intent itself).
+        if (QuickCaptureWidgetProvider.consumeIfFresh(this)) {
             QuickCapturePlugin.pendingCapture = true
         }
-    }
-
-    /// True only for a quick-capture launch the user just performed.
-    ///
-    /// The widget's PendingIntent (FLAG_ACTIVITY_NEW_TASK) becomes the
-    /// task's base intent, and Android reuses that base intent when it
-    /// resumes or recreates the task — including when the process was
-    /// killed in the background and the user then taps the *normal*
-    /// launcher icon. Without this check, that ordinary launch replays
-    /// the last widget tap and drops the user straight into the camera
-    /// (see the linked issue for the reported symptom).
-    ///
-    /// FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY is set by the system precisely
-    /// for those relaunch-from-history cases, so it distinguishes "the
-    /// user tapped the widget just now" from "Android handed us back an
-    /// old intent", which the action alone cannot.
-    private fun isFreshQuickCapture(intent: Intent?): Boolean {
-        if (intent?.action != QuickCaptureWidgetProvider.ACTION_QUICK_CAPTURE) return false
-        val fromHistory =
-            (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
-        if (fromHistory) {
-            Log.i(TAG, "Ignoring quick-capture action: relaunched from history, not a fresh widget tap")
-        }
-        return !fromHistory
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -63,10 +35,9 @@ class MainActivity : FlutterActivity() {
         // running when the user shared a photo from another app.
         extractSharedImage(intent)?.let { SharePlugin.instance?.emitSharedImage(it) }
         // Warm start, quick-capture widget: the app was already running
-        // when the widget was tapped. Same freshness guard as the cold
-        // path — resuming from Recents can redeliver the task's original
-        // intent here too.
-        if (isFreshQuickCapture(intent)) {
+        // when the widget was tapped, so onNewIntent fires instead of a
+        // fresh cold start. Same marker, same one-time consumption.
+        if (QuickCaptureWidgetProvider.consumeIfFresh(this)) {
             QuickCapturePlugin.instance?.emitCapture()
         }
     }
