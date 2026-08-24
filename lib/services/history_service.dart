@@ -698,18 +698,36 @@ class HistoryService extends ChangeNotifier {
   ///
   /// Persisted so the correction survives leaving the screen, without
   /// touching the file on disk — see [HistoryEntry.rotationQuarters].
+  ///
+  /// Updates in-memory state and notifies listeners *before* the DB
+  /// write, not after: the rotate control's natural use is several rapid
+  /// taps to spin the photo through more than one quarter turn, and
+  /// reading `_entries[idx].rotationQuarters` only after a previous
+  /// call's `await` resolved meant two taps close together could both
+  /// read the same pre-update value and collapse into a single rotation.
+  /// Rolled back if the write actually fails, rather than leaving the UI
+  /// showing a rotation that was silently never saved.
   Future<void> rotateEntry(int entryId) async {
     final idx = _entries.indexWhere((e) => e.id == entryId);
     if (idx == -1) return;
-    final newValue = (_entries[idx].rotationQuarters + 1) % 4;
-    await _db!.update(
-      'history',
-      {'rotationQuarters': newValue},
-      where: 'id = ?',
-      whereArgs: [entryId],
-    );
-    _entries[idx] = _entries[idx].copyWith(rotationQuarters: newValue);
+    final previous = _entries[idx];
+    final newValue = (previous.rotationQuarters + 1) % 4;
+    _entries[idx] = previous.copyWith(rotationQuarters: newValue);
     notifyListeners();
+    try {
+      await _db!.update(
+        'history',
+        {'rotationQuarters': newValue},
+        where: 'id = ?',
+        whereArgs: [entryId],
+      );
+    } catch (_) {
+      final stillIdx = _entries.indexWhere((e) => e.id == entryId);
+      if (stillIdx != -1) _entries[stillIdx] = previous;
+      notifyListeners();
+      throw const HistoryStorageException(
+          "Impossible d'enregistrer la rotation de la photo.");
+    }
   }
 
   /// T51: creates a new named collection (e.g. "Rome trip").

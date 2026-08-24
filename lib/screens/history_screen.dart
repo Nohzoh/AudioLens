@@ -11,6 +11,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
+import '../utils/rotated_image_export.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
@@ -438,9 +439,18 @@ class _HistoryCard extends StatelessWidget {
                         width: 72,
                         height: 72,
                         child: File(entry.imagePath).existsSync()
-                            ? Image.file(
-                                File(entry.imagePath),
-                                fit: BoxFit.cover,
+                            ? RotatedBox(
+                                // #152/#183: this thumbnail is a fixed
+                                // 72x72 square, so the width/height swap
+                                // RotatedBox does for an odd quarter turn
+                                // is a no-op here — unlike the full-bleed
+                                // BackgroundPhoto, which accounts for it
+                                // explicitly.
+                                quarterTurns: entry.rotationQuarters,
+                                child: Image.file(
+                                  File(entry.imagePath),
+                                  fit: BoxFit.cover,
+                                ),
                               )
                             : Container(
                                 color: theme.colorScheme.surfaceContainerHighest,
@@ -840,8 +850,16 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                         icon: Icons.rotate_90_degrees_cw_outlined,
                         color: Colors.white70,
                         tooltip: l10n.historyRotatePhoto,
-                        onPressed: () =>
-                            context.read<HistoryService>().rotateEntry(live.id!),
+                        onPressed: () async {
+                          try {
+                            await context.read<HistoryService>().rotateEntry(live.id!);
+                          } on HistoryStorageException catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(content: Text(e.message)));
+                            }
+                          }
+                        },
                       ),
                       const SizedBox(width: 4),
                       _ScrimIconButton(
@@ -918,7 +936,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             InkWell(
                               onTap: () async {
                                 try {
-                                  await Gal.putImage(live.imagePath);
+                                  final galleryPath = await imagePathForGallerySave(
+                                      live.imagePath, live.rotationQuarters);
+                                  await Gal.putImage(galleryPath);
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(

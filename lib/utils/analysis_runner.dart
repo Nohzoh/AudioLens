@@ -26,10 +26,22 @@ Future<void> runAnalysisAndNavigate({
   final history = context.read<HistoryService>();
   final settings = context.read<SettingsService>();
 
+  // #152/#183: carry over a prior manual rotation (a retry/captured-
+  // launch relaunches an existing entry, which may already have one) —
+  // absent for a genuinely new capture, where no entry exists yet.
+  HistoryEntry? existingEntry;
+  for (final e in history.entries) {
+    if (e.id == entryId) {
+      existingEntry = e;
+      break;
+    }
+  }
+
   Navigator.push(context, MaterialPageRoute(
     builder: (_) => PlayerScreen(
       imageFile: imageFile,
       deleteImageOnDispose: deleteImageOnDispose,
+      rotationQuarters: existingEntry?.rotationQuarters ?? 0,
     ),
   ));
 

@@ -8,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
+import '../utils/rotated_image_export.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
@@ -21,10 +22,21 @@ class PlayerScreen extends StatefulWidget {
   /// must never be deleted here (retry/captured-launch flows pass that in
   /// as [imageFile] too, but leave this false).
   final bool deleteImageOnDispose;
+
+  /// #152/#183: a prior manual rotation of this entry's photo, carried
+  /// over so a retry (relaunching analysis on an existing entry) shows
+  /// it the same way the history detail screen does — without this,
+  /// the photo would flip back to its unrotated orientation during the
+  /// retry/playback flow and then rotate again once analysis finishes
+  /// and the detail screen takes over. Irrelevant for a fresh capture
+  /// (default 0 — there's nothing to have rotated yet).
+  final int rotationQuarters;
+
   const PlayerScreen({
     super.key,
     required this.imageFile,
     this.deleteImageOnDispose = false,
+    this.rotationQuarters = 0,
   });
 
   @override
@@ -91,7 +103,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             fit: StackFit.expand,
             children: [
               // Background image
-              BackgroundPhoto(file: widget.imageFile),
+              BackgroundPhoto(file: widget.imageFile, rotationQuarters: widget.rotationQuarters),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -251,7 +263,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                   InkWell(
                                     onTap: () async {
                                       try {
-                                        await Gal.putImage(widget.imageFile.path);
+                                        final galleryPath = await imagePathForGallerySave(
+                                            widget.imageFile.path, widget.rotationQuarters);
+                                        await Gal.putImage(galleryPath);
                                         if (context.mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
