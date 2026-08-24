@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **latlong2 trailing its latest major version** (issue #134)
+  - **Verified**: 2026-08-25 (PR #208, commit `eb9d63e`)
+  - **What was done**: bumped `latlong2` 0.9.1 → 0.10.1. No breaking changes per the package's own CHANGELOG (internal `LatLng.hashCode`/`fromJson` robustness improvements, plus a new `LatLng.isValid` getter) — completes the dependency-audit cleanup started alongside `flutter_map`/`google_fonts`/`flutter_lints`.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 279/279.
+
 - [x] 🌱 ⭐ - **Add a Ko-fi link to the GitHub Pages site** (issue #157)
   - **Verified**: 2026-08-25 (PR #209, commit `7358506`)
   - **What was done**: the site had no reference to Ko-fi at all despite the app itself already linking to it (`kofi_button.dart`). Added a low-key "☕ Support" button in the header (next to GitHub, matching its style) and a matching footer link, both pointing to the same `https://ko-fi.com/tarnaud` URL used in-app.
