@@ -38,7 +38,7 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     // playback finished (T76 — chunked TTS sequencing relies on this).
     // Without tracking it here, calling "stop" while a "playWav" is still
     // in flight would leave that call's Dart-side await hanging forever,
-    // since MediaPipe.stop() alone never completes it.
+    // since MediaPlayer.stop() alone never completes it.
     private var pendingPlayResult: MethodChannel.Result? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
