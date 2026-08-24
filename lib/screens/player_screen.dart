@@ -11,6 +11,8 @@ import '../services/settings_service.dart';
 import '../utils/rotated_image_export.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
+import '../widgets/scrim_action_chip.dart';
+import '../widgets/scrim_icon_button.dart';
 import '../widgets/report_content_button.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -135,51 +137,72 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          ScrimIconButton(
+                            icon: Icons.arrow_back,
+                            color: Colors.white,
                             onPressed: () {
                               guide.stop();
                               Navigator.pop(context);
                             },
                           ),
                           const Spacer(),
+                          // Each trailing icon owns its own leading gap
+                          // (rather than a shared SizedBox between them)
+                          // so a hidden one — e.g. Ko-fi off in settings
+                          // — contributes zero space instead of leaving
+                          // an orphan gap or collapsing the gap next to
+                          // whatever ends up adjacent to it.
                           if (guide.lastResult != null)
-                            IconButton(
-                              icon: Icon(
-                                _photoMode
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: ScrimIconButton(
+                                icon: _photoMode
                                     ? Icons.article_outlined
                                     : Icons.image_outlined,
                                 color: Colors.white70,
+                                tooltip: _photoMode
+                                    ? l10n.playerShowText
+                                    : l10n.playerPhotoMode,
+                                onPressed: () =>
+                                    setState(() => _photoMode = !_photoMode),
                               ),
-                              tooltip: _photoMode
-                                  ? l10n.playerShowText
-                                  : l10n.playerPhotoMode,
-                              onPressed: () =>
-                                  setState(() => _photoMode = !_photoMode),
                             ),
                           Consumer<SettingsService>(
-                            builder: (context, settings, _) => KofiButton(
-                              show: settings.showKofiButton,
-                              iconColor: Colors.white70,
-                            ),
+                            builder: (context, settings, _) =>
+                                settings.showKofiButton
+                                    ? const Padding(
+                                        padding: EdgeInsets.only(left: 4),
+                                        child: KofiButton(
+                                          show: true,
+                                          iconColor: Colors.white70,
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
                           ),
                           if (guide.state == GuideState.cancelling)
-                            const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white70,
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white70,
+                                ),
                               ),
                             )
                           else if (guide.state == GuideState.speaking || guide.state == GuideState.paused || guide.state == GuideState.synthesizing)
-                            IconButton(
-                              icon: const Icon(Icons.cancel_outlined, color: Colors.white70),
-                              tooltip: l10n.playerCancel,
-                              onPressed: () async {
-                                await guide.cancelCurrentAction();
-                                if (context.mounted) Navigator.pop(context);
-                              },
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: ScrimIconButton(
+                                icon: Icons.cancel_outlined,
+                                color: Colors.white70,
+                                tooltip: l10n.playerCancel,
+                                onPressed: () async {
+                                  await guide.cancelCurrentAction();
+                                  if (context.mounted) Navigator.pop(context);
+                                },
+                              ),
                             ),
                         ],
                       ),
@@ -255,12 +278,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                               const SizedBox(height: 4),
 
-                              // Action buttons row
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
+                              // Action buttons row. Wrap, not Row: see
+                              // the matching comment in history_screen.dart
+                              // — three pills plus spacing can exceed a
+                              // narrow screen's width, especially in the
+                              // longer French labels.
+                              Wrap(
+                                alignment: WrapAlignment.end,
+                                spacing: 8,
+                                runSpacing: 8,
                                 children: [
                                   // Save to gallery
-                                  InkWell(
+                                  ScrimActionChip(
+                                    icon: Icons.save_alt,
+                                    label: l10n.playerSave,
                                     onTap: () async {
                                       try {
                                         final galleryPath = await imagePathForGallerySave(
@@ -276,31 +307,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         }
                                       } catch (_) {}
                                     },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.save_alt, size: 14, color: Colors.white38),
-                                        const SizedBox(width: 4),
-                                        Text(l10n.playerSave, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                                      ]),
-                                    ),
                                   ),
                                   // Copy text
-                                  InkWell(
+                                  ScrimActionChip(
+                                    icon: Icons.copy,
+                                    label: l10n.playerCopy,
                                     onTap: () {
                                       Clipboard.setData(ClipboardData(text: guide.lastResult!.script));
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(content: Text(l10n.playerTextCopied), duration: const Duration(seconds: 2)),
                                       );
                                     },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.copy, size: 14, color: Colors.white38),
-                                        const SizedBox(width: 4),
-                                        Text(l10n.playerCopy, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                                      ]),
-                                    ),
                                   ),
                                   // Report content (T91)
                                   ReportContentButton(
@@ -401,7 +418,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 14)),
                                         const Spacer(),
-                                        InkWell(
+                                        // Same pattern as the Save/Copy/
+                                        // Report row above — this used
+                                        // to hand-roll its own InkWell,
+                                        // drifting slightly out of sync
+                                        // (11px/no pill vs the shared
+                                        // chip's 12px pill) from every
+                                        // other copy-style action.
+                                        ScrimActionChip(
+                                          icon: Icons.copy,
+                                          label: l10n.playerCopy,
+                                          color: Colors.white54,
                                           onTap: () {
                                             Clipboard.setData(ClipboardData(
                                                 text: guide.errorMessage ?? ''));
@@ -410,16 +437,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                                   content: Text(l10n.playerErrorCopied),
                                                   duration: const Duration(seconds: 2)));
                                           },
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(4),
-                                            child: Row(mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(Icons.copy, size: 14, color: Colors.white54),
-                                                const SizedBox(width: 4),
-                                                Text(l10n.playerCopy, style: const TextStyle(
-                                                    color: Colors.white54, fontSize: 11)),
-                                              ]),
-                                          ),
                                         ),
                                       ],
                                     ),

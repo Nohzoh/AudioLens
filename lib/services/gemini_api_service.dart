@@ -5,6 +5,7 @@ import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 import '../utils/error_sanitizer.dart';
 import '../utils/image_downscale.dart';
+import '../utils/script_validation.dart';
 import 'package:dio/dio.dart' as dio;
 import 'ai_service.dart';
 import 'remote_config_service.dart';
@@ -14,6 +15,7 @@ class GeminiApiService implements AIService {
   String? get lastUsedModel => _lastUsedModel;
   List<String> _lastAttempts = [];
   List<String> get lastAttempts => _lastAttempts;
+
   final String apiKey;
   final dio.Dio _dio;
 
@@ -84,7 +86,15 @@ class GeminiApiService implements AIService {
     ];
 
     ({int statusCode, String body})? response;
+    AudioGuideResult? parsedResult;
     final List<String> attempts = [];
+    // Why the most recent model attempt failed, kept structured (rather
+    // than only as the display string in `attempts`) so the final error
+    // can be phrased for the user. Only the last attempt's reason is
+    // used: failures often differ across models (the primary may be out
+    // of quota while a fallback is simply retired), and stitching several
+    // causes into one message helps nobody.
+    _GeminiFailure? lastFailure;
 
     for (final model in modelsToTry) {
       final fullUrl =
@@ -118,17 +128,43 @@ class GeminiApiService implements AIService {
         );
 
         if (resp.statusCode == 200) {
-          response = resp;
-          _lastUsedModel = model;
-          attempts.add('✓ $model');
-          AppLogger.ai('Model succeeded: $model');
-          break;
+          // A 200 is not by itself a success: the model can return an
+          // empty or JSON-debris body — most commonly when thinking
+          // tokens consume the whole maxOutputTokens budget, leaving
+          // nothing for the actual answer. Validate the body here, inside
+          // the loop, so an unusable response falls through to the next
+          // fallback model instead of terminating the loop with a
+          // guaranteed failure a few lines below.
+          try {
+            final parsed = _parseResponseBody(resp.body);
+            response = resp;
+            parsedResult = parsed;
+            _lastUsedModel = model;
+            attempts.add('✓ $model');
+            AppLogger.ai('Model succeeded: $model');
+            break;
+          } on FormatException catch (e) {
+            // sanitizeError even though these messages are ours and short:
+            // the log-hygiene guardrail (T126) treats any raw exception
+            // interpolation as a leak risk, and keeping the rule absolute
+            // is worth more than the couple of characters it costs here.
+            final reason = sanitizeError(e.message);
+            attempts.add('✗ $model (200, réponse inexploitable): $reason');
+            AppLogger.ai('Model returned unusable 200: $model ($reason)');
+            lastFailure = _GeminiFailure.unusableResponse;
+            continue;
+          }
         } else if (resp.statusCode == 429 || resp.statusCode == 404 || resp.statusCode == 503) {
           final err = _tryDecode(resp.body);
           final msg = err?['error']?['message'] as String? ?? 'HTTP ${resp.statusCode}';
           final short = msg.length > 80 ? msg.substring(0, 80) : msg;
           attempts.add('✗ $model (${resp.statusCode}): $short');
           AppLogger.ai('Model failed: $model (${resp.statusCode}): $short');
+          lastFailure = switch (resp.statusCode) {
+            429 => _GeminiFailure.quotaExceeded,
+            404 => _GeminiFailure.modelUnavailable,
+            _ => _GeminiFailure.serviceUnavailable,
+          };
           continue;
         } else {
           final err = _tryDecode(resp.body);
@@ -145,22 +181,92 @@ class GeminiApiService implements AIService {
         if (e is CancelledException) rethrow;
         if (e is Exception && e.toString().contains('Gemini API erreur')) rethrow;
         attempts.add('✗ $model (timeout/réseau): ${sanitizeError(e.toString())}');
+        lastFailure = _GeminiFailure.network;
         continue;
       }
     }
 
     _lastAttempts = attempts;
     if (response == null) {
-      final trace = attempts.join('\n');
-      throw Exception('Gemini: tous les modèles ont échoué:\n$trace');
+      // The thrown message is what the user actually sees (AudioGuideService
+      // surfaces it as-is via errorMessage), so phrase it for them rather
+      // than dumping the per-model trace — that trace stays available in
+      // lastAttempts for the debug screen.
+      AppLogger.ai('All models failed:\n${attempts.join('\n')}');
+      throw Exception(_userFacingFailureMessage(lastFailure));
     }
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final text =
-        data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
+    // Non-null whenever response is: both are set together in the loop above.
+    return parsedResult!;
+  }
+
+  /// Message shown to the user when no model produced a usable answer,
+  /// based on the *last* attempt's failure.
+  static String _userFacingFailureMessage(_GeminiFailure? failure) {
+    switch (failure) {
+      case _GeminiFailure.quotaExceeded:
+        // The most common real-world case: anyone using their own Google
+        // API key knows quotas exist, so name it plainly instead of
+        // hiding it behind a generic failure.
+        return 'Quota Google AI dépassé. Réessayez plus tard, ou vérifiez '
+            'les limites de votre clé API dans Google AI Studio.';
+      case _GeminiFailure.modelUnavailable:
+        return 'Le modèle configuré n\'est plus disponible. Vérifiez la '
+            'configuration du modèle dans les paramètres.';
+      case _GeminiFailure.serviceUnavailable:
+        return 'Le service Google AI est temporairement indisponible. '
+            'Réessayez dans quelques instants.';
+      case _GeminiFailure.unusableResponse:
+        return 'L\'IA n\'a pas renvoyé de réponse exploitable. Réessayez.';
+      case _GeminiFailure.network:
+        return 'Connexion au service Google AI impossible. Vérifiez votre '
+            'connexion internet.';
+      case null:
+        // No model was even attempted — an empty model list, which is a
+        // configuration problem rather than a runtime failure.
+        return 'Aucun modèle IA configuré.';
+    }
+  }
+
+  /// Parses a 200 response body into a result, or throws [FormatException]
+  /// if the body can't yield a usable title+script.
+  ///
+  /// Throwing [FormatException] specifically (rather than a generic
+  /// Exception) is what lets [analyzeImage]'s model loop distinguish "this
+  /// model gave us nothing usable, try the next one" from a hard error
+  /// that should abort the whole call.
+  AudioGuideResult _parseResponseBody(String body) {
+    // `is` checks rather than `as` casts throughout this walk: an `as`
+    // cast throws TypeError on a shape mismatch, not FormatException —
+    // which would escape this method's FormatException contract (a
+    // syntactically valid but unexpectedly-shaped 200 body is plausible
+    // from a proxy/CDN error page or a future API schema tweak) and land
+    // in analyzeImage's generic catch, mislabelled as a network failure
+    // instead of an unusable response.
+    final decoded = jsonDecode(body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('unexpected response shape');
+    }
+    final data = decoded;
+    // Indexed access rather than [0] directly: a response can legitimately
+    // carry an empty candidates/parts list (e.g. everything was filtered
+    // out), and a RangeError here would escape the FormatException
+    // contract this method promises, landing in analyzeImage's generic
+    // catch and getting mislabelled as a network failure.
+    final candidates = data['candidates'];
+    final firstCandidate =
+        (candidates is List && candidates.isNotEmpty) ? candidates.first : null;
+    final content = firstCandidate is Map<String, dynamic> ? firstCandidate['content'] : null;
+    final parts = content is Map<String, dynamic> ? content['parts'] : null;
+    final firstPart = (parts is List && parts.isNotEmpty) ? parts.first : null;
+    final rawText = firstPart is Map<String, dynamic> ? firstPart['text'] : null;
+    final text = rawText is String ? rawText : null;
 
     if (text == null || text.isEmpty) {
-      throw Exception('Gemini API reponse vide');
+      // Most often: thinking tokens consumed the entire maxOutputTokens
+      // budget (they're billed against the same budget as the answer), so
+      // the model had nothing left to emit.
+      throw const FormatException('réponse vide');
     }
 
     // Try JSON response {title, script}
@@ -213,8 +319,10 @@ class GeminiApiService implements AIService {
         // showing the raw JSON debris as the title or (worse) reading it
         // aloud as the script (T90) is a worse experience than a clear
         // failure the app's existing retry flow already handles.
-        throw Exception(
-          'Gemini API: reponse JSON invalide (title/script illisibles)',
+        // FormatException (not a bare Exception) so analyzeImage's loop
+        // treats this as "try the next model" rather than aborting.
+        throw const FormatException(
+          'réponse JSON invalide (title/script illisibles)',
         );
       } else {
         // Genuinely plain-text response (model ignored the JSON
@@ -227,7 +335,11 @@ class GeminiApiService implements AIService {
       }
     }
 
-    return AudioGuideResult(title: title, script: script);
+    return AudioGuideResult(
+      title: title,
+      // T117: cap runaway output before it reaches history/TTS.
+      script: capScriptLength(script, maxChars: RemoteConfigService.current.scriptMaxChars),
+    );
   }
 
   /// Tone/structure instruction for the script, keyed by [style] (T75/T48).
@@ -401,4 +513,26 @@ class GeminiApiService implements AIService {
     }).toList();
     return filtered.join('\n').trim();
   }
+}
+
+/// Why a model attempt failed, kept distinct from its display string so
+/// the final user-facing error can be phrased per cause (T117/#158).
+enum _GeminiFailure {
+  /// HTTP 429 — the user's own Google AI quota, by far the most common
+  /// real-world failure for a bring-your-own-key setup.
+  quotaExceeded,
+
+  /// HTTP 404 — the configured model no longer exists (Google retires
+  /// model IDs regularly).
+  modelUnavailable,
+
+  /// HTTP 503 — transient service outage.
+  serviceUnavailable,
+
+  /// HTTP 200 but nothing usable in the body (most often thinking tokens
+  /// consuming the whole output budget).
+  unusableResponse,
+
+  /// Timeout or transport-level failure.
+  network,
 }

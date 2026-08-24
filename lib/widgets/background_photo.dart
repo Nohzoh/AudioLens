@@ -22,7 +22,7 @@ import 'package:flutter/material.dart';
 /// `cover` produce nearly the same result, and rendering a second
 /// full-screen image plus a blur behind it would cost real frame time for
 /// bands a couple of pixels wide.
-class BackgroundPhoto extends StatelessWidget {
+class BackgroundPhoto extends StatefulWidget {
   final File file;
 
   /// Quarter turns clockwise to apply, 0-3 (#152).
@@ -46,35 +46,60 @@ class BackgroundPhoto extends StatelessWidget {
   });
 
   @override
+  State<BackgroundPhoto> createState() => _BackgroundPhotoState();
+}
+
+class _BackgroundPhotoState extends State<BackgroundPhoto> {
+  late Future<Size> _sizeFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _sizeFuture = _decodeSize(widget.file);
+  }
+
+  @override
+  void didUpdateWidget(BackgroundPhoto oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only redecode when the photo itself changes — resolving this once
+    // per file (not once per build, as a bare FutureBuilder would) keeps
+    // this cheap even while the parent rebuilds continuously, e.g. once
+    // per spoken word during narration (PlayerScreen's word-progress
+    // callback drives a setState on every TTS boundary).
+    if (oldWidget.file.path != widget.file.path) {
+      _sizeFuture = _decodeSize(widget.file);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        return FutureBuilder<ui.Image>(
-          future: _decodeSize(file),
+        return FutureBuilder<Size>(
+          future: _sizeFuture,
           builder: (context, snapshot) {
-            final image = snapshot.data;
+            final size = snapshot.data;
             // Until the size is known, cover — matching the previous
             // behavior — so there's no visible layout shift for the
             // common (camera capture) case where nothing changes anyway.
-            if (image == null) {
-              return _rotated(Image.file(file, fit: BoxFit.cover));
+            if (size == null) {
+              return _rotated(Image.file(widget.file, fit: BoxFit.cover));
             }
 
             // An odd number of quarter turns swaps the photo's effective
             // width and height, which flips whether it letterboxes at all
             // — so rotation has to be folded in before the divergence
             // check, not applied to the finished result.
-            final rotated = rotationQuarters.isOdd;
-            final photoRatio = rotated
-                ? image.height / image.width
-                : image.width / image.height;
+            final rotated = widget.rotationQuarters.isOdd;
+            final photoRatio =
+                rotated ? size.height / size.width : size.width / size.height;
             final screenRatio = constraints.maxWidth / constraints.maxHeight;
             final divergence = photoRatio > screenRatio
                 ? photoRatio / screenRatio
                 : screenRatio / photoRatio;
 
-            if (divergence < _letterboxThreshold) {
-              return _rotated(Image.file(file, fit: BoxFit.cover));
+            if (divergence < BackgroundPhoto._letterboxThreshold) {
+              return _rotated(Image.file(widget.file, fit: BoxFit.cover));
             }
 
             return Stack(
@@ -84,12 +109,12 @@ class BackgroundPhoto extends StatelessWidget {
                 // blurred so the bands never compete with the real image.
                 ImageFiltered(
                   imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: _rotated(Image.file(file, fit: BoxFit.cover)),
+                  child: _rotated(Image.file(widget.file, fit: BoxFit.cover)),
                 ),
                 // Darkened so the sharp photo above stays the focal point
                 // even when the blurred copy is bright.
                 Container(color: Colors.black.withValues(alpha: 0.35)),
-                _rotated(Image.file(file, fit: BoxFit.contain)),
+                _rotated(Image.file(widget.file, fit: BoxFit.contain)),
               ],
             );
           },
@@ -98,24 +123,35 @@ class BackgroundPhoto extends StatelessWidget {
     );
   }
 
-  /// Applies [rotationQuarters], or returns [child] untouched at 0 so the
-  /// common case adds no widget to the tree at all.
-  Widget _rotated(Widget child) => rotationQuarters % 4 == 0
+  /// Applies [BackgroundPhoto.rotationQuarters], or returns [child]
+  /// untouched at 0 so the common case adds no widget to the tree at all.
+  Widget _rotated(Widget child) => widget.rotationQuarters % 4 == 0
       ? child
-      : RotatedBox(quarterTurns: rotationQuarters, child: child);
+      : RotatedBox(quarterTurns: widget.rotationQuarters, child: child);
 
   /// Resolves just the intrinsic size of [file].
   ///
   /// Goes through Flutter's own image cache (rather than decoding the
   /// bytes separately) so this doesn't decode the photo a second time —
-  /// the [Image.file] widgets below resolve to the same cache entry.
-  static Future<ui.Image> _decodeSize(File file) {
-    final completer = Completer<ui.Image>();
+  /// the [Image.file] widgets above resolve to the same cache entry. The
+  /// decoded [ui.Image] handle is disposed immediately after its
+  /// dimensions are read: this method only ever needs the size, and an
+  /// undisposed handle leaks native/GPU memory (the listener receives a
+  /// cloned image it owns and must release, per ImageStreamListener's own
+  /// contract — see about_analysis_screen.dart for the same pattern).
+  static Future<Size> _decodeSize(File file) {
+    final completer = Completer<Size>();
     final stream = FileImage(file).resolve(ImageConfiguration.empty);
     late final ImageStreamListener listener;
     listener = ImageStreamListener(
       (info, _) {
-        if (!completer.isCompleted) completer.complete(info.image);
+        if (!completer.isCompleted) {
+          completer.complete(Size(
+            info.image.width.toDouble(),
+            info.image.height.toDouble(),
+          ));
+        }
+        info.image.dispose();
         stream.removeListener(listener);
       },
       onError: (error, stack) {

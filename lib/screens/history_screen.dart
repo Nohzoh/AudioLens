@@ -15,6 +15,8 @@ import '../utils/rotated_image_export.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
+import '../widgets/scrim_action_chip.dart';
+import '../widgets/scrim_icon_button.dart';
 import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
 
@@ -601,6 +603,26 @@ class HistoryDetailScreen extends StatefulWidget {
 
 class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   bool _isPlaying = false;
+
+  /// The native side that owns cached-WAV playback — the same channel
+  /// GeminiTtsService drives, so play/stop/seek all go through one place.
+  static const channel = MethodChannel('audio_guide/audio_player');
+
+  /// Whether skip ±10s is meaningful for what's playing right now.
+  ///
+  /// Mirrors [AudioGuideService.canSkip]'s reasoning rather than
+  /// re-deriving it: skipping needs a seekable position, which native TTS
+  /// speaking live doesn't have. Two ways playback *is* seekable here:
+  ///  - [HistoryEntry.hasAudio] — a cached file replayed via `playWav`.
+  ///    Note this is `hasAudio` alone, deliberately not
+  ///    `hasAudio && ttsModel == 'gemini-tts'`: legacy 'piper' cached
+  ///    files go through the very same MediaPlayer and seek just as well,
+  ///    so gating on the model would needlessly exclude them.
+  ///  - [AudioGuideService.canSkip] — audio generated on the fly for a
+  ///    script-only entry (T16) and played by GeminiTtsService, which is
+  ///    seekable but has no cached file on this entry yet.
+  bool _canSkip(HistoryEntry live, AudioGuideService guide) =>
+      _isPlaying && (live.hasAudio || guide.canSkip);
   bool _isUpgrading = false;
   bool _photoMode = false; // T94: show the plain photo instead of the script overlay
 
@@ -623,25 +645,91 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
   // Play cached audio file directly without re-generating TTS
   Future<void> _playCachedAudio(String path) async {
-    const channel = MethodChannel('audio_guide/audio_player');
     channel.invokeMethod('playWav', {'path': path}).then((_) {
+      if (!mounted) return;
       setState(() => _isPlaying = false);
     });
+  }
+
+  /// Skip playback by [deltaMs], negative to go back.
+  ///
+  /// Talks to the same audio_guide/audio_player channel GeminiTtsService
+  /// uses for its own skip controls, so this needs no new native plumbing
+  /// — the channel already defaults to a 10s delta.
+  Future<void> _skip(int deltaMs) async {
+    await channel.invokeMethod(
+      deltaMs >= 0 ? 'seekForward' : 'seekBack',
+      {'deltaMs': deltaMs.abs()},
+    );
   }
 
   @override
   void initState() {
     super.initState();
+    // Captured now, not read from context in dispose(): during a bulk
+    // teardown (the whole tree unmounting at once, e.g. app shutdown or
+    // a test's finalization) an ancestor Provider can already be
+    // deactivated by the time a descendant's dispose() runs, and
+    // context.read() at that point throws ("Looking up a deactivated
+    // widget's ancestor is unsafe").
+    _guide = context.read<AudioGuideService>();
     if (widget.autoPlay) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _toggleAudio());
     }
   }
 
+  late final AudioGuideService _guide;
+
+  /// Set only while this screen owns [AudioGuideService.nativeTtsService]'s
+  /// `onComplete` (see [_withTrackedNativeCompletion]) — the callback it's about to
+  /// restore once the current speech either finishes or this screen goes
+  /// away, whichever comes first.
+  void Function()? _restoreNativeOnComplete;
+
+  /// Speaks [script] via native TTS, tracking `_isPlaying` without
+  /// permanently hijacking the shared [AudioGuideService.nativeTtsService]
+  /// singleton's `onComplete`.
+  ///
+  /// A plain `guide.nativeTtsService.onComplete = () => setState(...)`
+  /// (what this used to do) leaks two ways: if this screen closes before
+  /// speech finishes, the closure still fires later and calls `setState`
+  /// on a disposed State; and since it's never restored, it permanently
+  /// replaces [AudioGuideService]'s own default completion handler (the
+  /// one set in `init()`, which resets `_state`/`canSkip`) — starving
+  /// every later screen's read of that state until the app restarts.
+  ///
+  /// [action] is whatever triggers the speech this screen wants to track
+  /// — a direct `nativeTtsService.speak()` call, or the orchestrated
+  /// `generateAudioForScript()` pipeline (which copies whatever's set
+  /// here onto Gemini TTS too, see [TtsOrchestrator.speak]) — the
+  /// tracking closure itself self-restores the instant it fires, so both
+  /// call sites can share this without needing to know which one wins.
+  Future<T> _withTrackedNativeCompletion<T>(
+    AudioGuideService guide,
+    Future<T> Function() action,
+  ) async {
+    _restoreNativeOnComplete = guide.nativeTtsService.onComplete;
+    guide.nativeTtsService.onComplete = () {
+      guide.nativeTtsService.onComplete = _restoreNativeOnComplete;
+      _restoreNativeOnComplete = null;
+      if (!mounted) return;
+      setState(() => _isPlaying = false);
+    };
+    return action();
+  }
+
   @override
   void dispose() {
     // Stop playback when leaving screen
-    const channel = MethodChannel('audio_guide/audio_player');
     channel.invokeMethod('stop');
+    _guide.nativeTtsService.stop();
+    // If speech is still in flight, our tracking closure above is still
+    // installed — put the previous handler back so a completion firing
+    // after this screen is gone doesn't touch a disposed State or leave
+    // AudioGuideService's own state stuck.
+    if (_restoreNativeOnComplete != null) {
+      _guide.nativeTtsService.onComplete = _restoreNativeOnComplete;
+    }
     super.dispose();
   }
 
@@ -670,8 +758,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       // "Améliorer la voix" button below is the explicit way to retry
       // Gemini.
       final guide = context.read<AudioGuideService>();
-      guide.nativeTtsService.onComplete = () => setState(() => _isPlaying = false);
-      await guide.nativeTtsService.speak(live.script);
+      await _withTrackedNativeCompletion(guide, () => guide.nativeTtsService.speak(live.script));
       return;
     }
 
@@ -680,11 +767,13 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     // and persist the result so it's cached from now on.
     final guide = context.read<AudioGuideService>();
     final history = context.read<HistoryService>();
-    guide.nativeTtsService.onComplete = () => setState(() => _isPlaying = false);
-    final result = await guide.generateAudioForScript(
-      title: live.title,
-      script: live.script,
-      locationName: live.locationName,
+    final result = await _withTrackedNativeCompletion(
+      guide,
+      () => guide.generateAudioForScript(
+        title: live.title,
+        script: live.script,
+        locationName: live.locationName,
+      ),
     );
 
     if (result == null) {
@@ -811,13 +900,13 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
                     children: [
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.arrow_back,
                         color: Colors.white,
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Spacer(),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: live.isFavorite ? Icons.star : Icons.star_border,
                         color: live.isFavorite ? Colors.amberAccent : Colors.white70,
                         tooltip: live.isFavorite
@@ -827,14 +916,14 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             context.read<HistoryService>().toggleFavorite(live.id!),
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.playlist_add,
                         color: Colors.white70,
                         tooltip: l10n.historyAddToCollection,
                         onPressed: () => _openCollectionsSheet(context, live),
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: _photoMode
                             ? Icons.article_outlined
                             : Icons.image_outlined,
@@ -846,7 +935,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             setState(() => _photoMode = !_photoMode),
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.rotate_90_degrees_cw_outlined,
                         color: Colors.white70,
                         tooltip: l10n.historyRotatePhoto,
@@ -862,7 +951,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                         },
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.info_outline,
                         color: Colors.white70,
                         onPressed: () => Navigator.push(
@@ -872,7 +961,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                     AboutAnalysisScreen(entry: widget.entry))),
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.delete_outline,
                         color: Colors.redAccent,
                         onPressed: () => _deleteEntry(context),
@@ -928,12 +1017,21 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
                         const SizedBox(height: 16),
 
-                        // Action buttons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        // Action buttons. Wrap, not Row: on a narrow
+                        // screen or a longer locale (French labels run
+                        // noticeably longer than English), three pills
+                        // plus their spacing can exceed the available
+                        // width — Wrap drops the overflow onto a second
+                        // line instead of clipping/overflowing off-screen.
+                        Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
                             // Save to gallery
-                            InkWell(
+                            ScrimActionChip(
+                              icon: Icons.save_alt,
+                              label: l10n.historySave,
                               onTap: () async {
                                 try {
                                   final galleryPath = await imagePathForGallerySave(
@@ -950,24 +1048,11 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   }
                                 } catch (_) {}
                               },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 4, horizontal: 8),
-                                child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.save_alt,
-                                          size: 14, color: Colors.white54),
-                                      const SizedBox(width: 4),
-                                      Text(l10n.historySave,
-                                          style: const TextStyle(
-                                              color: Colors.white54,
-                                              fontSize: 12)),
-                                    ]),
-                              ),
                             ),
                             // Copy button
-                            InkWell(
+                            ScrimActionChip(
+                              icon: Icons.copy,
+                              label: l10n.historyCopy,
                               onTap: () {
                                 Clipboard.setData(
                                     ClipboardData(text: live.script));
@@ -978,21 +1063,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   ),
                                 );
                               },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 4, horizontal: 8),
-                                child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.copy,
-                                          size: 14, color: Colors.white54),
-                                      const SizedBox(width: 4),
-                                      Text(l10n.historyCopy,
-                                          style: const TextStyle(
-                                              color: Colors.white54,
-                                              fontSize: 12)),
-                                    ]),
-                              ),
                             ),
                             // Report content (T91)
                             ReportContentButton(
@@ -1119,61 +1189,66 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 // player_screen.dart's own playback controls.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: FilledButton.icon(
-                    onPressed: _toggleAudio,
-                    icon: Icon(_isPlaying
-                        ? Icons.stop
-                        : ((live.hasAudio || live.hasLowQualityTts)
-                            ? Icons.play_arrow
-                            : Icons.auto_awesome)),
-                    label: Text(_isPlaying
-                        ? l10n.historyStop
-                        : ((live.hasAudio || live.hasLowQualityTts)
-                            ? l10n.historyListen
-                            : l10n.historyGenerateAudio)),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
+                  // Scoped to just this row: canSkip flips as the
+                  // service's own playback state changes (e.g. synthesis
+                  // finishing for a script-only entry), and the skip
+                  // buttons need to appear when it does — but nothing
+                  // else in this screen (photo, gradient, script text)
+                  // needs to rebuild on every AudioGuideService change.
+                  child: Consumer<AudioGuideService>(
+                    builder: (context, guide, _) {
+                      final showSkip = _canSkip(live, guide);
+                      return Row(
+                        children: [
+                          // Skip only when the current playback is
+                          // seekable — see _canSkip.
+                          if (showSkip) ...[
+                            IconButton(
+                              icon: const Icon(Icons.replay_10),
+                              iconSize: 32,
+                              tooltip: l10n.historySkipBack10,
+                              onPressed: () => _skip(-10000),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _toggleAudio,
+                              icon: Icon(_isPlaying
+                                  ? Icons.stop
+                                  : ((live.hasAudio || live.hasLowQualityTts)
+                                      ? Icons.play_arrow
+                                      : Icons.auto_awesome)),
+                              label: Text(_isPlaying
+                                  ? l10n.historyStop
+                                  : ((live.hasAudio || live.hasLowQualityTts)
+                                      ? l10n.historyListen
+                                      : l10n.historyGenerateAudio)),
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(0, 52),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
+                          ),
+                          if (showSkip) ...[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.forward_10),
+                              iconSize: 32,
+                              tooltip: l10n.historySkipForward10,
+                              onPressed: () => _skip(10000),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A top-bar icon button with its own subtle circular scrim (T96) — keeps
-/// it legible over any photo content, independent of the screen's own
-/// background gradient.
-class _ScrimIconButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String? tooltip;
-  final VoidCallback onPressed;
-
-  const _ScrimIconButton({
-    required this.icon,
-    required this.color,
-    required this.onPressed,
-    this.tooltip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.black.withValues(alpha: 0.35),
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: color),
-        tooltip: tooltip,
-        onPressed: onPressed,
       ),
     );
   }
