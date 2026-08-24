@@ -866,26 +866,36 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
           // and the bottom text without hiding the middle of the photo.
           // T94: much lighter in photo mode, matching player_screen.dart's
           // own photo-mode gradient, since there's no text left to protect.
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: _photoMode
-                    ? [
-                        Colors.black.withValues(alpha: 0.35),
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.35),
-                      ]
-                    : [
-                        Colors.black.withValues(alpha: 0.45),
-                        Colors.black.withValues(alpha: 0.15),
-                        Colors.black.withValues(alpha: 0.95),
-                      ],
-                stops: _photoMode
-                    ? const [0.0, 0.15, 0.85, 1.0]
-                    : const [0.0, 0.3, 1.0],
+          //
+          // #204: IgnorePointer, since a plain decorated Container reports
+          // a hit test for its ENTIRE bounds regardless of visual (semi-)
+          // transparency (BoxDecoration.hitTest() defaults to true for a
+          // borderless rectangle) — without this, this purely-decorative
+          // layer silently swallowed every gesture meant for the
+          // InteractiveViewer in BackgroundPhoto beneath it, breaking
+          // pinch-to-zoom (#191) entirely.
+          IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: _photoMode
+                      ? [
+                          Colors.black.withValues(alpha: 0.35),
+                          Colors.transparent,
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.35),
+                        ]
+                      : [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.black.withValues(alpha: 0.15),
+                          Colors.black.withValues(alpha: 0.95),
+                        ],
+                  stops: _photoMode
+                      ? const [0.0, 0.15, 0.85, 1.0]
+                      : const [0.0, 0.3, 1.0],
+                ),
               ),
             ),
           ),

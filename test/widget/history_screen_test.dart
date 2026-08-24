@@ -373,4 +373,56 @@ void main() {
       expect(find.byTooltip('Ajouter aux favoris'), findsNothing);
     });
   });
+
+  group('pinch-to-zoom reaches the photo through the gradient overlay (#204)', () {
+    Future<void> openDetailInPhotoMode(WidgetTester tester) async {
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('La Joconde'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      // #191's photo-mode toggle — zoomable is only true in this mode.
+      await tester.tap(find.byTooltip('Mode photo'));
+      await tester.pump();
+    }
+
+    testWidgets(
+        'a two-finger pinch changes the InteractiveViewer transform, not just called-then-blocked',
+        (tester) async {
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+
+      await openDetailInPhotoMode(tester);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+
+      final transformFinder = find.descendant(
+        of: find.byType(InteractiveViewer),
+        matching: find.byType(Transform),
+      );
+      final before = tester.widget<Transform>(transformFinder.first).transform;
+      expect(before, Matrix4.identity());
+
+      // A gradient Container sitting on top of BackgroundPhoto in the
+      // Stack previously absorbed every touch before it reached
+      // InteractiveViewer's own GestureDetector (BoxDecoration.hitTest()
+      // defaults to true for its whole rectangular bounds regardless of
+      // visual transparency) — this pinch would silently do nothing.
+      final center = tester.getCenter(find.byType(InteractiveViewer));
+      final gesture1 = await tester.startGesture(center - const Offset(20, 0));
+      final gesture2 = await tester.startGesture(center + const Offset(20, 0));
+      await tester.pump();
+      await gesture1.moveBy(const Offset(-40, 0));
+      await gesture2.moveBy(const Offset(40, 0));
+      await tester.pump();
+      await gesture1.up();
+      await gesture2.up();
+      await tester.pumpAndSettle();
+
+      final after = tester.widget<Transform>(transformFinder.first).transform;
+      expect(after, isNot(Matrix4.identity()));
+    });
+  });
 }
