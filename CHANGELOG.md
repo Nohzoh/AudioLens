@@ -21,6 +21,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **What was done**: `_selectPrediction` jumped to every search result with a hardcoded `zoom: 15` — too zoomed out for a precise address, too zoomed in for a city/region. `GeocodePrediction` now carries Nominatim's own `boundingbox` (sized to the kind of place matched); the map picker uses `MapController.fitCamera(CameraFit.bounds(...))` to derive the correct zoom from it (capped at 18 so a single-building bbox doesn't zoom in absurdly far), falling back to the old fixed-zoom `move()` on the rare result with no usable bounding box.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 289/289 (3 new tests).
 
+- [x] 🌱 ⭐ - **Add a Ko-fi link to the GitHub Pages site** (issue #157)
+  - **Verified**: 2026-08-25 (PR #209, commit `7358506`)
+  - **What was done**: the site had no reference to Ko-fi at all despite the app itself already linking to it (`kofi_button.dart`). Added a low-key "☕ Support" button in the header (next to GitHub, matching its style) and a matching footer link, both pointing to the same `https://ko-fi.com/tarnaud` URL used in-app.
+  - **Final validation**: verified visually in a real browser (served `docs/` locally) — both placements render correctly, header stays uncluttered on mobile (nav links already hidden below 860px).
+
 - [x] 🌱 ⭐ - **Stale comments/references left over from removed dependencies** (issue #133)
   - **Verified**: 2026-08-25 (PR #207, commit `1e0f144`)
   - **What was done**: purely cosmetic, no behavior change. `build-android.yml`'s ABI-restriction comment credited `sherpa_onnx` (removed T89) for needing per-ABI native code — corrected to the actual current reason (Flutter engine + ML Kit GenAI's native libs). `AudioPlayerPlugin.kt`'s `pendingPlayResult` comment said `MediaPipe.stop()` — corrected to `MediaPlayer.stop()` (the actual class used in that file, leftover from when MediaPipe was still part of this codebase, removed T82).
