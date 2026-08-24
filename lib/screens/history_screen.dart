@@ -11,6 +11,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
+import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
 import '../utils/user_message_utils.dart';
@@ -840,7 +841,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         children: [
           // Full image background
           if (File(live.imagePath).existsSync())
-            Image.file(File(live.imagePath), fit: BoxFit.cover),
+            BackgroundPhoto(file: File(live.imagePath)),
 
           // Gradient overlay — T96: the previous 2-stop version barely
           // darkened the very top of the screen, leaving the top bar icons
