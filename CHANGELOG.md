@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **latlong2 trailing its latest major version** (issue #134)
-  - **Verified**: 2026-08-25 (PR TBD, commit `eb9d63e`)
+  - **Verified**: 2026-08-25 (PR #208, commit `eb9d63e`)
   - **What was done**: bumped `latlong2` 0.9.1 → 0.10.1. No breaking changes per the package's own CHANGELOG (internal `LatLng.hashCode`/`fromJson` robustness improvements, plus a new `LatLng.isValid` getter) — completes the dependency-audit cleanup started alongside `flutter_map`/`google_fonts`/`flutter_lints`.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 279/279.
 
