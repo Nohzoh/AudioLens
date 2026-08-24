@@ -61,7 +61,17 @@ class GeminiNanoService implements AIService {
     }
 
     try {
-      final args = {'imagePath': imageFile.path};
+      final config = RemoteConfigService.current;
+      final args = <String, dynamic>{
+        'imagePath': imageFile.path,
+        // #170: previously hardcoded in GeminiNanoPlugin.kt — now
+        // remote-configurable like the cloud pipeline's own
+        // geminiMaxTokens/geminiTemperature, so a stuck value (e.g. a
+        // segment truncated too early) can be fixed without an app
+        // release, same as #158 was for the cloud side.
+        'maxOutputTokens': config.geminiNanoMaxTokens,
+        'temperature': config.geminiNanoTemperature,
+      };
       if (locationContext != null) {
         args['locationContext'] = _truncateLocationContext(locationContext);
       }
@@ -82,8 +92,8 @@ class GeminiNanoService implements AIService {
           ? await describeFuture
           : await _raceWithCancellation(describeFuture, cancelToken);
 
-      final text = cleanMarkdown(description ?? '');
-      final title = _extractTitle(text);
+      final cleaned = cleanMarkdown(description ?? '');
+      final (title, text) = _extractTitleAndBody(cleaned);
 
       return AudioGuideResult(
         title: title,
@@ -142,10 +152,39 @@ class GeminiNanoService implements AIService {
     return locationContext.substring(0, _maxLocationContextChars);
   }
 
+  /// #172: segment 1's prompt (see `buildSeg1Prompt` in
+  /// `GeminiNanoPlugin.kt`) now asks the model to lead with a short title
+  /// in brackets on its own line — explicit, like the cloud pipeline's
+  /// structured `title` field, instead of grabbing whatever the first
+  /// `.`-delimited sentence happens to be (fragile: a decimal number or
+  /// abbreviation trips the naive split, and an opening sentence isn't
+  /// written with "being a good title" in mind).
+  ///
+  /// Falls back to the old first-sentence heuristic if the model doesn't
+  /// follow the bracket format — on-device model compliance isn't
+  /// guaranteed the way a cloud JSON schema can be enforced, so the
+  /// result must stay usable either way.
+  static final _bracketTitle = RegExp(r'^\s*\[([^\]]{1,80})\]\s*');
+
+  (String, String) _extractTitleAndBody(String description) {
+    final match = _bracketTitle.firstMatch(description);
+    if (match != null) {
+      final title = match.group(1)!.trim();
+      final body = description.substring(match.end).trim();
+      if (title.isNotEmpty && body.isNotEmpty) {
+        return (_capTitle(title), body);
+      }
+    }
+    return (_extractTitle(description), description);
+  }
+
   String _extractTitle(String description) {
     final first = description.split('.').first.trim();
-    return first.length > 50 ? '${first.substring(0, 50)}...' : first;
+    return _capTitle(first);
   }
+
+  String _capTitle(String title) =>
+      title.length > 50 ? '${title.substring(0, 50)}...' : title;
 
   @override
   void dispose() {

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:audiolens/services/gemini_nano_service.dart';
+import 'package:audiolens/services/remote_config_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
 
 /// T68 — GeminiNanoService had zero real coverage before this: the one
@@ -107,6 +108,58 @@ void main() {
     final args = call.arguments as Map;
     expect(args['locationContext'], 'Musee du Louvre');
     expect(args['style'], 'academic');
+  });
+
+  // #170 — maxOutputTokens/temperature were hardcoded in GeminiNanoPlugin.kt;
+  // now sourced from RemoteConfigService like the cloud pipeline's own
+  // geminiMaxTokens/geminiTemperature.
+  test('analyzeImage() sends maxOutputTokens and temperature from RemoteConfigService',
+      () async {
+    final service = GeminiNanoService();
+
+    await service.analyzeImage(tempImage());
+
+    final call = calls.firstWhere((c) => c.method == 'describeImage');
+    final args = call.arguments as Map;
+    expect(args['maxOutputTokens'], RemoteConfigService.current.geminiNanoMaxTokens);
+    expect(args['temperature'], RemoteConfigService.current.geminiNanoTemperature);
+  });
+
+  // #172 — segment 1's prompt now asks for a bracketed title on its own
+  // line; this parses it out and keeps it out of the spoken script.
+  test('analyzeImage() extracts a bracketed title and strips it from the script',
+      () async {
+    handler = (call) async {
+      calls.add(call);
+      if (call.method == 'describeImage') {
+        return '[Le Colisee de Rome]\nUn amphitheatre antique impressionnant.';
+      }
+      return true;
+    };
+    final service = GeminiNanoService();
+
+    final result = await service.analyzeImage(tempImage());
+
+    expect(result.title, 'Le Colisee de Rome');
+    expect(result.script, 'Un amphitheatre antique impressionnant.');
+    expect(result.script, isNot(contains('[')));
+  });
+
+  test('analyzeImage() falls back to the first-sentence heuristic when the '
+      'model does not follow the bracket-title format', () async {
+    handler = (call) async {
+      calls.add(call);
+      if (call.method == 'describeImage') {
+        return 'Ceci est la Tour Eiffel sans crochets. Suite du texte.';
+      }
+      return true;
+    };
+    final service = GeminiNanoService();
+
+    final result = await service.analyzeImage(tempImage());
+
+    expect(result.title, 'Ceci est la Tour Eiffel sans crochets');
+    expect(result.script, 'Ceci est la Tour Eiffel sans crochets. Suite du texte.');
   });
 
   test('analyzeImage() extracts the title from the first sentence', () async {
