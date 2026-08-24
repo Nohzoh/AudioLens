@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐⭐ - **Add ±10s skip controls to HistoryDetailScreen playback (feature parity with PlayerScreen)** (issue #148)
+  - **Verified**: 2026-08-24 (PR #180, commit `30c2e68`)
+  - **What was done**: `HistoryDetailScreen` gained the same skip-back/skip-forward-10s controls `PlayerScreen` already had, shown only when the current playback is actually seekable (cached-WAV or Gemini TTS, not live native TTS). Code review before merge found the callback that tracks `_isPlaying` for native-TTS playback was overwriting `AudioGuideService.nativeTtsService`'s shared `onComplete` and never restoring it — leaking into a `setState` on a disposed `State` if the screen closed mid-speech, and permanently starving `AudioGuideService`'s own default completion handler (used by `canSkip`) for every later screen. Fixed with a self-restoring tracked closure shared by both native-TTS play paths; also fixed `dispose()` to actually stop `nativeTtsService` (it only stopped the cached-audio channel before) and scoped the screen's `AudioGuideService` rebuild to just the button row instead of the whole screen.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 211/211 (1 known-flaky timing test in `tts_chunking_test.dart`, unrelated, passes on retry). Fixing `dispose()` surfaced that `context.read()` there throws during a bulk tree teardown (ancestor already deactivated) — fixed by capturing the service reference in `initState()` instead; this also required mocking the `flutter_tts` platform channel in `history_screen_test.dart`, previously unexercised since the test fake only overrides `speak()`.
+
 - [x] **Recurring Gemini API vs Gemini Nano benchmark**
   - **Verified**: 2026-08-22
   - **Source**: user — wanted a way to track how the cloud model and the on-device model compare on AudioLens's actual audio-guide generation task (photo + GPS + location context), reusable every quarter, and reusable for ad hoc prompt experiments too.
