@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **Allow pausing audio playback from the home screen's "Recently visited" grid** (issue #127)
-  - **Verified**: 2026-08-25 (PR TBD, commit `63641d7`)
+  - **Verified**: 2026-08-25 (PR #199, commit `63641d7`)
   - **What was done**: each grid tile with cached audio (`HistoryEntry.audioPath != null`) now shows a small play/pause overlay icon, driving the same native `audio_guide/audio_player` singleton `HistoryDetailScreen` uses — tapping starts/pauses/resumes that entry's narration in place, without opening the detail screen. Kept local to `HomeScreen`'s own state rather than synced with `HistoryDetailScreen`'s separate (and considerably larger) playback state machine — the two can never play concurrently anyway, since there's only one native `MediaPlayer` instance app-wide; opening the detail screen for any entry stops whatever the grid was playing.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 275/275 (3 new tests).
 
