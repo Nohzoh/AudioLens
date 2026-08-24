@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Allow tap-to-copy on individual property values in the analysis details screen** (issue #154)
+  - **Verified**: 2026-08-24 (PR #196, commit `48258df`)
+  - **What was done**: `_Row` in `about_analysis_screen.dart` now wraps its value in an `InkWell` that copies just that value on tap, confirmed with a distinct SnackBar (`« valeur » copié`) so it doesn't feel identical to the existing bulk "Copier les infos de debug" button, which still copies everything at once unchanged.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 272/272 (2 new tests; 1 pre-existing unrelated flaky timing test re-verified passing on its own).
+
 - [x] 📈 ⭐⭐ - **Gemini Nano's generation params are now remote-configurable; title is explicitly generated instead of a first-sentence heuristic** (issues #170, #172)
   - **Verified**: 2026-08-24 (PR #195, commit `138c01c`)
   - **What was done**: bundled since both touch the same 2 files. **#170**: `GeminiNanoPlugin.kt` hardcoded `maxOutputTokens = 256` for every segment and never set a temperature — now both come from `RemoteConfigService` (new `geminiNanoTemperature`, plus the already-declared-but-unused `geminiNanoMaxTokens` finally wired through) and are sent through the `describeImage` method channel call, so a stuck value can be fixed remotely without an app release (same motivation as #158 for the cloud pipeline). Note: `config.json` itself wasn't touched — signing requires the private key (kept in Keeper, never in this environment), so the new field just uses its code default (0.7) until manually re-signed. **#172**: segment 1's prompt now asks for a short title in brackets on its own line, parsed out by `GeminiNanoService._extractTitleAndBody`, mirroring the cloud pipeline's structured `title` field — falls back to the old first-sentence heuristic if the on-device model doesn't follow the format (compliance can't be enforced the way a cloud JSON schema can).
