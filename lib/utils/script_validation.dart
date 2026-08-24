@@ -14,6 +14,10 @@
 /// round-trip and might return something worse).
 library;
 
+import 'package:characters/characters.dart';
+import 'app_logger.dart';
+import 'text_chunker.dart' show splitSentences;
+
 /// Default ceiling, in characters.
 ///
 /// ~6.5 chars/word in French puts the prompt's 400-word target near 2600
@@ -27,26 +31,44 @@ const int kDefaultScriptMaxChars = 4000;
 /// Cutting at a sentence boundary (rather than mid-word, or mid-sentence
 /// with an ellipsis) matters more here than in most truncation cases:
 /// this text is read aloud, so a script ending mid-sentence sounds like
-/// the app broke rather than like the guide finished speaking.
+/// the app broke rather than like the guide finished speaking. Sentence
+/// boundaries are found via [splitSentences] — the same definition
+/// `chunkScript` (T76) already uses for streamed TTS — rather than a
+/// second, independently-tuned one that could silently disagree with it.
+///
+/// [maxChars] comes from remote config (see the call sites), so a bad
+/// value (zero, negative — a typo, or an attempt to mean "unlimited")
+/// must not crash or silently reduce every script to nothing: treated as
+/// "capping disabled" instead.
 String capScriptLength(String script, {int maxChars = kDefaultScriptMaxChars}) {
+  if (maxChars <= 0) return script;
   if (script.length <= maxChars) return script;
 
-  final head = script.substring(0, maxChars);
-  final lastBoundary = _lastSentenceEnd(head);
+  final sentences = splitSentences(script);
+  final kept = StringBuffer();
+  for (final sentence in sentences) {
+    final candidate = kept.isEmpty ? sentence : '${kept.toString()} $sentence';
+    if (candidate.length > maxChars) break;
+    if (kept.isNotEmpty) kept.write(' ');
+    kept.write(sentence);
+  }
 
-  // No sentence boundary at all in the kept portion (a wall of text with
-  // no punctuation) — fall back to a hard cut, since keeping nothing at
-  // all would be worse than an abrupt ending.
-  if (lastBoundary == null) return head.trimRight();
+  final result = kept.isEmpty ? _hardCut(script, maxChars) : kept.toString();
 
-  return head.substring(0, lastBoundary + 1).trimRight();
+  AppLogger.ai('Script truncated: ${script.length} -> ${result.length} chars '
+      '(cap: $maxChars)');
+  return result;
 }
 
-/// Index of the last `.`, `!` or `?` in [text], or null if there is none.
-int? _lastSentenceEnd(String text) {
-  for (var i = text.length - 1; i >= 0; i--) {
-    final c = text[i];
-    if (c == '.' || c == '!' || c == '?') return i;
+/// Hard-cuts [text] to at most [maxChars] UTF-16 code units, but only ever
+/// at a grapheme-cluster (Characters) boundary — never mid-surrogate-pair,
+/// which a raw `text.substring(0, maxChars)` could do to a character like
+/// an emoji that occupies two code units, leaving an unpaired surrogate.
+String _hardCut(String text, int maxChars) {
+  final buffer = StringBuffer();
+  for (final grapheme in text.characters) {
+    if (buffer.length + grapheme.length > maxChars) break;
+    buffer.write(grapheme);
   }
-  return null;
+  return buffer.toString().trimRight();
 }

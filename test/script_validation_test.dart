@@ -1,8 +1,42 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:audiolens/utils/app_logger.dart';
 import 'package:audiolens/utils/script_validation.dart';
 
 void main() {
   group('capScriptLength', () {
+    setUp(() => AppLogger.clear());
+
+    test('a non-positive maxChars disables capping instead of crashing or emptying the script', () {
+      final script = 'a' * 500;
+      expect(capScriptLength(script, maxChars: 0), script);
+      expect(capScriptLength(script, maxChars: -1), script);
+    });
+
+    test('does not split a surrogate pair (e.g. an emoji) when hard-cutting', () {
+      // U+1F3DB (🏛), a 2-code-unit character, straddling the raw cut point
+      // (99 code units in, only 1 short of the 100 cap) — a plain
+      // substring(0, 100) would keep only its leading surrogate.
+      final script = '${'a' * 99}🏛${'b' * 400}';
+      final result = capScriptLength(script, maxChars: 100);
+
+      expect(result.runes, isNot(contains(0xFFFD))); // no replacement char
+      // The emoji doesn't fit whole within the cap (99 + 2 > 100), so the
+      // whole grapheme is excluded rather than split — never exceeding
+      // maxChars matters more here than greedily keeping one more code
+      // unit's worth of a character that can't be kept intact anyway.
+      expect(result, 'a' * 99);
+      expect(result.length, lessThanOrEqualTo(100));
+    });
+
+    test('logs when a script actually gets truncated', () {
+      capScriptLength('a' * 500, maxChars: 100);
+      expect(AppLogger.lines.any((l) => l.contains('Script truncated')), isTrue);
+    });
+
+    test('does not log when a script is within the cap', () {
+      capScriptLength('short script', maxChars: 100);
+      expect(AppLogger.lines.any((l) => l.contains('Script truncated')), isFalse);
+    });
     test('leaves a normal-length script untouched', () {
       const script = 'Bienvenue devant ce monument. Il fut construit en 1889.';
       expect(capScriptLength(script), script);
