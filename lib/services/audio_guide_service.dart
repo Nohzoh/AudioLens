@@ -145,6 +145,15 @@ class AudioGuideService extends ChangeNotifier {
   bool _analysisInProgress = false;
 
   GuideState get state => _state;
+  /// #174: whether [analyzeAndPlay]/[generateAudioForScript] is actively
+  /// running right now — mirrors the same `_analysisInProgress` guard
+  /// those methods already check internally, exposed so entry points
+  /// (capture, gallery pick, share-intent, retry) can disable themselves
+  /// instead of letting a second attempt fire and immediately hit that
+  /// guard's "already in progress" error. Deliberately not "state !=
+  /// idle": `speaking`/`paused`/`scriptReady` are legitimate resting
+  /// states after a *finished* analysis, not reasons to block a new one.
+  bool get isBusy => _analysisInProgress;
   AudioGuideResult? get lastResult => _lastResult;
   String? get errorMessage => _errorMessage;
   String get providerName => _providerName;
