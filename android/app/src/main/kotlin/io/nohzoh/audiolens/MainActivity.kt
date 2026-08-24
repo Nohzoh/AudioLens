@@ -21,9 +21,10 @@ class MainActivity : FlutterActivity() {
         // intent — extract now so getInitialSharedImage (called right
         // after the engine attaches, from Dart) already has it ready.
         extractSharedImage(intent)?.let { SharePlugin.pendingInitialPath = it }
-        // Cold start, quick-capture widget: same idea, see SharePlugin's
-        // comment above and QuickCaptureWidgetProvider.kt.
-        if (intent?.action == QuickCaptureWidgetProvider.ACTION_QUICK_CAPTURE) {
+        // Cold start, quick-capture widget: QuickCaptureWidgetProvider
+        // records a short-lived marker before launching us (see its
+        // class doc for why this isn't driven by the intent itself).
+        if (QuickCaptureWidgetProvider.consumeIfFresh(this)) {
             QuickCapturePlugin.pendingCapture = true
         }
     }
@@ -34,8 +35,9 @@ class MainActivity : FlutterActivity() {
         // running when the user shared a photo from another app.
         extractSharedImage(intent)?.let { SharePlugin.instance?.emitSharedImage(it) }
         // Warm start, quick-capture widget: the app was already running
-        // when the widget was tapped.
-        if (intent.action == QuickCaptureWidgetProvider.ACTION_QUICK_CAPTURE) {
+        // when the widget was tapped, so onNewIntent fires instead of a
+        // fresh cold start. Same marker, same one-time consumption.
+        if (QuickCaptureWidgetProvider.consumeIfFresh(this)) {
             QuickCapturePlugin.instance?.emitCapture()
         }
     }
