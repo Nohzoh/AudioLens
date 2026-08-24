@@ -47,15 +47,24 @@ fi
 if ! grep -q 'PlaybackForegroundService' "$MANIFEST"; then
   sed -i 's|</application>|    <service android:name=".PlaybackForegroundService" android:foregroundServiceType="mediaPlayback" android:exported="false"/>\n    </application>|' "$MANIFEST"
 fi
+# T97: register as a share target for photos from other apps
+# (Gallery, etc.) — a second intent-filter on the same activity,
+# right after the existing MAIN/LAUNCHER one.
+#
+# Must run before the QuickCaptureWidgetProvider <receiver> block
+# below (#165): the sed pattern below matches any line containing
+# `</intent-filter>`, and once the widget receiver — which has its
+# own `<intent-filter>...</intent-filter>` for APPWIDGET_UPDATE — is
+# in the file, that line matches too, silently duplicating the SEND
+# intent-filter inside the widget's <receiver> instead of only the
+# activity's. Running this step first means the widget's
+# intent-filter doesn't exist yet, so there's only one line to match.
+if ! grep -q 'android.intent.action.SEND' "$MANIFEST"; then
+  sed -i 's|</intent-filter>|</intent-filter>\n            <intent-filter>\n                <action android:name="android.intent.action.SEND"/>\n                <category android:name="android.intent.category.DEFAULT"/>\n                <data android:mimeType="image/*"/>\n            </intent-filter>|' "$MANIFEST"
+fi
 # Home-screen quick-capture widget (new feature): jumps
 # straight to the camera on tap, see QuickCaptureWidgetProvider.kt.
 if ! grep -q 'QuickCaptureWidgetProvider' "$MANIFEST"; then
   sed -i 's|</application>|    <receiver android:name=".QuickCaptureWidgetProvider" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_capture_widget_info"/></receiver>\n    </application>|' "$MANIFEST"
-fi
-# T97: register as a share target for photos from other apps
-# (Gallery, etc.) — a second intent-filter on the same activity,
-# right after the existing MAIN/LAUNCHER one.
-if ! grep -q 'android.intent.action.SEND' "$MANIFEST"; then
-  sed -i 's|</intent-filter>|</intent-filter>\n            <intent-filter>\n                <action android:name="android.intent.action.SEND"/>\n                <category android:name="android.intent.category.DEFAULT"/>\n                <data android:mimeType="image/*"/>\n            </intent-filter>|' "$MANIFEST"
 fi
 echo "Manifest patched (allowBackup=false, TTS engine query, foreground service, share target)"

@@ -156,14 +156,17 @@ fi
 if ! grep -q 'PlaybackForegroundService' "$MANIFEST"; then
   $SED -i 's|</application>|    <service android:name=".PlaybackForegroundService" android:foregroundServiceType="mediaPlayback" android:exported="false"/>\n    </application>|' "$MANIFEST"
 fi
+# T97: register as a share target for photos from other apps.
+# Must run before the QuickCaptureWidgetProvider <receiver> block
+# below (#165) — see scripts/ci/patch_android_manifest.sh's copy of
+# this same fix for why the order matters.
+if ! grep -q 'android.intent.action.SEND' "$MANIFEST"; then
+  $SED -i 's|</intent-filter>|</intent-filter>\n            <intent-filter>\n                <action android:name="android.intent.action.SEND"/>\n                <category android:name="android.intent.category.DEFAULT"/>\n                <data android:mimeType="image/*"/>\n            </intent-filter>|' "$MANIFEST"
+fi
 # Home-screen quick-capture widget (new feature): jumps straight to the
 # camera on tap, see QuickCaptureWidgetProvider.kt.
 if ! grep -q 'QuickCaptureWidgetProvider' "$MANIFEST"; then
   $SED -i 's|</application>|    <receiver android:name=".QuickCaptureWidgetProvider" android:exported="false"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_capture_widget_info"/></receiver>\n    </application>|' "$MANIFEST"
-fi
-# T97: register as a share target for photos from other apps.
-if ! grep -q 'android.intent.action.SEND' "$MANIFEST"; then
-  $SED -i 's|</intent-filter>|</intent-filter>\n            <intent-filter>\n                <action android:name="android.intent.action.SEND"/>\n                <category android:name="android.intent.category.DEFAULT"/>\n                <data android:mimeType="image/*"/>\n            </intent-filter>|' "$MANIFEST"
 fi
 if ! grep -q 'FileProvider' "$MANIFEST"; then
   $SED -i 's|</application>|    <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fileprovider" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/></provider>\n    </application>|' "$MANIFEST"
