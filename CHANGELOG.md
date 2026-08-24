@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **ShareIntentService (T97) has no dedicated test** (issue #132)
-  - **Verified**: 2026-08-25 (PR TBD, commit `7cc8da2`)
+  - **Verified**: 2026-08-25 (PR #206, commit `7cc8da2`)
   - **What was done**: the one service under `lib/services/` with no matching `test/*_test.dart`. Added `test/share_intent_service_test.dart`, mocking the `MethodChannel`/`EventChannel` the way `native_tts_service_test.dart` already does for a platform-channel bridge — covers `getInitialSharedImage()`'s success/null/error/no-handler paths and `sharedImageStream`'s event mapping (single and multiple warm-start events).
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 281/281 (6 new tests).
 
