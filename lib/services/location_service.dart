@@ -49,11 +49,29 @@ class GeocodePrediction {
   final String displayName;
   final double lat;
   final double lon;
+
+  /// The extent of the matched place, straight from Nominatim's own
+  /// `boundingbox` (#201) — tiny for a precise address, large for a
+  /// city/region. Null if Nominatim didn't return one or it was
+  /// malformed; callers should fall back to a fixed zoom level in that
+  /// case rather than fail outright.
+  final double? south;
+  final double? north;
+  final double? west;
+  final double? east;
+
   const GeocodePrediction({
     required this.displayName,
     required this.lat,
     required this.lon,
+    this.south,
+    this.north,
+    this.west,
+    this.east,
   });
+
+  bool get hasBoundingBox =>
+      south != null && north != null && west != null && east != null;
 }
 
 class LocationService {
@@ -188,10 +206,25 @@ class LocationService {
             final lat = double.tryParse(map['lat'] as String? ?? '');
             final lon = double.tryParse(map['lon'] as String? ?? '');
             if (lat == null || lon == null) return null;
+
+            // Nominatim's own order: [south, north, west, east], all as
+            // strings — malformed/missing entries just leave the
+            // bounding box null rather than failing the whole result.
+            final bbox = (map['boundingbox'] as List<dynamic>?)
+                ?.map((v) => double.tryParse(v as String))
+                .toList();
+            final hasValidBbox = bbox != null &&
+                bbox.length == 4 &&
+                bbox.every((v) => v != null);
+
             return GeocodePrediction(
               displayName: map['display_name'] as String? ?? '',
               lat: lat,
               lon: lon,
+              south: hasValidBbox ? bbox[0] : null,
+              north: hasValidBbox ? bbox[1] : null,
+              west: hasValidBbox ? bbox[2] : null,
+              east: hasValidBbox ? bbox[3] : null,
             );
           })
           .whereType<GeocodePrediction>()
