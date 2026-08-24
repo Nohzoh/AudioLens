@@ -1,7 +1,9 @@
 Nouveautés :
-• Faites pivoter une photo de travers directement depuis son entrée d'historique
-• Avancez/reculez de 10s en écoutant le commentaire d'une visite passée
+• Zoomez sur la photo en mode sans commentaire
+• Recherchez un lieu par son nom sur la carte, orientée nord fixe
+• Touchez un détail dans « À propos de cette analyse » pour le copier
 Corrections :
-• Un rare souci de réponse IA pouvait faire échouer une analyse au lieu de basculer sur un autre modèle
-• Les photos larges depuis la galerie ne sont plus recadrées aussi sévèrement
-• Les boutons d'action restent lisibles sur des photos claires
+• Rotation/favori d'une photo mis à jour instantanément
+• Une nouvelle analyse ne perturbe plus celle déjà en cours
+• Mode IA hors-ligne plus fiable, avec un titre généré correctement
+• L'icône du widget correspond maintenant à l'icône de l'app
