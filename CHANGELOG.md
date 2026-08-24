@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐ - **Pinch-to-zoom on the photo (#191) doesn't work — gradient overlay Container absorbs the gesture** (issue #204)
+  - **Verified**: 2026-08-25 (PR #205, commit `d3662e1`)
+  - **What was done**: `BoxDecoration.hitTest()` returns `true` unconditionally for a borderless rectangle, regardless of visual (semi-)transparency — the purely-decorative gradient vignette `Container` stacked on top of `BackgroundPhoto` in both `HistoryDetailScreen` and `PlayerScreen` silently absorbed every touch meant for the `InteractiveViewer` beneath it, breaking #191's pinch-to-zoom entirely. Wrapped both in `IgnorePointer`. Verified the new regression test actually catches the bug by temporarily reverting the fix and confirming it fails (transform stays identity), then restoring it.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 276/276 (1 new test).
+
 - [x] 🌱 ⭐ - **RemoteConfigService's cache is write-only — never actually used as a fallback** (issue #135)
   - **Verified**: 2026-08-25 (PR #203, commit `80c9c23`)
   - **What was done**: `load()` cached a fresh config on every successful fetch but never read it back — a network failure fell straight to hardcoded defaults regardless. Now caches the signature and original fetch timestamp alongside the config body, and re-verifies the cached signature before applying it on a failed fetch (same trust model as a live fetch — no separate carve-out for cached data). `load()`/`forceRefresh()` gained an optional `http.Client` parameter for testability, matching `LocationService`/`PoiService`'s existing pattern.
