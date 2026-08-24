@@ -1,7 +1,9 @@
 New:
-• Rotate a sideways photo directly from its history entry
-• Skip ±10s while listening to a past visit's narration
+• Pinch to zoom on the photo in photo-only view
+• Search for a place by name on the location map, now locked north-up
+• Tap a detail in "About this analysis" to copy just that value
 Fixes:
-• A rare AI response glitch could fail an analysis outright instead of falling back
-• Wide gallery photos no longer get cropped so tightly
-• Action buttons stay readable over bright photos
+• Rotating/favoriting a photo now updates instantly
+• Starting a new analysis no longer disturbs one already running
+• The offline AI mode is more reliable, with a proper title
+• The quick-capture widget icon now matches the app icon
