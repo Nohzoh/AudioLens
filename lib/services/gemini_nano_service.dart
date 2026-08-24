@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
 import '../utils/cancel_token.dart';
+import '../utils/script_validation.dart';
 import 'ai_service.dart';
+import 'remote_config_service.dart';
 
 const _channel = MethodChannel('audio_guide/gemini_nano');
 
@@ -63,7 +65,15 @@ class GeminiNanoService implements AIService {
       final text = description ?? '';
       final title = _extractTitle(text);
 
-      return AudioGuideResult(title: title, script: text);
+      return AudioGuideResult(
+        title: title,
+        // T117: applied here too, so the cap can't drift into being a
+        // cloud-only safeguard the way other post-processing already has
+        // (see the pipeline-parity issues) — Nano's 3x256-token budget
+        // makes it unlikely to run long today, but that's a property of
+        // the current config, not a guarantee.
+        script: capScriptLength(text, maxChars: RemoteConfigService.current.scriptMaxChars),
+      );
     } on PlatformException catch (e) {
       if (e.message?.contains('Background usage is blocked') ?? false) {
         throw const GeminiNanoBackgroundRestrictedException();

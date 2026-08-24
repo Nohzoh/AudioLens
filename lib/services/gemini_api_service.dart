@@ -5,6 +5,7 @@ import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 import '../utils/error_sanitizer.dart';
 import '../utils/image_downscale.dart';
+import '../utils/script_validation.dart';
 import 'package:dio/dio.dart' as dio;
 import 'ai_service.dart';
 import 'remote_config_service.dart';
@@ -334,7 +335,11 @@ class GeminiApiService implements AIService {
       }
     }
 
-    return AudioGuideResult(title: title, script: script);
+    return AudioGuideResult(
+      title: title,
+      // T117: cap runaway output before it reaches history/TTS.
+      script: capScriptLength(script, maxChars: RemoteConfigService.current.scriptMaxChars),
+    );
   }
 
   /// Tone/structure instruction for the script, keyed by [style] (T75/T48).
