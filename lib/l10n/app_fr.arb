@@ -104,6 +104,8 @@
   "historyStop": "Arrêter",
   "historyListen": "Écouter le commentaire",
   "historyGenerateAudio": "Générer l'audio",
+  "historySkipBack10": "Reculer de 10 secondes",
+  "historySkipForward10": "Avancer de 10 secondes",
   "historyAllFilter": "Tout",
   "historyFavoritesFilter": "Favoris",
   "historyAddToFavorites": "Ajouter aux favoris",

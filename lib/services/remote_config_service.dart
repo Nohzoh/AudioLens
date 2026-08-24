@@ -3,6 +3,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_logger.dart';
+import '../utils/script_validation.dart';
 
 class RemoteConfig {
   // Gemini API
@@ -43,6 +44,10 @@ class RemoteConfig {
   final String geminiTtsVoice;
   final int geminiThinkingBudget;
 
+  /// Character ceiling for a generated script before it reaches history
+  /// and TTS (T117) — see utils/script_validation.dart.
+  final int scriptMaxChars;
+
   const RemoteConfig({
     this.geminiModel = 'gemini-3.5-flash',
     this.geminiModelFallbacks = const ['gemini-2.5-flash-preview-05-20', 'gemini-1.5-flash'],
@@ -66,6 +71,7 @@ class RemoteConfig {
     this.geminiTtsModel = 'gemini-2.5-flash-preview-tts',
     this.geminiTtsVoice = 'Aoede',
     this.geminiThinkingBudget = 512,
+    this.scriptMaxChars = kDefaultScriptMaxChars,
   });
 
   factory RemoteConfig.fromJson(Map<String, dynamic> json) {
@@ -94,6 +100,7 @@ class RemoteConfig {
       geminiTtsModel: json['gemini_tts_model'] as String? ?? 'gemini-2.5-flash-preview-tts',
       geminiTtsVoice: json['gemini_tts_voice'] as String? ?? 'Aoede',
       geminiThinkingBudget: json['gemini_thinking_budget'] as int? ?? 512,
+      scriptMaxChars: json['script_max_chars'] as int? ?? kDefaultScriptMaxChars,
     );
   }
 
@@ -120,6 +127,7 @@ class RemoteConfig {
     'gemini_tts_model': geminiTtsModel,
     'gemini_tts_voice': geminiTtsVoice,
     'gemini_thinking_budget': geminiThinkingBudget,
+    'script_max_chars': scriptMaxChars,
   };
 }
 
