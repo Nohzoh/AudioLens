@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 📈 ⭐ - **Pinch-to-zoom on the photo (#191) doesn't work — gradient overlay Container absorbs the gesture** (issue #204)
-  - **Verified**: 2026-08-25 (PR TBD, commit `d3662e1`)
+  - **Verified**: 2026-08-25 (PR #205, commit `d3662e1`)
   - **What was done**: `BoxDecoration.hitTest()` returns `true` unconditionally for a borderless rectangle, regardless of visual (semi-)transparency — the purely-decorative gradient vignette `Container` stacked on top of `BackgroundPhoto` in both `HistoryDetailScreen` and `PlayerScreen` silently absorbed every touch meant for the `InteractiveViewer` beneath it, breaking #191's pinch-to-zoom entirely. Wrapped both in `IgnorePointer`. Verified the new regression test actually catches the bug by temporarily reverting the fix and confirming it fails (transform stays identity), then restoring it.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 276/276 (1 new test).
 
