@@ -26,6 +26,71 @@ void main() {
       expect(results.first.lon, 2.2945);
     });
 
+    // #201 — the bounding box is what lets the map picker fit its zoom to
+    // the actual extent of what was searched, instead of a fixed level.
+    test('parses the bounding box when Nominatim returns one', () async {
+      final client = MockClient((request) async {
+        return http.Response(
+          jsonEncode([
+            {
+              'display_name': 'Tour Eiffel, Paris, France',
+              'lat': '48.8584',
+              'lon': '2.2945',
+              'boundingbox': ['48.8574', '48.8594', '2.2935', '2.2955'],
+            },
+          ]),
+          200,
+        );
+      });
+
+      final results = await LocationService.searchPlace('Tour Eiffel', client: client);
+
+      final prediction = results.single;
+      expect(prediction.hasBoundingBox, isTrue);
+      expect(prediction.south, 48.8574);
+      expect(prediction.north, 48.8594);
+      expect(prediction.west, 2.2935);
+      expect(prediction.east, 2.2955);
+    });
+
+    test('leaves the bounding box null when Nominatim omits it', () async {
+      final client = MockClient((request) async {
+        return http.Response(
+          jsonEncode([
+            {'display_name': 'Somewhere', 'lat': '48.8584', 'lon': '2.2945'},
+          ]),
+          200,
+        );
+      });
+
+      final results = await LocationService.searchPlace('Somewhere', client: client);
+
+      final prediction = results.single;
+      expect(prediction.hasBoundingBox, isFalse);
+      expect(prediction.south, isNull);
+    });
+
+    test('leaves the bounding box null when it is malformed', () async {
+      final client = MockClient((request) async {
+        return http.Response(
+          jsonEncode([
+            {
+              'display_name': 'Somewhere',
+              'lat': '48.8584',
+              'lon': '2.2945',
+              'boundingbox': ['48.8574', 'not-a-number', '2.2935'],
+            },
+          ]),
+          200,
+        );
+      });
+
+      final results = await LocationService.searchPlace('Somewhere', client: client);
+
+      final prediction = results.single;
+      expect(prediction.hasBoundingBox, isFalse);
+    });
+
     test('skips entries with unparseable coordinates', () async {
       final client = MockClient((request) async {
         return http.Response(

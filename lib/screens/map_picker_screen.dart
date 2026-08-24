@@ -61,8 +61,29 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     });
   }
 
+  /// #201: a fixed zoom level didn't fit every result — a precise
+  /// address ended up too zoomed out, while a city/region result could
+  /// end up zoomed in past what it actually needs. Nominatim's own
+  /// `boundingbox` sizes itself to the kind of place matched, so fitting
+  /// the camera to it gets the right zoom for free. Falls back to the
+  /// old fixed-zoom jump on the rare result with no usable bounding box.
+  static const double _maxSearchZoom = 18;
+
   void _selectPrediction(GeocodePrediction prediction) {
-    _mapController.move(LatLng(prediction.lat, prediction.lon), 15);
+    if (prediction.hasBoundingBox) {
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds(
+            LatLng(prediction.south!, prediction.west!),
+            LatLng(prediction.north!, prediction.east!),
+          ),
+          maxZoom: _maxSearchZoom,
+          padding: const EdgeInsets.all(32),
+        ),
+      );
+    } else {
+      _mapController.move(LatLng(prediction.lat, prediction.lon), 15);
+    }
     FocusScope.of(context).unfocus();
     setState(() => _searchResults = []);
   }
