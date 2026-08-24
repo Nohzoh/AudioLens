@@ -4,6 +4,7 @@ import '../utils/analysis_runner.dart';
 import '../services/exif_location_service.dart';
 import '../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
@@ -35,6 +36,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _appUpdateService = AppUpdateService();
   bool _updateReady = false;
 
+  // #127: lets a cached narration be paused/resumed directly from a
+  // "Recently visited" tile, without opening the detail screen. Scoped
+  // to entries with cached audio only (HistoryEntry.hasAudio) — no TTS
+  // regeneration risk — and kept local to this grid rather than synced
+  // with HistoryDetailScreen's own separate playback state, which has a
+  // much larger state machine (live synthesis, native-TTS fallback,
+  // skip support) that a 1-2h fix shouldn't take on. The two can't be
+  // played at once regardless: AudioPlayerPlugin's MediaPlayer is a
+  // single native singleton, so opening the detail screen for any entry
+  // stops whatever the grid was playing (see its own dispose()).
+  static const _audioPlayerChannel = MethodChannel('audio_guide/audio_player');
+  int? _gridPlayingEntryId;
+  bool _gridIsPlaying = false;
+
+  Future<void> _stopGridPlaybackIfActive() async {
+    if (_gridPlayingEntryId == null) return;
+    await _audioPlayerChannel.invokeMethod('stop');
+    if (mounted) {
+      setState(() {
+        _gridPlayingEntryId = null;
+        _gridIsPlaying = false;
+      });
+    }
+  }
+
+  Future<void> _toggleGridPlayback(HistoryEntry entry) async {
+    if (entry.audioPath == null) return;
+
+    if (_gridPlayingEntryId == entry.id) {
+      // Same entry: toggle pause/resume in place.
+      await _audioPlayerChannel.invokeMethod(_gridIsPlaying ? 'pause' : 'play');
+      setState(() => _gridIsPlaying = !_gridIsPlaying);
+      return;
+    }
+
+    // A different entry (or nothing) was playing — start this one fresh.
+    setState(() {
+      _gridPlayingEntryId = entry.id;
+      _gridIsPlaying = true;
+    });
+    // Fire-and-forget: this Future only completes once playback finishes
+    // (or is stopped), so awaiting it here would block the toggle itself
+    // (same non-blocking pattern as HistoryDetailScreen._playCachedAudio).
+    _audioPlayerChannel.invokeMethod('playWav', {'path': entry.audioPath}).then((_) {
+      if (!mounted || _gridPlayingEntryId != entry.id) return;
+      setState(() {
+        _gridPlayingEntryId = null;
+        _gridIsPlaying = false;
+      });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +107,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _shareIntentSubscription?.cancel();
     _quickCaptureSubscription?.cancel();
     _appUpdateService.dispose();
+    if (_gridPlayingEntryId != null) {
+      _audioPlayerChannel.invokeMethod('stop');
+    }
     super.dispose();
   }
 
@@ -648,6 +704,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   } else if (isCaptured) {
                                     _launchAnalysisForCaptured(entry);
                                   } else {
+                                    _stopGridPlaybackIfActive();
                                     Navigator.push(context,
                                       MaterialPageRoute(
                                         builder: (_) => HistoryDetailScreen(entry: entry),
@@ -690,6 +747,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         const Center(child: Icon(Icons.refresh, color: Colors.white, size: 28))
                                       else if (isCaptured)
                                         const Center(child: Icon(Icons.cloud_off_outlined, color: Colors.white70, size: 28)),
+                                      // #127: play/pause the cached
+                                      // narration in place — only where
+                                      // there's a cached file to play
+                                      // without re-triggering TTS.
+                                      if (!isDimmed && entry.audioPath != null)
+                                        Positioned(
+                                          top: 2, right: 2,
+                                          child: Tooltip(
+                                            message: _gridPlayingEntryId == entry.id && _gridIsPlaying
+                                                ? l10n.homeGridPauseTooltip
+                                                : l10n.homeGridPlayTooltip,
+                                            child: GestureDetector(
+                                              onTap: () => _toggleGridPlayback(entry),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(3),
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.black45,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  _gridPlayingEntryId == entry.id && _gridIsPlaying
+                                                      ? Icons.pause
+                                                      : Icons.play_arrow,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       // Title at bottom
                                       Positioned(
                                         bottom: 0, left: 0, right: 0,
