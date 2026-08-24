@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐ - **Inconsistent action button styling between analysis screen and history screen** (issue #146)
+  - **Verified**: 2026-08-24 (PR #178, commit `b625598`)
+  - **What was done**: extracted `HistoryDetailScreen`'s private `_ScrimIconButton` into a shared `lib/widgets/scrim_icon_button.dart` and reused it in `PlayerScreen`'s top bar, so both screens' back/favorite/collection/photo-mode/cancel buttons render with the same contrasting circular scrim over photo content instead of `PlayerScreen`'s bare icons. Code review before merge found the extraction left a dangling doc comment for the deleted class at the end of `history_screen.dart`, and that `PlayerScreen`'s top bar had fixed spacers around the Ko-fi button regardless of whether it actually renders (hidden via settings), leaving dead space when hidden and no cancel/spinner adjacent. Fixed by removing the stale comment and giving each trailing icon its own leading gap instead of shared spacers between them.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 208/208.
+
 - [x] 📈 ⭐⭐ - **Add ±10s skip controls to HistoryDetailScreen playback (feature parity with PlayerScreen)** (issue #148)
   - **Verified**: 2026-08-24 (PR #180, commit `30c2e68`)
   - **What was done**: `HistoryDetailScreen` gained the same skip-back/skip-forward-10s controls `PlayerScreen` already had, shown only when the current playback is actually seekable (cached-WAV or Gemini TTS, not live native TTS). Code review before merge found the callback that tracks `_isPlaying` for native-TTS playback was overwriting `AudioGuideService.nativeTtsService`'s shared `onComplete` and never restoring it — leaking into a `setState` on a disposed `State` if the screen closed mid-speech, and permanently starving `AudioGuideService`'s own default completion handler (used by `canSkip`) for every later screen. Fixed with a self-restoring tracked closure shared by both native-TTS play paths; also fixed `dispose()` to actually stop `nativeTtsService` (it only stopped the cached-audio channel before) and scoped the screen's `AudioGuideService` rebuild to just the button row instead of the whole screen.
