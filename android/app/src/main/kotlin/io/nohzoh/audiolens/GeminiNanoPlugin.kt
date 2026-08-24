@@ -55,7 +55,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 " (prise a : $locationContext — utilise ce lieu en priorite s'il est precis, plutot que de rester generique)"
             } else ""
             val sentences = if (style == "concise") "1-2 phrases maximum" else "2-3 phrases maximum"
-            return "Tu es un guide audio culturel. En te basant sur cette image$loc, decris en francais ce que tu vois avec ${styleTone(style)}. Commence directement, sans introduction. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences."
+            // #172: asks explicitly for a short title in brackets on its
+            // own line, mirroring the cloud pipeline's structured `title`
+            // field — GeminiNanoService._extractTitleAndBody parses it out
+            // on the Dart side (falling back to the old first-sentence
+            // heuristic if the model doesn't follow the format).
+            return "Tu es un guide audio culturel. Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Puis, sans phrase d'introduction, decris en francais ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences."
         }
 
         fun buildSeg2Prompt(previousText: String, style: String? = null): String {
@@ -138,6 +143,18 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val imagePath = call.argument<String>("imagePath")
                 val locationContext = call.argument<String>("locationContext")
                 val style = call.argument<String>("style")
+                // #170: previously hardcoded (256, no temperature at all —
+                // ML Kit GenAI's own unstated default applied). Now sent
+                // from RemoteConfigService on the Dart side, so a stuck
+                // value can be fixed remotely without an app release, same
+                // as #158 was for the cloud pipeline's own maxOutputTokens.
+                // Named distinctly from GenerateContentRequest.Builder's own
+                // maxOutputTokens/temperature properties — those are set via
+                // an implicit-receiver lambda below, where a same-named
+                // local would be shadowed by the receiver's property instead
+                // of being read.
+                val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
+                val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
 
                 if (imagePath == null) {
                     result.error("INVALID_ARGS", "imagePath required", null)
@@ -159,7 +176,10 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val req1 = generateContentRequest(
                             ImagePart(bitmap),
                             TextPart(buildSeg1Prompt(locationContext, style))
-                        ) { maxOutputTokens = 256 }
+                        ) {
+                            this.maxOutputTokens = nanoMaxOutputTokens
+                            nanoTemperature?.let { this.temperature = it }
+                        }
                         val seg1 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req1) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
@@ -168,14 +188,20 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 2: Historical context (text only, faster)
                         val req2 = generateContentRequest(
                             TextPart(buildSeg2Prompt(seg1, style))
-                        ) { maxOutputTokens = 256 }
+                        ) {
+                            this.maxOutputTokens = nanoMaxOutputTokens
+                            nanoTemperature?.let { this.temperature = it }
+                        }
                         val seg2 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         // Segment 3: Conclusion
                         val req3 = generateContentRequest(
                             TextPart(buildSeg3Prompt("$seg1 $seg2", style))
-                        ) { maxOutputTokens = 256 }
+                        ) {
+                            this.maxOutputTokens = nanoMaxOutputTokens
+                            nanoTemperature?.let { this.temperature = it }
+                        }
                         val seg3 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
