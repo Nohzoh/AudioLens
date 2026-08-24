@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Allow pausing audio playback from the home screen's "Recently visited" grid** (issue #127)
+  - **Verified**: 2026-08-25 (PR #199, commit `63641d7`)
+  - **What was done**: each grid tile with cached audio (`HistoryEntry.audioPath != null`) now shows a small play/pause overlay icon, driving the same native `audio_guide/audio_player` singleton `HistoryDetailScreen` uses — tapping starts/pauses/resumes that entry's narration in place, without opening the detail screen. Kept local to `HomeScreen`'s own state rather than synced with `HistoryDetailScreen`'s separate (and considerably larger) playback state machine — the two can never play concurrently anyway, since there's only one native `MediaPlayer` instance app-wide; opening the detail screen for any entry stops whatever the grid was playing.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 275/275 (3 new tests).
+
 - [x] 🌱 ⭐⭐ - **Widget icon doesn't visually tie back to the app icon (needs a distinguishing '+' badge)** (issue #150)
   - **Verified**: 2026-08-24 (PR #197, commits `b670d7e`, `2c13d8b`)
   - **What was done**: checked on an emulator first (the issue's own open question) — the widget picker's `previewImage` renders correctly with no launcher-level quirk; the actual mismatch was that the widget drew a camera glyph while the app's real launcher icon (`ic_launcher.png`) is a headphone+waveform glyph, two unrelated designs. `generate_widget_icon.py` now draws that same headphone+waveform glyph (same colors as `generate_play_store_icon.py`) on a white background — `ic_launcher.png` has no baked-in background of its own (fully transparent corners); the white circle the launcher actually shows is its own fallback, so white is what the real app icon looks like day to day, not the brand purple originally used. A small shiny purple "+" badge in the bottom-right corner signals "start a new capture".

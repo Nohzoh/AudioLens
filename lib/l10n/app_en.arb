@@ -42,6 +42,8 @@
   "homeSeeAll": "See all",
   "homeTapToRetry": "Tap to retry",
   "homeTapToAnalyze": "Tap to analyze",
+  "homeGridPlayTooltip": "Play the audio commentary",
+  "homeGridPauseTooltip": "Pause",
   "homeEmptyStateHint": "Point your device\nat a place or landmark",
   "homeUpdateReadyBanner": "An update is ready to install",
   "homeUpdateRestart": "Restart",
