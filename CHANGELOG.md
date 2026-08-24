@@ -16,8 +16,8 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
-- [x] 🌱 ⭐ - **Generate the app launcher icon from the same shared glyph as the widget icon** (follow-up to #150)
-  - **Verified**: 2026-08-25 (PR TBD, commit `740d7cf`)
+- [x] 🌱 ⭐ - **Generate the app launcher icon from the same shared glyph as the widget icon** (issue #202)
+  - **Verified**: 2026-08-25 (PR #200, commit `740d7cf`)
   - **What was done**: `ic_launcher.png` had no vector/procedural source in the repo, which is why it rendered slightly differently from the newly-procedural widget icon (#150) despite being the same conceptual glyph. Extracted the headphone+waveform glyph into a shared `_headphone_glyph.py` module (proportions relative to a 512-unit canonical canvas) used by all three icon generators now: the new `generate_app_icon.py` (white circle, no badge — matches what the icon already looked like, just regenerated so it can't drift), `generate_widget_icon.py` (white rounded square + purple "+" badge), and `generate_play_store_icon.py` (purple square, refactored for consistency — verified byte-identical output).
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 275/275; verified visually via a real local signed build installed on an emulator (both the home-screen/app-drawer icon and the widget picker's preview render correctly and consistently).
 
