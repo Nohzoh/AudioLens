@@ -39,10 +39,19 @@ class BackgroundPhoto extends StatefulWidget {
   /// mild enough that filling the screen looks better than banding it.
   static const double _letterboxThreshold = 1.15;
 
+  /// #191: allows pinch-to-zoom/pan when true — callers pass their own
+  /// "photo mode" flag (no script overlay on top to fight for gestures
+  /// with), since a script that mentions a detail hard to make out on a
+  /// letterboxed or otherwise-shrunk photo (e.g. a landscape photo on a
+  /// portrait screen, #151/#152) is otherwise stuck at whatever size the
+  /// screen happened to fit it at.
+  final bool zoomable;
+
   const BackgroundPhoto({
     super.key,
     required this.file,
     this.rotationQuarters = 0,
+    this.zoomable = false,
   });
 
   @override
@@ -73,6 +82,19 @@ class _BackgroundPhotoState extends State<BackgroundPhoto> {
 
   @override
   Widget build(BuildContext context) {
+    final content = _buildContent(context);
+    // #191: InteractiveViewer just needs a child that already fills its
+    // bounds — which the content below already does (StackFit.expand /
+    // full-size Image.file) — so this can wrap the finished result
+    // rather than threading zoom state through every branch of it.
+    if (!widget.zoomable) return content;
+    return InteractiveViewer(
+      maxScale: 4.0,
+      child: content,
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return FutureBuilder<Size>(

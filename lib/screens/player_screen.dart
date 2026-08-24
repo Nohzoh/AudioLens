@@ -105,7 +105,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
             fit: StackFit.expand,
             children: [
               // Background image
-              BackgroundPhoto(file: widget.imageFile, rotationQuarters: widget.rotationQuarters),
+              BackgroundPhoto(
+                file: widget.imageFile,
+                rotationQuarters: widget.rotationQuarters,
+                zoomable: _photoMode,
+              ),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
