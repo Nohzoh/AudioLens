@@ -143,6 +143,8 @@ class RemoteConfigService {
   static const _configUrl =
       'https://raw.githubusercontent.com/Nohzoh/AudioLens/main/config.json';
   static const _cacheKey = 'remote_config_cache';
+  static const _cacheSigKey = 'remote_config_cache_sig';
+  static const _cacheLoadedAtKey = 'remote_config_cache_loaded_at';
 
   /// Hosts the Gemini API URL is allowed to point to. The remote config is
   /// fetched unauthenticated (T81) — without this allowlist, a compromised
@@ -189,53 +191,86 @@ class RemoteConfigService {
     }
   }
 
-  /// Load config: always try remote, use cache only if network fails.
-  /// A remote config is only ever applied if its signature verifies —
-  /// otherwise this behaves exactly like a network failure (built-in
-  /// defaults), never silently falling back to an unsigned/tampered body.
-  static Future<void> load() async {
-    // Always clear stale cache first — built-in defaults are always safe
+  /// Applies a verified config body: parses it, enforces the API-URL
+  /// allowlist, and sets [_current]/[_loadedAt]/[_loadedFromRemote].
+  /// Shared by the live-fetch and cache-fallback paths below so they
+  /// can't drift on how a config body is turned into [_current] (in
+  /// particular the allowlist check, which is a real security control —
+  /// see [isAllowedApiUrl]'s own doc).
+  static void _applyVerifiedConfig(String body, DateTime loadedAt) {
+    final json = jsonDecode(body) as Map<String, dynamic>;
+    final apiUrl = json['gemini_api_url'] as String?;
+    if (apiUrl != null && !isAllowedApiUrl(apiUrl)) {
+      AppLogger.error(
+          'Remote config: gemini_api_url "$apiUrl" rejected (not in allowlist), using default');
+      json.remove('gemini_api_url');
+    }
+    _current = RemoteConfig.fromJson(json);
+    _loadedAt = loadedAt;
+    _loadedFromRemote = true;
+  }
+
+  /// #135: falls back to the last successfully-verified config instead of
+  /// silently reverting to hardcoded defaults — a user offline right after
+  /// an intentional remote config change still gets it, rather than the
+  /// cache being pure write-only dead weight. Re-verifies the cached
+  /// signature rather than trusting SharedPreferences' contents as-is —
+  /// same trust model as a live fetch, no separate carve-out for cached
+  /// data. Returns true if a cached config was applied.
+  static Future<bool> _tryLoadFromCache(SharedPreferences prefs) async {
+    final body = prefs.getString(_cacheKey);
+    final sig = prefs.getString(_cacheSigKey);
+    final loadedAtIso = prefs.getString(_cacheLoadedAtKey);
+    if (body == null || sig == null || loadedAtIso == null) return false;
+
+    final verified = await verifySignature(utf8.encode(body), sig);
+    if (!verified) return false;
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_cacheKey);
-    } catch (_) {}
+      _applyVerifiedConfig(body, DateTime.parse(loadedAtIso));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Load config: always try remote, fall back to the last verified
+  /// cached config if the network fails, and only then to hardcoded
+  /// defaults. A config (live or cached) is only ever applied if its
+  /// signature verifies — otherwise this behaves exactly like a network
+  /// failure, never silently falling back to an unsigned/tampered body.
+  /// [client] allows injecting a mock HTTP client in tests.
+  static Future<void> load({http.Client? client}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final c = client ?? http.Client();
 
     // Always try remote first (fast, tiny files)
     try {
-      final configResponse = await http.get(Uri.parse(_configUrl))
+      final configResponse = await c.get(Uri.parse(_configUrl))
           .timeout(const Duration(seconds: 5));
-      final sigResponse = await http.get(Uri.parse(_signatureUrl))
+      final sigResponse = await c.get(Uri.parse(_signatureUrl))
           .timeout(const Duration(seconds: 5));
       if (configResponse.statusCode == 200 && sigResponse.statusCode == 200) {
         final verified = await verifySignature(
             configResponse.bodyBytes, sigResponse.body);
-        if (!verified) {
-          AppLogger.error(
-              'Remote config: signature verification failed, using defaults');
+        if (verified) {
+          final now = DateTime.now();
+          _applyVerifiedConfig(configResponse.body, now);
+          await prefs.setString(_cacheKey, configResponse.body);
+          await prefs.setString(_cacheSigKey, sigResponse.body);
+          await prefs.setString(_cacheLoadedAtKey, now.toIso8601String());
           return;
         }
-        final json = jsonDecode(configResponse.body) as Map<String, dynamic>;
-        final apiUrl = json['gemini_api_url'] as String?;
-        if (apiUrl != null && !isAllowedApiUrl(apiUrl)) {
-          AppLogger.error(
-              'Remote config: gemini_api_url "$apiUrl" rejected (not in allowlist), using default');
-          json.remove('gemini_api_url');
-        }
-        _current = RemoteConfig.fromJson(json);
-        _loadedAt = DateTime.now();
-        _loadedFromRemote = true;
-        // Save fresh cache
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_cacheKey, configResponse.body);
-        return;
+        AppLogger.error(
+            'Remote config: signature verification failed, falling back to cache/defaults');
       }
     } catch (_) {}
 
-    // Network failed (or signature invalid) — use built-in defaults
-    // (already up to date in code). No cache fallback needed since
-    // defaults are maintained in code.
+    // Network failed (or signature invalid) — try the last verified
+    // cached config before giving up to hardcoded defaults.
+    if (await _tryLoadFromCache(prefs)) return;
   }
 
   /// Force refresh (e.g. from Settings)
-  static Future<void> forceRefresh() => load();
+  static Future<void> forceRefresh({http.Client? client}) => load(client: client);
 }
