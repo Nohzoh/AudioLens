@@ -21,6 +21,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **What was done**: purely cosmetic, no behavior change. `build-android.yml`'s ABI-restriction comment credited `sherpa_onnx` (removed T89) for needing per-ABI native code — corrected to the actual current reason (Flutter engine + ML Kit GenAI's native libs). `AudioPlayerPlugin.kt`'s `pendingPlayResult` comment said `MediaPipe.stop()` — corrected to `MediaPlayer.stop()` (the actual class used in that file, leftover from when MediaPipe was still part of this codebase, removed T82).
   - **Final validation**: `flutter analyze` → 0 issues; comment-only change to a workflow YAML + a Kotlin comment, verified the YAML still parses correctly — no local build required (zero behavior change).
 
+- [x] 🌱 ⭐ - **ShareIntentService (T97) has no dedicated test** (issue #132)
+  - **Verified**: 2026-08-25 (PR #206, commit `7cc8da2`)
+  - **What was done**: the one service under `lib/services/` with no matching `test/*_test.dart`. Added `test/share_intent_service_test.dart`, mocking the `MethodChannel`/`EventChannel` the way `native_tts_service_test.dart` already does for a platform-channel bridge — covers `getInitialSharedImage()`'s success/null/error/no-handler paths and `sharedImageStream`'s event mapping (single and multiple warm-start events).
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 281/281 (6 new tests).
+
 - [x] 📈 ⭐ - **Pinch-to-zoom on the photo (#191) doesn't work — gradient overlay Container absorbs the gesture** (issue #204)
   - **Verified**: 2026-08-25 (PR #205, commit `d3662e1`)
   - **What was done**: `BoxDecoration.hitTest()` returns `true` unconditionally for a borderless rectangle, regardless of visual (semi-)transparency — the purely-decorative gradient vignette `Container` stacked on top of `BackgroundPhoto` in both `HistoryDetailScreen` and `PlayerScreen` silently absorbed every touch meant for the `InteractiveViewer` beneath it, breaking #191's pinch-to-zoom entirely. Wrapped both in `IgnorePointer`. Verified the new regression test actually catches the bug by temporarily reverting the fix and confirming it fails (transform stays identity), then restoring it.
