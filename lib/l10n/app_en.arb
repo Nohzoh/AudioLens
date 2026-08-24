@@ -6,6 +6,7 @@
   "mapPickerSkip": "Skip",
   "mapPickerHint": "Tap the map to pick the location",
   "mapPickerConfirm": "Confirm this location",
+  "mapPickerSearchHint": "Search for a place",
 
   "onboardingApiKeyRequired": "Enter your API key",
   "secureStorageUnavailable": "Couldn't save your key securely on this device. Try again, or restart the app.",
