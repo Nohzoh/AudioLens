@@ -754,15 +754,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
 
-                FilledButton.icon(
-                  onPressed: _showImageSourceDialog,
-                  icon: const Icon(Icons.camera_alt, size: 24),
-                  label: Text(l10n.homeTakePhoto,
-                      style: const TextStyle(fontSize: 18)),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 64),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
+                // #174: scoped to just this button (not a top-level
+                // watch) so the rest of the screen — including the
+                // "Recently visited" grid — doesn't rebuild on every
+                // AudioGuideService change. Disabled while an analysis
+                // is already running: nothing here blocked a second
+                // capture from being triggered before, which always
+                // pushed its own PlayerScreen straight into the
+                // service's existing "already in progress" guard.
+                Consumer<AudioGuideService>(
+                  builder: (context, guide, _) => FilledButton.icon(
+                    onPressed: guide.isBusy ? null : _showImageSourceDialog,
+                    icon: const Icon(Icons.camera_alt, size: 24),
+                    label: Text(l10n.homeTakePhoto,
+                        style: const TextStyle(fontSize: 18)),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 64),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                    ),
                   ),
                 ).animate().scale(delay: 200.ms),
                 const SizedBox(height: 16),

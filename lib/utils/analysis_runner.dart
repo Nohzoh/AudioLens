@@ -26,6 +26,28 @@ Future<void> runAnalysisAndNavigate({
   final history = context.read<HistoryService>();
   final settings = context.read<SettingsService>();
 
+  // #174: without this, a second attempt always got its own fresh
+  // PlayerScreen pushed onto the stack unconditionally — which then
+  // immediately hit AudioGuideService's own "already in progress" guard
+  // and showed an error, while the *first*, legitimately-in-progress
+  // PlayerScreen (still on the stack, still listening to the same
+  // shared service instance) also rebuilt on that guard's notifyListeners
+  // and could flip to showing the same error, even though its own
+  // analysis was still running underneath. Checking here means the
+  // second attempt never gets a screen or touches the service at all —
+  // entry points are also expected to disable themselves based on
+  // guide.isBusy (see home_screen.dart/history_screen.dart), so this is
+  // a backstop for whatever slips through (e.g. a fast double-tap before
+  // a button's own disabled state has rebuilt).
+  if (guide.isBusy) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Une analyse est déjà en cours.')),
+      );
+    }
+    return;
+  }
+
   // #152/#183: carry over a prior manual rotation (a retry/captured-
   // launch relaunches an existing entry, which may already have one) —
   // absent for a genuinely new capture, where no entry exists yet.
