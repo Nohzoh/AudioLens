@@ -30,7 +30,6 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **Verified**: 2026-08-24 (PR #187, commit `0a4a7fb`)
   - **What was done**: the manifest-patching sequence added the `QuickCaptureWidgetProvider` `<receiver>` (with its own `APPWIDGET_UPDATE` `<intent-filter>`) before the step inserting the T97 SEND share-target `<intent-filter>` — that insertion's `sed` pattern matches any line containing `</intent-filter>`, and once the widget's own intent-filter existed, both it and the activity's got the SEND block spliced in, duplicating an unrelated SEND filter inside the widget receiver. Fixed by reordering both copies of this logic (`scripts/ci/patch_android_manifest.sh`, `scripts/build_android_local.sh`) so SEND is patched first, while the activity's is still the only matching line.
   - **Final validation**: verified against a synthetic `flutter create`-style manifest and a real local signed build — SEND appears exactly once, correctly nested in `<activity>`, widget `<receiver>` clean.
->>>>>>> origin/main
 
 - [x] ⚡ ⭐⭐⭐⭐ - **Photos can display sideways/rotated; add manual rotate control** (issue #152, partial)
   - **Verified**: 2026-08-24 (PR #185, commits `d704184`, `ca46a43`)
