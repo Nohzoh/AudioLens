@@ -110,25 +110,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 rotationQuarters: widget.rotationQuarters,
                 zoomable: _photoMode,
               ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: _photoMode
-                        ? [
-                            Colors.black.withValues(alpha: 0.35),
-                            Colors.transparent,
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.35),
-                          ]
-                        : [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.95),
-                          ],
-                    stops: _photoMode
-                        ? const [0.0, 0.15, 0.85, 1.0]
-                        : const [0.25, 0.75],
+              // #204: IgnorePointer — a plain decorated Container reports a
+              // hit test for its ENTIRE bounds regardless of visual
+              // (semi-)transparency, so this purely-decorative overlay
+              // silently swallowed every gesture meant for the
+              // InteractiveViewer in BackgroundPhoto beneath it, breaking
+              // pinch-to-zoom (#191) entirely.
+              IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: _photoMode
+                          ? [
+                              Colors.black.withValues(alpha: 0.35),
+                              Colors.transparent,
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.35),
+                            ]
+                          : [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.95),
+                            ],
+                      stops: _photoMode
+                          ? const [0.0, 0.15, 0.85, 1.0]
+                          : const [0.25, 0.75],
+                    ),
                   ),
                 ),
               ),
