@@ -1,4 +1,7 @@
-This update fixes:
-• The app no longer gets stuck on the offline AI model after a temporary network issue — it retries the online model on your next photo
-• The "Improve voice" option now appears whenever a narration used the backup voice, including while viewing the photo
-Small reliability fixes, no new screens.
+New:
+• Rotate a sideways photo directly from its history entry
+• Skip ±10s while listening to a past visit's narration
+Fixes:
+• A rare AI response glitch could fail an analysis outright instead of falling back
+• Wide gallery photos no longer get cropped so tightly
+• Action buttons stay readable over bright photos

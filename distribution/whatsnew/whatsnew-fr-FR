@@ -1,4 +1,7 @@
-Cette mise à jour corrige :
-• L'application ne reste plus bloquée sur le modèle IA hors-ligne après un souci réseau temporaire — elle retente le modèle en ligne à la prochaine photo
-• L'option « Améliorer la voix » apparaît maintenant dès qu'un commentaire a été lu avec la voix de secours, y compris en mode photo
-Corrections de fiabilité mineures, pas de nouvel écran.
+Nouveautés :
+• Faites pivoter une photo de travers directement depuis son entrée d'historique
+• Avancez/reculez de 10s en écoutant le commentaire d'une visite passée
+Corrections :
+• Un rare souci de réponse IA pouvait faire échouer une analyse au lieu de basculer sur un autre modèle
+• Les photos larges depuis la galerie ne sont plus recadrées aussi sévèrement
+• Les boutons d'action restent lisibles sur des photos claires
