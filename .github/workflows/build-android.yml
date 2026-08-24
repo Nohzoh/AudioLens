@@ -212,7 +212,9 @@ jobs:
         run: |
           BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           # T83: only real-device ABIs â€” x86/x86_64 are emulator-only and
-          # sherpa_onnx has real native code per ABI to compile/link/package.
+          # the Flutter engine (plus ML Kit GenAI's native libs, used for
+          # on-device Gemini Nano) still has real native code per ABI to
+          # compile/link/package.
           # T84: --build-number gives every release a strictly increasing
           # versionCode (the run number always goes up), without needing to
           # hand-edit pubspec.yaml's committed "0.1.0+1" per upload â€” Play
