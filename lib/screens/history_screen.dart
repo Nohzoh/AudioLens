@@ -900,9 +900,16 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
                         const SizedBox(height: 16),
 
-                        // Action buttons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        // Action buttons. Wrap, not Row: on a narrow
+                        // screen or a longer locale (French labels run
+                        // noticeably longer than English), three pills
+                        // plus their spacing can exceed the available
+                        // width — Wrap drops the overflow onto a second
+                        // line instead of clipping/overflowing off-screen.
+                        Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
                             // Save to gallery
                             ScrimActionChip(
@@ -923,7 +930,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                 } catch (_) {}
                               },
                             ),
-                            const SizedBox(width: 8),
                             // Copy button
                             ScrimActionChip(
                               icon: Icons.copy,
@@ -939,7 +945,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                 );
                               },
                             ),
-                            const SizedBox(width: 8),
                             // Report content (T91)
                             ReportContentButton(
                               title: live.title,
