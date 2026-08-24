@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐⭐ - **Map picker: lock north-up orientation + add a place search field** (issue #123)
-  - **Verified**: 2026-08-24 (PR TBD, commit `544d18a`)
+  - **Verified**: 2026-08-24 (PR #194, commit `544d18a`)
   - **What was done**: `map_picker_screen.dart`'s `MapOptions` now sets `interactionOptions: InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate)`, locking out the two-finger rotate gesture that made it easy to accidentally tilt the map (disorienting with no compass to explain the tilt). Added a Nominatim-backed search field (new `LocationService.searchPlace`, mirroring the existing `_reverseGeocode` pattern) so a specific address/landmark can be jumped to directly instead of only manual pan/tap; selecting a result moves the map camera there — the actual pick still happens via tap, unchanged.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 267/267 (7 new tests).
 
