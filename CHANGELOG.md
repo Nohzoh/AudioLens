@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐⭐ - **Allow pinch-to-zoom on the photo in photo-only mode** (issue #191)
+  - **Verified**: 2026-08-24 (PR #193, commit `02c03eb`)
+  - **What was done**: added an opt-in `zoomable` flag to `BackgroundPhoto`, wrapping its already fully-sized content in an `InteractiveViewer` rather than threading zoom state through each of its layout branches. `HistoryDetailScreen`/`PlayerScreen` pass their existing `_photoMode` flag straight through, so zoom is only active with no script overlay competing for pan/scroll gestures.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 258/258 (3 new tests).
+
 - [x] 📈 ⭐ - **Photo rotation doesn't apply immediately — only after switching photo/text mode** (issue #190)
   - **Verified**: 2026-08-24 (PR #192, commit `18dc6b1`)
   - **What was done**: `_HistoryDetailScreenState.build()` reads the entry via `_liveEntry(context)`, which calls `context.read<HistoryService>()` — a one-time read, not a subscription, so `rotateEntry()`'s `notifyListeners()` never triggered a rebuild here on its own. The rotation was correctly persisted, but stayed invisible until an unrelated `setState()` (e.g. toggling photo mode) happened to force a rebuild that re-read the entry fresh — matching the reported symptom exactly. Added a local `setState(() {})` after the successful rotate call; found and fixed the identical gap on the favorite star while at it (the history list's own star was unaffected, since `HistoryScreen` already wraps its body in a `Consumer<HistoryService>`).

@@ -856,6 +856,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             BackgroundPhoto(
               file: File(live.imagePath),
               rotationQuarters: live.rotationQuarters,
+              zoomable: _photoMode,
             ),
 
           // Gradient overlay — T96: the previous 2-stop version barely
