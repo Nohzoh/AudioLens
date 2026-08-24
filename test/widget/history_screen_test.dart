@@ -10,6 +10,7 @@ import 'package:audiolens/screens/history_screen.dart';
 import 'package:audiolens/services/audio_guide_service.dart';
 import 'package:audiolens/services/history_service.dart';
 import 'package:audiolens/services/settings_service.dart';
+import 'package:audiolens/widgets/background_photo.dart';
 import '../support/service_fakes.dart';
 
 /// T105 — first widget-level coverage for HistoryScreen: the empty state
@@ -309,6 +310,67 @@ void main() {
 
       expect(find.byIcon(Icons.replay_10), findsNothing);
       expect(find.byIcon(Icons.forward_10), findsNothing);
+    });
+  });
+
+  // #190 — _liveEntry(context) reads HistoryService via context.read, so
+  // this screen never rebuilt on its own when rotateEntry()/toggleFavorite()
+  // notified a change; the new state only became visible once some
+  // unrelated setState (e.g. toggling photo mode) happened to force a
+  // rebuild that re-read it fresh.
+  group('rotate/favorite update the detail screen immediately (#190)', () {
+    Future<void> openDetail(WidgetTester tester) async {
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('La Joconde'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('tapping rotate updates BackgroundPhoto without leaving the screen',
+        (tester) async {
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+
+      await openDetail(tester);
+      expect(
+        tester.widget<BackgroundPhoto>(find.byType(BackgroundPhoto)).rotationQuarters,
+        0,
+      );
+
+      await tester.tap(find.byTooltip('Pivoter la photo'));
+      await tester.pump();
+
+      expect(
+        tester.widget<BackgroundPhoto>(find.byType(BackgroundPhoto)).rotationQuarters,
+        1,
+      );
+    });
+
+    testWidgets('tapping favorite updates the star icon without leaving the screen',
+        (tester) async {
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+
+      // Scoped by tooltip, not find.byIcon(Icons.star): the underlying
+      // HistoryScreen list stays mounted under the pushed detail route
+      // and has its own unrelated, always-present Icons.star (the
+      // "Favorites" filter chip's avatar), which byIcon would also match.
+      await openDetail(tester);
+      expect(find.byTooltip('Ajouter aux favoris'), findsOneWidget);
+      expect(find.byTooltip('Retirer des favoris'), findsNothing);
+
+      await tester.tap(find.byTooltip('Ajouter aux favoris'));
+      await tester.pump();
+
+      expect(find.byTooltip('Retirer des favoris'), findsOneWidget);
+      expect(find.byTooltip('Ajouter aux favoris'), findsNothing);
     });
   });
 }
