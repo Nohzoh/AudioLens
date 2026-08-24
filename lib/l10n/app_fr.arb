@@ -6,6 +6,7 @@
   "mapPickerSkip": "Passer",
   "mapPickerHint": "Touchez la carte pour indiquer le lieu",
   "mapPickerConfirm": "Confirmer cet emplacement",
+  "mapPickerSearchHint": "Rechercher un lieu",
 
   "onboardingApiKeyRequired": "Entrez votre clé API",
   "secureStorageUnavailable": "Impossible d'enregistrer votre clé en sécurité sur cet appareil. Réessayez, ou redémarrez l'application.",

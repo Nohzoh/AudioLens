@@ -43,6 +43,19 @@ class LocationResult {
   const LocationResult({this.info, required this.status});
 }
 
+/// A single forward-geocoding match, as returned by [LocationService.searchPlace]
+/// (#123 — jumping the map picker to a searched place by name).
+class GeocodePrediction {
+  final String displayName;
+  final double lat;
+  final double lon;
+  const GeocodePrediction({
+    required this.displayName,
+    required this.lat,
+    required this.lon,
+  });
+}
+
 class LocationService {
   static Future<LocationPermissionStatus> checkPermission() async {
     try {
@@ -143,6 +156,48 @@ class LocationService {
       return (lat: lat, lon: lon);
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Forward-geocodes [query] (a place name/address) via Nominatim, for the
+  /// map picker's search field (#123). Returns at most 5 matches, closest
+  /// first is not guaranteed — Nominatim's own relevance ranking is used
+  /// as-is. Empty on a blank query, no results, or any failure.
+  /// [client] allows injecting a mock HTTP client in tests.
+  static Future<List<GeocodePrediction>> searchPlace(
+    String query, {
+    http.Client? client,
+  }) async {
+    if (query.trim().isEmpty) return [];
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?q=${Uri.encodeQueryComponent(query)}&format=json&limit=5&accept-language=fr',
+      );
+      final c = client ?? http.Client();
+      final response = await c.get(
+        uri,
+        headers: {'User-Agent': NetworkConfig.userAgent},
+      ).timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return [];
+
+      final data = jsonDecode(response.body) as List;
+      return data
+          .map((e) {
+            final map = e as Map<String, dynamic>;
+            final lat = double.tryParse(map['lat'] as String? ?? '');
+            final lon = double.tryParse(map['lon'] as String? ?? '');
+            if (lat == null || lon == null) return null;
+            return GeocodePrediction(
+              displayName: map['display_name'] as String? ?? '',
+              lat: lat,
+              lon: lon,
+            );
+          })
+          .whereType<GeocodePrediction>()
+          .toList();
+    } catch (_) {
+      return [];
     }
   }
 
