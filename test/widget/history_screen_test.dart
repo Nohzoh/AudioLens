@@ -21,6 +21,11 @@ import '../support/service_fakes.dart';
 /// treatment renders correctly instead.
 const _pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 const _audioPlayerChannel = MethodChannel('audio_guide/audio_player');
+// FakeNativeTts only overrides speak() — stop() (called from
+// HistoryDetailScreen.dispose(), #148) falls through to the real
+// NativeTtsService/flutter_tts implementation, which needs this mocked
+// or it throws MissingPluginException during the widget's teardown.
+const _flutterTtsChannel = MethodChannel('flutter_tts');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +53,8 @@ void main() {
       if (call.method == 'getApplicationDocumentsDirectory') return tmpDir.path;
       return null;
     });
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_flutterTtsChannel, (call) async => 1);
     imagePath = join(tmpDir.path, 'photo.jpg');
     // A real (if tiny) decodable JPEG — Image.file() in HistoryDetailScreen
     // actually decodes this, unlike the plain SOI/EOI-marker placeholder
@@ -65,6 +72,8 @@ void main() {
   tearDown(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_pathProviderChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_flutterTtsChannel, null);
     await tmpDir.delete(recursive: true);
   });
 

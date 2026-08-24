@@ -653,15 +653,70 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // Captured now, not read from context in dispose(): during a bulk
+    // teardown (the whole tree unmounting at once, e.g. app shutdown or
+    // a test's finalization) an ancestor Provider can already be
+    // deactivated by the time a descendant's dispose() runs, and
+    // context.read() at that point throws ("Looking up a deactivated
+    // widget's ancestor is unsafe").
+    _guide = context.read<AudioGuideService>();
     if (widget.autoPlay) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _toggleAudio());
     }
+  }
+
+  late final AudioGuideService _guide;
+
+  /// Set only while this screen owns [AudioGuideService.nativeTtsService]'s
+  /// `onComplete` (see [_withTrackedNativeCompletion]) — the callback it's about to
+  /// restore once the current speech either finishes or this screen goes
+  /// away, whichever comes first.
+  void Function()? _restoreNativeOnComplete;
+
+  /// Speaks [script] via native TTS, tracking `_isPlaying` without
+  /// permanently hijacking the shared [AudioGuideService.nativeTtsService]
+  /// singleton's `onComplete`.
+  ///
+  /// A plain `guide.nativeTtsService.onComplete = () => setState(...)`
+  /// (what this used to do) leaks two ways: if this screen closes before
+  /// speech finishes, the closure still fires later and calls `setState`
+  /// on a disposed State; and since it's never restored, it permanently
+  /// replaces [AudioGuideService]'s own default completion handler (the
+  /// one set in `init()`, which resets `_state`/`canSkip`) — starving
+  /// every later screen's read of that state until the app restarts.
+  ///
+  /// [action] is whatever triggers the speech this screen wants to track
+  /// — a direct `nativeTtsService.speak()` call, or the orchestrated
+  /// `generateAudioForScript()` pipeline (which copies whatever's set
+  /// here onto Gemini TTS too, see [TtsOrchestrator.speak]) — the
+  /// tracking closure itself self-restores the instant it fires, so both
+  /// call sites can share this without needing to know which one wins.
+  Future<T> _withTrackedNativeCompletion<T>(
+    AudioGuideService guide,
+    Future<T> Function() action,
+  ) async {
+    _restoreNativeOnComplete = guide.nativeTtsService.onComplete;
+    guide.nativeTtsService.onComplete = () {
+      guide.nativeTtsService.onComplete = _restoreNativeOnComplete;
+      _restoreNativeOnComplete = null;
+      if (!mounted) return;
+      setState(() => _isPlaying = false);
+    };
+    return action();
   }
 
   @override
   void dispose() {
     // Stop playback when leaving screen
     channel.invokeMethod('stop');
+    _guide.nativeTtsService.stop();
+    // If speech is still in flight, our tracking closure above is still
+    // installed — put the previous handler back so a completion firing
+    // after this screen is gone doesn't touch a disposed State or leave
+    // AudioGuideService's own state stuck.
+    if (_restoreNativeOnComplete != null) {
+      _guide.nativeTtsService.onComplete = _restoreNativeOnComplete;
+    }
     super.dispose();
   }
 
@@ -690,8 +745,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       // "Améliorer la voix" button below is the explicit way to retry
       // Gemini.
       final guide = context.read<AudioGuideService>();
-      guide.nativeTtsService.onComplete = () => setState(() => _isPlaying = false);
-      await guide.nativeTtsService.speak(live.script);
+      await _withTrackedNativeCompletion(guide, () => guide.nativeTtsService.speak(live.script));
       return;
     }
 
@@ -700,11 +754,13 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     // and persist the result so it's cached from now on.
     final guide = context.read<AudioGuideService>();
     final history = context.read<HistoryService>();
-    guide.nativeTtsService.onComplete = () => setState(() => _isPlaying = false);
-    final result = await guide.generateAudioForScript(
-      title: live.title,
-      script: live.script,
-      locationName: live.locationName,
+    final result = await _withTrackedNativeCompletion(
+      guide,
+      () => guide.generateAudioForScript(
+        title: live.title,
+        script: live.script,
+        locationName: live.locationName,
+      ),
     );
 
     if (result == null) {
@@ -774,11 +830,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final live = _liveEntry(context);
-    // watch, not read: canSkip flips as the service's own playback state
-    // changes (e.g. synthesis finishing for a script-only entry), and the
-    // skip buttons need to appear when it does.
-    final guide = context.watch<AudioGuideService>();
-    final showSkip = _canSkip(live, guide);
     final dateStr = DateFormat('EEEE d MMMM yyyy · HH:mm',
             Localizations.localeOf(context).toString())
         .format(live.createdAt);
@@ -1123,47 +1174,60 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 // player_screen.dart's own playback controls.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                  child: Row(
-                    children: [
-                      // Skip only when the current playback is seekable —
-                      // see _canSkip.
-                      if (showSkip) ...[
-                        IconButton(
-                          icon: const Icon(Icons.replay_10),
-                          iconSize: 32,
-                          onPressed: () => _skip(-10000),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: _toggleAudio,
-                          icon: Icon(_isPlaying
-                              ? Icons.stop
-                              : ((live.hasAudio || live.hasLowQualityTts)
-                                  ? Icons.play_arrow
-                                  : Icons.auto_awesome)),
-                          label: Text(_isPlaying
-                              ? l10n.historyStop
-                              : ((live.hasAudio || live.hasLowQualityTts)
-                                  ? l10n.historyListen
-                                  : l10n.historyGenerateAudio)),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(0, 52),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
+                  // Scoped to just this row: canSkip flips as the
+                  // service's own playback state changes (e.g. synthesis
+                  // finishing for a script-only entry), and the skip
+                  // buttons need to appear when it does — but nothing
+                  // else in this screen (photo, gradient, script text)
+                  // needs to rebuild on every AudioGuideService change.
+                  child: Consumer<AudioGuideService>(
+                    builder: (context, guide, _) {
+                      final showSkip = _canSkip(live, guide);
+                      return Row(
+                        children: [
+                          // Skip only when the current playback is
+                          // seekable — see _canSkip.
+                          if (showSkip) ...[
+                            IconButton(
+                              icon: const Icon(Icons.replay_10),
+                              iconSize: 32,
+                              tooltip: l10n.historySkipBack10,
+                              onPressed: () => _skip(-10000),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _toggleAudio,
+                              icon: Icon(_isPlaying
+                                  ? Icons.stop
+                                  : ((live.hasAudio || live.hasLowQualityTts)
+                                      ? Icons.play_arrow
+                                      : Icons.auto_awesome)),
+                              label: Text(_isPlaying
+                                  ? l10n.historyStop
+                                  : ((live.hasAudio || live.hasLowQualityTts)
+                                      ? l10n.historyListen
+                                      : l10n.historyGenerateAudio)),
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(0, 52),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      if (showSkip) ...[
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.forward_10),
-                          iconSize: 32,
-                          onPressed: () => _skip(10000),
-                        ),
-                      ],
-                    ],
+                          if (showSkip) ...[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.forward_10),
+                              iconSize: 32,
+                              tooltip: l10n.historySkipForward10,
+                              onPressed: () => _skip(10000),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
