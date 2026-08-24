@@ -928,9 +928,18 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   tooltip: live.isFavorite
                                       ? l10n.historyRemoveFromFavorites
                                       : l10n.historyAddToFavorites,
-                                  onPressed: () => context
-                                      .read<HistoryService>()
-                                      .toggleFavorite(live.id!),
+                                  // #190: same root cause as the rotate
+                                  // button below — _liveEntry(context)
+                                  // reads HistoryService via
+                                  // context.read, so nothing here
+                                  // rebuilds this screen just because
+                                  // toggleFavorite() notified a change.
+                                  onPressed: () async {
+                                    await context
+                                        .read<HistoryService>()
+                                        .toggleFavorite(live.id!);
+                                    if (mounted) setState(() {});
+                                  },
                                 ),
                                 const SizedBox(width: 4),
                                 ScrimIconButton(
@@ -962,6 +971,17 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                       await context
                                           .read<HistoryService>()
                                           .rotateEntry(live.id!);
+                                      // #190: _liveEntry(context) reads
+                                      // HistoryService via context.read,
+                                      // not watch — this screen never
+                                      // rebuilds on its own just because
+                                      // HistoryService notified a change,
+                                      // so without this the new rotation
+                                      // stayed invisible until some
+                                      // unrelated setState (e.g. toggling
+                                      // photo mode) happened to force a
+                                      // rebuild that re-read it fresh.
+                                      if (mounted) setState(() {});
                                     } on HistoryStorageException catch (e) {
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(
