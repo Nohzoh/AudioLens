@@ -45,12 +45,18 @@ class AboutAnalysisScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          // Image thumbnail
-          if (File(entry.imagePath).existsSync())
+          // Image thumbnail — live.rotationQuarters, not entry's (this
+          // screen already reads live for everything else below; entry
+          // is only the value passed at navigation time and goes stale
+          // the moment the photo is rotated from the detail screen).
+          if (File(live.imagePath).existsSync())
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.file(File(entry.imagePath),
-                  height: 180, width: double.infinity, fit: BoxFit.cover),
+              child: RotatedBox(
+                quarterTurns: live.rotationQuarters,
+                child: Image.file(File(live.imagePath),
+                    height: 180, width: double.infinity, fit: BoxFit.cover),
+              ),
             ),
           const SizedBox(height: 20),
 

@@ -11,6 +11,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
+import '../utils/rotated_image_export.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
@@ -440,9 +441,18 @@ class _HistoryCard extends StatelessWidget {
                         width: 72,
                         height: 72,
                         child: File(entry.imagePath).existsSync()
-                            ? Image.file(
-                                File(entry.imagePath),
-                                fit: BoxFit.cover,
+                            ? RotatedBox(
+                                // #152/#183: this thumbnail is a fixed
+                                // 72x72 square, so the width/height swap
+                                // RotatedBox does for an odd quarter turn
+                                // is a no-op here — unlike the full-bleed
+                                // BackgroundPhoto, which accounts for it
+                                // explicitly.
+                                quarterTurns: entry.rotationQuarters,
+                                child: Image.file(
+                                  File(entry.imagePath),
+                                  fit: BoxFit.cover,
+                                ),
                               )
                             : Container(
                                 color: theme.colorScheme.surfaceContainerHighest,
@@ -843,7 +853,10 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         children: [
           // Full image background
           if (File(live.imagePath).existsSync())
-            BackgroundPhoto(file: File(live.imagePath)),
+            BackgroundPhoto(
+              file: File(live.imagePath),
+              rotationQuarters: live.rotationQuarters,
+            ),
 
           // Gradient overlay — T96: the previous 2-stop version barely
           // darkened the very top of the screen, leaving the top bar icons
@@ -892,50 +905,91 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                         color: Colors.white,
                         onPressed: () => Navigator.pop(context),
                       ),
-                      const Spacer(),
-                      ScrimIconButton(
-                        icon: live.isFavorite ? Icons.star : Icons.star_border,
-                        color: live.isFavorite ? Colors.amberAccent : Colors.white70,
-                        tooltip: live.isFavorite
-                            ? l10n.historyRemoveFromFavorites
-                            : l10n.historyAddToFavorites,
-                        onPressed: () =>
-                            context.read<HistoryService>().toggleFavorite(live.id!),
-                      ),
-                      const SizedBox(width: 4),
-                      ScrimIconButton(
-                        icon: Icons.playlist_add,
-                        color: Colors.white70,
-                        tooltip: l10n.historyAddToCollection,
-                        onPressed: () => _openCollectionsSheet(context, live),
-                      ),
-                      const SizedBox(width: 4),
-                      ScrimIconButton(
-                        icon: _photoMode
-                            ? Icons.article_outlined
-                            : Icons.image_outlined,
-                        color: Colors.white70,
-                        tooltip: _photoMode
-                            ? l10n.playerShowText
-                            : l10n.playerPhotoMode,
-                        onPressed: () =>
-                            setState(() => _photoMode = !_photoMode),
-                      ),
-                      const SizedBox(width: 4),
-                      ScrimIconButton(
-                        icon: Icons.info_outline,
-                        color: Colors.white70,
-                        onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    AboutAnalysisScreen(entry: widget.entry))),
-                      ),
-                      const SizedBox(width: 4),
-                      ScrimIconButton(
-                        icon: Icons.delete_outline,
-                        color: Colors.redAccent,
-                        onPressed: () => _deleteEntry(context),
+                      // Six trailing icons (rotate is the newest, #152/
+                      // #183) no longer reliably fit a plain Row at
+                      // narrow widths — scrollable rather than Wrap here,
+                      // since a toolbar wrapping to a second line reads
+                      // oddly compared to the Save/Copy/Report row below.
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ScrimIconButton(
+                                  icon: live.isFavorite
+                                      ? Icons.star
+                                      : Icons.star_border,
+                                  color: live.isFavorite
+                                      ? Colors.amberAccent
+                                      : Colors.white70,
+                                  tooltip: live.isFavorite
+                                      ? l10n.historyRemoveFromFavorites
+                                      : l10n.historyAddToFavorites,
+                                  onPressed: () => context
+                                      .read<HistoryService>()
+                                      .toggleFavorite(live.id!),
+                                ),
+                                const SizedBox(width: 4),
+                                ScrimIconButton(
+                                  icon: Icons.playlist_add,
+                                  color: Colors.white70,
+                                  tooltip: l10n.historyAddToCollection,
+                                  onPressed: () =>
+                                      _openCollectionsSheet(context, live),
+                                ),
+                                const SizedBox(width: 4),
+                                ScrimIconButton(
+                                  icon: _photoMode
+                                      ? Icons.article_outlined
+                                      : Icons.image_outlined,
+                                  color: Colors.white70,
+                                  tooltip: _photoMode
+                                      ? l10n.playerShowText
+                                      : l10n.playerPhotoMode,
+                                  onPressed: () =>
+                                      setState(() => _photoMode = !_photoMode),
+                                ),
+                                const SizedBox(width: 4),
+                                ScrimIconButton(
+                                  icon: Icons.rotate_90_degrees_cw_outlined,
+                                  color: Colors.white70,
+                                  tooltip: l10n.historyRotatePhoto,
+                                  onPressed: () async {
+                                    try {
+                                      await context
+                                          .read<HistoryService>()
+                                          .rotateEntry(live.id!);
+                                    } on HistoryStorageException catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(e.message)));
+                                      }
+                                    }
+                                  },
+                                ),
+                                const SizedBox(width: 4),
+                                ScrimIconButton(
+                                  icon: Icons.info_outline,
+                                  color: Colors.white70,
+                                  onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => AboutAnalysisScreen(
+                                              entry: widget.entry))),
+                                ),
+                                const SizedBox(width: 4),
+                                ScrimIconButton(
+                                  icon: Icons.delete_outline,
+                                  color: Colors.redAccent,
+                                  onPressed: () => _deleteEntry(context),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1005,7 +1059,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                               label: l10n.historySave,
                               onTap: () async {
                                 try {
-                                  await Gal.putImage(live.imagePath);
+                                  final galleryPath = await imagePathForGallerySave(
+                                      live.imagePath, live.rotationQuarters);
+                                  await Gal.putImage(galleryPath);
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(

@@ -65,6 +65,15 @@ class HistoryEntry {
   final bool ttsFallback; // Gemini TTS failed → fell back to the native engine
   final bool isFavorite; // T51
 
+  /// User-applied display rotation, in quarter turns clockwise (0-3).
+  ///
+  /// Stored rather than baked into the file: the image on disk is also
+  /// what EXIF GPS extraction reads, so rewriting its pixels to rotate it
+  /// would mean re-preserving that metadata on every rotation and risking
+  /// the user's original photo on a failure. Applied at display time
+  /// instead.
+  final int rotationQuarters;
+
   const HistoryEntry({
     this.id,
     required this.imagePath,
@@ -88,6 +97,7 @@ class HistoryEntry {
     this.aiFallback = false,
     this.ttsFallback = false,
     this.isFavorite = false,
+    this.rotationQuarters = 0,
   });
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
@@ -131,6 +141,7 @@ class HistoryEntry {
     'aiFallback': aiFallback ? 1 : 0,
     'ttsFallback': ttsFallback ? 1 : 0,
     'isFavorite': isFavorite ? 1 : 0,
+    'rotationQuarters': rotationQuarters,
   };
 
   factory HistoryEntry.fromMap(Map<String, dynamic> map) => HistoryEntry(
@@ -155,6 +166,7 @@ class HistoryEntry {
     aiFallback: (map['aiFallback'] as int? ?? 0) == 1,
     ttsFallback: (map['ttsFallback'] as int? ?? 0) == 1,
     isFavorite: (map['isFavorite'] as int? ?? 0) == 1,
+    rotationQuarters: map['rotationQuarters'] as int? ?? 0,
     status: AnalysisStatus.values.firstWhere(
       (s) => s.name == (map['status'] as String? ?? 'complete'),
       orElse: () => AnalysisStatus.complete,
@@ -181,6 +193,7 @@ class HistoryEntry {
     bool? aiFallback,
     bool? ttsFallback,
     bool? isFavorite,
+    int? rotationQuarters,
   }) => HistoryEntry(
     id: id,
     imagePath: imagePath,
@@ -204,6 +217,7 @@ class HistoryEntry {
     aiFallback: aiFallback ?? this.aiFallback,
     ttsFallback: ttsFallback ?? this.ttsFallback,
     isFavorite: isFavorite ?? this.isFavorite,
+    rotationQuarters: rotationQuarters ?? this.rotationQuarters,
   );
 }
 
@@ -247,7 +261,7 @@ class HistoryService extends ChangeNotifier {
     final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE history(
@@ -272,6 +286,7 @@ class HistoryService extends ChangeNotifier {
             aiFallback INTEGER NOT NULL DEFAULT 0,
             ttsFallback INTEGER NOT NULL DEFAULT 0,
             isFavorite INTEGER NOT NULL DEFAULT 0,
+            rotationQuarters INTEGER NOT NULL DEFAULT 0,
             createdAt TEXT NOT NULL
           )
         ''');
@@ -312,6 +327,9 @@ class HistoryService extends ChangeNotifier {
           await db.execute('ALTER TABLE history ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0');
           await db.execute(_createCollectionsTableSql);
           await db.execute(_createHistoryCollectionsTableSql);
+        }
+        if (oldVersion < 8) {
+          await db.execute('ALTER TABLE history ADD COLUMN rotationQuarters INTEGER NOT NULL DEFAULT 0');
         }
       },
     );
@@ -493,6 +511,7 @@ class HistoryService extends ChangeNotifier {
         aiFallback: aiFallback,
         ttsFallback: ttsFallback,
         isFavorite: _entries[idx].isFavorite,
+        rotationQuarters: _entries[idx].rotationQuarters,
       );
       notifyListeners();
     }
@@ -673,6 +692,42 @@ class HistoryService extends ChangeNotifier {
     );
     _entries[idx] = _entries[idx].copyWith(isFavorite: newValue);
     notifyListeners();
+  }
+
+  /// Rotates an entry's photo by one quarter turn clockwise (#152).
+  ///
+  /// Persisted so the correction survives leaving the screen, without
+  /// touching the file on disk — see [HistoryEntry.rotationQuarters].
+  ///
+  /// Updates in-memory state and notifies listeners *before* the DB
+  /// write, not after: the rotate control's natural use is several rapid
+  /// taps to spin the photo through more than one quarter turn, and
+  /// reading `_entries[idx].rotationQuarters` only after a previous
+  /// call's `await` resolved meant two taps close together could both
+  /// read the same pre-update value and collapse into a single rotation.
+  /// Rolled back if the write actually fails, rather than leaving the UI
+  /// showing a rotation that was silently never saved.
+  Future<void> rotateEntry(int entryId) async {
+    final idx = _entries.indexWhere((e) => e.id == entryId);
+    if (idx == -1) return;
+    final previous = _entries[idx];
+    final newValue = (previous.rotationQuarters + 1) % 4;
+    _entries[idx] = previous.copyWith(rotationQuarters: newValue);
+    notifyListeners();
+    try {
+      await _db!.update(
+        'history',
+        {'rotationQuarters': newValue},
+        where: 'id = ?',
+        whereArgs: [entryId],
+      );
+    } catch (_) {
+      final stillIdx = _entries.indexWhere((e) => e.id == entryId);
+      if (stillIdx != -1) _entries[stillIdx] = previous;
+      notifyListeners();
+      throw const HistoryStorageException(
+          "Impossible d'enregistrer la rotation de la photo.");
+    }
   }
 
   /// T51: creates a new named collection (e.g. "Rome trip").

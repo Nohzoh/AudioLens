@@ -55,6 +55,14 @@ void main() {
     });
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_flutterTtsChannel, (call) async => 1);
+    // Default no-op handler — HistoryDetailScreen.dispose() always calls
+    // 'stop' on this channel regardless of whether anything was playing,
+    // so any test that opens the detail screen needs it mocked or its
+    // teardown throws MissingPluginException (which then bleeds into
+    // whichever test happens to run next). Tests that actually exercise
+    // playback override this locally with their own handler.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_audioPlayerChannel, (call) async => null);
     imagePath = join(tmpDir.path, 'photo.jpg');
     // A real (if tiny) decodable JPEG — Image.file() in HistoryDetailScreen
     // actually decodes this, unlike the plain SOI/EOI-marker placeholder
@@ -74,6 +82,8 @@ void main() {
         .setMockMethodCallHandler(_pathProviderChannel, null);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_flutterTtsChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_audioPlayerChannel, null);
     await tmpDir.delete(recursive: true);
   });
 

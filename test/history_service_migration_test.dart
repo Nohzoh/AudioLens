@@ -85,7 +85,7 @@ void main() {
   });
 
   for (final oldVersion in [1, 2, 3, 4, 5, 6]) {
-    test('migrates cleanly from schema v$oldVersion to v7, keeping data (T09)', () async {
+    test('migrates cleanly from schema v$oldVersion to v8, keeping data (T09)', () async {
       final path = await _createOldSchemaDb(tempDir, oldVersion);
 
       final service = HistoryService();
@@ -103,6 +103,7 @@ void main() {
       expect(entry.ttsFallback, isFalse);
       expect(entry.wikipediaUsed, isFalse);
       expect(entry.isFavorite, isFalse); // T51
+      expect(entry.rotationQuarters, 0); // #152/#183
       expect(service.collections, isEmpty); // T51
 
       final version = await databaseFactoryFfi.openDatabase(path).then((db) async {
@@ -110,11 +111,11 @@ void main() {
         await db.close();
         return v;
       });
-      expect(version, 7);
+      expect(version, 8);
     });
   }
 
-  test('a fresh install (no prior db) creates schema v7 directly', () async {
+  test('a fresh install (no prior db) creates schema v8 directly', () async {
     final path = join(tempDir.path, 'fresh.db');
     final service = HistoryService();
     await service.init(dbPath: path);
@@ -126,7 +127,7 @@ void main() {
       await db.close();
       return v;
     });
-    expect(version, 7);
+    expect(version, 8);
   });
 
   test('onUpgrade runs inside a single transaction: a mid-migration failure '
