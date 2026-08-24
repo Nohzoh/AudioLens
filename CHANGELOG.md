@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ⚡ ⭐⭐⭐ - **Gemini analysis can fail outright when thinking tokens exhaust maxOutputTokens (no fallback triggered)** (issue #158)
+  - **Verified**: 2026-08-24 (PR #176, commit `d0b5a3b`)
+  - **What was done**: `GeminiApiService.analyzeImage`'s fallback loop now validates a 200 response's body (via `_parseResponseBody`) inside the loop, so an empty or JSON-debris response (most commonly thinking tokens consuming the whole `maxOutputTokens` budget, discovered via the new Gemini/Nano benchmark) falls through to the next fallback model instead of terminating with a guaranteed failure. Code review before merge found `_parseResponseBody`'s unchecked `as Map<String, dynamic>` casts throw `TypeError` (not the `FormatException` the method promises) for a syntactically-valid-but-wrong-shaped body — escaping the loop's `on FormatException` handler and getting mislabelled as a network failure instead of triggering the same fallback. Replaced every unchecked cast with explicit `is` checks. Also replaced a mutable `_parsedResult` instance field (used only to carry a value out of the loop) with a local variable, removing a latent same-instance-concurrency hazard.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 220/220 (2 new tests covering the newly-caught response shapes).
+
 - [x] **Recurring Gemini API vs Gemini Nano benchmark**
   - **Verified**: 2026-08-22
   - **Source**: user — wanted a way to track how the cloud model and the on-device model compare on AudioLens's actual audio-guide generation task (photo + GPS + location context), reusable every quarter, and reusable for ad hoc prompt experiments too.
