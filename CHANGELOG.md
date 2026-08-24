@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐⭐ - **Apply contrasting scrim background to Save/Copy/Report action row (same issue as #146)** (issue #149)
+  - **Verified**: 2026-08-24 (PR #184, commit `3f12da8`)
+  - **What was done**: same problem as #146 but on the text actions rather than icon buttons — 14px glyphs and 12px grey text sitting directly on a user-supplied photo, illegible over a bright sky or pale facade. New `widgets/scrim_action_chip.dart`, used for all three actions on both screens (including `ReportContentButton`, whose own doc comment already said it deliberately mimics this row's style). Code review before merge found the row itself (a plain `Row`, no wrap/scroll fallback) could overflow on a narrow screen once this PR's own larger chip padding and new inter-chip spacers were added — an empirical widget test measured ~124-164px of overflow on common phone widths with the (longer) French labels. Replaced `Row` with `Wrap` in both screens. Also found the error banner's own "Copy" control still hand-rolled its own `InkWell` instead of the new shared chip — migrated it too.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 227/227 (1 new regression test: no `RenderFlex` overflow opening a history entry's detail screen at 320×640).
+
 - [x] 📈 ⭐ - **Inconsistent action button styling between analysis screen and history screen** (issue #146)
   - **Verified**: 2026-08-24 (PR #178, commit `b625598`)
   - **What was done**: extracted `HistoryDetailScreen`'s private `_ScrimIconButton` into a shared `lib/widgets/scrim_icon_button.dart` and reused it in `PlayerScreen`'s top bar, so both screens' back/favorite/collection/photo-mode/cancel buttons render with the same contrasting circular scrim over photo content instead of `PlayerScreen`'s bare icons. Code review before merge found the extraction left a dangling doc comment for the deleted class at the end of `history_screen.dart`, and that `PlayerScreen`'s top bar had fixed spacers around the Ko-fi button regardless of whether it actually renders (hidden via settings), leaving dead space when hidden and no cancel/spinner adjacent. Fixed by removing the stale comment and giving each trailing icon its own leading gap instead of shared spacers between them.
