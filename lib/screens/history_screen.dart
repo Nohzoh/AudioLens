@@ -14,6 +14,7 @@ import '../services/settings_service.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
+import '../widgets/scrim_icon_button.dart';
 import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
 
@@ -885,13 +886,13 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
                     children: [
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.arrow_back,
                         color: Colors.white,
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Spacer(),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: live.isFavorite ? Icons.star : Icons.star_border,
                         color: live.isFavorite ? Colors.amberAccent : Colors.white70,
                         tooltip: live.isFavorite
@@ -901,14 +902,14 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             context.read<HistoryService>().toggleFavorite(live.id!),
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.playlist_add,
                         color: Colors.white70,
                         tooltip: l10n.historyAddToCollection,
                         onPressed: () => _openCollectionsSheet(context, live),
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: _photoMode
                             ? Icons.article_outlined
                             : Icons.image_outlined,
@@ -920,7 +921,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             setState(() => _photoMode = !_photoMode),
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.info_outline,
                         color: Colors.white70,
                         onPressed: () => Navigator.push(
@@ -930,7 +931,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                     AboutAnalysisScreen(entry: widget.entry))),
                       ),
                       const SizedBox(width: 4),
-                      _ScrimIconButton(
+                      ScrimIconButton(
                         icon: Icons.delete_outline,
                         color: Colors.redAccent,
                         onPressed: () => _deleteEntry(context),
@@ -1235,38 +1236,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A top-bar icon button with its own subtle circular scrim (T96) — keeps
-/// it legible over any photo content, independent of the screen's own
-/// background gradient.
-class _ScrimIconButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String? tooltip;
-  final VoidCallback onPressed;
-
-  const _ScrimIconButton({
-    required this.icon,
-    required this.color,
-    required this.onPressed,
-    this.tooltip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.black.withValues(alpha: 0.35),
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: color),
-        tooltip: tooltip,
-        onPressed: onPressed,
       ),
     );
   }
