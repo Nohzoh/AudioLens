@@ -5,6 +5,7 @@ import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 import '../utils/error_sanitizer.dart';
 import '../utils/image_downscale.dart';
+import '../utils/script_cleanup.dart';
 import '../utils/script_validation.dart';
 import 'package:dio/dio.dart' as dio;
 import 'ai_service.dart';
@@ -285,7 +286,7 @@ class GeminiApiService implements AIService {
         throw const FormatException('empty title or script');
       }
       title = parsedTitle;
-      script = _cleanMarkdown(parsedScript);
+      script = cleanMarkdown(parsedScript);
     } catch (_) {
       // Full JSON parsing failed — often because the model left an
       // unescaped quote inside a field (not a brace-matching problem, so
@@ -313,7 +314,7 @@ class GeminiApiService implements AIService {
           regexScript != null &&
           regexScript.trim().isNotEmpty) {
         title = regexTitle.trim();
-        script = _cleanMarkdown(regexScript.trim());
+        script = cleanMarkdown(regexScript.trim());
       } else if (looksLikeJson) {
         // Malformed beyond what regex can recover, on either field —
         // showing the raw JSON debris as the title or (worse) reading it
@@ -328,7 +329,7 @@ class GeminiApiService implements AIService {
         // Genuinely plain-text response (model ignored the JSON
         // instruction entirely) — legitimate, readable content, just not
         // in the expected shape.
-        final cleaned = _cleanMarkdown(text);
+        final cleaned = cleanMarkdown(text);
         final first = cleaned.split(RegExp(r'[.!?]')).first.trim();
         title = first.length > 60 ? '${first.substring(0, 60)}...' : first;
         script = cleaned;
@@ -483,35 +484,6 @@ class GeminiApiService implements AIService {
     } catch (_) {
       return null;
     }
-  }
-
-  String _cleanMarkdown(String text) {
-    var result = text
-        .replaceAll(RegExp(r'\*{1,3}'), '')
-        .replaceAll(RegExp(r'^\s*[-•]\s+', multiLine: true), '')
-        .replaceAll(RegExp(r'\s*\(\d+\)'), '')
-        .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
-        .trim();
-    // Remove English thinking/meta lines
-    final lines = result.split('\n');
-    final filtered = lines.where((line) {
-      final lower = line.trim().toLowerCase();
-      if (lower.isEmpty) return true;
-      // Skip lines that are clearly internal reasoning in English
-      final thinkingPatterns = [
-        'rough estimate', 'word count', 'let me ', "let's",
-        'okay,', 'alright,', 'i need to', 'i should', 'i will',
-        'currently it is', 'this is around', 'paragraph ',
-        'to ensure', 'to make sure', 'expanding', 'slightly',
-        'within the', 'word range', 'falls well',
-      ];
-      for (final p in thinkingPatterns) {
-        if (lower.contains(p)) return false;
-      }
-      return true;
-    }).toList();
-    return filtered.join('\n').trim();
   }
 }
 

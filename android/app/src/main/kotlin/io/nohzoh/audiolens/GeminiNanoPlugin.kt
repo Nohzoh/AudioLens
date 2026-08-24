@@ -13,8 +13,10 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
@@ -26,6 +28,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     companion object {
         const val CHANNEL = "audio_guide/gemini_nano"
 
+        // #173: no equivalent existed before — a hung AICore call had
+        // nothing bounding it. Per-segment (not one timeout for all 3)
+        // so a slow segment doesn't eat into the others' budget, and so
+        // the error can name which segment actually hung.
+        private const val SEGMENT_TIMEOUT_MS = 15_000L
+
         // Tone descriptor per style (T75/T48) — default (null/unrecognized)
         // is the original wording, so the default experience is unchanged.
         private fun styleTone(style: String?): String = when (style) {
@@ -36,7 +44,16 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
 
         fun buildSeg1Prompt(locationContext: String?, style: String? = null): String {
-            val loc = if (!locationContext.isNullOrBlank()) " (prise a : $locationContext)" else ""
+            // #171: locationContext already arrives pre-truncated for
+            // Nano's budget (see GeminiNanoService._maxLocationContextChars
+            // on the Dart side) — this only adds the same grounding-
+            // priority instruction the cloud prompt has, mirrored in
+            // Nano's shorter phrasing style, so a specific place named in
+            // the context isn't left un-leaned-on the way a bare
+            // parenthetical mention risks.
+            val loc = if (!locationContext.isNullOrBlank()) {
+                " (prise a : $locationContext — utilise ce lieu en priorite s'il est precis, plutot que de rester generique)"
+            } else ""
             val sentences = if (style == "concise") "1-2 phrases maximum" else "2-3 phrases maximum"
             return "Tu es un guide audio culturel. En te basant sur cette image$loc, decris en francais ce que tu vois avec ${styleTone(style)}. Commence directement, sans introduction. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences."
         }
@@ -143,7 +160,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             ImagePart(bitmap),
                             TextPart(buildSeg1Prompt(locationContext, style))
                         ) { maxOutputTokens = 256 }
-                        val seg1 = model.generateContent(req1)
+                        val seg1 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req1) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         bitmap.recycle()
@@ -152,14 +169,14 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val req2 = generateContentRequest(
                             TextPart(buildSeg2Prompt(seg1, style))
                         ) { maxOutputTokens = 256 }
-                        val seg2 = model.generateContent(req2)
+                        val seg2 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         // Segment 3: Conclusion
                         val req3 = generateContentRequest(
                             TextPart(buildSeg3Prompt("$seg1 $seg2", style))
                         ) { maxOutputTokens = 256 }
-                        val seg3 = model.generateContent(req3)
+                        val seg3 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         val fullText = listOf(seg1, seg2, seg3)
@@ -167,6 +184,16 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             .joinToString(" ")
 
                         withContext(Dispatchers.Main) { result.success(fullText) }
+                    } catch (e: TimeoutCancellationException) {
+                        // #173: without this, a hung AICore call (e.g. the
+                        // model stuck loading/inferring) left the coroutine
+                        // running indefinitely, tying up whatever on the
+                        // Dart side awaits this method call forever —
+                        // mirrors GeminiApiService._post's own explicit
+                        // HTTP timeout on the cloud pipeline.
+                        withContext(Dispatchers.Main) {
+                            result.error("TIMEOUT", "Gemini Nano inference timed out", null)
+                        }
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
                             result.error("INFERENCE_ERROR", e.message, null)

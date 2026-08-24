@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:audiolens/services/gemini_nano_service.dart';
+import 'package:audiolens/utils/cancel_token.dart';
 
 /// T68 — GeminiNanoService had zero real coverage before this: the one
 /// test that touches it (_FakeNano in fallback_orchestration_test.dart)
@@ -179,6 +181,94 @@ void main() {
       service.analyzeImage(tempImage()),
       throwsA(isA<GeminiNanoBackgroundRestrictedException>()),
     );
+  });
+
+  // #171 — the cloud pipeline's location_context can run up to ~4500
+  // chars; injecting that verbatim into a Nano segment budgeted for only
+  // 256 output tokens risks the context alone dominating what little
+  // attention the model has to spare.
+  test('analyzeImage() truncates a long locationContext before sending it', () async {
+    final service = GeminiNanoService();
+    final longContext = 'a' * 1000;
+
+    await service.analyzeImage(tempImage(), locationContext: longContext);
+
+    final call = calls.firstWhere((c) => c.method == 'describeImage');
+    final sent = (call.arguments as Map)['locationContext'] as String;
+    expect(sent.length, lessThan(longContext.length));
+    expect(sent.length, lessThanOrEqualTo(400));
+  });
+
+  test('analyzeImage() does not truncate a short locationContext', () async {
+    final service = GeminiNanoService();
+
+    await service.analyzeImage(tempImage(), locationContext: 'Musee du Louvre');
+
+    final call = calls.firstWhere((c) => c.method == 'describeImage');
+    expect((call.arguments as Map)['locationContext'], 'Musee du Louvre');
+  });
+
+  // #168 — Nano's raw output went straight to history/TTS with none of
+  // the markdown/thinking-leakage cleanup the cloud pipeline applies.
+  test('analyzeImage() strips markdown and thinking-leakage lines from the result',
+      () async {
+    handler = (call) async {
+      calls.add(call);
+      if (call.method == 'describeImage') {
+        return '**La Tour Eiffel** est un monument.\n'
+            'let me reconsider the word count here.\n'
+            'Elle domine Paris depuis 1889.';
+      }
+      return true;
+    };
+    final service = GeminiNanoService();
+
+    final result = await service.analyzeImage(tempImage());
+
+    expect(result.script, isNot(contains('**')));
+    expect(result.script, isNot(contains('let me')));
+    expect(result.script, contains('La Tour Eiffel'));
+    expect(result.script, contains('domine Paris'));
+  });
+
+  // #169 — cancelToken was accepted but never consulted; cancellation
+  // silently did nothing on this pipeline.
+  test('analyzeImage() throws CancelledException immediately if already cancelled, '
+      'without calling describeImage', () async {
+    final service = GeminiNanoService();
+    final token = CancelToken()..cancel();
+
+    await expectLater(
+      service.analyzeImage(tempImage(), cancelToken: token),
+      throwsA(isA<CancelledException>()),
+    );
+    expect(calls.any((c) => c.method == 'describeImage'), isFalse);
+  });
+
+  test('analyzeImage() throws CancelledException as soon as the token is cancelled '
+      'mid-call, without waiting for the native call to finish', () async {
+    final describeStarted = Completer<void>();
+    final describeResult = Completer<String>();
+    handler = (call) async {
+      calls.add(call);
+      if (call.method == 'describeImage') {
+        describeStarted.complete();
+        return describeResult.future;
+      }
+      return true;
+    };
+    final service = GeminiNanoService();
+    final token = CancelToken();
+
+    final analysis = service.analyzeImage(tempImage(), cancelToken: token);
+    await describeStarted.future;
+    token.cancel();
+
+    await expectLater(analysis, throwsA(isA<CancelledException>()));
+
+    // The native call itself is left to finish on its own — completing
+    // it now must not throw into an already-completed Future.
+    describeResult.complete('ignored, arrived after cancellation');
   });
 
   test('dispose() resets init state so a later analyzeImage() re-initializes',
