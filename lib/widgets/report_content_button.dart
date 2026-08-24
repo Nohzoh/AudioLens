@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
+import 'scrim_action_chip.dart';
 
 /// The address AI-generated content reports are sent to — same contact
 /// address published in PRIVACY.md. Not remote-configured, matching
@@ -16,8 +17,9 @@ const _reportContactEmail = 'thomas.arnaud@gmail.com';
 /// the user sees exactly what's being sent before choosing to send it.
 ///
 /// Matches the visual style of the existing Save/Copy action rows in
-/// player_screen.dart and history_screen.dart (small icon + text, tap
-/// target via InkWell) — pass this as a sibling item in that same Row.
+/// player_screen.dart and history_screen.dart — all three now render as
+/// a [ScrimActionChip] (#149), so this stays a sibling item in that same
+/// Row and any future styling change to the row happens in one place.
 class ReportContentButton extends StatelessWidget {
   final String title;
   final String script;
@@ -35,20 +37,13 @@ class ReportContentButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return InkWell(
+    return ScrimActionChip(
+      icon: Icons.flag_outlined,
+      label: l10n.reportContentButton,
+      // Kept dimmer than Save/Copy on purpose: reporting is a rare,
+      // deliberate action and shouldn't compete with them visually.
+      color: Colors.white54,
       onTap: () => _showReportDialog(context),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.flag_outlined, size: 14, color: Colors.white38),
-            const SizedBox(width: 4),
-            Text(l10n.reportContentButton,
-                style: const TextStyle(color: Colors.white38, fontSize: 12)),
-          ],
-        ),
-      ),
     );
   }
 

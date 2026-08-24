@@ -120,6 +120,33 @@ void main() {
     expect(find.byType(HistoryDetailScreen), findsOneWidget);
   });
 
+  // #149 — the Save/Copy/Report row used to be a plain Row, which could
+  // overflow on a narrow screen with the (longer) French labels this
+  // test suite renders in. Wrap (not a width assumption) is what's
+  // actually being verified here: any RenderFlex overflow throws during
+  // layout and surfaces via tester.takeException().
+  testWidgets('the Save/Copy/Report row does not overflow on a narrow screen', (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+
+    await tester.runAsync(() => history.addEntry(
+          imagePath: imagePath,
+          title: 'La Joconde',
+          script: 'Bienvenue.',
+        ));
+
+    await tester.pumpWidget(wrapScreen());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('La Joconde'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(HistoryDetailScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a failed entry shows the "tap to retry" treatment', (tester) async {
     await tester.runAsync(() async {
       final pending = await history.addPendingEntry(imagePath: imagePath);

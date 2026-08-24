@@ -10,6 +10,7 @@ import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
+import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
 import '../widgets/report_content_button.dart';
 
@@ -265,12 +266,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                               const SizedBox(height: 4),
 
-                              // Action buttons row
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
+                              // Action buttons row. Wrap, not Row: see
+                              // the matching comment in history_screen.dart
+                              // — three pills plus spacing can exceed a
+                              // narrow screen's width, especially in the
+                              // longer French labels.
+                              Wrap(
+                                alignment: WrapAlignment.end,
+                                spacing: 8,
+                                runSpacing: 8,
                                 children: [
                                   // Save to gallery
-                                  InkWell(
+                                  ScrimActionChip(
+                                    icon: Icons.save_alt,
+                                    label: l10n.playerSave,
                                     onTap: () async {
                                       try {
                                         await Gal.putImage(widget.imageFile.path);
@@ -284,31 +293,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         }
                                       } catch (_) {}
                                     },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.save_alt, size: 14, color: Colors.white38),
-                                        const SizedBox(width: 4),
-                                        Text(l10n.playerSave, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                                      ]),
-                                    ),
                                   ),
                                   // Copy text
-                                  InkWell(
+                                  ScrimActionChip(
+                                    icon: Icons.copy,
+                                    label: l10n.playerCopy,
                                     onTap: () {
                                       Clipboard.setData(ClipboardData(text: guide.lastResult!.script));
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(content: Text(l10n.playerTextCopied), duration: const Duration(seconds: 2)),
                                       );
                                     },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.copy, size: 14, color: Colors.white38),
-                                        const SizedBox(width: 4),
-                                        Text(l10n.playerCopy, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                                      ]),
-                                    ),
                                   ),
                                   // Report content (T91)
                                   ReportContentButton(
@@ -409,7 +404,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 14)),
                                         const Spacer(),
-                                        InkWell(
+                                        // Same pattern as the Save/Copy/
+                                        // Report row above — this used
+                                        // to hand-roll its own InkWell,
+                                        // drifting slightly out of sync
+                                        // (11px/no pill vs the shared
+                                        // chip's 12px pill) from every
+                                        // other copy-style action.
+                                        ScrimActionChip(
+                                          icon: Icons.copy,
+                                          label: l10n.playerCopy,
+                                          color: Colors.white54,
                                           onTap: () {
                                             Clipboard.setData(ClipboardData(
                                                 text: guide.errorMessage ?? ''));
@@ -418,16 +423,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                                   content: Text(l10n.playerErrorCopied),
                                                   duration: const Duration(seconds: 2)));
                                           },
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(4),
-                                            child: Row(mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(Icons.copy, size: 14, color: Colors.white54),
-                                                const SizedBox(width: 4),
-                                                Text(l10n.playerCopy, style: const TextStyle(
-                                                    color: Colors.white54, fontSize: 11)),
-                                              ]),
-                                          ),
                                         ),
                                       ],
                                     ),
