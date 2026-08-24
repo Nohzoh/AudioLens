@@ -247,6 +247,60 @@ void main() {
     expect(result.title, 'La Joconde');
   });
 
+  // A 200 whose body is syntactically valid JSON but the wrong shape (not
+  // an object at all) is plausible from a proxy/CDN error page or a
+  // future API schema tweak — the top-level `jsonDecode(body) as
+  // Map<String, dynamic>` cast used to throw TypeError here, escaping
+  // this method's FormatException contract and getting mislabelled as a
+  // network failure by analyzeImage's generic catch, instead of falling
+  // back to the next model like every other unusable-response case.
+  test('primary returns a 200 whose body is a JSON array, not an object -> falls back', () async {
+    final requested = <String>[];
+    final service = GeminiApiService(
+      apiKey: 'test-key',
+      dioClient: fakeDio((options) async {
+        final model = _modelFromPath(options.uri.path);
+        requested.add(model);
+        if (model == primary) {
+          return (statusCode: 200, body: jsonEncode([1, 2, 3]));
+        }
+        return (statusCode: 200, body: _successJson());
+      }),
+    );
+
+    final result = await service.analyzeImage(tempImage());
+
+    expect(requested, [primary, fb1]);
+    expect(service.lastUsedModel, fb1);
+    expect(result.title, 'La Joconde');
+    expect(service.lastAttempts.first, startsWith('✗ $primary (200'));
+  });
+
+  // Same class of bug as above, one level deeper: candidates[0] present
+  // but not an object (e.g. a bare string) — the (firstCandidate as
+  // Map<String, dynamic>?) cast used to throw TypeError here too.
+  test('primary returns a 200 whose first candidate is not an object -> falls back', () async {
+    final requested = <String>[];
+    final service = GeminiApiService(
+      apiKey: 'test-key',
+      dioClient: fakeDio((options) async {
+        final model = _modelFromPath(options.uri.path);
+        requested.add(model);
+        if (model == primary) {
+          return (statusCode: 200, body: jsonEncode({'candidates': ['not an object']}));
+        }
+        return (statusCode: 200, body: _successJson());
+      }),
+    );
+
+    final result = await service.analyzeImage(tempImage());
+
+    expect(requested, [primary, fb1]);
+    expect(service.lastUsedModel, fb1);
+    expect(result.title, 'La Joconde');
+    expect(service.lastAttempts.first, startsWith('✗ $primary (200'));
+  });
+
   test('primary returns unrecoverable JSON debris -> falls back', () async {
     final requested = <String>[];
     final service = GeminiApiService(

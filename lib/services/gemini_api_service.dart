@@ -15,10 +15,6 @@ class GeminiApiService implements AIService {
   List<String> _lastAttempts = [];
   List<String> get lastAttempts => _lastAttempts;
 
-  /// Result parsed inside analyzeImage's model loop — set together with
-  /// the winning response, so validation happens before committing to a
-  /// model rather than after the loop has already broken out of it.
-  AudioGuideResult? _parsedResult;
   final String apiKey;
   final dio.Dio _dio;
 
@@ -89,8 +85,8 @@ class GeminiApiService implements AIService {
     ];
 
     ({int statusCode, String body})? response;
+    AudioGuideResult? parsedResult;
     final List<String> attempts = [];
-    _parsedResult = null;
     // Why the most recent model attempt failed, kept structured (rather
     // than only as the display string in `attempts`) so the final error
     // can be phrased for the user. Only the last attempt's reason is
@@ -141,7 +137,7 @@ class GeminiApiService implements AIService {
           try {
             final parsed = _parseResponseBody(resp.body);
             response = resp;
-            _parsedResult = parsed;
+            parsedResult = parsed;
             _lastUsedModel = model;
             attempts.add('✓ $model');
             AppLogger.ai('Model succeeded: $model');
@@ -200,7 +196,7 @@ class GeminiApiService implements AIService {
     }
 
     // Non-null whenever response is: both are set together in the loop above.
-    return _parsedResult!;
+    return parsedResult!;
   }
 
   /// Message shown to the user when no model produced a usable answer,
@@ -239,7 +235,18 @@ class GeminiApiService implements AIService {
   /// model gave us nothing usable, try the next one" from a hard error
   /// that should abort the whole call.
   AudioGuideResult _parseResponseBody(String body) {
-    final data = jsonDecode(body) as Map<String, dynamic>;
+    // `is` checks rather than `as` casts throughout this walk: an `as`
+    // cast throws TypeError on a shape mismatch, not FormatException —
+    // which would escape this method's FormatException contract (a
+    // syntactically valid but unexpectedly-shaped 200 body is plausible
+    // from a proxy/CDN error page or a future API schema tweak) and land
+    // in analyzeImage's generic catch, mislabelled as a network failure
+    // instead of an unusable response.
+    final decoded = jsonDecode(body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('unexpected response shape');
+    }
+    final data = decoded;
     // Indexed access rather than [0] directly: a response can legitimately
     // carry an empty candidates/parts list (e.g. everything was filtered
     // out), and a RangeError here would escape the FormatException
@@ -248,9 +255,11 @@ class GeminiApiService implements AIService {
     final candidates = data['candidates'];
     final firstCandidate =
         (candidates is List && candidates.isNotEmpty) ? candidates.first : null;
-    final parts = (firstCandidate as Map<String, dynamic>?)?['content']?['parts'];
+    final content = firstCandidate is Map<String, dynamic> ? firstCandidate['content'] : null;
+    final parts = content is Map<String, dynamic> ? content['parts'] : null;
     final firstPart = (parts is List && parts.isNotEmpty) ? parts.first : null;
-    final text = (firstPart as Map<String, dynamic>?)?['text'] as String?;
+    final rawText = firstPart is Map<String, dynamic> ? firstPart['text'] : null;
+    final text = rawText is String ? rawText : null;
 
     if (text == null || text.isEmpty) {
       // Most often: thinking tokens consumed the entire maxOutputTokens
