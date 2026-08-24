@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Stale comments/references left over from removed dependencies** (issue #133)
+  - **Verified**: 2026-08-25 (PR TBD, commit `1e0f144`)
+  - **What was done**: purely cosmetic, no behavior change. `build-android.yml`'s ABI-restriction comment credited `sherpa_onnx` (removed T89) for needing per-ABI native code — corrected to the actual current reason (Flutter engine + ML Kit GenAI's native libs). `AudioPlayerPlugin.kt`'s `pendingPlayResult` comment said `MediaPipe.stop()` — corrected to `MediaPlayer.stop()` (the actual class used in that file, leftover from when MediaPipe was still part of this codebase, removed T82).
+  - **Final validation**: `flutter analyze` → 0 issues; comment-only change to a workflow YAML + a Kotlin comment, verified the YAML still parses correctly — no local build required (zero behavior change).
+
 - [x] 🌱 ⭐ - **RemoteConfigService's cache is write-only — never actually used as a fallback** (issue #135)
   - **Verified**: 2026-08-25 (PR #203, commit `80c9c23`)
   - **What was done**: `load()` cached a fresh config on every successful fetch but never read it back — a network failure fell straight to hardcoded defaults regardless. Now caches the signature and original fetch timestamp alongside the config body, and re-verifies the cached signature before applying it on a failed fetch (same trust model as a live fetch — no separate carve-out for cached data). `load()`/`forceRefresh()` gained an optional `http.Client` parameter for testability, matching `LocationService`/`PoiService`'s existing pattern.
