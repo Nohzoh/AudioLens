@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐⭐ - **Widget icon doesn't visually tie back to the app icon (needs a distinguishing '+' badge)** (issue #150)
+  - **Verified**: 2026-08-24 (PR TBD, commit `b670d7e`)
+  - **What was done**: checked on an emulator first (the issue's own open question) — the widget picker's `previewImage` renders correctly with no launcher-level quirk; the actual mismatch was that the widget drew a camera glyph while the app's real launcher icon (`ic_launcher.png`) is a headphone+waveform glyph, two unrelated designs. `generate_widget_icon.py` now draws that same headphone+waveform glyph (same colors as `generate_play_store_icon.py`, same brand purple background) so it visually ties back to the real app icon, with a small shiny white "+" badge in the bottom-right corner signaling "start a new capture".
+  - **Final validation**: `flutter analyze` → 0 issues; verified visually via a real local signed build installed on an emulator (widget picker preview screenshot confirms the new icon renders correctly).
+
 - [x] 🌱 ⭐ - **Allow tap-to-copy on individual property values in the analysis details screen** (issue #154)
   - **Verified**: 2026-08-24 (PR #196, commit `48258df`)
   - **What was done**: `_Row` in `about_analysis_screen.dart` now wraps its value in an `InkWell` that copies just that value on tap, confirmed with a distinct SnackBar (`« valeur » copié`) so it doesn't feel identical to the existing bulk "Copier les infos de debug" button, which still copies everything at once unchanged.
