@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐⭐⭐⭐ - **Harden Gemini Nano to match the cloud pipeline's safeguards** (issues #168, #169, #171, #173)
+  - **Verified**: 2026-08-24 (PR #188, commit `2031350`)
+  - **What was done**: bundled 4 related gaps found auditing why the on-device (`GeminiNanoService`/`GeminiNanoPlugin.kt`) and cloud (`GeminiApiService`) pipelines had drifted apart. **#168**: Nano's raw output skipped the markdown/thinking-leakage cleanup the cloud pipeline applies — extracted into a shared `lib/utils/script_cleanup.dart`, used by both now. **#169**: `CancelToken` was accepted but never consulted — cancellation now skips the native call if requested beforehand, and races the in-flight call against `cancelToken.onCancel` so Dart stops waiting on it immediately (the native coroutine still finishes in the background; its result is discarded). **#171**: `locationContext` (up to ~4500 chars from the cloud side) was injected into Nano's 256-token-budgeted segment-1 prompt as-is — truncated to 400 chars, plus a grounding-priority instruction added to `buildSeg1Prompt`. **#173**: the 3 sequential `model.generateContent()` calls had no timeout — each now wrapped in `withTimeout(15s)`.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 254/254 (8 new/updated tests); real local signed build confirmed the Kotlin changes compile and package correctly.
+
 - [x] 📈 ⭐⭐ - **AndroidManifest patching order can duplicate the SEND share-target intent-filter inside the widget `<receiver>`** (issue #165)
   - **Verified**: 2026-08-24 (PR #187, commit `0a4a7fb`)
   - **What was done**: the manifest-patching sequence added the `QuickCaptureWidgetProvider` `<receiver>` (with its own `APPWIDGET_UPDATE` `<intent-filter>`) before the step inserting the T97 SEND share-target `<intent-filter>` — that insertion's `sed` pattern matches any line containing `</intent-filter>`, and once the widget's own intent-filter existed, both it and the activity's got the SEND block spliced in, duplicating an unrelated SEND filter inside the widget receiver. Fixed by reordering both copies of this logic (`scripts/ci/patch_android_manifest.sh`, `scripts/build_android_local.sh`) so SEND is patched first, while the activity's is still the only matching line.
