@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **Stale comments/references left over from removed dependencies** (issue #133)
-  - **Verified**: 2026-08-25 (PR TBD, commit `1e0f144`)
+  - **Verified**: 2026-08-25 (PR #207, commit `1e0f144`)
   - **What was done**: purely cosmetic, no behavior change. `build-android.yml`'s ABI-restriction comment credited `sherpa_onnx` (removed T89) for needing per-ABI native code — corrected to the actual current reason (Flutter engine + ML Kit GenAI's native libs). `AudioPlayerPlugin.kt`'s `pendingPlayResult` comment said `MediaPipe.stop()` — corrected to `MediaPlayer.stop()` (the actual class used in that file, leftover from when MediaPipe was still part of this codebase, removed T82).
   - **Final validation**: `flutter analyze` → 0 issues; comment-only change to a workflow YAML + a Kotlin comment, verified the YAML still parses correctly — no local build required (zero behavior change).
 
