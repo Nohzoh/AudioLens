@@ -7,6 +7,7 @@ import 'package:gal/gal.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../constants/output_languages.dart';
 import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
@@ -63,6 +64,195 @@ Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
     source: 'retry',
     knownCoordinates: knownCoordinates,
   );
+}
+
+/// #131: what the user picked in [_RegenerateSheet].
+class _RegenerateChoice {
+  final String style;
+  final String language;
+  final AIProvider provider;
+  const _RegenerateChoice({
+    required this.style,
+    required this.language,
+    required this.provider,
+  });
+}
+
+/// #131: lets the user regenerate [entry]'s script with a different style/
+/// language/model instead of only being able to retry with the same
+/// settings. Per explicit product decision, picking new values here also
+/// becomes the new default going forward (same as changing them from
+/// Settings) — simplest mental model, and reuses the exact same
+/// SettingsService/AudioGuideService plumbing every other analysis already
+/// goes through, rather than inventing a separate "one-off override"
+/// mechanism. The snackbar below is the one concession to that: it makes
+/// the side effect visible instead of silently changing a global default.
+Future<void> _openRegenerateSheet(BuildContext context, HistoryEntry entry) async {
+  final settings = context.read<SettingsService>();
+  final guide = context.read<AudioGuideService>();
+  final choice = await showModalBottomSheet<_RegenerateChoice>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => _RegenerateSheet(
+      initialStyle: entry.scriptStyle ?? settings.scriptStyle,
+      initialLanguage: entry.outputLanguage ?? settings.outputLanguage,
+      initialProvider: guide.activeProvider,
+      nanoAvailable: guide.nanoAvailable,
+      geminiApiAvailable: guide.geminiApiKey?.isNotEmpty == true,
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+
+  var settingsChanged = false;
+  if (choice.style != settings.scriptStyle) {
+    await settings.setScriptStyle(choice.style);
+    settingsChanged = true;
+  }
+  if (choice.language != settings.outputLanguage) {
+    await settings.setOutputLanguage(choice.language);
+    settingsChanged = true;
+  }
+  if (choice.provider != guide.activeProvider) {
+    await guide.setActiveProvider(choice.provider);
+    settingsChanged = true;
+  }
+  if (settingsChanged && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context)!.historyRegenerateSettingsUpdated),
+      ),
+    );
+  }
+  if (!context.mounted) return;
+  await _retryAnalysis(context, entry);
+}
+
+class _RegenerateSheet extends StatefulWidget {
+  final String initialStyle;
+  final String initialLanguage;
+  final AIProvider initialProvider;
+  final bool nanoAvailable;
+  final bool geminiApiAvailable;
+
+  const _RegenerateSheet({
+    required this.initialStyle,
+    required this.initialLanguage,
+    required this.initialProvider,
+    required this.nanoAvailable,
+    required this.geminiApiAvailable,
+  });
+
+  @override
+  State<_RegenerateSheet> createState() => _RegenerateSheetState();
+}
+
+class _RegenerateSheetState extends State<_RegenerateSheet> {
+  late String _style = widget.initialStyle;
+  late String _language = widget.initialLanguage;
+  late AIProvider _provider = widget.initialProvider;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.historyRegenerateTitle,
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 16),
+            Text(l10n.settingsScriptStyleSection,
+                style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (value, label) in [
+                  ('immersive', l10n.settingsStyleImmersive),
+                  ('academic', l10n.settingsStyleAcademic),
+                  ('anecdotal', l10n.settingsStyleAnecdotal),
+                  ('concise', l10n.settingsStyleConcise),
+                ])
+                  ChoiceChip(
+                    label: Text(label),
+                    selected: _style == value,
+                    onSelected: (_) => setState(() => _style = value),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.settingsOutputLanguageSection,
+                style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final language in outputLanguageLocales.keys)
+                  ChoiceChip(
+                    label: Text(language),
+                    selected: _language == language,
+                    onSelected: (_) => setState(() => _language = language),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(l10n.historyRegenerateModelLabel,
+                style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Gemini Nano'),
+                  selected: _provider == AIProvider.geminiNano,
+                  onSelected: widget.nanoAvailable
+                      ? (_) => setState(() => _provider = AIProvider.geminiNano)
+                      : null,
+                ),
+                ChoiceChip(
+                  label: const Text('Gemini API'),
+                  selected: _provider == AIProvider.geminiApi,
+                  onSelected: widget.geminiApiAvailable
+                      ? (_) => setState(() => _provider = AIProvider.geminiApi)
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(l10n.historyCancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => Navigator.pop(
+                    context,
+                    _RegenerateChoice(
+                        style: _style, language: _language, provider: _provider),
+                  ),
+                  child: Text(l10n.historyRegenerateConfirm),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class HistoryScreen extends StatefulWidget {
@@ -1028,6 +1218,14 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                       }
                                     }
                                   },
+                                ),
+                                const SizedBox(width: 4),
+                                ScrimIconButton(
+                                  icon: Icons.tune,
+                                  color: Colors.white70,
+                                  tooltip: l10n.historyRegenerateTooltip,
+                                  onPressed: () =>
+                                      _openRegenerateSheet(context, live),
                                 ),
                                 const SizedBox(width: 4),
                                 ScrimIconButton(
