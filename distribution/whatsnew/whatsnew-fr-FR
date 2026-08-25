@@ -1,9 +1,6 @@
-Nouveautés :
-• Zoomez sur la photo en mode sans commentaire
-• Recherchez un lieu par son nom sur la carte, orientée nord fixe
-• Touchez un détail dans « À propos de cette analyse » pour le copier
 Corrections :
-• Rotation/favori d'une photo mis à jour instantanément
-• Une nouvelle analyse ne perturbe plus celle déjà en cours
-• Mode IA hors-ligne plus fiable, avec un titre généré correctement
-• L'icône du widget correspond maintenant à l'icône de l'app
+• Le zoom sur la photo (ajouté la dernière fois) fonctionne enfin
+• La recherche sur la carte zoome désormais au bon niveau
+• L'icône de l'app correspond maintenant à celle du widget
+Nouveauté :
+• Mettez en pause l'audio directement depuis l'accueil
