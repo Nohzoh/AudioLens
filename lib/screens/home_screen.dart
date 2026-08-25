@@ -554,7 +554,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              guide.providerName.contains('Nano')
+                              guide.activeProvider == AIProvider.geminiNano
                                   ? Icons.phone_android
                                   : Icons.cloud_outlined,
                               size: 14,
@@ -562,9 +562,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                             const SizedBox(width: 6),
                             Text(
+                              // #253: matches the Settings screen's
+                              // provider card label — "IA locale", not
+                              // the raw providerName debug string, now
+                              // that this option also always guarantees
+                              // native (not cloud) TTS.
                               guide.providerName.isEmpty
                                   ? l10n.homeInitializing
-                                  : guide.providerName,
+                                  : guide.activeProvider == AIProvider.geminiNano
+                                      ? l10n.settingsLocalAiName
+                                      : guide.providerName,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.primary,
                               ),

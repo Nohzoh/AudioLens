@@ -290,4 +290,32 @@ void main() {
     expect(service.state, GuideState.error);
     expect(service.errorMessage, contains('Aucun service IA'));
   });
+
+  // #253 — reported live: picking Nano specifically to keep everything
+  // on-device still silently spoke through the cloud whenever an API key
+  // happened to be configured too (e.g. left over from trying the cloud
+  // provider earlier). TTS must follow the active provider, not just "is
+  // a Gemini TTS instance configured at all".
+  test('Nano active with a Gemini API key configured -> speaks via native TTS, '
+      'not the cloud', () async {
+    final native = _FakeNativeTts();
+    final geminiTts = _FakeGeminiTts(fail: false);
+    final nano = _FakeNano(available: true);
+    final service = AudioGuideService(
+      nativeTtsService: native,
+      geminiTtsService: geminiTts,
+      geminiApiService: _successApi(),
+      nanoService: nano,
+    );
+    await service.init(); // resolves Nano availability
+    await service.setActiveProvider(AIProvider.geminiNano);
+
+    final result = await service.analyzeAndPlay(tempImage());
+
+    expect(result, isNotNull);
+    expect(nano.analyzeCalled, isTrue);
+    expect(native.speakCalled, isTrue);
+    expect(geminiTts.speakCalled, isFalse);
+    expect(service.lastTtsModel, 'native-tts');
+  });
 }
