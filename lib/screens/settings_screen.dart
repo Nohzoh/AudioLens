@@ -122,21 +122,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Consumer<SettingsService>(
             builder: (context, settings, _) => SegmentedButton<ThemeMode>(
+              // #216: "Système" still wrapped mid-word even with the
+              // checkmark removed (showSelectedIcon: false) — on a narrow
+              // screen, 3 equal-width segments just don't leave enough
+              // room for an icon *and* the longest label. Dropping the
+              // icons entirely (rather than shortening the label) frees
+              // enough width, and selection is already unambiguous from
+              // the segment's own background/text color change.
               segments: [
                 ButtonSegment(
                   value: ThemeMode.system,
                   label: Text(l10n.settingsThemeSystem),
-                  icon: const Icon(Icons.brightness_auto),
                 ),
                 ButtonSegment(
                   value: ThemeMode.light,
                   label: Text(l10n.settingsThemeLight),
-                  icon: const Icon(Icons.light_mode),
                 ),
                 ButtonSegment(
                   value: ThemeMode.dark,
                   label: Text(l10n.settingsThemeDark),
-                  icon: const Icon(Icons.dark_mode),
                 ),
               ],
               selected: {settings.themeMode},
