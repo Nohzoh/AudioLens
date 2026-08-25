@@ -23,11 +23,16 @@ abstract class AIService {
   ///
   /// [style] is one of 'immersive' (default), 'academic', 'anecdotal',
   /// 'concise' (T75/T48) — steers the script's tone and length.
+  ///
+  /// [language] (#130) is a display name from `outputLanguageLocales`
+  /// (e.g. 'English', 'Español') — the language the title/script must be
+  /// written in, independent of the app's own interface language.
   Future<AudioGuideResult> analyzeImage(
     File imageFile, {
     String? locationContext,
     CancelToken? cancelToken,
     String? style,
+    String? language,
   });
   void dispose();
 }

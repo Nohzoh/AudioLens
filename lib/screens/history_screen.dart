@@ -779,6 +779,11 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       // "Améliorer la voix" button below is the explicit way to retry
       // Gemini.
       final guide = context.read<AudioGuideService>();
+      // #130: this bypasses generateAudioForScript/_synthesizeAndPlay, so
+      // the native TTS language has to be applied explicitly here too.
+      guide.prepareNativeTtsLanguageForReplay(
+        context.read<SettingsService>().outputLanguage,
+      );
       await _withTrackedNativeCompletion(guide, () => guide.nativeTtsService.speak(live.script));
       return;
     }
@@ -794,6 +799,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         title: live.title,
         script: live.script,
         locationName: live.locationName,
+        language: context.read<SettingsService>().outputLanguage,
       ),
     );
 

@@ -26,12 +26,22 @@ class NativeTtsService {
   /// [applyPreferredVoice] after the user changes it).
   String preferredGender = 'female';
 
+  /// #130: BCP-47 locale (e.g. 'en-US'), set by AudioGuideService right
+  /// before each [speak]/[speakAndWaitForResult] call from
+  /// `SettingsService.outputLanguage` — unlike [preferredGender], this can
+  /// legitimately differ from one narration to the next, so it's re-applied
+  /// every time rather than cached at initialization.
+  String preferredLanguageLocale = 'fr-FR';
+
   static const femaleVoice = {'name': 'fr-fr-x-frc-network', 'locale': 'fr-FR'};
   static const maleVoice = {'name': 'fr-fr-x-frd-network', 'locale': 'fr-FR'};
 
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
-    await _tts.setLanguage('fr-FR');
+    // #130: language/voice setup itself lives in _applyPreferredVoiceInternal,
+    // which every public entry point (speak/speakAndWaitForResult/
+    // applyPreferredVoice) already calls explicitly right after this one —
+    // doing it here too would just double the setLanguage call on first use.
     await _tts.setSpeechRate(0.45);
     await _tts.setPitch(1.0);
     // Some voices reported by frenchVoices() turned out to be catalog
@@ -58,12 +68,21 @@ class NativeTtsService {
       onProgress?.call((end / text.length).clamp(0.0, 1.0));
     });
     _initialized = true;
-    await _applyPreferredVoiceInternal();
   }
 
+  /// #130: the hand-picked female/male "network" voice IDs are French-only
+  /// (`fr-fr-x-frc/frd-network`) — there's no equivalent catalog of
+  /// verified-good voice IDs per gender for arbitrary languages across
+  /// arbitrary Android TTS engines, and guessing at one would be unreliable
+  /// in a way that's worse than just not pretending to support it. So
+  /// outside French, this only sets the language and leaves voice/gender
+  /// selection to the engine's own default for that locale — narrower than
+  /// the French behavior, but honest about what's actually verified to work.
   Future<void> _applyPreferredVoiceInternal() async {
+    await _tts.setLanguage(preferredLanguageLocale);
+    if (!preferredLanguageLocale.toLowerCase().startsWith('fr')) return;
     final target = preferredGender == 'male' ? maleVoice : femaleVoice;
-    final voices = await frenchVoices();
+    final voices = await voicesForLocale('fr');
     final isAvailable = voices
         .any((v) => v['name'] == target['name'] && v['locale'] == target['locale']);
     if (isAvailable) {
@@ -81,17 +100,19 @@ class NativeTtsService {
     await _applyPreferredVoiceInternal();
   }
 
-  /// All French voices the device's TTS engine reports (flutter_tts only
-  /// surfaces name/locale, not Android's quality/network-required
-  /// metadata — see [_applyPreferredVoiceInternal] for how this is used
-  /// to avoid selecting an unavailable one).
-  Future<List<Map<String, String>>> frenchVoices() async {
+  /// All voices the device's TTS engine reports whose locale starts with
+  /// [localePrefix] (e.g. 'fr', 'en') — flutter_tts only surfaces
+  /// name/locale, not Android's quality/network-required metadata, see
+  /// [_applyPreferredVoiceInternal] for how this is used to avoid selecting
+  /// an unavailable one. #130: generalized from the original French-only
+  /// `frenchVoices()`.
+  Future<List<Map<String, String>>> voicesForLocale(String localePrefix) async {
     final voices = await _tts.getVoices;
     if (voices is! List) return [];
     return voices
         .whereType<Map>()
         .map((v) => v.map((k, val) => MapEntry(k.toString(), val.toString())))
-        .where((v) => (v['locale'] ?? '').toLowerCase().startsWith('fr'))
+        .where((v) => (v['locale'] ?? '').toLowerCase().startsWith(localePrefix.toLowerCase()))
         .toList();
   }
 
@@ -107,6 +128,9 @@ class NativeTtsService {
   Future<void> speak(String text, {CancelToken? cancelToken, double speed = 1.0}) async {
     if (cancelToken?.isCancelled ?? false) return;
     await _ensureInitialized();
+    // #130: re-applied every call, same reasoning as setSpeechRate above —
+    // preferredLanguageLocale can differ from one narration to the next.
+    await _applyPreferredVoiceInternal();
     await _tts.setSpeechRate(0.45 * speed);
     _lastSpokenText = text;
     _isPlaying = true;
@@ -119,6 +143,7 @@ class NativeTtsService {
   /// production behavior.
   Future<bool> speakAndWaitForResult(String text, {double speed = 1.0}) async {
     await _ensureInitialized();
+    await _applyPreferredVoiceInternal();
     await _tts.setSpeechRate(0.45 * speed);
     if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(false);
     final completer = Completer<bool>();

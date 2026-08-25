@@ -43,7 +43,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             else -> "un ton chaleureux et vivant"
         }
 
-        fun buildSeg1Prompt(locationContext: String?, style: String? = null): String {
+        fun buildSeg1Prompt(locationContext: String?, style: String? = null, language: String? = null): String {
             // #171: locationContext already arrives pre-truncated for
             // Nano's budget (see GeminiNanoService._maxLocationContextChars
             // on the Dart side) — this only adds the same grounding-
@@ -55,12 +55,19 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 " (prise a : $locationContext — utilise ce lieu en priorite s'il est precis, plutot que de rester generique)"
             } else ""
             val sentences = if (style == "concise") "1-2 phrases maximum" else "2-3 phrases maximum"
+            // #130: only seg1 needs the language directive — seg2/seg3 are
+            // continuations built from seg1's own output text, so they
+            // naturally stay in whatever language seg1 established, the
+            // same way they don't need styleTone() repeated either.
+            val languageDirective = if (!language.isNullOrBlank()) {
+                " Reponds uniquement en $language, meme si ces instructions sont en francais."
+            } else ""
             // #172: asks explicitly for a short title in brackets on its
             // own line, mirroring the cloud pipeline's structured `title`
             // field — GeminiNanoService._extractTitleAndBody parses it out
             // on the Dart side (falling back to the old first-sentence
             // heuristic if the model doesn't follow the format).
-            return "Tu es un guide audio culturel. Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Puis, sans phrase d'introduction, decris en francais ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences."
+            return "Tu es un guide audio culturel. Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Puis, sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
         }
 
         fun buildSeg2Prompt(previousText: String, style: String? = null): String {
@@ -143,6 +150,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val imagePath = call.argument<String>("imagePath")
                 val locationContext = call.argument<String>("locationContext")
                 val style = call.argument<String>("style")
+                val language = call.argument<String>("language")
                 // #170: previously hardcoded (256, no temperature at all —
                 // ML Kit GenAI's own unstated default applied). Now sent
                 // from RemoteConfigService on the Dart side, so a stuck
@@ -175,7 +183,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 1: Visual description with image
                         val req1 = generateContentRequest(
                             ImagePart(bitmap),
-                            TextPart(buildSeg1Prompt(locationContext, style))
+                            TextPart(buildSeg1Prompt(locationContext, style, language))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }

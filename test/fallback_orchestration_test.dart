@@ -55,6 +55,7 @@ class _FakeNano extends GeminiNanoService {
     String? locationContext,
     CancelToken? cancelToken,
     String? style,
+    String? language,
   }) async {
     analyzeCalled = true;
     if (throwBackgroundRestricted) {

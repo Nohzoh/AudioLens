@@ -93,6 +93,7 @@ void main() {
     expect(args['imagePath'], isNotNull);
     expect(args.containsKey('locationContext'), isFalse);
     expect(args.containsKey('style'), isFalse);
+    expect(args.containsKey('language'), isFalse);
   });
 
   test('analyzeImage() includes locationContext and style when given', () async {
@@ -108,6 +109,17 @@ void main() {
     final args = call.arguments as Map;
     expect(args['locationContext'], 'Musee du Louvre');
     expect(args['style'], 'academic');
+  });
+
+  // #130
+  test('analyzeImage() includes language when given', () async {
+    final service = GeminiNanoService();
+
+    await service.analyzeImage(tempImage(), language: 'English');
+
+    final call = calls.firstWhere((c) => c.method == 'describeImage');
+    final args = call.arguments as Map;
+    expect(args['language'], 'English');
   });
 
   // #170 — maxOutputTokens/temperature were hardcoded in GeminiNanoPlugin.kt;
