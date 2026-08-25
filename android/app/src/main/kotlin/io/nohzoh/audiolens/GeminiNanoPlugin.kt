@@ -32,7 +32,14 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         // nothing bounding it. Per-segment (not one timeout for all 3)
         // so a slow segment doesn't eat into the others' budget, and so
         // the error can name which segment actually hung.
-        private const val SEGMENT_TIMEOUT_MS = 15_000L
+        //
+        // Bumped 15s -> 30s: a real device (Pixel, GPS-resolved location
+        // with Wikipedia context, #244) hit this timeout on segment 1 —
+        // the heaviest call (image + text, and the one most likely to
+        // also carry AICore's first-inference-after-idle model warmup
+        // cost). 15s wasn't a reliability margin, it was regularly too
+        // tight for real-world multimodal inference.
+        private const val SEGMENT_TIMEOUT_MS = 30_000L
 
         // Tone descriptor per style (T75/T48) — default (null/unrecognized)
         // is the original wording, so the default experience is unchanged.
@@ -174,6 +181,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     return
                 }
 
+                // #244: shared across the try/catch below so a timeout's
+                // error message can actually name which of the 3 cascade
+                // segments hung, instead of a generic "timed out" that
+                // leaves the in-app logs no more diagnosable than a crash.
+                var currentSegment = 0
+
                 scope.launch {
                     try {
                         val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
@@ -181,6 +194,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             ?: throw Exception("Cannot decode image")
 
                         // Segment 1: Visual description with image
+                        currentSegment = 1
                         val req1 = generateContentRequest(
                             ImagePart(bitmap),
                             TextPart(buildSeg1Prompt(locationContext, style, language))
@@ -194,6 +208,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         bitmap.recycle()
 
                         // Segment 2: Historical context (text only, faster)
+                        currentSegment = 2
                         val req2 = generateContentRequest(
                             TextPart(buildSeg2Prompt(seg1, style))
                         ) {
@@ -204,6 +219,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         // Segment 3: Conclusion
+                        currentSegment = 3
                         val req3 = generateContentRequest(
                             TextPart(buildSeg3Prompt("$seg1 $seg2", style))
                         ) {
@@ -226,7 +242,11 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // mirrors GeminiApiService._post's own explicit
                         // HTTP timeout on the cloud pipeline.
                         withContext(Dispatchers.Main) {
-                            result.error("TIMEOUT", "Gemini Nano inference timed out", null)
+                            result.error(
+                                "TIMEOUT",
+                                "Gemini Nano inference timed out (segment $currentSegment)",
+                                null
+                            )
                         }
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
