@@ -160,6 +160,8 @@
   "settingsPlaybackSpeed": "Playback speed",
   "settingsScriptStyleSection": "Script style",
   "settingsScriptStyleSubtitle": "The tone and length of the text read by the guide.",
+  "settingsOutputLanguageSection": "Narration language",
+  "settingsOutputLanguageSubtitle": "The language of the generated text and audio, independent of the interface language.",
   "settingsStyleImmersive": "Immersive",
   "settingsStyleAcademic": "Academic",
   "settingsStyleAnecdotal": "Anecdotal",

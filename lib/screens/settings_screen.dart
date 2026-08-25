@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'logs_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import '../constants/output_languages.dart';
 import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/remote_config_service.dart';
@@ -487,6 +488,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   selected: settings.scriptStyle == 'concise',
                   onSelected: (_) => settings.setScriptStyle('concise'),
                 ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // #130
+          _SectionHeader(l10n.settingsOutputLanguageSection),
+          const SizedBox(height: 4),
+          Text(
+            l10n.settingsOutputLanguageSubtitle,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final language in outputLanguageLocales.keys)
+                  ChoiceChip(
+                    label: Text(language),
+                    selected: settings.outputLanguage == language,
+                    onSelected: (_) => settings.setOutputLanguage(language),
+                  ),
               ],
             ),
           ),

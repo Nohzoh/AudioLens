@@ -45,10 +45,10 @@ void main() {
         .handlePlatformMessage('flutter_tts', envelope, (data) {});
   }
 
-  test('frenchVoices filters to locales starting with fr', () async {
+  test('voicesForLocale filters to locales starting with the given prefix', () async {
     final service = NativeTtsService();
 
-    final voices = await service.frenchVoices();
+    final voices = await service.voicesForLocale('fr');
 
     expect(voices.map((v) => v['name']),
         containsAll(['fr-fr-x-frc-network', 'fr-fr-x-frd-network']));
@@ -89,15 +89,26 @@ void main() {
     expect(rateCalls.last.arguments, closeTo(0.45 * 1.5, 0.0001));
   });
 
-  test('setLanguage/setPitch are only sent once across multiple speak() calls '
-      '(lazy init)', () async {
+  test('setPitch is only sent once across multiple speak() calls (lazy init)', () async {
     final service = NativeTtsService();
 
     await service.speak('Un');
     await service.speak('Deux');
 
-    expect(calls.where((c) => c.method == 'setLanguage'), hasLength(1));
     expect(calls.where((c) => c.method == 'setPitch'), hasLength(1));
+  });
+
+  // #130: unlike setPitch, setLanguage must be re-sent on every speak() —
+  // preferredLanguageLocale can differ from one narration to the next
+  // (the user's chosen output language), so it can't be a one-time,
+  // lazy-init-only call the way setPitch is.
+  test('setLanguage is re-applied on every speak() call, not just once', () async {
+    final service = NativeTtsService();
+
+    await service.speak('Un');
+    await service.speak('Deux');
+
+    expect(calls.where((c) => c.method == 'setLanguage'), hasLength(2));
   });
 
   test('speakAndWaitForResult resolves true when the platform reports completion',

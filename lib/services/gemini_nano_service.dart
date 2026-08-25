@@ -51,6 +51,7 @@ class GeminiNanoService implements AIService {
     String? locationContext,
     CancelToken? cancelToken,
     String? style,
+    String? language,
   }) async {
     if (!_initialized) await initialize();
 
@@ -76,6 +77,7 @@ class GeminiNanoService implements AIService {
         args['locationContext'] = _truncateLocationContext(locationContext);
       }
       if (style != null) args['style'] = style;
+      if (language != null) args['language'] = language;
 
       // The 3 segments (visual description, historical context,
       // conclusion) run sequentially inside one native describeImage

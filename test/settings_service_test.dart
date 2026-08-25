@@ -60,6 +60,7 @@ void main() {
     expect(settings.autoGenerateAudio, isTrue);
     expect(settings.scriptStyle, 'immersive');
     expect(settings.themeMode, ThemeMode.system);
+    expect(settings.outputLanguage, 'Français');
   });
 
   test('completeOnboarding stores the API key and marks onboarding complete',
@@ -103,6 +104,19 @@ void main() {
     expect(reloaded.scriptStyle, 'anecdotal');
   });
 
+  // #130
+  test('setOutputLanguage persists across a reload', () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    await settings.setOutputLanguage('English');
+    expect(settings.outputLanguage, 'English');
+
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.outputLanguage, 'English');
+  });
+
   test('resetOnboarding clears onboarding, API key, and restores every default',
       () async {
     final settings = SettingsService();
@@ -114,6 +128,7 @@ void main() {
     await settings.setAutoPurgeEnabled(true);
     await settings.setAutoPurgeDays(7);
     await settings.setThemeMode(ThemeMode.dark);
+    await settings.setOutputLanguage('Deutsch');
 
     await settings.resetOnboarding();
 
@@ -125,6 +140,7 @@ void main() {
     expect(settings.autoPurgeEnabled, isFalse);
     expect(settings.autoPurgeDays, 30);
     expect(settings.themeMode, ThemeMode.system);
+    expect(settings.outputLanguage, 'Français');
   });
 
   // #145

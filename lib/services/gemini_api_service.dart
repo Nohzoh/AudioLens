@@ -45,6 +45,7 @@ class GeminiApiService implements AIService {
     String? locationContext,
     CancelToken? cancelToken,
     String? style,
+    String? language,
   }) async {
     final cfg = RemoteConfigService.current;
     // T113: downscale before upload — a full-res phone photo (10-20MB) is
@@ -64,9 +65,18 @@ class GeminiApiService implements AIService {
     final wordCount =
         style == 'concise' ? 'Entre 100 et 150 mots' : 'Entre 300 et 400 mots';
 
+    // #130: an explicit override directive is enough to steer the actual
+    // content language regardless of what language the rest of this
+    // (French) prompt's own instructions are written in.
+    final languagePart = language != null && language.isNotEmpty
+        ? 'Redige le titre et le script exclusivement en $language, meme si '
+            'ces instructions sont en francais. '
+        : '';
+
     final prompt = 'Tu es un guide audio de musee, passionne et erudit. '
         'Redige deux choses en JSON valide uniquement, sans markdown : '
         '{"title": "titre court et evocateur (5-8 mots max)", "script": "le texte du guide"} '
+        '$languagePart'
         'Le titre doit nommer precisement l\'oeuvre ou le lieu si reconnu, sinon evoquer ce qu\'on voit. '
         '${_styleGuidance(style)} '
         'Si tu reconnais l\'oeuvre, nomme-la avec des faits reels. '

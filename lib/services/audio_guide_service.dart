@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../constants/output_languages.dart';
 import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 import '../utils/error_sanitizer.dart';
@@ -295,6 +296,25 @@ class AudioGuideService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// #130: resolves [language] (a display name from `outputLanguageLocales`,
+  /// e.g. from `SettingsService.outputLanguage`) to a BCP-47 locale code and
+  /// applies it to the native TTS fallback engine — kept out of the UI
+  /// layer so callers never need to know about `outputLanguageLocales`
+  /// themselves. Unlike [preferredGender], not cached: language can differ
+  /// per analysis, so this is re-applied at every use rather than once.
+  void _prepareNativeTtsLanguage(String? language) {
+    _nativeTtsService.preferredLanguageLocale =
+        outputLanguageLocales[language] ?? outputLanguageLocales[defaultOutputLanguage]!;
+  }
+
+  /// Public wrapper for the one call site outside this class that speaks
+  /// via [nativeTtsService] directly rather than through
+  /// [_synthesizeAndPlay] — replaying a history entry whose last known
+  /// voice was already the native fallback (see history_screen.dart's
+  /// `_toggleAudio`, the `hasLowQualityTts` branch).
+  void prepareNativeTtsLanguageForReplay(String? language) =>
+      _prepareNativeTtsLanguage(language);
+
   /// Analyzes [imageFile] and, unless [generateAudio] is false (T16),
   /// synthesizes and plays the resulting script. When [generateAudio] is
   /// false, the pipeline stops after analysis with state
@@ -311,6 +331,7 @@ class AudioGuideService extends ChangeNotifier {
     bool generateAudio = true,
     ({double lat, double lon, String source})? knownCoordinates,
     String? style,
+    String? language,
     int? entryId,
   }) async {
     if (_analysisInProgress || _state == GuideState.cancelling) {
@@ -394,6 +415,7 @@ class AudioGuideService extends ChangeNotifier {
           locationContext: locationContext.promptContext,
           cancelToken: _cancelToken,
           style: style,
+          language: language,
         );
       } catch (analysisError) {
         // A cancellation must abort outright, not trigger the local-model
@@ -431,6 +453,7 @@ class AudioGuideService extends ChangeNotifier {
               imageFile,
               locationContext: locationContext.promptContext,
               style: style,
+              language: language,
             );
             _lastProviderFallbackToNano = true;
             _lastAiModel = 'Gemini Nano';
@@ -482,7 +505,7 @@ class AudioGuideService extends ChangeNotifier {
         deferredForBackground = true;
         await _synthesizeOnlyForBackground(_lastResult!.script);
       } else if (generateAudio) {
-        await _synthesizeAndPlay(_lastResult!.script);
+        await _synthesizeAndPlay(_lastResult!.script, language: language);
       } else {
         _lastAudioPath = null;
         _state = GuideState.scriptReady;
@@ -525,7 +548,12 @@ class AudioGuideService extends ChangeNotifier {
 
   /// Synthesizes [script] (cloud TTS with native TTS fallback) and plays
   /// it, driving the synthesizing -> speaking state transition.
-  Future<void> _synthesizeAndPlay(String script) async {
+  ///
+  /// [language] (#130) is applied to the native TTS fallback engine before
+  /// speaking — Gemini TTS needs no such hint, it reads the language off
+  /// [script]'s own text.
+  Future<void> _synthesizeAndPlay(String script, {String? language}) async {
+    _prepareNativeTtsLanguage(language);
     _state = GuideState.synthesizing;
     _currentStep = 2;
     _progressEstimator.stepProgress = -1.0;
@@ -593,10 +621,16 @@ class AudioGuideService extends ChangeNotifier {
   /// e.g. an entry created with [analyzeAndPlay]'s `generateAudio: false`,
   /// or any other script-only history entry. Skips GPS/Wikipedia/AI
   /// entirely; only runs the TTS step.
+  ///
+  /// [language] (#130): history entries don't persist which output
+  /// language they were generated with (same as [style] — see
+  /// `analysis_runner.dart`), so callers pass the *current* Settings value;
+  /// only matters for the native TTS fallback (see [_synthesizeAndPlay]).
   Future<AudioGuideResult?> generateAudioForScript({
     required String title,
     required String script,
     String? locationName,
+    String? language,
   }) async {
     if (_analysisInProgress || _state == GuideState.cancelling) {
       _errorMessage = 'Une opération est déjà en cours.';
@@ -615,7 +649,7 @@ class AudioGuideService extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      await _synthesizeAndPlay(script);
+      await _synthesizeAndPlay(script, language: language);
 
       await _audioReadyNotifier.notifyReady();
       return _lastResult;
