@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐⭐ - **Improve visual accessibility: touch targets, tooltips, contrast** (issue #128)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #233)
   - **What was done**: an audit found the app had no existing accessibility infrastructure (no `Semantics` usage, no high-contrast mode) and split the issue into a small mechanical scope shipped here plus a bigger follow-up (#232). Fixed 3 touch targets under the 48×48 guideline: the update-ready banner's dismiss button (`home_screen.dart`, was down to 18×18 with `BoxConstraints()` stripping the Material default), the grid play/pause badge (`home_screen.dart`, bumped toward 40×40 — kept below 48 since it's a small overlay on a grid thumbnail), and the "Upgrade voice" button's height (40 → 48). Added missing `tooltip`s to 4 icon-only `ScrimIconButton`s that had none while sibling buttons already did (back button on both `PlayerScreen` and `HistoryDetailScreen`, using a new shared `commonBack` key; info and delete on `HistoryDetailScreen`, reusing existing keys). Bumped low-contrast `Colors.white54` on-photo metadata text (location row, AI-generated disclosure, date) to `white70` on both `PlayerScreen` and `HistoryDetailScreen` — those rows sit in the upper part of the gradient vignette where the scrim hasn't ramped to its near-opaque floor yet. High-contrast mode toggle and a systematic `Semantics`/TalkBack audit need real design decisions and are split into #232.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 305/305; coverage 64.83% (floor 60%).
 
