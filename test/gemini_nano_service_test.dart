@@ -254,14 +254,15 @@ void main() {
   // attention the model has to spare.
   test('analyzeImage() truncates a long locationContext before sending it', () async {
     final service = GeminiNanoService();
-    final longContext = 'a' * 1000;
+    final longContext = 'a' * 2000;
 
     await service.analyzeImage(tempImage(), locationContext: longContext);
 
     final call = calls.firstWhere((c) => c.method == 'describeImage');
     final sent = (call.arguments as Map)['locationContext'] as String;
     expect(sent.length, lessThan(longContext.length));
-    expect(sent.length, lessThanOrEqualTo(400));
+    // #247: bumped 400 -> 800.
+    expect(sent.length, lessThanOrEqualTo(800));
   });
 
   test('analyzeImage() does not truncate a short locationContext', () async {

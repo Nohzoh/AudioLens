@@ -127,7 +127,16 @@ class LocationContextResolver {
           extractChars: cfg.wikipediaExtractChars,
           client: _httpClient,
         );
-        wikiResults = WikipediaService.merge(wikiResults, nameResults);
+        // #247: name-matched results first, not appended after the
+        // generic-proximity ones — searchNearby's geosearch ranks purely
+        // by distance, which can put a broader article (e.g. the
+        // surrounding town) ahead of the specific place actually being
+        // photographed if the town's own Wikipedia geotag happens to sit
+        // just as close. A downstream character budget (Nano's prompt,
+        // GeminiNanoService._maxLocationContextChars) can then truncate
+        // away the more relevant, name-matched extract entirely — this
+        // ordering makes sure it isn't the one paying that cost.
+        wikiResults = WikipediaService.merge(nameResults, wikiResults);
       }
 
       if (wikiResults.isNotEmpty) {
