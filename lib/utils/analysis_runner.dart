@@ -72,6 +72,7 @@ Future<void> runAnalysisAndNavigate({
     generateAudio: settings.autoGenerateAudio,
     knownCoordinates: knownCoordinates,
     style: settings.scriptStyle,
+    language: settings.outputLanguage,
     entryId: entryId,
   );
 

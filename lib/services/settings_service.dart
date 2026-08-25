@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/output_languages.dart';
 import 'secure_key_storage.dart';
 
 class SettingsService extends ChangeNotifier {
@@ -12,6 +13,7 @@ class SettingsService extends ChangeNotifier {
   bool _autoPurgeEnabled = false;
   int _autoPurgeDays = 30;
   ThemeMode _themeMode = ThemeMode.system;
+  String _outputLanguage = defaultOutputLanguage;
 
   bool get isOnboardingComplete => _isOnboardingComplete;
   String get geminiApiKey => _geminiApiKey;
@@ -30,6 +32,13 @@ class SettingsService extends ChangeNotifier {
   /// passed to the AI prompt (both cloud and on-device) to steer the
   /// script's tone and length (T75/T48).
   String get scriptStyle => _scriptStyle;
+
+  /// #130 — the narration's language, independent of the app's own
+  /// interface language. Defaults to French (the narration's de-facto
+  /// language before this setting existed), not the device locale, so
+  /// existing installs see no surprise change in narration language on
+  /// upgrade. One of [outputLanguageLocales]'s keys.
+  String get outputLanguage => _outputLanguage;
 
   /// Whether history entries older than [autoPurgeDays] are deleted
   /// automatically on app startup (T95). Off by default — deletion stays
@@ -50,6 +59,7 @@ class SettingsService extends ChangeNotifier {
     _autoPurgeEnabled = _prefs.getBool('auto_purge_enabled') ?? false;
     _autoPurgeDays = _prefs.getInt('auto_purge_days') ?? 30;
     _themeMode = ThemeMode.values.byName(_prefs.getString('theme_mode') ?? 'system');
+    _outputLanguage = _prefs.getString('output_language') ?? defaultOutputLanguage;
   }
 
   /// Throws [SecureStorageUnavailableException] if the key can't be
@@ -75,6 +85,7 @@ class SettingsService extends ChangeNotifier {
     _autoPurgeEnabled = false;
     _autoPurgeDays = 30;
     _themeMode = ThemeMode.system;
+    _outputLanguage = defaultOutputLanguage;
     notifyListeners();
   }
 
@@ -93,6 +104,12 @@ class SettingsService extends ChangeNotifier {
   Future<void> setScriptStyle(String value) async {
     _scriptStyle = value;
     await _prefs.setString('script_style', value);
+    notifyListeners();
+  }
+
+  Future<void> setOutputLanguage(String value) async {
+    _outputLanguage = value;
+    await _prefs.setString('output_language', value);
     notifyListeners();
   }
 
