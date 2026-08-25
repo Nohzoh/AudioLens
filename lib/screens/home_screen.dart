@@ -529,8 +529,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, size: 18),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
                           onPressed: () =>
                               setState(() => _updateReady = false),
                         ),
@@ -769,8 +767,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                 : l10n.homeGridPlayTooltip,
                                             child: GestureDetector(
                                               onTap: () => _toggleGridPlayback(entry),
+                                              // #128: bumped from a 22px hit area toward
+                                              // the 48x48 touch-target guideline — kept
+                                              // below 48 since this is a small badge
+                                              // overlaid on a grid thumbnail, not a
+                                              // standalone control.
                                               child: Container(
-                                                padding: const EdgeInsets.all(3),
+                                                padding: const EdgeInsets.all(9),
                                                 decoration: const BoxDecoration(
                                                   color: Colors.black45,
                                                   shape: BoxShape.circle,
@@ -780,7 +783,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                       ? Icons.pause
                                                       : Icons.play_arrow,
                                                   color: Colors.white,
-                                                  size: 16,
+                                                  size: 18,
                                                 ),
                                               ),
                                             ),

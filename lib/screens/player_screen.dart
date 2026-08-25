@@ -163,6 +163,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           ScrimIconButton(
                             icon: Icons.arrow_back,
                             color: Colors.white,
+                            tooltip: l10n.commonBack,
                             onPressed: () {
                               guide.stop();
                               Navigator.pop(context);
@@ -272,13 +273,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               if (guide.lastResult!.locationName != null) ...[
                                 const SizedBox(height: 4),
                                 Row(children: [
+                                  // #128: white54 read low-contrast against
+                                  // this row's position in the gradient
+                                  // (still ramping up, not yet at the
+                                  // near-opaque floor lower in the column).
                                   const Icon(Icons.location_on,
-                                      color: Colors.white54, size: 13),
+                                      color: Colors.white70, size: 13),
                                   const SizedBox(width: 4),
                                   Text(
                                     guide.lastResult!.locationName!,
                                     style: const TextStyle(
-                                        color: Colors.white54, fontSize: 12),
+                                        color: Colors.white70, fontSize: 12),
                                   ),
                                 ]),
                               ],
@@ -301,13 +306,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               // detail sheet (_AiGeneratedBanner in
                               // about_analysis_screen.dart, which stays too).
                               Row(children: [
+                                // #128: see the location row above for why
+                                // this moved off white54.
                                 const Icon(Icons.auto_awesome,
-                                    color: Colors.white54, size: 12),
+                                    color: Colors.white70, size: 12),
                                 const SizedBox(width: 4),
                                 Text(
                                   l10n.playerAiGeneratedDisclosure,
                                   style: const TextStyle(
-                                      color: Colors.white54, fontSize: 11),
+                                      color: Colors.white70, fontSize: 11),
                                 ),
                               ]),
 

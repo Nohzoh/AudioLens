@@ -1,5 +1,6 @@
 {
   "@@locale": "fr",
+  "commonBack": "Retour",
   "kofiButtonTooltip": "Soutenir AudioLens",
 
   "mapPickerTitle": "Indiquer le lieu sur la carte",
