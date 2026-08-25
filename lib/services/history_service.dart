@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import '../constants/analysis_provenance.dart';
 
 /// Thrown when copying a photo or audio file to permanent storage fails
 /// (T116) — most commonly because the device is out of storage. Callers
@@ -65,6 +66,16 @@ class HistoryEntry {
   final bool ttsFallback; // Gemini TTS failed → fell back to the native engine
   final bool isFavorite; // T51
 
+  /// #138: the settings this specific analysis was generated with — null
+  /// for entries predating this field. Independent of the *current*
+  /// Settings value, which may have changed since.
+  final String? scriptStyle;
+  final String? outputLanguage;
+
+  /// #138: `promptSchemaVersion` at the time this entry was generated —
+  /// see its doc comment for what "version" means here.
+  final String? promptVersion;
+
   /// User-applied display rotation, in quarter turns clockwise (0-3).
   ///
   /// Stored rather than baked into the file: the image on disk is also
@@ -98,6 +109,9 @@ class HistoryEntry {
     this.ttsFallback = false,
     this.isFavorite = false,
     this.rotationQuarters = 0,
+    this.scriptStyle,
+    this.outputLanguage,
+    this.promptVersion,
   });
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
@@ -142,6 +156,9 @@ class HistoryEntry {
     'ttsFallback': ttsFallback ? 1 : 0,
     'isFavorite': isFavorite ? 1 : 0,
     'rotationQuarters': rotationQuarters,
+    'scriptStyle': scriptStyle,
+    'outputLanguage': outputLanguage,
+    'promptVersion': promptVersion,
   };
 
   factory HistoryEntry.fromMap(Map<String, dynamic> map) => HistoryEntry(
@@ -167,6 +184,9 @@ class HistoryEntry {
     ttsFallback: (map['ttsFallback'] as int? ?? 0) == 1,
     isFavorite: (map['isFavorite'] as int? ?? 0) == 1,
     rotationQuarters: map['rotationQuarters'] as int? ?? 0,
+    scriptStyle: map['scriptStyle'] as String?,
+    outputLanguage: map['outputLanguage'] as String?,
+    promptVersion: map['promptVersion'] as String?,
     status: AnalysisStatus.values.firstWhere(
       (s) => s.name == (map['status'] as String? ?? 'complete'),
       orElse: () => AnalysisStatus.complete,
@@ -194,6 +214,9 @@ class HistoryEntry {
     bool? ttsFallback,
     bool? isFavorite,
     int? rotationQuarters,
+    String? scriptStyle,
+    String? outputLanguage,
+    String? promptVersion,
   }) => HistoryEntry(
     id: id,
     imagePath: imagePath,
@@ -218,6 +241,9 @@ class HistoryEntry {
     ttsFallback: ttsFallback ?? this.ttsFallback,
     isFavorite: isFavorite ?? this.isFavorite,
     rotationQuarters: rotationQuarters ?? this.rotationQuarters,
+    scriptStyle: scriptStyle ?? this.scriptStyle,
+    outputLanguage: outputLanguage ?? this.outputLanguage,
+    promptVersion: promptVersion ?? this.promptVersion,
   );
 }
 
@@ -261,7 +287,7 @@ class HistoryService extends ChangeNotifier {
     final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE history(
@@ -287,6 +313,9 @@ class HistoryService extends ChangeNotifier {
             ttsFallback INTEGER NOT NULL DEFAULT 0,
             isFavorite INTEGER NOT NULL DEFAULT 0,
             rotationQuarters INTEGER NOT NULL DEFAULT 0,
+            scriptStyle TEXT,
+            outputLanguage TEXT,
+            promptVersion TEXT,
             createdAt TEXT NOT NULL
           )
         ''');
@@ -330,6 +359,13 @@ class HistoryService extends ChangeNotifier {
         }
         if (oldVersion < 8) {
           await db.execute('ALTER TABLE history ADD COLUMN rotationQuarters INTEGER NOT NULL DEFAULT 0');
+        }
+        if (oldVersion < 9) {
+          // #138 — null for every pre-existing entry, same as every other
+          // provenance field added by a prior migration.
+          await db.execute('ALTER TABLE history ADD COLUMN scriptStyle TEXT');
+          await db.execute('ALTER TABLE history ADD COLUMN outputLanguage TEXT');
+          await db.execute('ALTER TABLE history ADD COLUMN promptVersion TEXT');
         }
       },
     );
@@ -453,6 +489,11 @@ class HistoryService extends ChangeNotifier {
     String? gpsAddress,
     bool aiFallback = false,
     bool ttsFallback = false,
+    // #138: the settings actually used for this analysis — record what
+    // was used at generation time, independent of whatever Settings holds
+    // by the time someone looks at the entry later.
+    String? scriptStyle,
+    String? outputLanguage,
   }) async {
     // Delete stale audio file if it exists
     final existing = _entries.firstWhere((e) => e.id == entryId,
@@ -483,6 +524,9 @@ class HistoryService extends ChangeNotifier {
         'gpsAddress': gpsAddress,
         'aiFallback': aiFallback ? 1 : 0,
         'ttsFallback': ttsFallback ? 1 : 0,
+        'scriptStyle': scriptStyle,
+        'outputLanguage': outputLanguage,
+        'promptVersion': promptSchemaVersion,
       },
       where: 'id = ?',
       whereArgs: [entryId],
@@ -512,6 +556,9 @@ class HistoryService extends ChangeNotifier {
         ttsFallback: ttsFallback,
         isFavorite: _entries[idx].isFavorite,
         rotationQuarters: _entries[idx].rotationQuarters,
+        scriptStyle: scriptStyle,
+        outputLanguage: outputLanguage,
+        promptVersion: promptSchemaVersion,
       );
       notifyListeners();
     }

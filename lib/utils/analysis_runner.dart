@@ -101,6 +101,8 @@ Future<void> runAnalysisAndNavigate({
       gpsAddress: guide.lastGpsAddress,
       aiFallback: guide.aiModelWasFallback,
       ttsFallback: guide.ttsWasFallback,
+      scriptStyle: settings.scriptStyle,
+      outputLanguage: settings.outputLanguage,
     );
     final audioPath = guide.lastAudioPath;
     if (audioPath != null) {

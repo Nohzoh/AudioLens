@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:audiolens/constants/analysis_provenance.dart';
 import 'package:audiolens/services/history_service.dart';
 
 /// T68 — HistoryService's actual CRUD methods (as opposed to just
@@ -94,6 +95,8 @@ void main() {
       gpsAddress: 'Musee du Louvre',
       aiFallback: true,
       ttsFallback: false,
+      scriptStyle: 'academic', // #138
+      outputLanguage: 'English', // #138
     );
 
     final updated = service.entries.firstWhere((e) => e.id == pending.id);
@@ -108,6 +111,11 @@ void main() {
     expect(updated.gpsAddress, 'Musee du Louvre');
     expect(updated.aiFallback, isTrue);
     expect(updated.wordCount, greaterThan(0));
+    // #138: scriptStyle/outputLanguage come from the caller, promptVersion
+    // is stamped unconditionally from the current build's constant.
+    expect(updated.scriptStyle, 'academic');
+    expect(updated.outputLanguage, 'English');
+    expect(updated.promptVersion, promptSchemaVersion);
   });
 
   test('completeEntry deletes a stale audio file from a previous run', () async {

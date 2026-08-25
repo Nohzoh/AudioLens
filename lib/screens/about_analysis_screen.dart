@@ -86,6 +86,13 @@ class AboutAnalysisScreen extends StatelessWidget {
                   'Utilisé : ${live.aiModel ?? "modèle de secours"}'),
             if (live.ttsFallback)
               const _Row('Fallback TTS', 'Voix native (Gemini TTS indisponible)'),
+            // #138
+            if (live.scriptStyle != null)
+              _Row('Style', live.scriptStyle!),
+            if (live.outputLanguage != null)
+              _Row('Langue', live.outputLanguage!),
+            if (live.promptVersion != null)
+              _Row('Version du prompt', live.promptVersion!),
           ]),
 
           _Section(title: 'GÉOLOCALISATION', children: [
@@ -204,6 +211,9 @@ AI Model: ${live.aiModel ?? 'unknown'}
 TTS Model: ${live.ttsModel ?? 'unknown'}
 AI Fallback: ${live.aiFallback}
 TTS Fallback: ${live.ttsFallback}
+Script style: ${live.scriptStyle ?? 'unknown'}
+Output language: ${live.outputLanguage ?? 'unknown'}
+Prompt version: ${live.promptVersion ?? 'unknown'}
 Analysis source: ${live.analysisSource ?? 'unknown'}
 GPS source: ${live.gpsSource ?? 'unknown'}
 GPS: ${live.gpsLatitude ?? 'null'}, ${live.gpsLongitude ?? 'null'}

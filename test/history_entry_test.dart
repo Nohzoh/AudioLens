@@ -71,6 +71,9 @@ void main() {
       gpsLatitude: 48.8,
       gpsLongitude: 2.3,
       gpsAddress: 'Paris',
+      scriptStyle: 'academic', // #138
+      outputLanguage: 'English', // #138
+      promptVersion: 'v1', // #138
     );
 
     final map = entry.toMap();
@@ -83,5 +86,8 @@ void main() {
     expect(restored.wikipediaUsed, isTrue);
     expect(restored.gpsSource, 'exif');
     expect(restored.gpsLatitude, 48.8);
+    expect(restored.scriptStyle, 'academic'); // #138
+    expect(restored.outputLanguage, 'English'); // #138
+    expect(restored.promptVersion, 'v1'); // #138
   });
 }
