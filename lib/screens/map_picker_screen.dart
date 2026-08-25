@@ -128,9 +128,18 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                     point: _picked!,
                     width: 40,
                     height: 40,
-                    child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+                    child: const Icon(Icons.location_pin,
+                        color: Colors.red, size: 40),
                   ),
                 ]),
+              // #126: OSM tile usage policy requires visible attribution —
+              // was missing entirely (a pre-existing gap, found while
+              // adding a second FlutterMap surface — see widgets/mini_map.dart).
+              RichAttributionWidget(
+                attributions: [
+                  TextSourceAttribution('OpenStreetMap contributors'),
+                ],
+              ),
             ],
           ),
           Positioned(
@@ -155,7 +164,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                                 child: SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 ),
                               )
                             : const Icon(Icons.search),
@@ -184,7 +194,9 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black26)],
+                        boxShadow: const [
+                          BoxShadow(blurRadius: 4, color: Colors.black26)
+                        ],
                       ),
                       child: ListView.builder(
                         shrinkWrap: true,

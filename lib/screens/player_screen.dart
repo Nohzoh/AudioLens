@@ -11,6 +11,7 @@ import '../services/settings_service.dart';
 import '../utils/rotated_image_export.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
+import '../widgets/mini_map.dart';
 import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
 import '../widgets/report_content_button.dart';
@@ -25,6 +26,7 @@ import '../widgets/share_content_button.dart';
 /// both the photo and a light theme's dark-on-light assumption.
 class PlayerScreen extends StatefulWidget {
   final File imageFile;
+
   /// Whether [imageFile] is a throwaway temp file (a fresh camera/gallery
   /// pick, already copied to permanent history storage before this screen
   /// was pushed) that this screen should delete once it's done with it
@@ -56,7 +58,8 @@ class PlayerScreen extends StatefulWidget {
 class _PlayerScreenState extends State<PlayerScreen> {
   final ScrollController _scrollController = ScrollController();
   double _readingProgress = 0.0; // 0.0 to 1.0
-  bool _photoMode = false; // T14: show the plain photo instead of the overlaid text
+  bool _photoMode =
+      false; // T14: show the plain photo instead of the overlaid text
 
   @override
   void initState() {
@@ -211,7 +214,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 ),
                               ),
                             )
-                          else if (guide.state == GuideState.speaking || guide.state == GuideState.paused || guide.state == GuideState.synthesizing)
+                          else if (guide.state == GuideState.speaking ||
+                              guide.state == GuideState.paused ||
+                              guide.state == GuideState.synthesizing)
                             Padding(
                               padding: const EdgeInsets.only(left: 4),
                               child: ScrimIconButton(
@@ -278,6 +283,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 ]),
                               ],
 
+                              // #126
+                              if (guide.lastGpsLatitude != null &&
+                                  guide.lastGpsLongitude != null) ...[
+                                const SizedBox(height: 8),
+                                MiniMap(
+                                  latitude: guide.lastGpsLatitude!,
+                                  longitude: guide.lastGpsLongitude!,
+                                ),
+                              ],
+
                               const SizedBox(height: 4),
 
                               // AI-generated content disclosure — shown
@@ -314,14 +329,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                     label: l10n.playerSave,
                                     onTap: () async {
                                       try {
-                                        final galleryPath = await imagePathForGallerySave(
-                                            widget.imageFile.path, widget.rotationQuarters);
+                                        final galleryPath =
+                                            await imagePathForGallerySave(
+                                                widget.imageFile.path,
+                                                widget.rotationQuarters);
                                         await Gal.putImage(galleryPath);
                                         if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
                                             SnackBar(
-                                              content: Text(l10n.playerPhotoSaved),
-                                              duration: const Duration(seconds: 2),
+                                              content:
+                                                  Text(l10n.playerPhotoSaved),
+                                              duration:
+                                                  const Duration(seconds: 2),
                                             ),
                                           );
                                         }
@@ -333,9 +353,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                     icon: Icons.copy,
                                     label: l10n.playerCopy,
                                     onTap: () {
-                                      Clipboard.setData(ClipboardData(text: guide.lastResult!.script));
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(l10n.playerTextCopied), duration: const Duration(seconds: 2)),
+                                      Clipboard.setData(ClipboardData(
+                                          text: guide.lastResult!.script));
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content:
+                                                Text(l10n.playerTextCopied),
+                                            duration:
+                                                const Duration(seconds: 2)),
                                       );
                                     },
                                   ),
@@ -349,7 +375,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                   ReportContentButton(
                                     title: guide.lastResult!.title,
                                     script: guide.lastResult!.script,
-                                    aiModel: guide.actualAiModel ?? guide.lastAiModel,
+                                    aiModel: guide.actualAiModel ??
+                                        guide.lastAiModel,
                                     date: DateTime.now(),
                                   ),
                                 ],
@@ -363,7 +390,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 if (guide.aiModelWasFallback)
                                   _FallbackBanner(
                                     icon: Icons.swap_horiz,
-                                    message: l10n.playerAiFallbackMessage(guide.actualAiModel ?? '?'),
+                                    message: l10n.playerAiFallbackMessage(
+                                        guide.actualAiModel ?? '?'),
                                     color: Colors.orange,
                                   ),
                                 if (guide.ttsWasFallback)
@@ -402,7 +430,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                           width: 3,
                                           decoration: BoxDecoration(
                                             color: Colors.white12,
-                                            borderRadius: BorderRadius.circular(2),
+                                            borderRadius:
+                                                BorderRadius.circular(2),
                                           ),
                                           child: FractionallySizedBox(
                                             alignment: Alignment.topCenter,
@@ -410,7 +439,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                             child: Container(
                                               decoration: BoxDecoration(
                                                 color: Colors.white,
-                                                borderRadius: BorderRadius.circular(2),
+                                                borderRadius:
+                                                    BorderRadius.circular(2),
                                               ),
                                             ),
                                           ),
@@ -428,7 +458,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xDD1a0000),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+                                  border: Border.all(
+                                      color: Colors.redAccent
+                                          .withValues(alpha: 0.5)),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,20 +489,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                           color: Colors.white54,
                                           onTap: () {
                                             Clipboard.setData(ClipboardData(
-                                                text: guide.errorMessage ?? ''));
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                  content: Text(l10n.playerErrorCopied),
-                                                  duration: const Duration(seconds: 2)));
+                                                text:
+                                                    guide.errorMessage ?? ''));
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(SnackBar(
+                                                    content: Text(
+                                                        l10n.playerErrorCopied),
+                                                    duration: const Duration(
+                                                        seconds: 2)));
                                           },
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      guide.errorMessage ?? l10n.playerUnknownError,
+                                      guide.errorMessage ??
+                                          l10n.playerUnknownError,
                                       style: const TextStyle(
-                                          color: Colors.white, fontSize: 12, height: 1.5),
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          height: 1.5),
                                     ),
                                   ],
                                 ),
@@ -504,7 +542,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             IconButton.filled(
                               iconSize: 36,
                               icon: Icon(guide.state == GuideState.speaking
-                                  ? Icons.pause : Icons.play_arrow),
+                                  ? Icons.pause
+                                  : Icons.play_arrow),
                               onPressed: guide.togglePause,
                             ),
                             if (guide.canSkip) ...[
@@ -554,8 +593,8 @@ class _HighlightedScript extends StatelessWidget {
         padding: const EdgeInsets.only(left: 12),
         child: Text(
           text,
-          style: const TextStyle(
-              color: Colors.white70, fontSize: 15, height: 1.7),
+          style:
+              const TextStyle(color: Colors.white70, fontSize: 15, height: 1.7),
         ),
       );
     }
@@ -615,7 +654,8 @@ class _PipelineProgressWidget extends StatelessWidget {
             final isDone = i < progress.currentStep;
             final isActive = i == progress.currentStep;
             // GPS step: yellow if done but not granted
-            final isGpsWarning = i == 0 && isDone &&
+            final isGpsWarning = i == 0 &&
+                isDone &&
                 guide.lastLocationStatus != LocationPermissionStatus.granted;
             return Expanded(
               child: Row(
@@ -626,9 +666,8 @@ class _PipelineProgressWidget extends StatelessWidget {
                     isDone: isDone,
                     isActive: isActive,
                     isWarning: isGpsWarning,
-                    progress: isActive
-                        ? progress.stepProgress
-                        : (isDone ? 1.0 : 0.0),
+                    progress:
+                        isActive ? progress.stepProgress : (isDone ? 1.0 : 0.0),
                   ),
                   if (i < steps.length - 1)
                     Expanded(
@@ -646,7 +685,8 @@ class _PipelineProgressWidget extends StatelessWidget {
         if (progress.estimatedSecondsRemaining != null) ...[
           const SizedBox(height: 6),
           Text(
-            l10n.playerSecondsRemaining(progress.estimatedSecondsRemaining!.round()),
+            l10n.playerSecondsRemaining(
+                progress.estimatedSecondsRemaining!.round()),
             style: const TextStyle(color: Colors.white38, fontSize: 11),
           ),
         ],
@@ -689,7 +729,9 @@ class _StepDot extends StatelessWidget {
                   value: progress < 0 ? null : value,
                   strokeWidth: 2,
                   backgroundColor: Colors.white12,
-                  color: isWarning ? Colors.orange : (isDone ? Colors.greenAccent : Colors.white),
+                  color: isWarning
+                      ? Colors.orange
+                      : (isDone ? Colors.greenAccent : Colors.white),
                 ),
               ),
             ),
@@ -740,7 +782,8 @@ class _StateLabel extends StatelessWidget {
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: Colors.white)),
           const SizedBox(width: 8),
-          Text(l10n.playerStateLocating, style: const TextStyle(color: Colors.white70)),
+          Text(l10n.playerStateLocating,
+              style: const TextStyle(color: Colors.white70)),
         ]).animate().fadeIn(),
       GuideState.analyzing => Row(children: [
           const SizedBox(
@@ -765,17 +808,21 @@ class _StateLabel extends StatelessWidget {
       GuideState.speaking => Row(children: [
           const Icon(Icons.graphic_eq, color: Colors.greenAccent, size: 16),
           const SizedBox(width: 8),
-          Text(l10n.playerStateSpeaking, style: const TextStyle(color: Colors.white70)),
+          Text(l10n.playerStateSpeaking,
+              style: const TextStyle(color: Colors.white70)),
         ]).animate().fadeIn(),
       GuideState.paused => Row(children: [
           const Icon(Icons.pause_circle, color: Colors.white54, size: 16),
           const SizedBox(width: 8),
-          Text(l10n.playerStatePaused, style: const TextStyle(color: Colors.white54)),
+          Text(l10n.playerStatePaused,
+              style: const TextStyle(color: Colors.white54)),
         ]),
       GuideState.scriptReady => Row(children: [
-          const Icon(Icons.text_snippet_outlined, color: Colors.white54, size: 16),
+          const Icon(Icons.text_snippet_outlined,
+              color: Colors.white54, size: 16),
           const SizedBox(width: 8),
-          Text(l10n.playerStateScriptReady, style: const TextStyle(color: Colors.white54)),
+          Text(l10n.playerStateScriptReady,
+              style: const TextStyle(color: Colors.white54)),
         ]),
       _ => const SizedBox.shrink(),
     };
@@ -787,8 +834,8 @@ class _FallbackBanner extends StatelessWidget {
   final String message;
   final Color color;
 
-  const _FallbackBanner({
-      required this.icon, required this.message, required this.color});
+  const _FallbackBanner(
+      {required this.icon, required this.message, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -805,8 +852,7 @@ class _FallbackBanner extends StatelessWidget {
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(message,
-                style: TextStyle(color: color, fontSize: 11)),
+            child: Text(message, style: TextStyle(color: color, fontSize: 11)),
           ),
         ],
       ),

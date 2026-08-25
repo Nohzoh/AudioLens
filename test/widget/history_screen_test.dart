@@ -383,6 +383,71 @@ void main() {
     });
   });
 
+  group('swipe between entries (#126)', () {
+    // find.text('La Joconde') isn't unique enough to assert absence with:
+    // the underlying HistoryScreen list stays mounted beneath the pushed
+    // detail route (never replaced) and shows every entry's title too.
+    // Reading the current top-most HistoryDetailScreen's own `entry`
+    // avoids that ambiguity entirely.
+    HistoryEntry currentDetailEntry(WidgetTester tester) =>
+        tester.widget<HistoryDetailScreen>(find.byType(HistoryDetailScreen)).entry;
+
+    testWidgets('a decisive left fling navigates to the next (older) entry', (tester) async {
+      // addEntry inserts at index 0 (newest-first) — "Second Entry" ends
+      // up newer/first, "La Joconde" older/second, so opening "Second
+      // Entry" and swiping left (direction: +1, toward older) should land
+      // on "La Joconde".
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'Second Entry',
+            script: 'Autre script.',
+          ));
+
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Second Entry'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(currentDetailEntry(tester).title, 'Second Entry');
+
+      await tester.fling(find.byType(HistoryDetailScreen), const Offset(-400, 0), 1000);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(currentDetailEntry(tester).title, 'La Joconde');
+    });
+
+    testWidgets('a decisive fling past the last entry is a no-op', (tester) async {
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('La Joconde'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Only entry in the list — swiping either direction has nowhere to go.
+      await tester.fling(find.byType(HistoryDetailScreen), const Offset(-400, 0), 1000);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(currentDetailEntry(tester).title, 'La Joconde');
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('pinch-to-zoom reaches the photo through the gradient overlay (#204)', () {
     Future<void> openDetailInPhotoMode(WidgetTester tester) async {
       await tester.pumpWidget(wrapScreen());
