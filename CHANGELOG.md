@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 ⭐⭐ - **Gemini Nano used cloud TTS even when picked specifically for on-device privacy** (issue #253)
-  - **Verified**: 2026-08-26 (PR TBD)
+  - **Verified**: 2026-08-26 (PR #254)
   - **What was done**: reported live — picking Gemini Nano still spoke through Gemini TTS (cloud) whenever an API key happened to be configured too, defeating the point of choosing an on-device provider. `AudioGuideService._synthesizeAndPlay`/`_synthesizeOnlyForBackground` always reached for Gemini TTS whenever an instance existed at all, independent of the active AI provider. Added `AiProviderManager.geminiTtsForCurrentProvider`, which only returns it when the active provider is actually `geminiApi` — `null` otherwise, forcing native TTS. The raw `geminiTtsService` getter stays available separately for the "Improve the voice" one-off upgrade action, deliberately not gated by the active provider. Also relabeled "Gemini Nano" to "IA locale" / "Local AI" everywhere it's picked (Settings, home screen chip, regenerate sheet) — now that this option deterministically guarantees both local analysis *and* local voice, the label describes what it guarantees rather than the specific Google product name. Debug surfaces (About analysis, `HistoryEntry.aiModel`) keep the real technical model name.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 324/324 (1 new regression test covering the exact reported scenario; 2 existing tests fixed that were unknowingly relying on the old provider-independent TTS behavior); coverage 66.87% (floor 60%). No native Kotlin touched.
 
