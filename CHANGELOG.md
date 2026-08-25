@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐⭐⭐⭐ - **Light theme option** (issue #145)
+  - **Verified**: 2026-08-25 (PR #212)
+  - **What was done**: added a System/Light/Dark appearance setting in Settings, persisted via `SettingsService`. Full audit of every hardcoded `Colors.white*`/`Colors.black*` literal across 12 files, not a blanket find/replace: screens on themed Material chrome (Settings, Home, History list, About analysis, Logs, Onboarding) now derive colors from `theme.colorScheme`; screens/widgets that render directly over a user's photo (`PlayerScreen`, `HistoryDetailScreen`, the `Scrim*` widgets, `background_photo.dart`'s vignette) deliberately keep fixed on-scrim colors, since they exist to stay legible over arbitrary photo content rather than to match app chrome — documented in place so this reads as a decision, not an oversight.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 291/291 (2 new tests). Verified on a local debug build (Android emulator): toggled System/Light/Dark live, confirmed Settings/Home/History list/Logs render legibly in both themes.
+
 - [x] 📈 ⭐ - **Map picker search: zoom level after selecting a result ignores the place's actual extent** (issue #201)
   - **Verified**: 2026-08-25 (PR #210, commit `ae81164`)
   - **What was done**: `_selectPrediction` jumped to every search result with a hardcoded `zoom: 15` — too zoomed out for a precise address, too zoomed in for a city/region. `GeocodePrediction` now carries Nominatim's own `boundingbox` (sized to the kind of place matched); the map picker uses `MapController.fitCamera(CameraFit.bounds(...))` to derive the correct zoom from it (capped at 18 so a single-building bbox doesn't zoom in absurdly far), falling back to the old fixed-zoom `move()` on the rare result with no usable bounding box.

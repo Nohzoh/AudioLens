@@ -134,7 +134,8 @@ class _BackgroundPhotoState extends State<BackgroundPhoto> {
                   child: _rotated(Image.file(widget.file, fit: BoxFit.cover)),
                 ),
                 // Darkened so the sharp photo above stays the focal point
-                // even when the blurred copy is bright.
+                // even when the blurred copy is bright. #145: fixed black,
+                // not theme-relative — this paints over the photo, not chrome.
                 Container(color: Colors.black.withValues(alpha: 0.35)),
                 _rotated(Image.file(widget.file, fit: BoxFit.contain)),
               ],

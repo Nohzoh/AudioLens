@@ -131,6 +131,11 @@ void main() {
     await tester.pumpWidget(wrapScreen());
     await tester.pumpAndSettle();
 
-    expect(find.text('Version : 0.1.5 (42)'), findsOneWidget);
+    // #145 pushed this section further down the list — same offscreen-child
+    // issue as the toggles above.
+    final versionLabel = find.text('Version : 0.1.5 (42)');
+    await tester.scrollUntilVisible(versionLabel, 300, scrollable: find.byType(Scrollable).first);
+
+    expect(versionLabel, findsOneWidget);
   });
 }

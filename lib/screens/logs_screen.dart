@@ -45,13 +45,13 @@ class _LogsScreenState extends State<LogsScreen> {
     }
   }
 
-  Color _lineColor(String line) {
+  Color _lineColor(BuildContext context, String line) {
     if (line.contains('[ERROR]')) return Colors.redAccent;
     if (line.contains('[TTS]')) return Colors.purpleAccent;
     if (line.contains('[AI]')) return Colors.blueAccent;
     if (line.contains('[GPS]')) return Colors.greenAccent;
     if (line.contains('[DB]')) return Colors.orangeAccent;
-    return Colors.white70;
+    return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70);
   }
 
   @override
@@ -95,7 +95,12 @@ class _LogsScreenState extends State<LogsScreen> {
       ),
       body: lines.isEmpty
           ? Center(
-              child: Text(l10n.logsEmpty, style: const TextStyle(color: Colors.white38)),
+              child: Text(l10n.logsEmpty,
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.38))),
             )
           : ListView.builder(
               controller: _scroll,
@@ -118,7 +123,7 @@ class _LogsScreenState extends State<LogsScreen> {
                     child: Text(
                       line,
                       style: TextStyle(
-                        color: _lineColor(line),
+                        color: _lineColor(context, line),
                         fontSize: 10,
                         fontFamily: 'monospace',
                       ),

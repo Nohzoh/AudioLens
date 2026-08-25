@@ -282,18 +282,20 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.white38, letterSpacing: 1.2)),
+              style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+                  letterSpacing: 1.2)),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+              color: theme.colorScheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(children: children),
@@ -312,6 +314,7 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -320,7 +323,9 @@ class _Row extends StatelessWidget {
           SizedBox(
             width: 140,
             child: Text(label,
-                style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.54),
+                    fontSize: 13)),
           ),
           Expanded(
             // #154: tapping a single value copies just that value —
@@ -329,7 +334,7 @@ class _Row extends StatelessWidget {
             child: InkWell(
               onTap: () => _copyValue(context),
               child: Text(value,
-                  style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13)),
             ),
           ),
         ],

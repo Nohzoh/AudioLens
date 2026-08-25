@@ -116,6 +116,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          // #145
+          _SectionHeader(l10n.settingsAppearanceSection),
+          const SizedBox(height: 8),
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => SegmentedButton<ThemeMode>(
+              segments: [
+                ButtonSegment(
+                  value: ThemeMode.system,
+                  label: Text(l10n.settingsThemeSystem),
+                  icon: const Icon(Icons.brightness_auto),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  label: Text(l10n.settingsThemeLight),
+                  icon: const Icon(Icons.light_mode),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  label: Text(l10n.settingsThemeDark),
+                  icon: const Icon(Icons.dark_mode),
+                ),
+              ],
+              selected: {settings.themeMode},
+              onSelectionChanged: (selection) =>
+                  settings.setThemeMode(selection.first),
+            ),
+          ),
+          const SizedBox(height: 32),
+
           // Provider status
           _SectionHeader(l10n.settingsActiveAiEngine),
           const SizedBox(height: 8),
@@ -148,7 +177,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Text(
             l10n.settingsGetFreeKey,
-            style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+            style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.54)),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -205,10 +235,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             final cfg = RemoteConfigService.current;
             final loadedAt = RemoteConfigService.loadedAt;
             final fromRemote = RemoteConfigService.loadedFromRemote;
+            final theme = Theme.of(context);
+            final dimText = theme.colorScheme.onSurface.withValues(alpha: 0.38);
             return Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                color: theme.colorScheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -236,23 +268,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       l10n.settingsUpdatedAt(
                           DateFormat("dd/MM/yyyy à HH:mm").format(loadedAt)),
-                      style:
-                          const TextStyle(color: Colors.white38, fontSize: 11),
+                      style: TextStyle(color: dimText, fontSize: 11),
                     ),
                   ],
                   if (_appVersion != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       l10n.settingsVersionLabel(_appVersion!),
-                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      style: TextStyle(color: dimText, fontSize: 11),
                     ),
                   ],
                   const SizedBox(height: 4),
                   Text(
                     l10n.settingsBuildLabel(formatBuildDate(buildDate)),
-                    style: const TextStyle(color: Colors.white38, fontSize: 11),
+                    style: TextStyle(color: dimText, fontSize: 11),
                   ),
-                  const Divider(height: 20, color: Colors.white12),
+                  Divider(
+                      height: 20,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
                   _ConfigRow(l10n.settingsConfigModel, cfg.geminiModel),
                   _ConfigRow(l10n.settingsConfigFallbacks, cfg.geminiModelFallbacks.join(', ')),
                   _ConfigRow(l10n.settingsConfigTtsModel, cfg.geminiTtsModel),
@@ -471,8 +504,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  const Icon(Icons.info_outline,
-                      size: 16, color: Colors.white54),
+                  Icon(Icons.info_outline,
+                      size: 16,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.54)),
                   const SizedBox(width: 8),
                   Text(l10n.settingsAboutGeminiApi,
                       style: theme.textTheme.labelMedium),
@@ -480,8 +514,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 8),
                 Text(
                   l10n.settingsGeminiApiBullets,
-                  style: const TextStyle(
-                      color: Colors.white54, fontSize: 13, height: 1.6),
+                  style: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.54),
+                      fontSize: 13,
+                      height: 1.6),
                 ),
               ],
             ),
@@ -498,10 +534,11 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Text(
       title.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: Colors.white38,
+      style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
             letterSpacing: 1.2,
           ),
     );
@@ -553,30 +590,32 @@ class _ProviderCard extends StatelessWidget {
             icon,
             color: isActive
                 ? theme.colorScheme.primary
-                : isAvailable
-                    ? Colors.white70
-                    : Colors.white24,
+                : theme.colorScheme.onSurface
+                    .withValues(alpha: isAvailable ? 0.70 : 0.24),
           ),
           title: Text(
             name,
             style: TextStyle(
-              color: isAvailable ? Colors.white : Colors.white38,
+              color: theme.colorScheme.onSurface
+                  .withValues(alpha: isAvailable ? 1.0 : 0.38),
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
           ),
           subtitle: Text(
             isAvailable ? description : '$description\n${l10n.settingsNotConfiguredSuffix}',
             style: TextStyle(
-              color: isAvailable ? Colors.white54 : Colors.white24,
+              color: theme.colorScheme.onSurface
+                  .withValues(alpha: isAvailable ? 0.54 : 0.24),
               fontSize: 12,
             ),
           ),
           trailing: isActive
               ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
               : isAvailable
-                  ? const Icon(Icons.radio_button_unchecked,
-                      color: Colors.white38)
-                  : const Icon(Icons.lock_outline, color: Colors.white24),
+                  ? Icon(Icons.radio_button_unchecked,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.38))
+                  : Icon(Icons.lock_outline,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.24)),
           onTap: onTap,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -592,6 +631,7 @@ class _ConfigRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -600,11 +640,15 @@ class _ConfigRow extends StatelessWidget {
           SizedBox(
             width: 130,
             child: Text(label,
-                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.54),
+                    fontSize: 12)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.70),
+                    fontSize: 12)),
           ),
         ],
       ),

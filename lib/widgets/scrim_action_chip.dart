@@ -32,6 +32,7 @@ class ScrimActionChip extends StatelessWidget {
     // Radius matches the pill's own height rather than a fixed value, so
     // it stays a true pill if text scaling grows the row.
     return Material(
+      // #145: stays fixed black regardless of app theme — see class doc.
       color: Colors.black.withValues(alpha: 0.35),
       borderRadius: BorderRadius.circular(100),
       clipBehavior: Clip.antiAlias,

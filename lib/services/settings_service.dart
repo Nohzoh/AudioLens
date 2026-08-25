@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'secure_key_storage.dart';
 
@@ -11,10 +11,15 @@ class SettingsService extends ChangeNotifier {
   String _scriptStyle = 'immersive';
   bool _autoPurgeEnabled = false;
   int _autoPurgeDays = 30;
+  ThemeMode _themeMode = ThemeMode.system;
 
   bool get isOnboardingComplete => _isOnboardingComplete;
   String get geminiApiKey => _geminiApiKey;
   bool get showKofiButton => _showKofiButton;
+
+  /// #145 — defaults to following the device's own setting, like most
+  /// apps do, rather than forcing dark (the app's only option before).
+  ThemeMode get themeMode => _themeMode;
 
   /// Whether audio is synthesized automatically after each analysis (T16).
   /// When false, analyzeAndPlay stops after generating the script; audio
@@ -44,6 +49,7 @@ class SettingsService extends ChangeNotifier {
     _scriptStyle = _prefs.getString('script_style') ?? 'immersive';
     _autoPurgeEnabled = _prefs.getBool('auto_purge_enabled') ?? false;
     _autoPurgeDays = _prefs.getInt('auto_purge_days') ?? 30;
+    _themeMode = ThemeMode.values.byName(_prefs.getString('theme_mode') ?? 'system');
   }
 
   /// Throws [SecureStorageUnavailableException] if the key can't be
@@ -68,6 +74,7 @@ class SettingsService extends ChangeNotifier {
     _scriptStyle = 'immersive';
     _autoPurgeEnabled = false;
     _autoPurgeDays = 30;
+    _themeMode = ThemeMode.system;
     notifyListeners();
   }
 
@@ -98,6 +105,12 @@ class SettingsService extends ChangeNotifier {
   Future<void> setAutoPurgeDays(int value) async {
     _autoPurgeDays = value;
     await _prefs.setInt('auto_purge_days', value);
+    notifyListeners();
+  }
+
+  Future<void> setThemeMode(ThemeMode value) async {
+    _themeMode = value;
+    await _prefs.setString('theme_mode', value.name);
     notifyListeners();
   }
 }

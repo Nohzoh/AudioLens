@@ -227,19 +227,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.history, size: 64, color: Colors.white12),
+                  Icon(Icons.history,
+                      size: 64,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
                   const SizedBox(height: 16),
                   Text(
                     l10n.historyEmptyTitle,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: Colors.white38,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     l10n.historyEmptySubtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white24,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.24),
                     ),
                   ),
                 ],
@@ -259,7 +261,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         child: Text(
                           l10n.historyNoFilterResults,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.white38,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
                           ),
                         ),
                       )
@@ -345,7 +347,11 @@ class _CollectionsSheetState extends State<_CollectionsSheet> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(l10n.historyNoCollectionsYet,
-                        style: const TextStyle(color: Colors.white38)),
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.38))),
                   )
                 else
                   Flexible(
@@ -456,8 +462,9 @@ class _HistoryCard extends StatelessWidget {
                               )
                             : Container(
                                 color: theme.colorScheme.surfaceContainerHighest,
-                                child: const Icon(Icons.image_not_supported,
-                                    color: Colors.white24),
+                                child: Icon(Icons.image_not_supported,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.24)),
                               ),
                       ),
                     ),
@@ -469,6 +476,8 @@ class _HistoryCard extends StatelessWidget {
                           onTap: () => context
                               .read<HistoryService>()
                               .toggleFavorite(entry.id!),
+                          // #145: fixed black/white — this badge sits on
+                          // the thumbnail photo, not themed chrome.
                           child: Container(
                             padding: const EdgeInsets.all(3),
                             decoration: const BoxDecoration(
@@ -506,13 +515,14 @@ class _HistoryCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Row(
                           children: [
-                            const Icon(Icons.location_on,
-                                size: 12, color: Colors.white38),
+                            Icon(Icons.location_on,
+                                size: 12,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
                             const SizedBox(width: 2),
                             Text(
                               entry.locationName!,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white38,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
                               ),
                             ),
                           ],
@@ -522,13 +532,14 @@ class _HistoryCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Row(
                           children: [
-                            const Icon(Icons.text_snippet_outlined,
-                                size: 12, color: Colors.white38),
+                            Icon(Icons.text_snippet_outlined,
+                                size: 12,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
                             const SizedBox(width: 2),
                             Text(
                               l10n.historyScriptOnly,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white38,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
                               ),
                             ),
                           ],
@@ -538,13 +549,14 @@ class _HistoryCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Row(
                           children: [
-                            const Icon(Icons.cloud_off_outlined,
-                                size: 12, color: Colors.white38),
+                            Icon(Icons.cloud_off_outlined,
+                                size: 12,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
                             const SizedBox(width: 2),
                             Text(
                               l10n.historyCapturedTapToAnalyze,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white38,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
                               ),
                             ),
                           ],
@@ -570,7 +582,7 @@ class _HistoryCard extends StatelessWidget {
                       Text(
                         dateStr,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.white24,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.24),
                           fontSize: 11,
                         ),
                       ),
@@ -578,7 +590,8 @@ class _HistoryCard extends StatelessWidget {
                   ),
                 ),
 
-                const Icon(Icons.chevron_right, color: Colors.white24),
+                Icon(Icons.chevron_right,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.24)),
               ],
             ),
           ),
@@ -588,6 +601,14 @@ class _HistoryCard extends StatelessWidget {
   }
 }
 
+/// #145: every `Colors.white*`/`Colors.black*` literal in this class is
+/// deliberate, not an oversight — this screen renders its entire content
+/// column over [BackgroundPhoto] + a gradient vignette, not the app's
+/// themed chrome. Both the vignette and the text/icons on top of it stay
+/// a fixed on-scrim color regardless of the app's light/dark setting,
+/// the same way the vignette itself doesn't change with the theme —
+/// swapping to `colorScheme.onSurface` would make them illegible against
+/// both the photo and a light theme's dark-on-light assumption.
 class HistoryDetailScreen extends StatefulWidget {
   final HistoryEntry entry;
   /// Starts playback automatically once this screen is shown — used when

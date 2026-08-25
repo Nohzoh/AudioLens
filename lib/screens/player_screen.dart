@@ -15,6 +15,13 @@ import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
 import '../widgets/report_content_button.dart';
 
+/// #145: every `Colors.white*`/`Colors.black*` literal in this file is
+/// deliberate, not an oversight — this screen renders its entire content
+/// column over [BackgroundPhoto] + a gradient vignette, not the app's
+/// themed chrome. Both the vignette and the text/icons on top of it stay
+/// a fixed on-scrim color regardless of the app's light/dark setting —
+/// swapping to `colorScheme.onSurface` would make them illegible against
+/// both the photo and a light theme's dark-on-light assumption.
 class PlayerScreen extends StatefulWidget {
   final File imageFile;
   /// Whether [imageFile] is a throwaway temp file (a fresh camera/gallery

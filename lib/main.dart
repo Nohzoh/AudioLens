@@ -89,34 +89,48 @@ class AudioGuideApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'AudioLens',
-      debugShowCheckedModeBanner: false,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      // No custom localeResolutionCallback needed: Flutter's default
-      // resolution already matches the device's locale when supported (fr
-      // or en) and falls back to supportedLocales.first otherwise — which
-      // is English (the generated list is alphabetical: [en, fr]).
-      // English as the fallback for unsupported system locales reaches
-      // more non-French speakers than defaulting to French would.
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6B4EFF),
-          brightness: Brightness.dark,
-        ),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-        useMaterial3: true,
-      ),
-      home: Consumer<SettingsService>(
-        builder: (context, settings, _) {
-          final guide = context.read<AudioGuideService>();
-          if (guide.isReady) return const HomeScreen();
-          if (settings.isOnboardingComplete) return const HomeScreen();
-          return const OnboardingScreen();
-        },
-      ),
+    // #145: wraps the whole MaterialApp (not just `home:`, as before) so
+    // `themeMode:` actually reacts when the user changes the Appearance
+    // setting — a Consumer scoped only to `home:` never touches themeMode
+    // again after the first build.
+    return Consumer<SettingsService>(
+      builder: (context, settings, _) {
+        final guide = context.read<AudioGuideService>();
+        return MaterialApp(
+          navigatorKey: navigatorKey,
+          title: 'AudioLens',
+          debugShowCheckedModeBanner: false,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          // No custom localeResolutionCallback needed: Flutter's default
+          // resolution already matches the device's locale when supported
+          // (fr or en) and falls back to supportedLocales.first otherwise —
+          // which is English (the generated list is alphabetical: [en, fr]).
+          // English as the fallback for unsupported system locales reaches
+          // more non-French speakers than defaulting to French would.
+          // #145: same seed color for both — only brightness differs.
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF6B4EFF),
+              brightness: Brightness.light,
+            ),
+            textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF6B4EFF),
+              brightness: Brightness.dark,
+            ),
+            textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+            useMaterial3: true,
+          ),
+          themeMode: settings.themeMode,
+          home: guide.isReady || settings.isOnboardingComplete
+              ? const HomeScreen()
+              : const OnboardingScreen(),
+        );
+      },
     );
   }
 }
