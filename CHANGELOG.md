@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐⭐ - **Analysis provenance isn't fully versioned in history** (issue #138)
+  - **Verified**: 2026-08-25 (PR TBD)
+  - **What was done**: `HistoryEntry` already stored `aiModel`/`ttsModel`, but not the script style/language actually used or a prompt/output-schema version — added all three (DB migration v8→v9), stamped at completion time. `scriptStyle`/`outputLanguage` come from `SettingsService` at generation time (independent of whatever the settings hold later); `promptVersion` is a new `promptSchemaVersion` constant (`lib/constants/analysis_provenance.dart`), bumped manually whenever the prompt/output-schema meaningfully changes. Surfaced in the "About analysis" debug screen and its copyable debug-info text.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301; coverage 64.90% (floor 60%, up from 64.82%).
+
 - [x] 🌱 ⭐ - **Add a test coverage baseline and keep it up** (issue #140)
   - **Verified**: 2026-08-25 (PR #225)
   - **What was done**: CI now runs `flutter test --coverage` and fails the build if line coverage drops below a 60% floor (`scripts/check_coverage.py`), excluding generated `lib/l10n/app_localizations*.dart` (would otherwise swing the percentage on translation-key changes alone). Current coverage is 64.82%. Also fixed `scripts/run_tests_with_coverage.sh`, previously scoped to just 2 test files from T105's original widget-test work — now runs the full suite through the same check.
