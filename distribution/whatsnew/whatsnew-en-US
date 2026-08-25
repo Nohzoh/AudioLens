@@ -1,6 +1,2 @@
-New:
-• Choose the narration's language independently of the app's language
-• Share or export a guide's text or audio
 Fixes:
-• Bigger, clearer app icon
-• Light theme polish: status bar contrast, a wrapping label
+• The Appearance "System" label and status bar contrast fixes from the last update didn't fully work — now actually fixed
