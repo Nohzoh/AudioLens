@@ -17,12 +17,21 @@ Requires: pip install pillow
 
 import math
 
+# #214: the glyph read as too small inside its circle/square — every
+# proportion below is scaled up by this factor on top of whatever scale
+# the caller passes, so the app/widget/Play Store icons all grow together
+# without each caller having to change its own scale math. 1.2 is the
+# largest factor that still clears the quick-capture widget's '+' badge
+# without the right earcup crowding it (checked up to 1.5, where it does).
+GLYPH_FILL = 1.2
+
 
 def draw_headphone_glyph(draw, cx, cy, scale, dark, blue):
     """Draws the glyph centered at (cx, cy) — callers pass their own
     canvas center plus the same proportional nudge (round(10 * scale))
     used everywhere else, so cy is typically canvas_size/2 + round(10*scale).
     """
+    scale = scale * GLYPH_FILL
     band_r = 130 * scale
     band_w = 34 * scale
     y_offset = 20 * scale
