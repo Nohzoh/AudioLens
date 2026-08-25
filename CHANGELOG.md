@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐⭐ - **Close remaining i18n gaps: About analysis screen, date formats, and voice-upgrade errors** (issue #129)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #231)
   - **What was done**: `about_analysis_screen.dart` was deliberately excluded from T67's original i18n extraction as a "debug screen" — it had since become user-reachable and was still fully hardcoded French (all four sections, the debug-copy button/snackbar, and 3 label-switch helpers), now wired to ~50 new `aboutAnalysis*` keys. Also replaced 4 duplicate hardcoded `DateFormat('dd/MM/yyyy à HH:mm')` copies (the literal French "à" was baked into the pattern itself, not just untranslated) across Settings, About analysis, and the report-content email with one shared `formatLocalDateTime` helper (`lib/utils/date_format_utils.dart`) that gives each locale its own idiomatic short date+time format. Localized the voice-upgrade rate-limit/generic error messages in `history_screen.dart`. Left `HistoryStorageException.message` and the rest of the service-layer error strings (no `BuildContext`/`AppLocalizations` access from plain Dart service classes) out of scope — split into #230.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 305/305; coverage 64.82% (floor 60%).
 
