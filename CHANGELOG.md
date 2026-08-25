@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 ⭐ - **#216/#217 follow-up: both regressed past their own PRs, still broken after 0.6.0 shipped** (issues #216, #217)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #223)
   - **What was done**: user reported both still broken on-device right after 0.6.0's release. #216: dropping the `SegmentedButton` icons alone wasn't enough — `showSelectedIcon` (default `true`) still showed a checkmark eating into "Système"'s width; needed both `showSelectedIcon: false` *and* no icons together. #217: `AppBar` computes its own status bar style via its own `AnnotatedRegion`, closer to the leaves than `MaterialApp.builder`'s — it silently overrode the global fix on every screen with an `AppBar` (Settings, History, Logs, About analysis, map picker), leaving only `AppBar`-less screens (Home) actually fixed. Added `appBarTheme.systemOverlayStyle` to both `theme`/`darkTheme` so every `AppBar` picks up the right style too.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301. Verified on-device (French locale) after the fix: "Système" fits on one line, Settings' status bar renders dark-on-light.
 
