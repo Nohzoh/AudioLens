@@ -1,2 +1,2 @@
 Fixes:
-• Cleaner history detail screen — less-used actions (rotate, regenerate, info, delete) moved into a menu instead of a scrolling row
+• Gemini Nano (offline mode): fewer timeouts, and better descriptions that actually name what you're looking at instead of generic filler
