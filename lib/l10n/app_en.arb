@@ -174,6 +174,7 @@
   "settingsViewSourceCode": "View source code",
 
   "reportContentButton": "Report",
+  "shareContentButton": "Share",
   "reportContentDialogTitle": "Report this content?",
   "reportContentDialogBody": "If this AI-generated commentary contains something inappropriate or incorrect, you can report it to us by email.",
   "reportContentReasonHint": "Describe the issue (optional)",

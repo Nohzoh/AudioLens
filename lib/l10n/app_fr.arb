@@ -209,6 +209,7 @@
   "settingsViewSourceCode": "Voir le code source",
 
   "reportContentButton": "Signaler",
+  "shareContentButton": "Partager",
   "reportContentDialogTitle": "Signaler ce contenu ?",
   "reportContentDialogBody": "Si ce commentaire généré par IA contient quelque chose d'inapproprié ou incorrect, vous pouvez nous le signaler par e-mail.",
   "reportContentReasonHint": "Préciser le problème (optionnel)",
