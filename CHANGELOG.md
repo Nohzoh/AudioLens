@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐⭐ - **Analysis provenance isn't fully versioned in history** (issue #138)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #226)
   - **What was done**: `HistoryEntry` already stored `aiModel`/`ttsModel`, but not the script style/language actually used or a prompt/output-schema version — added all three (DB migration v8→v9), stamped at completion time. `scriptStyle`/`outputLanguage` come from `SettingsService` at generation time (independent of whatever the settings hold later); `promptVersion` is a new `promptSchemaVersion` constant (`lib/constants/analysis_provenance.dart`), bumped manually whenever the prompt/output-schema meaningfully changes. Surfaced in the "About analysis" debug screen and its copyable debug-info text.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301; coverage 64.90% (floor 60%, up from 64.82%).
 
