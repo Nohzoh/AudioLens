@@ -98,3 +98,7 @@ lib/l10n/app_localizations_*.dart
 # Local project planning
 .aider*
 __pycache__/
+
+# Claude Code skills are local workflow tooling for this working copy,
+# not shared project source — kept out of the repo (2026-08-25).
+.claude/skills/
