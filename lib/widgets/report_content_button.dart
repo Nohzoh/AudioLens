@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/date_format_utils.dart';
 import 'scrim_action_chip.dart';
 
 /// The address AI-generated content reports are sent to — same contact
@@ -101,7 +101,7 @@ class ReportContentButton extends StatelessWidget {
     final body = l10n.reportContentEmailBody(
       title,
       aiModel ?? l10n.reportContentReasonNotSpecified,
-      DateFormat('dd/MM/yyyy HH:mm').format(date),
+      formatLocalDateTime(date, Localizations.localeOf(context).toString()),
       script,
       reason,
     );

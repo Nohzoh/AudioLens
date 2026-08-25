@@ -1,6 +1,11 @@
+import '../l10n/app_localizations.dart';
 import '../services/history_service.dart';
 
-String formatVoiceUpgradeErrorMessage(Object error) {
+// #129: HistoryStorageException.message itself stays French for now —
+// localizing every service-layer error message needs error-code plumbing
+// (services have no BuildContext/AppLocalizations to localize with),
+// split off into #230 rather than mixed into this mechanical pass.
+String formatVoiceUpgradeErrorMessage(Object error, AppLocalizations l10n) {
   // T116: surface the specific storage message rather than the generic
   // fallback below.
   if (error is HistoryStorageException) return error.message;
@@ -10,8 +15,8 @@ String formatVoiceUpgradeErrorMessage(Object error) {
   if (message.contains('429') ||
       message.contains('too many requests') ||
       message.contains('rate limit')) {
-    return 'La mise à jour de la voix a été temporairement impossible à cause d’une limite de requêtes. Réessayez dans un instant.';
+    return l10n.voiceUpgradeErrorRateLimit;
   }
 
-  return 'La mise à jour de la voix a échoué. Vous pouvez réessayer à nouveau.';
+  return l10n.voiceUpgradeErrorGeneric;
 }

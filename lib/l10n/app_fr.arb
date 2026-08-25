@@ -118,6 +118,8 @@
   "historyRegenerateModelLabel": "Modèle",
   "historyRegenerateConfirm": "Relancer",
   "historyRegenerateSettingsUpdated": "Réglages par défaut mis à jour avec ces paramètres",
+  "voiceUpgradeErrorRateLimit": "La mise à jour de la voix a été temporairement impossible à cause d'une limite de requêtes. Réessayez dans un instant.",
+  "voiceUpgradeErrorGeneric": "La mise à jour de la voix a échoué. Vous pouvez réessayer à nouveau.",
   "historyRemoveFromFavorites": "Retirer des favoris",
   "historyAddToCollection": "Ajouter à une collection",
   "historyNewCollection": "Nouvelle collection",
@@ -162,6 +164,7 @@
       "value": {"type": "String"}
     }
   },
+  "settingsBuildDateUnavailable": "non disponible",
   "settingsVersionLabel": "Version : {value}",
   "@settingsVersionLabel": {
     "placeholders": {
@@ -212,6 +215,61 @@
 
   "playerAiGeneratedDisclosure": "Contenu généré par IA",
   "aboutAnalysisAiDisclaimer": "Contenu généré par IA : le script de cette analyse et sa voix ont été créés automatiquement par un modèle d'intelligence artificielle.",
+  "aboutAnalysisTitle": "À propos de cette analyse",
+  "aboutAnalysisSectionDates": "DATES",
+  "aboutAnalysisCapture": "Capture",
+  "aboutAnalysisAnalyzedAt": "Analyse",
+  "aboutAnalysisDuration": "Durée d'analyse",
+  "aboutAnalysisSectionModels": "MODÈLES",
+  "aboutAnalysisModelAnalysis": "Modèle d'analyse",
+  "aboutAnalysisModelTts": "Modèle TTS",
+  "aboutAnalysisImageSource": "Source image",
+  "aboutAnalysisAiFallback": "Fallback IA",
+  "aboutAnalysisAiFallbackValue": "Utilisé : {model}",
+  "@aboutAnalysisAiFallbackValue": {
+    "placeholders": { "model": { "type": "String" } }
+  },
+  "aboutAnalysisFallbackModelDefault": "modèle de secours",
+  "aboutAnalysisTtsFallback": "Fallback TTS",
+  "aboutAnalysisTtsFallbackValue": "Voix native (Gemini TTS indisponible)",
+  "aboutAnalysisStyle": "Style",
+  "aboutAnalysisLanguage": "Langue",
+  "aboutAnalysisPromptVersion": "Version du prompt",
+  "aboutAnalysisSectionGeo": "GÉOLOCALISATION",
+  "aboutAnalysisGpsSource": "Source GPS",
+  "aboutAnalysisCoordinates": "Coordonnées",
+  "aboutAnalysisAddress": "Adresse",
+  "aboutAnalysisWikipediaUsed": "Wikipedia utilisé",
+  "aboutAnalysisYes": "Oui",
+  "aboutAnalysisNo": "Non",
+  "aboutAnalysisSectionContent": "CONTENU",
+  "aboutAnalysisWordCount": "Mots",
+  "aboutAnalysisUnknown": "Inconnu",
+  "aboutAnalysisAudioDuration": "Durée audio estimée",
+  "aboutAnalysisStatus": "Statut",
+  "aboutAnalysisCachedAudio": "Audio en cache",
+  "aboutAnalysisCachedAudioValue": "Oui ({model})",
+  "@aboutAnalysisCachedAudioValue": {
+    "placeholders": { "model": { "type": "String" } }
+  },
+  "aboutAnalysisCopyDebugInfo": "Copier les infos de debug",
+  "aboutAnalysisInfoCopied": "Infos copiées",
+  "aboutAnalysisSourceCamera": "📷 Caméra",
+  "aboutAnalysisSourceGallery": "🖼️ Galerie",
+  "aboutAnalysisSourceRetry": "🔄 Relancée",
+  "aboutAnalysisSourceCaptured": "📥 Capture différée",
+  "aboutAnalysisGpsSourceRealtime": "📡 Temps réel",
+  "aboutAnalysisGpsSourceExif": "📷 Métadonnées EXIF",
+  "aboutAnalysisGpsSourceMap": "🗺️ Choisie sur la carte",
+  "aboutAnalysisGpsSourceNone": "❌ Non disponible",
+  "aboutAnalysisStatusComplete": "✅ Complète",
+  "aboutAnalysisStatusPending": "⏳ En attente",
+  "aboutAnalysisStatusFailed": "❌ Échouée",
+  "aboutAnalysisStatusCaptured": "📥 Capturée (analyse non lancée)",
+  "aboutAnalysisValueCopied": "« {value} » copié",
+  "@aboutAnalysisValueCopied": {
+    "placeholders": { "value": { "type": "String" } }
+  },
 
   "settingsViewSourceCode": "Voir le code source",
 

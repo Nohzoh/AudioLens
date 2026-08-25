@@ -11,7 +11,7 @@ import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import '../utils/build_info.dart';
-import 'package:intl/intl.dart';
+import '../utils/date_format_utils.dart';
 
 const _ttsPreviewSample =
     'Voici un exemple de la voix qui sera utilisée pour vos guides audio. '
@@ -272,8 +272,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (loadedAt != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      l10n.settingsUpdatedAt(
-                          DateFormat("dd/MM/yyyy à HH:mm").format(loadedAt)),
+                      l10n.settingsUpdatedAt(formatLocalDateTime(
+                          loadedAt, Localizations.localeOf(context).toString())),
                       style: TextStyle(color: dimText, fontSize: 11),
                     ),
                   ],
@@ -286,7 +286,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                   const SizedBox(height: 4),
                   Text(
-                    l10n.settingsBuildLabel(formatBuildDate(buildDate)),
+                    l10n.settingsBuildLabel(formatBuildDate(
+                        buildDate,
+                        Localizations.localeOf(context).toString(),
+                        l10n.settingsBuildDateUnavailable)),
                     style: TextStyle(color: dimText, fontSize: 11),
                   ),
                   Divider(
