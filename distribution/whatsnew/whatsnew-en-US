@@ -1,2 +1,2 @@
 Fixes:
-• Gemini Nano (offline mode): fewer timeouts, and better descriptions that actually name what you're looking at instead of generic filler
+• "Gemini Nano" is now "Local AI" — and picking it keeps voice playback on-device too, not just the analysis
