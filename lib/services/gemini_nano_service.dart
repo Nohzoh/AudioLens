@@ -143,9 +143,19 @@ class GeminiNanoService implements AIService {
   /// risks the context alone consuming most of what the model attends
   /// to, silently degrading the actual description. Truncated to the
   /// leading portion, since the most identifying detail (a POI/place
-  /// name from geocoding) consistently comes first in how this context
-  /// is assembled upstream — see LocationContextResolver.
-  static const int _maxLocationContextChars = 400;
+  /// name from geocoding) is meant to come first in how this context is
+  /// assembled upstream — see LocationContextResolver.
+  ///
+  /// #247: bumped 400 -> 800. At 400, a real capture's most relevant
+  /// fact (the specific building's own Wikipedia extract) got truncated
+  /// away entirely — it wasn't first, because the POI lookup that would
+  /// normally put it first had failed for that location (see #248), so
+  /// the context fell back to a broader, less relevant Wikipedia extract
+  /// (the surrounding town) ranking ahead of it by plain proximity. #247
+  /// also reorders WikipediaService.merge() to put name-matched results
+  /// first when a POI *is* found, but this budget still needs enough
+  /// room to not undo that when it isn't.
+  static const int _maxLocationContextChars = 800;
 
   static String _truncateLocationContext(String locationContext) {
     if (locationContext.length <= _maxLocationContextChars) {

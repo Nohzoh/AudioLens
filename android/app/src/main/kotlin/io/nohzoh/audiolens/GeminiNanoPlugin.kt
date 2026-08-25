@@ -77,7 +77,20 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             return "Tu es un guide audio culturel. Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Puis, sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
         }
 
-        fun buildSeg2Prompt(previousText: String, style: String? = null): String {
+        // #247: without locationContext here, segments 2/3 have nothing to
+        // ground them beyond seg1's own already-generated text — once
+        // that text drifts even slightly generic, there's no real data
+        // left to pull them back, which is exactly what produced
+        // unrelated filler ("Bois de Vincennes", "vestiges romains...")
+        // for a real capture of a specific, named church. Reusing the
+        // same parenthetical framing as seg1 rather than a separate
+        // sentence keeps it a hint the model can lean on, not a second
+        // instruction competing with "continue naturally from the text
+        // above" for the model's attention.
+        private fun locationHint(locationContext: String?): String =
+            if (!locationContext.isNullOrBlank()) " Contexte du lieu : $locationContext." else ""
+
+        fun buildSeg2Prompt(previousText: String, style: String? = null, locationContext: String? = null): String {
             val excerpt = previousText.takeLast(200)
             val focus = when (style) {
                 "academic" -> "le contexte historique precis (dates, faits averes, contexte culturel)"
@@ -86,13 +99,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 else -> "le contexte historique et culturel"
             }
             val sentences = if (style == "concise") "1 phrase" else "2-3 phrases qui s'enchainent naturellement"
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt. Continue avec $focus en $sentences. Pas de repetition."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${locationHint(locationContext)} Continue avec $focus en $sentences, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
         }
 
-        fun buildSeg3Prompt(previousText: String, style: String? = null): String {
+        fun buildSeg3Prompt(previousText: String, style: String? = null, locationContext: String? = null): String {
             val excerpt = previousText.takeLast(200)
             val sentences = if (style == "concise") "1 phrase" else "2 phrases"
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt. Conclus en $sentences sur ce qui rend ce lieu unique et l'emotion qu'il inspire."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${locationHint(locationContext)} Conclus en $sentences sur ce qui rend ce lieu unique et l'emotion qu'il inspire, sans repeter ce qui a deja ete dit."
         }
     }
 
@@ -210,7 +223,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 2: Historical context (text only, faster)
                         currentSegment = 2
                         val req2 = generateContentRequest(
-                            TextPart(buildSeg2Prompt(seg1, style))
+                            TextPart(buildSeg2Prompt(seg1, style, locationContext))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -221,7 +234,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 3: Conclusion
                         currentSegment = 3
                         val req3 = generateContentRequest(
-                            TextPart(buildSeg3Prompt("$seg1 $seg2", style))
+                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
