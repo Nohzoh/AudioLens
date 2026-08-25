@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:audiolens/screens/about_analysis_screen.dart';
 import 'package:audiolens/screens/history_screen.dart';
 import 'package:audiolens/services/audio_guide_service.dart';
 import 'package:audiolens/services/history_service.dart';
@@ -350,8 +351,11 @@ void main() {
         0,
       );
 
-      await tester.tap(find.byTooltip('Pivoter la photo'));
-      await tester.pump();
+      // #235: rotate moved into the overflow menu.
+      await tester.tap(find.byTooltip('Plus d\'actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pivoter la photo'));
+      await tester.pumpAndSettle();
 
       expect(
         tester.widget<BackgroundPhoto>(find.byType(BackgroundPhoto)).rotationQuarters,
@@ -531,7 +535,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.byTooltip('Relancer avec d\'autres paramètres'));
+      // #235: regenerate moved into the overflow menu.
+      await tester.tap(find.byTooltip('Plus d\'actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Relancer avec d\'autres paramètres'));
       await tester.pumpAndSettle();
 
       // Default settings: 'immersive' style, 'Français' language.
@@ -541,6 +548,62 @@ void main() {
       final frenchChip =
           tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Français'));
       expect(frenchChip.selected, isTrue);
+    });
+  });
+
+  // #235 — only favorite/photo-mode stay always-visible; the rest moved
+  // into an overflow menu so the least-recently-added icons (info,
+  // delete) aren't scrolled off-screen and undiscoverable anymore.
+  group('top bar overflow menu (#235)', () {
+    Future<void> openDetail(WidgetTester tester) async {
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('La Joconde'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('rotate/regenerate/info/delete are not directly visible',
+        (tester) async {
+      await openDetail(tester);
+
+      expect(find.byIcon(Icons.rotate_90_degrees_cw_outlined), findsNothing);
+      expect(find.byIcon(Icons.tune), findsNothing);
+      expect(find.byIcon(Icons.info_outline), findsNothing);
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
+      // Favorite and photo-mode stay always-visible.
+      expect(find.byTooltip('Ajouter aux favoris'), findsOneWidget);
+      expect(find.byTooltip('Mode photo'), findsOneWidget);
+    });
+
+    testWidgets('opening the overflow menu reveals all 5 labeled actions',
+        (tester) async {
+      await openDetail(tester);
+
+      await tester.tap(find.byTooltip('Plus d\'actions'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ajouter à une collection'), findsOneWidget);
+      expect(find.text('Pivoter la photo'), findsOneWidget);
+      expect(find.text('Relancer avec d\'autres paramètres'), findsOneWidget);
+      expect(find.text('À propos de cette analyse'), findsOneWidget);
+      expect(find.text('Supprimer'), findsOneWidget);
+    });
+
+    testWidgets('tapping Info navigates to AboutAnalysisScreen', (tester) async {
+      await openDetail(tester);
+
+      await tester.tap(find.byTooltip('Plus d\'actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('À propos de cette analyse'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AboutAnalysisScreen), findsOneWidget);
     });
   });
 }

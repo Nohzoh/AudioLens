@@ -81,6 +81,7 @@
   "historyCapturedTapToAnalyze": "Captured — tap to analyze",
   "historyFailedTapToRetry": "Failed — tap to retry",
   "historyAudioGenerationFailed": "Audio generation failed.",
+  "historyMoreActions": "More actions",
   "historyDeleteTitle": "Delete",
   "historyDeleteConfirm": "Delete this entry from history?",
   "historyCancel": "Cancel",

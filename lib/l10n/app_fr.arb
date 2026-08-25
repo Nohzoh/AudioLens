@@ -96,6 +96,7 @@
   "historyCapturedTapToAnalyze": "Capturé — appuyer pour analyser",
   "historyFailedTapToRetry": "Échec — appuyer pour réessayer",
   "historyAudioGenerationFailed": "La génération audio a échoué.",
+  "historyMoreActions": "Plus d'actions",
   "historyDeleteTitle": "Supprimer",
   "historyDeleteConfirm": "Supprimer cette entrée de l'historique ?",
   "historyCancel": "Annuler",
