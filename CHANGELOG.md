@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **History detail screen: too many top-bar action icons, needs an overflow menu** (issue #235)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #238)
   - **What was done**: `HistoryDetailScreen`'s top bar had grown to a back button plus 7 icons in a horizontally-scrollable row, pushing the least-recently-added ones (info, delete) off-screen and undiscoverable without knowing to swipe. Favorite and photo-mode toggle stay always-visible (frequent, glanceable state); add-to-collection, rotate, regenerate, info, and delete moved into a new `PopupMenuButton` overflow menu (`⋮`), each rendered as an icon + real text label rather than a bare icon — delete previously had no visible label at all, only a tooltip. Verified end-to-end on-device: menu opens, all 5 items render and work (including a real navigation to `AboutAnalysisScreen`), destructive delete stays behind the same confirmation dialog as before.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 315/315 (3 new); coverage 66.09% (floor 60%).
 
