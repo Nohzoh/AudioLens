@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **App icon: headphone glyph too small relative to the circle** (issue #214)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #215)
   - **What was done**: added a single `GLYPH_FILL = 1.2` factor to the shared `_headphone_glyph.py` module, so the app launcher icon, quick-capture widget icon, and Play Store listing icon all grow together without drifting apart. Chosen from a side-by-side render of x1.0/x1.2/x1.35/x1.5: the widget's "+" badge is the tighter of the two compositions to fit against — x1.35 already starts crowding the right earcup into it, x1.2 stays clear.
   - **Final validation**: regenerated all three assets (`generate_app_icon.py`, `generate_widget_icon.py`, `generate_play_store_icon.py`) and visually checked side by side.
 
