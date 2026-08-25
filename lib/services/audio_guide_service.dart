@@ -510,7 +510,7 @@ class AudioGuideService extends ChangeNotifier {
     _lastTtsModel = await _ttsOrchestrator.speak(
       script,
       cancelToken: _cancelToken,
-      geminiTts: _providerManager.geminiTtsService,
+      geminiTts: _providerManager.geminiTtsForCurrentProvider,
       speed: _playbackSpeed,
     );
 
@@ -533,16 +533,20 @@ class AudioGuideService extends ChangeNotifier {
   /// ready, and native TTS will speak it live whenever the user does ask.
   /// Best-effort: a synthesis failure (rate limit, network) just leaves the
   /// script audio-less, same as if Gemini TTS wasn't configured at all.
+  ///
+  /// #253: gated on the active provider too, same as [_synthesizeAndPlay]
+  /// — nothing to pre-generate here when Nano is active either, native
+  /// TTS will speak it live on demand just like the foreground path.
   Future<void> _synthesizeOnlyForBackground(String script) async {
     _state = GuideState.synthesizing;
     _progressEstimator.stepProgress = -1.0;
     notifyListeners();
 
-    if (_providerManager.geminiTtsService != null) {
+    final geminiTts = _providerManager.geminiTtsForCurrentProvider;
+    if (geminiTts != null) {
       try {
         final path = await _getGeminiWavPath();
-        await _providerManager.geminiTtsService!
-            .synthesizeToFile(script, path, cancelToken: _cancelToken);
+        await geminiTts.synthesizeToFile(script, path, cancelToken: _cancelToken);
         _lastAudioPath = path;
         _lastTtsModel = 'gemini-tts';
       } catch (e) {

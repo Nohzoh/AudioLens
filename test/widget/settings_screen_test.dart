@@ -55,12 +55,13 @@ void main() {
         history: history,
       );
 
-  testWidgets('renders both provider cards, Gemini Nano active-by-default and Gemini API locked',
+  testWidgets('renders both provider cards, local AI active-by-default and Gemini API locked',
       (tester) async {
     await tester.pumpWidget(wrapScreen());
     await tester.pumpAndSettle();
 
-    expect(find.text('Gemini Nano'), findsOneWidget);
+    // #253: "IA locale", not the "Gemini Nano" brand name.
+    expect(find.text('IA locale'), findsOneWidget);
     expect(find.text('Gemini API'), findsOneWidget);
     // AudioGuideService defaults activeProvider to geminiNano even though
     // nanoAvailable is false for a fresh instance — that's existing app

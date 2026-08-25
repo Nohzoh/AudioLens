@@ -117,6 +117,10 @@ void main() {
       final native = _FakeNativeTts();
       final geminiTts = _FakeGeminiTts();
       final service = AudioGuideService(nativeTtsService: native, geminiTtsService: geminiTts);
+      // #253: TTS now follows the active AI provider, not just "is a
+      // Gemini TTS instance configured" — this test wants the Gemini
+      // path, so it has to actually select it.
+      await service.setActiveProvider(AIProvider.geminiApi);
 
       final result = await service.generateAudioForScript(
         title: 'Titre existant',
@@ -136,6 +140,11 @@ void main() {
       final native = _FakeNativeTts();
       final geminiTts = _FakeGeminiTts(fail: true);
       final service = AudioGuideService(nativeTtsService: native, geminiTtsService: geminiTts);
+      // #253: without this, geminiTts would never even be attempted
+      // (Nano is the default active provider), which would make this
+      // test pass for the wrong reason — the fallback path it's meant
+      // to exercise would never actually run.
+      await service.setActiveProvider(AIProvider.geminiApi);
 
       final result = await service.generateAudioForScript(
         title: 'Titre',
@@ -143,6 +152,7 @@ void main() {
       );
 
       expect(result, isNotNull);
+      expect(geminiTts.speakCalled, isTrue);
       expect(service.lastTtsModel, 'native-tts');
       expect(service.ttsWasFallback, isTrue);
       expect(native.speakCalled, isTrue);

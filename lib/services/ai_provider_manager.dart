@@ -57,6 +57,20 @@ class AiProviderManager {
   GeminiTtsService? _geminiTtsService;
   GeminiTtsService? get geminiTtsService => _geminiTtsService;
 
+  /// #253: the TTS engine to actually speak with, following the active
+  /// *AI* provider rather than "is a Gemini TTS instance configured at
+  /// all" — before this, picking Nano for analysis (specifically to keep
+  /// everything on-device) still silently spoke through the cloud
+  /// whenever an API key happened to be configured too, e.g. from a
+  /// prior session or a since-abandoned attempt at the cloud provider.
+  /// [geminiTtsService] itself stays available separately — the
+  /// "Improve the voice" retry action in HistoryDetailScreen deliberately
+  /// reaches for cloud TTS on demand regardless of the active provider,
+  /// an explicit one-off upgrade the user asked for, not the default
+  /// playback path this getter governs.
+  GeminiTtsService? get geminiTtsForCurrentProvider =>
+      _activeProvider == AIProvider.geminiApi ? _geminiTtsService : null;
+
   /// The AI service to use for the next analysis, or null if none is
   /// available right now (e.g. Nano selected but not actually available
   /// on this device, and no API key configured either).

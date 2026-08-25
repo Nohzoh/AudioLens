@@ -218,7 +218,9 @@ class _RegenerateSheetState extends State<_RegenerateSheet> {
               runSpacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text('Gemini Nano'),
+                  // #253: matches the Settings screen's provider card —
+                  // "IA locale", not the brand name.
+                  label: Text(l10n.settingsLocalAiName),
                   selected: _provider == AIProvider.geminiNano,
                   onSelected: widget.nanoAvailable
                       ? (_) => setState(() => _provider = AIProvider.geminiNano)

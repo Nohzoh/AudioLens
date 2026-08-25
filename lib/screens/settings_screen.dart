@@ -156,7 +156,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           _ProviderCard(
             icon: Icons.phone_android,
-            name: 'Gemini Nano',
+            // #253: "IA locale" / "Local AI", not the brand name — since
+            // TTS now always follows this choice too (native voice,
+            // never the cloud), the label describes what the option
+            // actually guarantees rather than which Google product
+            // happens to power the analysis step.
+            name: l10n.settingsLocalAiName,
             description: l10n.settingsNanoDescription,
             isActive: guide.activeProvider == AIProvider.geminiNano,
             isAvailable: guide.nanoAvailable,
