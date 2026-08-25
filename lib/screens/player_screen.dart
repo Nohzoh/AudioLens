@@ -14,6 +14,7 @@ import '../widgets/kofi_button.dart';
 import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
 import '../widgets/report_content_button.dart';
+import '../widgets/share_content_button.dart';
 
 /// #145: every `Colors.white*`/`Colors.black*` literal in this file is
 /// deliberate, not an oversight — this screen renders its entire content
@@ -337,6 +338,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         SnackBar(content: Text(l10n.playerTextCopied), duration: const Duration(seconds: 2)),
                                       );
                                     },
+                                  ),
+                                  // Share (#125)
+                                  ShareContentButton(
+                                    title: guide.lastResult!.title,
+                                    script: guide.lastResult!.script,
+                                    audioPath: guide.lastAudioPath,
                                   ),
                                   // Report content (T91)
                                   ReportContentButton(

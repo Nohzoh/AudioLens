@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐⭐ - **Add sharing/exporting the text or audio** (issue #125)
+  - **Verified**: 2026-08-25 (PR #219)
+  - **What was done**: added a Share action to PlayerScreen/HistoryDetailScreen's action row (`ShareContentButton`, `share_plus`), mirroring `ReportContentButton`'s structure. One button, not two: shares the generated audio file when one exists (the more "finished" artifact), falls back to the script text otherwise (script-only entry, or the native TTS fallback never produced a file).
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 295/295 (4 new widget tests covering the text/audio/missing-file branches). Real local Android debug build (new native plugin) — verified the app launches cleanly with `share_plus` linked.
+
 - [x] 📈 ⭐⭐⭐ - **Allow choosing the output language independently of the interface language** (issue #130)
   - **Verified**: 2026-08-25 (PR #218)
   - **What was done**: added a "Narration language" setting in Settings, threaded through both AI backends — the cloud prompt (`gemini_api_service.dart`) and the on-device Gemini Nano prompt (`GeminiNanoPlugin.kt`, native Kotlin — was hardcoded to *"decris en francais"* unconditionally). Corrects the issue's own framing: narration wasn't actually following the device's system locale before this, it was hardcoded to French everywhere, cloud and on-device alike, and the native TTS fallback's voice selection was hardcoded `fr-FR` too — generalized that as well, while keeping the exact existing hand-picked premium French voices unchanged.

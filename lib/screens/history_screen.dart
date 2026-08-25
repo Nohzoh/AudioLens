@@ -15,6 +15,7 @@ import '../utils/rotated_image_export.dart';
 import '../widgets/background_photo.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/report_content_button.dart';
+import '../widgets/share_content_button.dart';
 import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
 import '../utils/user_message_utils.dart';
@@ -1146,6 +1147,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   ),
                                 );
                               },
+                            ),
+                            // Share (#125)
+                            ShareContentButton(
+                              title: live.title,
+                              script: live.script,
+                              audioPath: live.audioPath,
                             ),
                             // Report content (T91)
                             ReportContentButton(
