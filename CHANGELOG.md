@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **Play Store listing icon: replace one-off purple background with white to match the real app icon** (issue #251)
-  - **Verified**: 2026-08-26 (PR TBD)
+  - **Verified**: 2026-08-26 (PR #252)
   - **What was done**: reported live via a screenshot — the icon read badly on the Play Store listing page in dark theme. Investigation found T110's brand-purple background was a one-off invented specifically for `distribution/play-store/icon-512.png` and matched nothing else the icon looks like elsewhere — `generate_app_icon.py`'s actual launcher icon uses a plain white circle. That inconsistency (two different-looking "same" icons) turned out to be a bigger problem than the "flattens to white" issue purple was meant to solve. Confirmed the replacement with the user via a 3-way visual comparison (white / navy / purple) before switching `scripts/generate_play_store_icon.py`'s background back to white and regenerating the asset. Still needs the same manual upload to Play Console as before (not automatable — see `AGENTS.md`).
   - **Final validation**: script-generated PNG visually confirmed (512×512, flat opaque white); no Dart/Kotlin code touched, `flutter analyze`/`flutter test` not applicable.
 
