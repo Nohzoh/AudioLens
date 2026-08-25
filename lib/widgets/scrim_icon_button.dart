@@ -31,6 +31,7 @@ class ScrimIconButton extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
+        // #145: stays fixed black regardless of app theme — see class doc.
         color: Colors.black.withValues(alpha: 0.35),
       ),
       child: IconButton(

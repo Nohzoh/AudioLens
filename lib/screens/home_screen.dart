@@ -405,7 +405,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             const SizedBox(height: 8),
             Container(width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.white24,
+                decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.24),
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             ListTile(
@@ -661,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             children: [
                               Text(l10n.homeRecentlyVisited,
                                 style: theme.textTheme.labelMedium?.copyWith(
-                                  color: Colors.white38,
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
                                 ),
                               ),
                               const Spacer(),
@@ -739,6 +743,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                               )
                                             : Container(color: theme.colorScheme.surfaceContainerHigh),
                                       ),
+                                      // #145: colors below stay hardcoded
+                                      // white/black — this overlay sits on
+                                      // a photo thumbnail, not themed
+                                      // chrome, same as background_photo.dart's
+                                      // own scrims.
                                       // Status overlay
                                       if (isPending)
                                         const Center(child: SizedBox(width: 24, height: 24,
@@ -825,14 +834,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.camera_alt_outlined,
-                            size: 80, color: Colors.white12),
+                        Icon(Icons.camera_alt_outlined,
+                            size: 80,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
                         const SizedBox(height: 16),
                         Text(
                           l10n.homeEmptyStateHint,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Colors.white38,
+                          style: TextStyle(
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
                               fontSize: 15,
                               height: 1.5),
                         ),

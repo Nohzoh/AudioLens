@@ -42,6 +42,7 @@ class ReportContentButton extends StatelessWidget {
       label: l10n.reportContentButton,
       // Kept dimmer than Save/Copy on purpose: reporting is a rare,
       // deliberate action and shouldn't compete with them visually.
+      // #145: on-scrim color, stays fixed regardless of app theme.
       color: Colors.white54,
       onTap: () => _showReportDialog(context),
     );

@@ -119,8 +119,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 child: _loading
-                    ? const SizedBox(width: 24, height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    // #145: onPrimary, not onSurface — this spinner sits on
+                    // the button's own primary-colored fill, not the page.
+                    ? SizedBox(width: 24, height: 24,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: theme.colorScheme.onPrimary))
                     : Text(l10n.onboardingLetsGo, style: const TextStyle(fontSize: 18)),
               ).animate(delay: 500.ms).fadeIn(),
               const SizedBox(height: 16),

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,6 +59,7 @@ void main() {
     expect(settings.showKofiButton, isTrue);
     expect(settings.autoGenerateAudio, isTrue);
     expect(settings.scriptStyle, 'immersive');
+    expect(settings.themeMode, ThemeMode.system);
   });
 
   test('completeOnboarding stores the API key and marks onboarding complete',
@@ -111,6 +113,7 @@ void main() {
     await settings.setScriptStyle('concise');
     await settings.setAutoPurgeEnabled(true);
     await settings.setAutoPurgeDays(7);
+    await settings.setThemeMode(ThemeMode.dark);
 
     await settings.resetOnboarding();
 
@@ -121,6 +124,32 @@ void main() {
     expect(settings.scriptStyle, 'immersive');
     expect(settings.autoPurgeEnabled, isFalse);
     expect(settings.autoPurgeDays, 30);
+    expect(settings.themeMode, ThemeMode.system);
+  });
+
+  // #145
+  test('setThemeMode persists across a reload', () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    await settings.setThemeMode(ThemeMode.light);
+    expect(settings.themeMode, ThemeMode.light);
+
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.themeMode, ThemeMode.light);
+  });
+
+  test('setThemeMode(ThemeMode.dark) also persists across a reload (#145)',
+      () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    await settings.setThemeMode(ThemeMode.dark);
+
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.themeMode, ThemeMode.dark);
   });
 
   test('auto-purge defaults to disabled, 30 days (T95)', () async {
