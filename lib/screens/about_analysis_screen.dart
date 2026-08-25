@@ -3,11 +3,11 @@ import 'dart:ui' as ui;
 import 'package:exif/exif.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
+import '../utils/date_format_utils.dart';
 import '../widgets/kofi_button.dart';
 
 class AboutAnalysisScreen extends StatelessWidget {
@@ -28,10 +28,12 @@ class AboutAnalysisScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final live = _live(context);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('À propos de cette analyse'),
+        title: Text(l10n.aboutAnalysisTitle),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -69,52 +71,60 @@ class AboutAnalysisScreen extends StatelessWidget {
           const _AiGeneratedBanner(),
           const SizedBox(height: 20),
 
-          _Section(title: 'DATES', children: [
-            _Row('Capture', DateFormat('dd/MM/yyyy à HH:mm').format(live.createdAt)),
+          _Section(title: l10n.aboutAnalysisSectionDates, children: [
+            _Row(l10n.aboutAnalysisCapture, formatLocalDateTime(live.createdAt, locale)),
             if (live.analyzedAt != null)
-              _Row('Analyse', DateFormat('dd/MM/yyyy à HH:mm').format(live.analyzedAt!)),
+              _Row(l10n.aboutAnalysisAnalyzedAt,
+                  formatLocalDateTime(live.analyzedAt!, locale)),
             if (live.analysisDurationMs != null)
-              _Row('Durée d\'analyse', '${(live.analysisDurationMs! / 1000).toStringAsFixed(1)}s'),
+              _Row(l10n.aboutAnalysisDuration,
+                  '${(live.analysisDurationMs! / 1000).toStringAsFixed(1)}s'),
           ]),
 
-          _Section(title: 'MODÈLES', children: [
-            _Row('Modèle d\'analyse', live.aiModel ?? 'Inconnu'),
-            _Row('Modèle TTS', live.ttsModel ?? 'Inconnu'),
-            _Row('Source image', _sourceLabel(live.analysisSource)),
+          _Section(title: l10n.aboutAnalysisSectionModels, children: [
+            _Row(l10n.aboutAnalysisModelAnalysis, live.aiModel ?? l10n.aboutAnalysisUnknown),
+            _Row(l10n.aboutAnalysisModelTts, live.ttsModel ?? l10n.aboutAnalysisUnknown),
+            _Row(l10n.aboutAnalysisImageSource, _sourceLabel(l10n, live.analysisSource)),
             if (live.aiFallback)
-              _Row('Fallback IA',
-                  'Utilisé : ${live.aiModel ?? "modèle de secours"}'),
+              _Row(
+                l10n.aboutAnalysisAiFallback,
+                l10n.aboutAnalysisAiFallbackValue(
+                    live.aiModel ?? l10n.aboutAnalysisFallbackModelDefault),
+              ),
             if (live.ttsFallback)
-              const _Row('Fallback TTS', 'Voix native (Gemini TTS indisponible)'),
+              _Row(l10n.aboutAnalysisTtsFallback, l10n.aboutAnalysisTtsFallbackValue),
             // #138
             if (live.scriptStyle != null)
-              _Row('Style', live.scriptStyle!),
+              _Row(l10n.aboutAnalysisStyle, live.scriptStyle!),
             if (live.outputLanguage != null)
-              _Row('Langue', live.outputLanguage!),
+              _Row(l10n.aboutAnalysisLanguage, live.outputLanguage!),
             if (live.promptVersion != null)
-              _Row('Version du prompt', live.promptVersion!),
+              _Row(l10n.aboutAnalysisPromptVersion, live.promptVersion!),
           ]),
 
-          _Section(title: 'GÉOLOCALISATION', children: [
-            _Row('Source GPS', _gpsSourceLabel(live.gpsSource)),
+          _Section(title: l10n.aboutAnalysisSectionGeo, children: [
+            _Row(l10n.aboutAnalysisGpsSource, _gpsSourceLabel(l10n, live.gpsSource)),
             if (live.gpsLatitude != null && live.gpsLongitude != null)
-              _Row('Coordonnées',
+              _Row(l10n.aboutAnalysisCoordinates,
                   '${live.gpsLatitude!.toStringAsFixed(5)}, '
                   '${live.gpsLongitude!.toStringAsFixed(5)}'),
             if (live.gpsAddress != null && live.gpsAddress!.isNotEmpty)
-              _Row('Adresse', live.gpsAddress!
+              _Row(l10n.aboutAnalysisAddress, live.gpsAddress!
                   .replaceAll('Localisation GPS : ', '')
                   .split('(').last.replaceAll(')', '').trim()),
-            _Row('Wikipedia utilisé', live.wikipediaUsed ? 'Oui' : 'Non'),
+            _Row(l10n.aboutAnalysisWikipediaUsed,
+                live.wikipediaUsed ? l10n.aboutAnalysisYes : l10n.aboutAnalysisNo),
           ]),
 
-          _Section(title: 'CONTENU', children: [
-            _Row('Mots', live.wordCount?.toString() ?? 'Inconnu'),
+          _Section(title: l10n.aboutAnalysisSectionContent, children: [
+            _Row(l10n.aboutAnalysisWordCount,
+                live.wordCount?.toString() ?? l10n.aboutAnalysisUnknown),
             if (live.audioDurationEstimate.isNotEmpty)
-              _Row('Durée audio estimée', live.audioDurationEstimate),
-            _Row('Statut', _statusLabel(live.status)),
+              _Row(l10n.aboutAnalysisAudioDuration, live.audioDurationEstimate),
+            _Row(l10n.aboutAnalysisStatus, _statusLabel(l10n, live.status)),
             if (live.audioPath != null)
-              _Row('Audio en cache', 'Oui (${live.ttsModel ?? '?'})'),
+              _Row(l10n.aboutAnalysisCachedAudio,
+                  l10n.aboutAnalysisCachedAudioValue(live.ttsModel ?? '?')),
           ]),
 
           const SizedBox(height: 12),
@@ -122,13 +132,13 @@ class AboutAnalysisScreen extends StatelessWidget {
           // Copy debug info
           OutlinedButton.icon(
             icon: const Icon(Icons.copy, size: 16),
-            label: const Text('Copier les infos de debug'),
+            label: Text(l10n.aboutAnalysisCopyDebugInfo),
             onPressed: () async {
               final debug = await _buildDebugInfo(live: live);
               Clipboard.setData(ClipboardData(text: debug));
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Infos copiées')),
+                  SnackBar(content: Text(l10n.aboutAnalysisInfoCopied)),
                 );
               }
             },
@@ -227,27 +237,27 @@ $imageDiag
 ''';
   }
 
-  String _sourceLabel(String? source) => switch (source) {
-    'camera' => '📷 Caméra',
-    'gallery' => '🖼️ Galerie',
-    'retry' => '🔄 Relancée',
-    'captured' => '📥 Capture différée',
-    _ => 'Inconnu',
+  String _sourceLabel(AppLocalizations l10n, String? source) => switch (source) {
+    'camera' => l10n.aboutAnalysisSourceCamera,
+    'gallery' => l10n.aboutAnalysisSourceGallery,
+    'retry' => l10n.aboutAnalysisSourceRetry,
+    'captured' => l10n.aboutAnalysisSourceCaptured,
+    _ => l10n.aboutAnalysisUnknown,
   };
 
-  String _gpsSourceLabel(String? source) => switch (source) {
-    'realtime' => '📡 Temps réel',
-    'exif' => '📷 Métadonnées EXIF',
-    'map' => '🗺️ Choisie sur la carte',
-    'none' => '❌ Non disponible',
-    _ => 'Inconnu',
+  String _gpsSourceLabel(AppLocalizations l10n, String? source) => switch (source) {
+    'realtime' => l10n.aboutAnalysisGpsSourceRealtime,
+    'exif' => l10n.aboutAnalysisGpsSourceExif,
+    'map' => l10n.aboutAnalysisGpsSourceMap,
+    'none' => l10n.aboutAnalysisGpsSourceNone,
+    _ => l10n.aboutAnalysisUnknown,
   };
 
-  String _statusLabel(AnalysisStatus status) => switch (status) {
-    AnalysisStatus.complete => '✅ Complète',
-    AnalysisStatus.pending => '⏳ En attente',
-    AnalysisStatus.failed => '❌ Échouée',
-    AnalysisStatus.captured => '📥 Capturée (analyse non lancée)',
+  String _statusLabel(AppLocalizations l10n, AnalysisStatus status) => switch (status) {
+    AnalysisStatus.complete => l10n.aboutAnalysisStatusComplete,
+    AnalysisStatus.pending => l10n.aboutAnalysisStatusPending,
+    AnalysisStatus.failed => l10n.aboutAnalysisStatusFailed,
+    AnalysisStatus.captured => l10n.aboutAnalysisStatusCaptured,
   };
 }
 
@@ -353,10 +363,11 @@ class _Row extends StatelessWidget {
   }
 
   void _copyValue(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     Clipboard.setData(ClipboardData(text: value));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('« $value » copié'),
+        content: Text(l10n.aboutAnalysisValueCopied(value)),
         duration: const Duration(seconds: 1),
       ),
     );

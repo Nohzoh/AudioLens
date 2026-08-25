@@ -1541,7 +1541,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                       if (context.mounted) {
                                         final message =
                                             formatVoiceUpgradeErrorMessage(
-                                                error);
+                                                error, l10n);
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           SnackBar(
