@@ -1,5 +1,6 @@
 {
   "@@locale": "en",
+  "commonBack": "Back",
   "kofiButtonTooltip": "Support AudioLens",
 
   "mapPickerTitle": "Pick the location on the map",

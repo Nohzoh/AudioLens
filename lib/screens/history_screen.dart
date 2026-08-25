@@ -1206,6 +1206,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                         ScrimIconButton(
                           icon: Icons.arrow_back,
                           color: Colors.white,
+                          tooltip: l10n.commonBack,
                           onPressed: () => Navigator.pop(context),
                         ),
                         // Six trailing icons (rotate is the newest, #152/
@@ -1306,6 +1307,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   ScrimIconButton(
                                     icon: Icons.info_outline,
                                     color: Colors.white70,
+                                    tooltip: l10n.aboutAnalysisTitle,
                                     onPressed: () => Navigator.push(
                                         context,
                                         MaterialPageRoute(
@@ -1316,6 +1318,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                   ScrimIconButton(
                                     icon: Icons.delete_outline,
                                     color: Colors.redAccent,
+                                    tooltip: l10n.historyDeleteTitle,
                                     onPressed: () => _deleteEntry(context),
                                   ),
                                 ],
@@ -1340,10 +1343,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           // shown unobstructed.
                           if (!_photoMode) ...[
                             // Date
+                            // #128: white70, not white54 — see the matching
+                            // comment in player_screen.dart.
                             Text(
                               dateStr,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white54,
+                                color: Colors.white70,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -1362,12 +1367,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                               Row(
                                 children: [
                                   const Icon(Icons.location_on,
-                                      color: Colors.white54, size: 14),
+                                      color: Colors.white70, size: 14),
                                   const SizedBox(width: 4),
                                   Text(
                                     live.locationName!,
                                     style:
-                                        const TextStyle(color: Colors.white54),
+                                        const TextStyle(color: Colors.white70),
                                   ),
                                 ],
                               ),
@@ -1507,7 +1512,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.amber,
                               side: const BorderSide(color: Colors.amber),
-                              minimumSize: const Size(double.infinity, 40),
+                              minimumSize: const Size(double.infinity, 48),
                             ),
                             onPressed: _isUpgrading
                                 ? null
