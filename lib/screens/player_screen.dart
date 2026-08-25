@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:gal/gal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,14 +7,13 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
-import '../utils/rotated_image_export.dart';
-import '../widgets/background_photo.dart';
+import '../widgets/guide_action_row.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/mini_map.dart';
+import '../widgets/photo_gradient_background.dart';
 import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
-import '../widgets/report_content_button.dart';
-import '../widgets/share_content_button.dart';
+import '../widgets/skip_icon_button.dart';
 
 /// #145: every `Colors.white*`/`Colors.black*` literal in this file is
 /// deliberate, not an oversight — this screen renders its entire content
@@ -115,41 +113,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
           return Stack(
             fit: StackFit.expand,
             children: [
-              // Background image
-              BackgroundPhoto(
+              // #147: shared with history_screen.dart.
+              PhotoGradientBackground(
                 file: widget.imageFile,
                 rotationQuarters: widget.rotationQuarters,
-                zoomable: _photoMode,
-              ),
-              // #204: IgnorePointer — a plain decorated Container reports a
-              // hit test for its ENTIRE bounds regardless of visual
-              // (semi-)transparency, so this purely-decorative overlay
-              // silently swallowed every gesture meant for the
-              // InteractiveViewer in BackgroundPhoto beneath it, breaking
-              // pinch-to-zoom (#191) entirely.
-              IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: _photoMode
-                          ? [
-                              Colors.black.withValues(alpha: 0.35),
-                              Colors.transparent,
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.35),
-                            ]
-                          : [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.95),
-                            ],
-                      stops: _photoMode
-                          ? const [0.0, 0.15, 0.85, 1.0]
-                          : const [0.25, 0.75],
-                    ),
-                  ),
-                ),
+                photoMode: _photoMode,
+                readingGradientColors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.95),
+                ],
+                readingGradientStops: const [0.25, 0.75],
               ),
 
               SafeArea(
@@ -320,73 +293,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                               const SizedBox(height: 4),
 
-                              // Action buttons row. Wrap, not Row: see
-                              // the matching comment in history_screen.dart
-                              // — three pills plus spacing can exceed a
-                              // narrow screen's width, especially in the
-                              // longer French labels.
-                              Wrap(
-                                alignment: WrapAlignment.end,
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  // Save to gallery
-                                  ScrimActionChip(
-                                    icon: Icons.save_alt,
-                                    label: l10n.playerSave,
-                                    onTap: () async {
-                                      try {
-                                        final galleryPath =
-                                            await imagePathForGallerySave(
-                                                widget.imageFile.path,
-                                                widget.rotationQuarters);
-                                        await Gal.putImage(galleryPath);
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content:
-                                                  Text(l10n.playerPhotoSaved),
-                                              duration:
-                                                  const Duration(seconds: 2),
-                                            ),
-                                          );
-                                        }
-                                      } catch (_) {}
-                                    },
-                                  ),
-                                  // Copy text
-                                  ScrimActionChip(
-                                    icon: Icons.copy,
-                                    label: l10n.playerCopy,
-                                    onTap: () {
-                                      Clipboard.setData(ClipboardData(
-                                          text: guide.lastResult!.script));
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                            content:
-                                                Text(l10n.playerTextCopied),
-                                            duration:
-                                                const Duration(seconds: 2)),
-                                      );
-                                    },
-                                  ),
-                                  // Share (#125)
-                                  ShareContentButton(
-                                    title: guide.lastResult!.title,
-                                    script: guide.lastResult!.script,
-                                    audioPath: guide.lastAudioPath,
-                                  ),
-                                  // Report content (T91)
-                                  ReportContentButton(
-                                    title: guide.lastResult!.title,
-                                    script: guide.lastResult!.script,
-                                    aiModel: guide.actualAiModel ??
-                                        guide.lastAiModel,
-                                    date: DateTime.now(),
-                                  ),
-                                ],
+                              // #147: shared with history_screen.dart.
+                              GuideActionRow(
+                                imagePath: widget.imageFile.path,
+                                rotationQuarters: widget.rotationQuarters,
+                                script: guide.lastResult!.script,
+                                title: guide.lastResult!.title,
+                                audioPath: guide.lastAudioPath,
+                                aiModel:
+                                    guide.actualAiModel ?? guide.lastAiModel,
+                                reportDate: DateTime.now(),
+                                saveLabel: l10n.playerSave,
+                                savedSnackbarText: l10n.playerPhotoSaved,
+                                copyLabel: l10n.playerCopy,
+                                copiedSnackbarText: l10n.playerTextCopied,
                               ),
 
                               const SizedBox(height: 8),
@@ -539,9 +459,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             // entirely rather than shown-but-broken for
                             // native TTS playback.
                             if (guide.canSkip) ...[
-                              IconButton(
-                                icon: const Icon(Icons.replay_10,
-                                    color: Colors.white70, size: 32),
+                              // #147: shared with history_screen.dart.
+                              SkipIconButton(
+                                forward: false,
                                 onPressed: guide.skipBack,
                               ),
                               const SizedBox(width: 8),
@@ -555,9 +475,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             ),
                             if (guide.canSkip) ...[
                               const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.forward_10,
-                                    color: Colors.white70, size: 32),
+                              SkipIconButton(
+                                forward: true,
                                 onPressed: guide.skipForward,
                               ),
                             ],
