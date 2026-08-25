@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 📈 ⭐⭐ - **Add sharing/exporting the text or audio** (issue #125)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #219)
   - **What was done**: added a Share action to PlayerScreen/HistoryDetailScreen's action row (`ShareContentButton`, `share_plus`), mirroring `ReportContentButton`'s structure. One button, not two: shares the generated audio file when one exists (the more "finished" artifact), falls back to the script text otherwise (script-only entry, or the native TTS fallback never produced a file).
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 295/295 (4 new widget tests covering the text/audio/missing-file branches). Real local Android debug build (new native plugin) — verified the app launches cleanly with `share_plus` linked.
 
