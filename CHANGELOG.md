@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐⭐ - **Extract shared UI building blocks between PlayerScreen and HistoryDetailScreen** (issue #147)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #237)
   - **What was done**: per #147's own investigation, a full screen merge wasn't recommended (the two screens drive genuinely different state models — a live async pipeline vs. a persisted-entry CRUD view), but three presentation pieces were byte-for-byte or near-identically duplicated and are now shared widgets: `PhotoGradientBackground` (the `BackgroundPhoto` + gradient scrim stack — the photo-mode gradient was already identical between screens; the "reading" gradient stays caller-supplied since History's is deliberately stronger at the top, T96), `GuideActionRow` (the Save/Copy/Share/Report action row), and `SkipIconButton` (the ±10s buttons — also fixed a real drift found in the process: Player's had no tooltip, History's relied on the ambient icon theme instead of the explicit on-scrim `white70` used everywhere else on both screens, both now consistent). The main play/pause/stop control was deliberately **not** unified: Player's toggle genuinely pauses/resumes mid-playback and its stop button exits the screen entirely, while History's is a single-shot stop/restart with a 3-state "generate/listen/stop" label and never leaves the screen — forcing one shared visual there would misrepresent what the button actually does, so it's left as a per-screen widget, flagged in a comment on #147 for anyone revisiting it.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 312/312 (7 new); coverage 65.70% (floor 60%, up from 64.83%).
 
