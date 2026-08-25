@@ -117,6 +117,15 @@ class AudioGuideApp extends StatelessWidget {
             ),
             textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
             useMaterial3: true,
+            // #217 follow-up: an AppBar computes its *own* status bar style
+            // (via its own AnnotatedRegion, closer to the leaves than the
+            // builder's below) and otherwise ignores it entirely — this was
+            // still leaving screens with an AppBar (Settings, History,
+            // Logs, About analysis, map picker) on the wrong style even
+            // after the builder-level fix, confirmed by the user on-device.
+            appBarTheme: const AppBarTheme(
+              systemOverlayStyle: SystemUiOverlayStyle.dark,
+            ),
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -125,6 +134,9 @@ class AudioGuideApp extends StatelessWidget {
             ),
             textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
             useMaterial3: true,
+            appBarTheme: const AppBarTheme(
+              systemOverlayStyle: SystemUiOverlayStyle.light,
+            ),
           ),
           themeMode: settings.themeMode,
           // #217: without this, the status bar icons stayed in whatever
@@ -135,9 +147,10 @@ class AudioGuideApp extends StatelessWidget {
           // Theme.of(context).brightness here is the theme actually on
           // screen (already accounts for ThemeMode.system following the
           // platform), not something recomputed separately. Covers every
-          // screen uniformly, including ones like HomeScreen that use a
-          // custom header instead of an AppBar (AppBar would otherwise set
-          // this automatically, but only for itself).
+          // screen that does NOT have its own AppBar (e.g. HomeScreen's
+          // custom header) — screens that do are covered by
+          // appBarTheme.systemOverlayStyle above instead, since an AppBar
+          // takes precedence over this outer region for its own area.
           builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
             value: Theme.of(context).brightness == Brightness.dark
                 ? SystemUiOverlayStyle.light
