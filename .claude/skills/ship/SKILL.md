@@ -1,114 +1,138 @@
 ---
 name: ship
-description: Run the full PR lifecycle for this repo - branch, Conventional Commits, push, open PR, wait for the Test + Build Android APK checks, merge, and clean up. Also handles closing a GitHub issue (referencing it in the PR, adding a CHANGELOG.md entry) in the same PR. Use whenever a code or docs change in this repo is ready to go out, or when the user asks to "push", "open a PR", "ship this", or close out a task.
+description: Cut and publish a new AudioLens release - decide the version bump, update the Play Store release notes, land the release-bump PR, wait for the AAB build, publish to Play Store, and rotate the "Next release" milestone. Use when the user asks to "push a new version", "cut a release", "publish", or "ship it" after one or more issues have already been landed on main. Distinct from the `land` skill, which only merges a single change onto main — this is the periodic step that actually gets a batch of already-landed changes into users' hands.
 ---
 
-# Ship a change on AudioLens
+# Ship a release on AudioLens
 
-This encodes the git/PR workflow already documented in `AGENTS.md` —
-follow it exactly rather than improvising branch names, commit formats,
-or the merge command.
+Run this after one or more changes are already merged to `main` (each
+via the `land` skill) and it's time to cut an actual release. Follow
+`AGENTS.md`'s "Version Numbering" and "Publishing to Play Store"
+sections exactly rather than improvising.
 
-## 1. Branch
+## 1. Decide the version bump
 
-Sync `main` first, then branch with a prefix that matches the change:
-`feature/`, `fix/`, `docs/`, `chore/`, `cleanup/`, `ci/`, followed by a
-short kebab-case description (add the issue number if there is one, e.g.
-`fix/122-script-length-cap`).
-
-```
-git checkout main && git pull origin main -q
-git checkout -b <prefix>/<short-description>
-```
-
-## 2. Commit
-
-Conventional Commits format, effective 2026-08-16 (not retroactive):
-`<type>[optional scope]: <description>`. Types: `feat`, `fix`, `docs`,
-`refactor`, `test`, `ci`, `build`, `chore`, `style`, `perf`. Explain the
-*why* in the body, not just the what.
-
-Before committing code changes (not needed for docs-only changes):
-- `flutter analyze` → must show "No issues found!"
-- `flutter test` → must show all tests passing
-- If native Android/Kotlin code or the CI/build scripts changed: also run
-  a real local build (`scripts/build_android_local.sh`) — `flutter
-  analyze`/`flutter test` don't touch `android/` at all. Requires
-  `openjdk@17` on `PATH` and `JAVA_HOME` set (not the bare `java` shim).
-  Clean up bootstrap side effects afterward: `git status --short` should
-  only show your intended changes — revert anything else `flutter
-  create`/the bootstrap touched (`.metadata`, `pubspec.lock`, stray
-  `test/widget_test.dart`, etc.), then `git clean -fdX -- android/` to
-  drop gitignored build artifacts.
-
-## 3. Push and open the PR
+List what's in the "Next release" milestone to know what's actually
+shipping:
 
 ```
-git push -u origin <branch-name>
-gh pr create --title "<type>: ..." --body "..."
+gh issue list --milestone "Next release" --state all --json number,title,state
 ```
 
-PR body convention: a `## Summary` (bullets) and a `## Test plan`
-(checklist of what was actually verified — `flutter analyze`, `flutter
-test` counts, real build if applicable). PR titles don't strictly need
-the Conventional Commits prefix (this repo uses `--merge`, not squash,
-so the PR title never becomes a commit message), but matching it is
-fine.
+`pubspec.yaml`'s `version: X.Y.Z+build` — only ever touch `X.Y.Z`, never
+`+build` (that's the Android `versionCode`, set automatically by CI via
+`--build-number=${{ github.run_number }}`).
 
-## 4. If this closes a GitHub issue
+- **Z (patch)**: the default. Bump this unless a genuine new
+  user-facing *feature* shipped (not just a fix/polish/internal
+  refactor) — internal refactors, dev tooling, and benchmark-only
+  changes never justify more than a patch bump on their own.
+- **Y (minor)**: bump instead of Z, resetting Z to 0, when the release
+  ships a genuine new user-facing feature. This is the one judgment
+  call — make it explicitly and say why in the release commit.
+- **X (major)**: reserved for `1.0.0` and later breaking/major-redesign
+  releases — essentially never triggered by a routine ship.
 
-Reference the issue in the PR body (`Closes #<n>` — GitHub closes it
-automatically on merge) and add an entry to `CHANGELOG.md` (under
-`## ✅ Done`, most-recent-first) in the **same PR**, as a follow-up
-commit once the PR number is known so the changelog entry can reference
-it (`PR #<n>`). This is why it's a separate commit instead of amending.
+## 2. Update the Play Store release notes
 
-Task tracking moved from `TODO.md` to GitHub issues (2026-08-22) — the
-old `**T<n>**` ID scheme is retired; new CHANGELOG entries reference the
-issue number instead.
+Update both `distribution/whatsnew/whatsnew-en-US` and
+`distribution/whatsnew/whatsnew-fr-FR` — owned by the agent, not the
+user: summarize what's user-visible since the last publish, in plain
+tester-facing language, not `CHANGELOG.md`'s technical wording.
 
-CHANGELOG entry format:
+- Only mention things a tester would actually notice. Skip internal
+  refactors, dev tooling, and benchmark-only changes entirely.
+- `New:` / `Fixes:` sections as needed (French: `Nouveautés :` /
+  `Corrections :`).
+- Google enforces a hard 500-character limit **per file** — check with
+  `wc -c` before committing. If left unchanged, testers just see the
+  previous release's notes again.
+
+## 3. Branch, commit, PR
+
 ```
-- [x] <priority-emoji> <effort-stars> - <title> (issue #<n>)
-  - **Verified**: YYYY-MM-DD (PR #<n>, commit `<hash>`)
-  - **What was done**: ...
-  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → N/N
-```
-
-## 5. Wait for checks
-
-Use the Monitor tool (not a sleep-poll loop in the main turn) with this
-exact script, swapping in the PR number:
-
-```bash
-prev=""
-while true; do
-  s=$(gh pr checks <N> --json name,bucket 2>/dev/null || true)
-  if [ -n "$s" ]; then
-    cur=$(echo "$s" | jq -r '.[] | select(.bucket!="pending") | "\(.name): \(.bucket)"' | sort)
-    comm -13 <(echo "$prev") <(echo "$cur")
-    prev=$cur
-    if echo "$s" | jq -e 'all(.bucket!="pending")' >/dev/null 2>&1; then
-      echo "ALL DONE"
-      break
-    fi
-  fi
-  sleep 20
-done
+git checkout main && git pull --ff-only
+git checkout -b chore/publish-v<X.Y.Z>
 ```
 
-The two required checks are named `test` and `build` (job names; they
-show as "Test" and "Build Android APK" in the GitHub UI).
+Edit `pubspec.yaml` and both `whatsnew-*` files, then:
 
-## 6. Merge and clean up
+```
+git add pubspec.yaml distribution/whatsnew/whatsnew-en-US distribution/whatsnew/whatsnew-fr-FR
+git commit -m "chore(release): bump to <X.Y.Z>, update release notes
 
-Only after both checks pass:
+<one line: patch or minor, and why — which issue(s) justified a minor
+bump if applicable, or 'no new user-facing feature' if patch>"
+git push -u origin chore/publish-v<X.Y.Z>
+gh pr create --title "chore(release): bump to <X.Y.Z>, update release notes" --body "..."
+```
+
+PR body: a `## Summary` listing the issues covered since the last
+publish (pull this from the milestone list in step 1) and a one-line
+justification of the version bump; a `## Test plan` confirming both
+`whatsnew` files are under the 500-char limit (`wc -c`).
+
+## 4. Wait for checks, then merge
+
+Same mechanism as `land` — poll `gh pr checks <N>` (or use the Monitor
+tool) until `test` and `build` both leave `pending`, then:
 
 ```
 gh pr merge <N> --merge --delete-branch
-git checkout main && git pull origin main -q
-git branch -D <branch-name> 2>/dev/null
+git checkout main && git pull --ff-only
 ```
 
-Never `--squash` (this repo keeps individual commits) and never
-`--admin`/force-merge past a failing or pending check.
+## 5. Wait for the AAB build on main
+
+The merge triggers a fresh `push` run of `build-android.yml` on `main`,
+which builds the AAB `publish-play-store.yml` will consume:
+
+```
+gh run list --workflow=build-android.yml --branch main --limit 3 --json databaseId,status,conclusion,event,headSha,createdAt
+```
+
+Find the run whose `headSha` matches the merge commit and wait for
+`status: completed`. **Concurrency gotcha**: this workflow's
+`concurrency` group cancels an in-flight run when a newer commit lands
+on `main` — if you push any follow-up commit (e.g. a changelog fix)
+after starting this wait, re-check `gh run list` for the newer run
+rather than assuming the one you were watching will finish.
+
+If no fresh build exists yet for the commit you need (rare — normally
+the merge above triggers one), use `build-android.yml`'s own
+`workflow_dispatch` instead (full fresh build + publish in one run) per
+`AGENTS.md`, rather than waiting on a build that isn't coming.
+
+## 6. Publish — always confirm the track first
+
+Publishing is a real, externally-visible production action — **always
+ask the user which Play Store track before triggering this**, even if
+recent releases have consistently used the same one (state what track
+past releases used, but don't assume it without asking):
+
+```
+gh workflow run publish-play-store.yml -f track=<internal|alpha|beta|production>
+```
+
+Then find and wait for the new run:
+
+```
+gh run list --workflow=publish-play-store.yml --limit 1 --json databaseId,status,conclusion,createdAt
+```
+
+## 7. Rotate the milestone
+
+Once publish succeeds, close and rename "Next release" to the version
+just shipped, then create a fresh empty one for what's next:
+
+```
+gh api repos/Nohzoh/AudioLens/milestones --jq '.[] | {number, title, state}'
+gh api repos/Nohzoh/AudioLens/milestones/<next-release-number> -X PATCH -f title="v<X.Y.Z>" -f state="closed"
+gh api repos/Nohzoh/AudioLens/milestones -f title="Next release"
+```
+
+## 8. Report back
+
+Tell the user: the version shipped, which track it published to, and
+that the milestone rotated — they don't need to ask, but they do need
+to know it actually happened.
