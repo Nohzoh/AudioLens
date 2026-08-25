@@ -934,6 +934,13 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // #255: instance hash distinguishes stacked pushes in the log (e.g.
+    // this screen staying mounted underneath a pushed PlayerScreen during
+    // a retry) — matters for diagnosing navigation-timing issues like
+    // #246.
+    AppLogger.nav('HistoryDetailScreen opened (instance ${identityHashCode(this)}, '
+        'entry: ${widget.entry.id}, "${widget.entry.title}", '
+        'autoPlay: ${widget.autoPlay})');
     // Captured now, not read from context in dispose(): during a bulk
     // teardown (the whole tree unmounting at once, e.g. app shutdown or
     // a test's finalization) an ancestor Provider can already be
@@ -988,6 +995,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
   @override
   void dispose() {
+    AppLogger.nav('HistoryDetailScreen closed (instance ${identityHashCode(this)}, '
+        'entry: ${widget.entry.id})');
     // Stop playback when leaving screen
     channel.invokeMethod('stop');
     _guide.nativeTtsService.stop();

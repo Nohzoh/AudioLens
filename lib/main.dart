@@ -16,6 +16,7 @@ import 'screens/history_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppLogger.nav('App starting');
   await RemoteConfigService.load();
   // Both supported locales' formatting data must be initialized up front —
   // DateFormat calls elsewhere (e.g. history_screen.dart) switch locale at
@@ -71,6 +72,10 @@ void main() async {
       builder: (_) => HistoryDetailScreen(entry: entry!, autoPlay: true),
     ));
   };
+
+  AppLogger.nav('Routing to initial screen: '
+      '${guide.isReady || settings.isOnboardingComplete ? "HomeScreen" : "OnboardingScreen"} '
+      '(guide.isReady=${guide.isReady}, isOnboardingComplete=${settings.isOnboardingComplete})');
 
   runApp(
     MultiProvider(

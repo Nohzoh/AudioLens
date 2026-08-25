@@ -17,6 +17,7 @@ import '../services/remote_config_service.dart';
 import '../services/quick_capture_service.dart';
 import '../services/settings_service.dart';
 import '../services/share_intent_service.dart';
+import '../utils/app_logger.dart';
 import '../widgets/kofi_button.dart';
 import 'history_screen.dart';
 import 'map_picker_screen.dart';
@@ -91,6 +92,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    AppLogger.nav('HomeScreen opened');
     WidgetsBinding.instance.addObserver(this);
     _checkLocationPermission();
     _initShareIntentHandling();
@@ -103,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    AppLogger.nav('HomeScreen closed');
     WidgetsBinding.instance.removeObserver(this);
     _shareIntentSubscription?.cancel();
     _quickCaptureSubscription?.cancel();

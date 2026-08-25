@@ -7,6 +7,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
+import '../utils/app_logger.dart';
 import '../widgets/guide_action_row.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/mini_map.dart';
@@ -62,6 +63,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // #255: instance hash distinguishes stacked PlayerScreen pushes (e.g.
+    // a retry pushed on top of one already on the stack) in the log —
+    // matters for diagnosing navigation-timing issues like #246.
+    AppLogger.nav('PlayerScreen opened (instance ${identityHashCode(this)}, '
+        'image: ${widget.imageFile.path.split('/').last}, '
+        'deleteOnDispose: ${widget.deleteImageOnDispose}, '
+        'rotation: ${widget.rotationQuarters})');
     // Listen to TTS progress from service
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final guide = context.read<AudioGuideService>();
@@ -87,6 +95,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    AppLogger.nav('PlayerScreen closed (instance ${identityHashCode(this)})');
     _scrollController.dispose();
     if (widget.deleteImageOnDispose) {
       try {

@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../l10n/app_localizations.dart';
 import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
+import '../utils/app_logger.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -18,7 +19,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    AppLogger.nav('OnboardingScreen opened');
+  }
+
+  @override
   void dispose() {
+    AppLogger.nav('OnboardingScreen closed');
     _controller.dispose();
     super.dispose();
   }

@@ -210,6 +210,11 @@ regenerating this file, upload it manually via Play Console → your app
   - `AI` — analysis pipeline events
   - `GPS` — location events
   - `DB` — persistence/storage issues
+  - `NAV` — screen/activity opened/closed (2026-08-26, #255) — logged from
+    each relevant screen's own `initState`/`dispose`, not from a central
+    router, so it stays accurate through any navigation path (push,
+    pushReplacement, a notification tap) without needing to be threaded
+    through every call site that navigates
 - **Never log secrets**: API keys, tokens, or sensitive user data
   (coordinates, addresses...). Never log a caught exception's raw
   `toString()` directly — wrap it in `sanitizeError()`
