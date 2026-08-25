@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **Add a test coverage baseline and keep it up** (issue #140)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #225)
   - **What was done**: CI now runs `flutter test --coverage` and fails the build if line coverage drops below a 60% floor (`scripts/check_coverage.py`), excluding generated `lib/l10n/app_localizations*.dart` (would otherwise swing the percentage on translation-key changes alone). Current coverage is 64.82%. Also fixed `scripts/run_tests_with_coverage.sh`, previously scoped to just 2 test files from T105's original widget-test work — now runs the full suite through the same check.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301; coverage check passes locally at 64.82% (floor 60%).
 
