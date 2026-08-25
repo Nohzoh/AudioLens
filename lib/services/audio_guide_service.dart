@@ -7,23 +7,24 @@ import '../models/guide_error.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/widgets.dart';
+import 'ai_provider_manager.dart';
 import 'ai_service.dart';
 import 'analysis_foreground_service.dart';
 import 'audio_ready_notifier.dart';
-import 'gemini_nano_service.dart';
 import 'gemini_api_service.dart';
+import 'gemini_nano_service.dart';
 import 'native_tts_service.dart';
 import 'gemini_tts_service.dart';
 import 'location_service.dart';
 import 'remote_config_service.dart';
-import 'secure_key_storage.dart';
 import 'guide_preferences_store.dart';
 import 'guide_progress_estimator.dart';
 import 'location_context_resolver.dart';
 import 'tts_orchestrator.dart';
 
+export 'ai_provider_manager.dart' show AIProvider;
+
 enum GuideState { idle, locating, analyzing, synthesizing, speaking, paused, cancelling, error, scriptReady }
-enum AIProvider { geminiNano, geminiApi }
 
 class PipelineProgress {
   final GuideState state;
@@ -50,14 +51,17 @@ class AudioGuideService extends ChangeNotifier {
     AnalysisForegroundService? foregroundService,
     AudioReadyNotifier? audioReadyNotifier,
   })  : _nativeTtsService = nativeTtsService ?? NativeTtsService(),
-        _nanoService = nanoService ?? GeminiNanoService(),
-        _geminiTtsService = geminiTtsService,
-        _geminiApiService = geminiApiService,
         _preferencesStore = preferencesStore ?? GuidePreferencesStore(),
         _locationResolver = locationResolver ?? LocationContextResolver(),
         _foregroundService = foregroundService ?? AnalysisForegroundService(),
         _audioReadyNotifier = audioReadyNotifier ?? AudioReadyNotifier() {
     _ttsOrchestrator = TtsOrchestrator(nativeTts: _nativeTtsService);
+    _providerManager = AiProviderManager(
+      preferencesStore: _preferencesStore,
+      nanoService: nanoService,
+      geminiApiService: geminiApiService,
+      geminiTtsService: geminiTtsService,
+    );
   }
 
   final AnalysisForegroundService _foregroundService;
@@ -68,9 +72,12 @@ class AudioGuideService extends ChangeNotifier {
   final GuidePreferencesStore _preferencesStore;
   final LocationContextResolver _locationResolver;
   late final TtsOrchestrator _ttsOrchestrator;
+  // #136: owns AI provider selection (Nano vs. API), the API key, and the
+  // Gemini API/TTS service instances that depend on it — see
+  // AiProviderManager's own doc for why this was split out.
+  late final AiProviderManager _providerManager;
   GuideProgressEstimator _progressEstimator = GuideProgressEstimator();
-  GeminiTtsService? _geminiTtsService;
-  GeminiTtsService? get geminiTtsService => _geminiTtsService;
+  GeminiTtsService? get geminiTtsService => _providerManager.geminiTtsService;
   String? _lastAudioPath;
   String? get lastAudioPath => _lastAudioPath;
   String _lastTtsModel = "native-tts";
@@ -96,14 +103,14 @@ class AudioGuideService extends ChangeNotifier {
   // T132: whether *this specific* analysis fell back from the cloud API to
   // on-device Nano — reset at the start of every analyzeAndPlay() call, so
   // it never leaks stale state from a previous run. Deliberately separate
-  // from _activeProvider, which is no longer mutated by a fallback (see
+  // from the active provider, which is no longer mutated by a fallback (see
   // the catch block below) — a transient cloud hiccup must not silently
   // and permanently downgrade every later analysis in the session.
   bool _lastProviderFallbackToNano = false;
   // Fallback info
   bool get aiModelWasFallback {
     if (_lastProviderFallbackToNano) return true;
-    final svc = _currentService;
+    final svc = _providerManager.currentService;
     if (svc is GeminiApiService) {
       final used = svc.lastUsedModel;
       final cfg = RemoteConfigService.current;
@@ -113,34 +120,27 @@ class AudioGuideService extends ChangeNotifier {
   }
   String? get actualAiModel {
     if (_lastProviderFallbackToNano) return _lastAiModel;
-    final svc = _currentService;
+    final svc = _providerManager.currentService;
     if (svc is GeminiApiService) return svc.lastUsedModel;
     return _lastAiModel;
   }
-  bool get ttsWasFallback => _lastTtsModel == 'native-tts' && _geminiTtsService != null;
+  bool get ttsWasFallback =>
+      _lastTtsModel == 'native-tts' && _providerManager.geminiTtsService != null;
   bool get ttsFallbackWasRateLimit => _ttsOrchestrator.wasRateLimited;
-  final GeminiNanoService _nanoService;
 
   GuideState _state = GuideState.idle;
   AudioGuideResult? _lastResult;
   String? _errorMessage;
-  String _providerName = '';
   File? _lastImageFile;
   LocationPermissionStatus _lastLocationStatus = LocationPermissionStatus.granted;
-  
+
   // Cancellation support
   final CancelToken _cancelToken = CancelToken();
   CancelToken get cancelToken => _cancelToken;
 
-  // Provider management
-  AIProvider _activeProvider = AIProvider.geminiNano;
-  bool _nanoAvailable = false;
-  String? _geminiApiKey;
-
-  AIProvider get activeProvider => _activeProvider;
-  bool get nanoAvailable => _nanoAvailable;
-  String? get geminiApiKey => _geminiApiKey;
-  GeminiApiService? _geminiApiService; // cached instance
+  AIProvider get activeProvider => _providerManager.activeProvider;
+  bool get nanoAvailable => _providerManager.nanoAvailable;
+  String? get geminiApiKey => _providerManager.geminiApiKey;
 
   int _currentStep = 0;
   bool _analysisInProgress = false;
@@ -157,7 +157,7 @@ class AudioGuideService extends ChangeNotifier {
   bool get isBusy => _analysisInProgress;
   AudioGuideResult? get lastResult => _lastResult;
   String? get errorMessage => _errorMessage;
-  String get providerName => _providerName;
+  String get providerName => _providerManager.providerName;
   File? get lastImageFile => _lastImageFile;
   bool get isReady => true;
   LocationPermissionStatus get lastLocationStatus => _lastLocationStatus;
@@ -177,25 +177,7 @@ class AudioGuideService extends ChangeNotifier {
 
   Future<void> init() async {
     await _loadPreferences();
-
-    _nanoAvailable = await _nanoService.isAvailable();
-    if (_nanoAvailable) {
-      try {
-        await _nanoService.initialize();
-      } catch (e) {
-        debugPrint('Gemini Nano init failed: $e');
-        _nanoAvailable = false;
-      }
-    }
-
-    // Determine active provider
-    if (_activeProvider == AIProvider.geminiNano && !_nanoAvailable) {
-      if (_geminiApiKey?.isNotEmpty == true) {
-        _activeProvider = AIProvider.geminiApi;
-      }
-    }
-
-    _updateProviderName();
+    await _providerManager.init();
 
     _nativeTtsService.onComplete = () {
       _state = GuideState.idle;
@@ -206,28 +188,8 @@ class AudioGuideService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _updateProviderName() {
-    switch (_activeProvider) {
-      case AIProvider.geminiNano:
-        _providerName = 'Gemini Nano';
-      case AIProvider.geminiApi:
-        _providerName = 'Gemini API';
-    }
-  }
-
-  AIService? get _currentService {
-    switch (_activeProvider) {
-      case AIProvider.geminiNano:
-        return _nanoAvailable ? _nanoService : null;
-      case AIProvider.geminiApi:
-        return _geminiApiService;
-    }
-  }
-
   Future<void> setActiveProvider(AIProvider provider) async {
-    _activeProvider = provider;
-    _updateProviderName();
-    await _preferencesStore.saveActiveProviderName(provider.name);
+    await _providerManager.setActiveProvider(provider);
     notifyListeners();
   }
 
@@ -236,32 +198,11 @@ class AudioGuideService extends ChangeNotifier {
   /// either, so the app's active provider/key state always matches what's
   /// actually on disk.
   Future<void> setGeminiApiKey(String key) async {
-    await SecureKeyStorage.writeApiKey(key);
-    _geminiApiKey = key.isEmpty ? null : key;
-    _geminiApiService = key.isNotEmpty ? GeminiApiService(apiKey: key) : null;
-    _geminiTtsService = key.isNotEmpty ? GeminiTtsService(apiKey: key) : null;
-    // Auto-switch to Gemini API if key provided
-    if (key.isNotEmpty) {
-      await setActiveProvider(AIProvider.geminiApi);
-    } else if (_nanoAvailable) {
-      await setActiveProvider(AIProvider.geminiNano);
-    }
+    await _providerManager.setGeminiApiKey(key);
     notifyListeners();
   }
 
   Future<void> _loadPreferences() async {
-    _geminiApiKey = await SecureKeyStorage.readApiKey();
-    if (_geminiApiKey?.isNotEmpty == true) {
-      _geminiApiService = GeminiApiService(apiKey: _geminiApiKey!);
-      _geminiTtsService = GeminiTtsService(apiKey: _geminiApiKey!);
-    }
-    final providerName = await _preferencesStore.loadActiveProviderName();
-    if (providerName != null) {
-      _activeProvider = AIProvider.values.firstWhere(
-        (p) => p.name == providerName,
-        orElse: () => AIProvider.geminiNano,
-      );
-    }
     final timings = await _preferencesStore.loadTimings();
     _progressEstimator = GuideProgressEstimator(
       gpsDurations: timings.gpsDurations,
@@ -341,7 +282,7 @@ class AudioGuideService extends ChangeNotifier {
       return null;
     }
 
-    final service = _currentService;
+    final service = _providerManager.currentService;
     if (service == null) {
       _state = GuideState.error;
       _errorMessage = 'Aucun service IA disponible. Configurez une clé API dans les paramètres.';
@@ -407,7 +348,7 @@ class AudioGuideService extends ChangeNotifier {
         onTick: notifyListeners,
       );
 
-      _lastAiModel = _providerName; // will be refined after analysis
+      _lastAiModel = _providerManager.providerName; // will be refined after analysis
       final analyzeStart = DateTime.now();
       try {
         _lastResult = await service.analyzeImage(
@@ -439,9 +380,10 @@ class AudioGuideService extends ChangeNotifier {
           );
         }
         final message = sanitizeError(analysisError.toString());
-        if (_activeProvider == AIProvider.geminiApi && _nanoAvailable) {
+        if (_providerManager.activeProvider == AIProvider.geminiApi &&
+            _providerManager.nanoAvailable) {
           AppLogger.error('Cloud analysis failed, trying local fallback: $message');
-          // T132: deliberately does NOT touch _activeProvider — this is a
+          // T132: deliberately does NOT touch the active provider — this is a
           // one-off fallback for *this* analysis only. Permanently
           // switching the active provider here used to silently and
           // invisibly strand every later analysis on Nano for the rest of
@@ -449,7 +391,7 @@ class AudioGuideService extends ChangeNotifier {
           // fallback log/UI indication on those later runs (nothing had
           // actually failed *this* time, from the code's point of view).
           try {
-            _lastResult = await _nanoService.analyzeImage(
+            _lastResult = await _providerManager.nanoService.analyzeImage(
               imageFile,
               locationContext: locationContext.promptContext,
               style: style,
@@ -568,7 +510,7 @@ class AudioGuideService extends ChangeNotifier {
     _lastTtsModel = await _ttsOrchestrator.speak(
       script,
       cancelToken: _cancelToken,
-      geminiTts: _geminiTtsService,
+      geminiTts: _providerManager.geminiTtsService,
       speed: _playbackSpeed,
     );
 
@@ -596,10 +538,11 @@ class AudioGuideService extends ChangeNotifier {
     _progressEstimator.stepProgress = -1.0;
     notifyListeners();
 
-    if (_geminiTtsService != null) {
+    if (_providerManager.geminiTtsService != null) {
       try {
         final path = await _getGeminiWavPath();
-        await _geminiTtsService!.synthesizeToFile(script, path, cancelToken: _cancelToken);
+        await _providerManager.geminiTtsService!
+            .synthesizeToFile(script, path, cancelToken: _cancelToken);
         _lastAudioPath = path;
         _lastTtsModel = 'gemini-tts';
       } catch (e) {
@@ -675,10 +618,11 @@ class AudioGuideService extends ChangeNotifier {
     // not just "is Gemini TTS configured" (_geminiTtsService != null) — a
     // configured Gemini TTS can still have fallen back to the native
     // engine for this particular playback (rate limit, network error).
-    final geminiIsPlaying = _lastTtsModel == 'gemini-tts' && _geminiTtsService != null;
+    final geminiIsPlaying =
+        _lastTtsModel == 'gemini-tts' && _providerManager.geminiTtsService != null;
     if (_state == GuideState.speaking) {
       if (geminiIsPlaying) {
-        await _geminiTtsService!.pause();
+        await _providerManager.geminiTtsService!.pause();
       } else {
         await _nativeTtsService.pause();
       }
@@ -703,16 +647,16 @@ class AudioGuideService extends ChangeNotifier {
   bool get canSkip =>
       (_state == GuideState.speaking || _state == GuideState.paused) &&
       _lastTtsModel == 'gemini-tts' &&
-      _geminiTtsService != null;
+      _providerManager.geminiTtsService != null;
 
   Future<void> skipForward() async {
     if (!canSkip) return;
-    await _geminiTtsService!.skipForward();
+    await _providerManager.geminiTtsService!.skipForward();
   }
 
   Future<void> skipBack() async {
     if (!canSkip) return;
-    await _geminiTtsService!.skipBack();
+    await _providerManager.geminiTtsService!.skipBack();
   }
 
   Future<void> cancelCurrentAction() async {
@@ -733,7 +677,7 @@ class AudioGuideService extends ChangeNotifier {
     try {
       await Future.wait([
         _nativeTtsService.stop(),
-        if (_geminiTtsService != null) _geminiTtsService!.stop(),
+        if (_providerManager.geminiTtsService != null) _providerManager.geminiTtsService!.stop(),
       ]).timeout(const Duration(seconds: 5));
     } catch (_) {
       // Timeout reached, TTS is still running in background but we can proceed
