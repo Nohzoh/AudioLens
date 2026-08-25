@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐⭐ - **Benchmark dataset's frozen location_context is far thinner than real Wikipedia enrichment** (issue #167)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #239)
   - **What was done**: `benchmark/dataset/manifest.json`'s `location_context` for the 2 existing cases was a hand-written ~250-character paraphrase, not the real Wikipedia extract(s) production would actually inject into the prompt (up to ~4500 chars via `LocationContextResolver`). Replaced both with the real output of that same resolver's call chain (Nominatim reverse geocoding, Overpass POI lookup, Wikipedia geosearch + name-search extracts) for the cases' frozen GPS coordinates — `notre_dame_paris` grew from ~280 to 3828 chars (5 merged extracts, POI found: "Notre-Dame de Paris"); `notre_dame_vincennes` to 1022 chars (3 extracts, no POI — Overpass timed out repeatedly, a realistic outcome `PoiService` itself produces on failure). Resolved via a one-off local script replicating the exact endpoints/params of `wikipedia_service.dart`/`poi_service.dart`/`location_service.dart` (not `flutter test` — the Dart HTTP client got a 400 from Nominatim in this environment for reasons not chased down; `curl` against the identical URL worked fine). Logged in `benchmark/results/CHANGES.md` per protocol, since it affects comparability with the prior quarterly run. Not done: adding a case with no Wikipedia content at all (suggested as a bonus in the issue) — no spare photo/GPS fixture on hand for a new case.
   - **Final validation**: `benchmark/dataset/manifest.json` still valid JSON; no Dart/test surface touched (Flutter analyze/test don't cover `benchmark/`).
 
