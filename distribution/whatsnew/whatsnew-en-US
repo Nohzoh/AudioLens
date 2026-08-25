@@ -1,9 +1,6 @@
-New:
-• Pinch to zoom on the photo in photo-only view
-• Search for a place by name on the location map, now locked north-up
-• Tap a detail in "About this analysis" to copy just that value
 Fixes:
-• Rotating/favoriting a photo now updates instantly
-• Starting a new analysis no longer disturbs one already running
-• The offline AI mode is more reliable, with a proper title
-• The quick-capture widget icon now matches the app icon
+• Pinch-to-zoom on the photo (added last update) now actually works
+• Map search now zooms to the right level for what was found
+• App icon now visually matches the quick-capture widget icon
+New:
+• Pause audio playback right from the home screen's recent visits
