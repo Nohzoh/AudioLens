@@ -21,6 +21,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **What was done**: nothing set the status bar icon style reactively before this — it just kept whatever it defaulted to before the light theme (#145) existed. Wired an `AnnotatedRegion<SystemUiOverlayStyle>` via `MaterialApp.builder`, tied to the theme's actual resolved `Brightness` (accounts for `ThemeMode.system` following the platform) — covers every screen uniformly, including ones like `HomeScreen` that use a custom header instead of an `AppBar`. User confirmed the technique against Google Maps' equivalent behavior before implementation.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301. Verified on-device: status bar icons render dark against the light theme, light against dark.
 
+- [x] 🐛 ⭐ - **"Système" label wraps awkwardly in the Appearance segmented button** (issue #216)
+  - **Verified**: 2026-08-25 (PR #220)
+  - **What was done**: `showSelectedIcon: false` alone wasn't enough on a narrow screen — "Système" still wrapped mid-word. Dropped the three icons entirely, freeing enough width for all labels to fit on one line; the segment's own background/text color already makes the selection unambiguous.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301. Verified on-device in French (forced the emulator's locale to fr-FR) — "Système" now renders on one line.
+
 - [x] 📈 ⭐⭐ - **Add sharing/exporting the text or audio** (issue #125)
   - **Verified**: 2026-08-25 (PR #219)
   - **What was done**: added a Share action to PlayerScreen/HistoryDetailScreen's action row (`ShareContentButton`, `share_plus`), mirroring `ReportContentButton`'s structure. One button, not two: shares the generated audio file when one exists (the more "finished" artifact), falls back to the script text otherwise (script-only entry, or the native TTS fallback never produced a file).
