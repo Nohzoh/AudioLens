@@ -1,2 +1,5 @@
+New:
+• See a small map of where a guide was captured, and swipe between saved guides
+• Regenerate an old guide with a different style, language, or model
 Fixes:
-• The Appearance "System" label and status bar contrast fixes from the last update didn't fully work — now actually fixed
+• Bigger tap targets and better contrast on a few buttons
