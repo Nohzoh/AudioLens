@@ -27,6 +27,12 @@ class AppLogger {
   static void ai(String message) => log('AI', message);
   static void gps(String message) => log('GPS', message);
   static void db(String message) => log('DB', message);
+  // #255: screen/activity lifecycle (opened/closed), so "what actually
+  // happened, screen by screen" during startup or launching an analysis
+  // is answerable from the in-app logs screen alone, without a debugger
+  // attached — matters most for diagnosing navigation-timing issues like
+  // #246, where two screens can be mounted at once.
+  static void nav(String message) => log('NAV', message);
 
   static List<String> get lines => List.unmodifiable(_buffer);
 
