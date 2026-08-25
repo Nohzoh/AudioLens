@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'services/remote_config_service.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -126,6 +127,23 @@ class AudioGuideApp extends StatelessWidget {
             useMaterial3: true,
           ),
           themeMode: settings.themeMode,
+          // #217: without this, the status bar icons stayed in whatever
+          // style they defaulted to before the light theme (#145) existed
+          // — unreadable light/white icons on the light theme's pale
+          // background. `builder` runs inside the `Theme` MaterialApp
+          // itself resolves from theme/darkTheme/themeMode above, so
+          // Theme.of(context).brightness here is the theme actually on
+          // screen (already accounts for ThemeMode.system following the
+          // platform), not something recomputed separately. Covers every
+          // screen uniformly, including ones like HomeScreen that use a
+          // custom header instead of an AppBar (AppBar would otherwise set
+          // this automatically, but only for itself).
+          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: Theme.of(context).brightness == Brightness.dark
+                ? SystemUiOverlayStyle.light
+                : SystemUiOverlayStyle.dark,
+            child: child!,
+          ),
           home: guide.isReady || settings.isOnboardingComplete
               ? const HomeScreen()
               : const OnboardingScreen(),
