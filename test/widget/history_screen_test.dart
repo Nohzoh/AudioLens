@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audiolens/screens/history_screen.dart';
 import 'package:audiolens/services/audio_guide_service.dart';
@@ -27,6 +28,14 @@ const _audioPlayerChannel = MethodChannel('audio_guide/audio_player');
 // NativeTtsService/flutter_tts implementation, which needs this mocked
 // or it throws MissingPluginException during the widget's teardown.
 const _flutterTtsChannel = MethodChannel('flutter_tts');
+// #131: only needed by the new "regenerate" tests, which call
+// SettingsService.init() — that reads the API key via SecureKeyStorage,
+// an unmocked platform channel here otherwise (mirrors
+// settings_service_test.dart's own mock). Confirmed the hard way: without
+// this, the read() call never resolves and the test hangs until package:
+// test's 10-minute timeout, rather than a fast MissingPluginException.
+const _secureStorageChannel =
+    MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -423,6 +432,50 @@ void main() {
 
       final after = tester.widget<Transform>(transformFinder.first).transform;
       expect(after, isNot(Matrix4.identity()));
+    });
+  });
+
+  // #131 — the sheet's own render/pre-fill behavior only. Actually tapping
+  // "Relancer" hands off to _retryAnalysis -> runAnalysisAndNavigate ->
+  // AudioGuideService.analyzeAndPlay, which awaits real foreground-service/
+  // notification-permission platform channels before it ever reaches the
+  // (safely quick) "no AI service configured" early return — confirmed by
+  // hitting a genuine hang (not a fast MissingPluginException) driving a
+  // tap that far. Same class of thing this file's own doc comment already
+  // scopes out for retry/launch flows; left for a pass that adds that
+  // channel mocking rather than risking a flaky/hanging CI run here.
+  group('regenerate with different settings (#131)', () {
+    testWidgets('opens pre-filled from current settings for an entry with no saved style/language',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_secureStorageChannel, (call) async => null);
+      addTearDown(() => TestDefaultBinaryMessengerBinding.instance
+          .defaultBinaryMessenger
+          .setMockMethodCallHandler(_secureStorageChannel, null));
+      await settings.init();
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('La Joconde'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.byTooltip('Relancer avec d\'autres paramètres'));
+      await tester.pumpAndSettle();
+
+      // Default settings: 'immersive' style, 'Français' language.
+      final immersiveChip =
+          tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Immersif'));
+      expect(immersiveChip.selected, isTrue);
+      final frenchChip =
+          tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Français'));
+      expect(frenchChip.selected, isTrue);
     });
   });
 }

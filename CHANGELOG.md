@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📈 ⭐⭐⭐ - **Re-run an old analysis with a new style/length/language/model** (issue #131)
+  - **Verified**: 2026-08-25 (PR #227)
+  - **What was done**: added a "tune" icon to HistoryDetailScreen's top bar, opening a sheet to pick a new script style/language/model before regenerating an entry's script — previously only a same-settings retry was possible. Picking new values also becomes the new default for future analyses (explicit product decision), reusing the exact same SettingsService/AudioGuideService plumbing rather than a one-off transient-override mechanism; a snackbar makes that side effect visible. Pre-fills from the entry's own #138 provenance when available, falling back to current settings for older entries.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 302/302; coverage 65.10% (floor 60%). Verified end-to-end on-device: sheet renders, settings update + snackbar fires, regenerate correctly falls through to the existing map-picker/AI-service-unavailable paths.
+
 - [x] 🌱 ⭐⭐ - **Analysis provenance isn't fully versioned in history** (issue #138)
   - **Verified**: 2026-08-25 (PR #226)
   - **What was done**: `HistoryEntry` already stored `aiModel`/`ttsModel`, but not the script style/language actually used or a prompt/output-schema version — added all three (DB migration v8→v9), stamped at completion time. `scriptStyle`/`outputLanguage` come from `SettingsService` at generation time (independent of whatever the settings hold later); `promptVersion` is a new `promptSchemaVersion` constant (`lib/constants/analysis_provenance.dart`), bumped manually whenever the prompt/output-schema meaningfully changes. Surfaced in the "About analysis" debug screen and its copyable debug-info text.
