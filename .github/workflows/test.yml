@@ -117,4 +117,9 @@ jobs:
         run: python3 scripts/check_log_hygiene.py
 
       - name: Test
-        run: flutter test
+        run: flutter test --coverage
+
+      # #140: fails the build if coverage regresses below a floor, instead
+      # of only having a percentage nobody looks at.
+      - name: Check coverage floor
+        run: python3 scripts/check_coverage.py
