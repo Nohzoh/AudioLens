@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🌱 ⭐ - **Add screen-lifecycle (NAV) logs, visible in-app, for startup and analysis-launch flows** (issue #255)
-  - **Verified**: 2026-08-26 (PR TBD)
+  - **Verified**: 2026-08-26 (PR #256)
   - **What was done**: direct ask — visibility into what actually happens, screen by screen, during app startup and launching an analysis, without a debugger attached, to help investigate something that looked off (possibly related to #246's two-screens-visible-at-once hypothesis). New `AppLogger.nav()` category (`[NAV]`, alongside the existing `INFO`/`ERROR`/`TTS`/`AI`/`GPS`/`DB`), logged from each relevant screen's own `initState`/`dispose` — not a central router — so it stays accurate through any navigation path. Covers: `main()`'s startup + computed initial route; `OnboardingScreen`/`HomeScreen` open/close; `PlayerScreen` and `HistoryDetailScreen` open/close, each tagged with an instance hash (to tell stacked pushes apart) and relevant context (image path, entry id/title, autoPlay flag).
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 324/324 (pure additive instrumentation, no behavior change — existing screen tests passing unchanged confirms no crashes from the new logging calls).
 
