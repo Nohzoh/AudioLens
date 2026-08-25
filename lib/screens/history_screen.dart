@@ -3,7 +3,6 @@ import '../utils/app_logger.dart';
 import '../utils/analysis_runner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gal/gal.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -12,14 +11,12 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
-import '../utils/rotated_image_export.dart';
-import '../widgets/background_photo.dart';
+import '../widgets/guide_action_row.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/mini_map.dart';
-import '../widgets/report_content_button.dart';
-import '../widgets/share_content_button.dart';
-import '../widgets/scrim_action_chip.dart';
+import '../widgets/photo_gradient_background.dart';
 import '../widgets/scrim_icon_button.dart';
+import '../widgets/skip_icon_button.dart';
 import '../utils/user_message_utils.dart';
 import 'about_analysis_screen.dart';
 
@@ -1143,53 +1140,21 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Full image background
-            if (File(live.imagePath).existsSync())
-              BackgroundPhoto(
-                file: File(live.imagePath),
-                rotationQuarters: live.rotationQuarters,
-                zoomable: _photoMode,
-              ),
-
-            // Gradient overlay — T96: the previous 2-stop version barely
-            // darkened the very top of the screen, leaving the top bar icons
-            // (esp. the red delete icon) hard to read over a bright photo
-            // (sky, light walls). A 3-stop vignette protects both the top bar
-            // and the bottom text without hiding the middle of the photo.
-            // T94: much lighter in photo mode, matching player_screen.dart's
-            // own photo-mode gradient, since there's no text left to protect.
-            //
-            // #204: IgnorePointer, since a plain decorated Container reports
-            // a hit test for its ENTIRE bounds regardless of visual (semi-)
-            // transparency (BoxDecoration.hitTest() defaults to true for a
-            // borderless rectangle) — without this, this purely-decorative
-            // layer silently swallowed every gesture meant for the
-            // InteractiveViewer in BackgroundPhoto beneath it, breaking
-            // pinch-to-zoom (#191) entirely.
-            IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: _photoMode
-                        ? [
-                            Colors.black.withValues(alpha: 0.35),
-                            Colors.transparent,
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.35),
-                          ]
-                        : [
-                            Colors.black.withValues(alpha: 0.45),
-                            Colors.black.withValues(alpha: 0.15),
-                            Colors.black.withValues(alpha: 0.95),
-                          ],
-                    stops: _photoMode
-                        ? const [0.0, 0.15, 0.85, 1.0]
-                        : const [0.0, 0.3, 1.0],
-                  ),
-                ),
-              ),
+            // #147: shared with player_screen.dart. T96: the reading-mode
+            // gradient here is a 3-stop vignette (stronger at the very top
+            // than the player's) to protect the top bar icons — especially
+            // the red delete icon — over a bright photo, not just the
+            // bottom text.
+            PhotoGradientBackground(
+              file: File(live.imagePath),
+              rotationQuarters: live.rotationQuarters,
+              photoMode: _photoMode,
+              readingGradientColors: [
+                Colors.black.withValues(alpha: 0.45),
+                Colors.black.withValues(alpha: 0.15),
+                Colors.black.withValues(alpha: 0.95),
+              ],
+              readingGradientStops: const [0.0, 0.3, 1.0],
             ),
 
             SafeArea(
@@ -1390,71 +1355,20 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
                             const SizedBox(height: 16),
 
-                            // Action buttons. Wrap, not Row: on a narrow
-                            // screen or a longer locale (French labels run
-                            // noticeably longer than English), three pills
-                            // plus their spacing can exceed the available
-                            // width — Wrap drops the overflow onto a second
-                            // line instead of clipping/overflowing off-screen.
-                            Wrap(
-                              alignment: WrapAlignment.end,
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                // Save to gallery
-                                ScrimActionChip(
-                                  icon: Icons.save_alt,
-                                  label: l10n.historySave,
-                                  onTap: () async {
-                                    try {
-                                      final galleryPath =
-                                          await imagePathForGallerySave(
-                                              live.imagePath,
-                                              live.rotationQuarters);
-                                      await Gal.putImage(galleryPath);
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(l10n
-                                                .historyPhotoSavedToGallery),
-                                            duration:
-                                                const Duration(seconds: 2),
-                                          ),
-                                        );
-                                      }
-                                    } catch (_) {}
-                                  },
-                                ),
-                                // Copy button
-                                ScrimActionChip(
-                                  icon: Icons.copy,
-                                  label: l10n.historyCopy,
-                                  onTap: () {
-                                    Clipboard.setData(
-                                        ClipboardData(text: live.script));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(l10n.historyTextCopied),
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                // Share (#125)
-                                ShareContentButton(
-                                  title: live.title,
-                                  script: live.script,
-                                  audioPath: live.audioPath,
-                                ),
-                                // Report content (T91)
-                                ReportContentButton(
-                                  title: live.title,
-                                  script: live.script,
-                                  aiModel: live.aiModel,
-                                  date: live.analyzedAt ?? live.createdAt,
-                                ),
-                              ],
+                            // #147: shared with player_screen.dart.
+                            GuideActionRow(
+                              imagePath: live.imagePath,
+                              rotationQuarters: live.rotationQuarters,
+                              script: live.script,
+                              title: live.title,
+                              audioPath: live.audioPath,
+                              aiModel: live.aiModel,
+                              reportDate: live.analyzedAt ?? live.createdAt,
+                              saveLabel: l10n.historySave,
+                              savedSnackbarText:
+                                  l10n.historyPhotoSavedToGallery,
+                              copyLabel: l10n.historyCopy,
+                              copiedSnackbarText: l10n.historyTextCopied,
                             ),
                             const SizedBox(height: 8),
 
@@ -1591,10 +1505,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             // Skip only when the current playback is
                             // seekable — see _canSkip.
                             if (showSkip) ...[
-                              IconButton(
-                                icon: const Icon(Icons.replay_10),
-                                iconSize: 32,
-                                tooltip: l10n.historySkipBack10,
+                              // #147: shared with player_screen.dart.
+                              SkipIconButton(
+                                forward: false,
                                 onPressed: () => _skip(-10000),
                               ),
                               const SizedBox(width: 4),
@@ -1621,10 +1534,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                             ),
                             if (showSkip) ...[
                               const SizedBox(width: 4),
-                              IconButton(
-                                icon: const Icon(Icons.forward_10),
-                                iconSize: 32,
-                                tooltip: l10n.historySkipForward10,
+                              SkipIconButton(
+                                forward: true,
                                 onPressed: () => _skip(10000),
                               ),
                             ],
