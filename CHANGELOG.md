@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 ⭐⭐ - **Light theme: status bar icons stay in light/white style, unreadable against the light background** (issue #217)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #221)
   - **What was done**: nothing set the status bar icon style reactively before this — it just kept whatever it defaulted to before the light theme (#145) existed. Wired an `AnnotatedRegion<SystemUiOverlayStyle>` via `MaterialApp.builder`, tied to the theme's actual resolved `Brightness` (accounts for `ThemeMode.system` following the platform) — covers every screen uniformly, including ones like `HomeScreen` that use a custom header instead of an `AppBar`. User confirmed the technique against Google Maps' equivalent behavior before implementation.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301. Verified on-device: status bar icons render dark against the light theme, light against dark.
 
