@@ -1174,122 +1174,82 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           tooltip: l10n.commonBack,
                           onPressed: () => Navigator.pop(context),
                         ),
-                        // Six trailing icons (rotate is the newest, #152/
-                        // #183) no longer reliably fit a plain Row at
-                        // narrow widths — scrollable rather than Wrap here,
-                        // since a toolbar wrapping to a second line reads
-                        // oddly compared to the Save/Copy/Report row below.
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ScrimIconButton(
-                                    icon: live.isFavorite
-                                        ? Icons.star
-                                        : Icons.star_border,
-                                    color: live.isFavorite
-                                        ? Colors.amberAccent
-                                        : Colors.white70,
-                                    tooltip: live.isFavorite
-                                        ? l10n.historyRemoveFromFavorites
-                                        : l10n.historyAddToFavorites,
-                                    // #190: same root cause as the rotate
-                                    // button below — _liveEntry(context)
-                                    // reads HistoryService via
-                                    // context.read, so nothing here
-                                    // rebuilds this screen just because
-                                    // toggleFavorite() notified a change.
-                                    onPressed: () async {
-                                      await context
-                                          .read<HistoryService>()
-                                          .toggleFavorite(live.id!);
-                                      if (mounted) setState(() {});
-                                    },
-                                  ),
-                                  const SizedBox(width: 4),
-                                  ScrimIconButton(
-                                    icon: Icons.playlist_add,
-                                    color: Colors.white70,
-                                    tooltip: l10n.historyAddToCollection,
-                                    onPressed: () =>
-                                        _openCollectionsSheet(context, live),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  ScrimIconButton(
-                                    icon: _photoMode
-                                        ? Icons.article_outlined
-                                        : Icons.image_outlined,
-                                    color: Colors.white70,
-                                    tooltip: _photoMode
-                                        ? l10n.playerShowText
-                                        : l10n.playerPhotoMode,
-                                    onPressed: () => setState(
-                                        () => _photoMode = !_photoMode),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  ScrimIconButton(
-                                    icon: Icons.rotate_90_degrees_cw_outlined,
-                                    color: Colors.white70,
-                                    tooltip: l10n.historyRotatePhoto,
-                                    onPressed: () async {
-                                      try {
-                                        await context
-                                            .read<HistoryService>()
-                                            .rotateEntry(live.id!);
-                                        // #190: _liveEntry(context) reads
-                                        // HistoryService via context.read,
-                                        // not watch — this screen never
-                                        // rebuilds on its own just because
-                                        // HistoryService notified a change,
-                                        // so without this the new rotation
-                                        // stayed invisible until some
-                                        // unrelated setState (e.g. toggling
-                                        // photo mode) happened to force a
-                                        // rebuild that re-read it fresh.
-                                        if (mounted) setState(() {});
-                                      } on HistoryStorageException catch (e) {
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(SnackBar(
-                                                  content: Text(e.message)));
-                                        }
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(width: 4),
-                                  ScrimIconButton(
-                                    icon: Icons.tune,
-                                    color: Colors.white70,
-                                    tooltip: l10n.historyRegenerateTooltip,
-                                    onPressed: () =>
-                                        _openRegenerateSheet(context, live),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  ScrimIconButton(
-                                    icon: Icons.info_outline,
-                                    color: Colors.white70,
-                                    tooltip: l10n.aboutAnalysisTitle,
-                                    onPressed: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (_) => AboutAnalysisScreen(
-                                                entry: widget.entry))),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  ScrimIconButton(
-                                    icon: Icons.delete_outline,
-                                    color: Colors.redAccent,
-                                    tooltip: l10n.historyDeleteTitle,
-                                    onPressed: () => _deleteEntry(context),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        // #235: was 6 icons in a horizontally-scrollable
+                        // Row (rotate was the newest, #152/#183) — the
+                        // least-recently-added ones (info, delete) scrolled
+                        // off-screen and weren't discoverable without
+                        // knowing to swipe. Only the two frequent, glanceable
+                        // state toggles stay visible; the rest move into the
+                        // overflow menu below.
+                        const Spacer(),
+                        ScrimIconButton(
+                          icon: live.isFavorite
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: live.isFavorite
+                              ? Colors.amberAccent
+                              : Colors.white70,
+                          tooltip: live.isFavorite
+                              ? l10n.historyRemoveFromFavorites
+                              : l10n.historyAddToFavorites,
+                          // #190: same root cause as the rotate menu item
+                          // below — _liveEntry(context) reads HistoryService
+                          // via context.read, so nothing here rebuilds this
+                          // screen just because toggleFavorite() notified a
+                          // change.
+                          onPressed: () async {
+                            await context
+                                .read<HistoryService>()
+                                .toggleFavorite(live.id!);
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                        ScrimIconButton(
+                          icon: _photoMode
+                              ? Icons.article_outlined
+                              : Icons.image_outlined,
+                          color: Colors.white70,
+                          tooltip: _photoMode
+                              ? l10n.playerShowText
+                              : l10n.playerPhotoMode,
+                          onPressed: () =>
+                              setState(() => _photoMode = !_photoMode),
+                        ),
+                        const SizedBox(width: 4),
+                        _DetailOverflowMenu(
+                          onAddToCollection: () =>
+                              _openCollectionsSheet(context, live),
+                          onRotate: () async {
+                            try {
+                              await context
+                                  .read<HistoryService>()
+                                  .rotateEntry(live.id!);
+                              // #190: _liveEntry(context) reads
+                              // HistoryService via context.read, not watch
+                              // — this screen never rebuilds on its own
+                              // just because HistoryService notified a
+                              // change, so without this the new rotation
+                              // stayed invisible until some unrelated
+                              // setState (e.g. toggling photo mode)
+                              // happened to force a rebuild that re-read
+                              // it fresh.
+                              if (mounted) setState(() {});
+                            } on HistoryStorageException catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.message)));
+                              }
+                            }
+                          },
+                          onRegenerate: () =>
+                              _openRegenerateSheet(context, live),
+                          onInfo: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      AboutAnalysisScreen(entry: widget.entry))),
+                          onDelete: () => _deleteEntry(context),
                         ),
                       ],
                     ),
@@ -1550,6 +1510,123 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// #235: the overflow menu for `HistoryDetailScreen`'s top bar — the 5
+/// actions that don't need to be always-visible (add to collection,
+/// rotate, regenerate, info, delete), moved out of a horizontally-
+/// scrollable icon row that was pushing the least-recently-added ones
+/// (info, delete) off-screen. Each callback is fired from `onSelected`
+/// rather than baked into the item itself, so the caller keeps full
+/// control of context/mounted-checks the same way the inlined
+/// `ScrimIconButton.onPressed`s used to.
+enum _DetailMenuAction { addToCollection, rotate, regenerate, info, delete }
+
+class _DetailOverflowMenu extends StatelessWidget {
+  final VoidCallback onAddToCollection;
+  final VoidCallback onRotate;
+  final VoidCallback onRegenerate;
+  final VoidCallback onInfo;
+  final VoidCallback onDelete;
+
+  const _DetailOverflowMenu({
+    required this.onAddToCollection,
+    required this.onRotate,
+    required this.onRegenerate,
+    required this.onInfo,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        // #145: stays fixed black regardless of app theme, matching
+        // ScrimIconButton — see that class's doc.
+        color: Colors.black.withValues(alpha: 0.35),
+      ),
+      child: PopupMenuButton<_DetailMenuAction>(
+        tooltip: l10n.historyMoreActions,
+        icon: const Icon(Icons.more_vert, color: Colors.white70),
+        onSelected: (action) {
+          switch (action) {
+            case _DetailMenuAction.addToCollection:
+              onAddToCollection();
+              break;
+            case _DetailMenuAction.rotate:
+              onRotate();
+              break;
+            case _DetailMenuAction.regenerate:
+              onRegenerate();
+              break;
+            case _DetailMenuAction.info:
+              onInfo();
+              break;
+            case _DetailMenuAction.delete:
+              onDelete();
+              break;
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: _DetailMenuAction.addToCollection,
+            child: _MenuRow(
+                icon: Icons.playlist_add, label: l10n.historyAddToCollection),
+          ),
+          PopupMenuItem(
+            value: _DetailMenuAction.rotate,
+            child: _MenuRow(
+                icon: Icons.rotate_90_degrees_cw_outlined,
+                label: l10n.historyRotatePhoto),
+          ),
+          PopupMenuItem(
+            value: _DetailMenuAction.regenerate,
+            child:
+                _MenuRow(icon: Icons.tune, label: l10n.historyRegenerateTooltip),
+          ),
+          PopupMenuItem(
+            value: _DetailMenuAction.info,
+            child: _MenuRow(
+                icon: Icons.info_outline, label: l10n.aboutAnalysisTitle),
+          ),
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: _DetailMenuAction.delete,
+            child: _MenuRow(
+              icon: Icons.delete_outline,
+              label: l10n.historyDeleteTitle,
+              color: Colors.redAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MenuRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color? color;
+
+  const _MenuRow({required this.icon, required this.label, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(label,
+              style: TextStyle(color: color),
+              overflow: TextOverflow.ellipsis),
+        ),
+      ],
     );
   }
 }
