@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 ⭐ - **"Système" label wraps awkwardly in the Appearance segmented button** (issue #216)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #220)
   - **What was done**: `showSelectedIcon: false` alone wasn't enough on a narrow screen — "Système" still wrapped mid-word. Dropped the three icons entirely, freeing enough width for all labels to fit on one line; the segment's own background/text color already makes the selection unambiguous.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301. Verified on-device in French (forced the emulator's locale to fr-FR) — "Système" now renders on one line.
 
