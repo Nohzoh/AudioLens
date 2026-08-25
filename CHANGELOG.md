@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 📈 ⭐⭐⭐ - **Allow choosing the output language independently of the interface language** (issue #130)
-  - **Verified**: 2026-08-25 (PR TBD)
+  - **Verified**: 2026-08-25 (PR #218)
   - **What was done**: added a "Narration language" setting in Settings, threaded through both AI backends — the cloud prompt (`gemini_api_service.dart`) and the on-device Gemini Nano prompt (`GeminiNanoPlugin.kt`, native Kotlin — was hardcoded to *"decris en francais"* unconditionally). Corrects the issue's own framing: narration wasn't actually following the device's system locale before this, it was hardcoded to French everywhere, cloud and on-device alike, and the native TTS fallback's voice selection was hardcoded `fr-FR` too — generalized that as well, while keeping the exact existing hand-picked premium French voices unchanged.
   - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 297/297 (5 new tests, including outgoing-prompt assertions for both backends). Real local Android debug build (Kotlin change) verified on-device: Settings UI renders and persists correctly, selection switches live.
 
