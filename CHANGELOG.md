@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Add a test coverage baseline and keep it up** (issue #140)
+  - **Verified**: 2026-08-25 (PR TBD)
+  - **What was done**: CI now runs `flutter test --coverage` and fails the build if line coverage drops below a 60% floor (`scripts/check_coverage.py`), excluding generated `lib/l10n/app_localizations*.dart` (would otherwise swing the percentage on translation-key changes alone). Current coverage is 64.82%. Also fixed `scripts/run_tests_with_coverage.sh`, previously scoped to just 2 test files from T105's original widget-test work — now runs the full suite through the same check.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 301/301; coverage check passes locally at 64.82% (floor 60%).
+
 - [x] 🐛 ⭐ - **#216/#217 follow-up: both regressed past their own PRs, still broken after 0.6.0 shipped** (issues #216, #217)
   - **Verified**: 2026-08-25 (PR #223)
   - **What was done**: user reported both still broken on-device right after 0.6.0's release. #216: dropping the `SegmentedButton` icons alone wasn't enough — `showSelectedIcon` (default `true`) still showed a checkmark eating into "Système"'s width; needed both `showSelectedIcon: false` *and* no icons together. #217: `AppBar` computes its own status bar style via its own `AnnotatedRegion`, closer to the leaves than `MaterialApp.builder`'s — it silently overrode the global fix on every screen with an `AppBar` (Settings, History, Logs, About analysis, map picker), leaving only `AppBar`-less screens (Home) actually fixed. Added `appBarTheme.systemOverlayStyle` to both `theme`/`darkTheme` so every `AppBar` picks up the right style too.
