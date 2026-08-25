@@ -1,5 +1,2 @@
-New:
-• See a small map of where a guide was captured, and swipe between saved guides
-• Regenerate an old guide with a different style, language, or model
 Fixes:
-• Bigger tap targets and better contrast on a few buttons
+• Cleaner history detail screen — less-used actions (rotate, regenerate, info, delete) moved into a menu instead of a scrolling row
