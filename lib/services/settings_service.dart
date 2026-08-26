@@ -14,6 +14,7 @@ class SettingsService extends ChangeNotifier {
   int _autoPurgeDays = 30;
   ThemeMode _themeMode = ThemeMode.system;
   String _outputLanguage = defaultOutputLanguage;
+  String? _appLocale;
 
   bool get isOnboardingComplete => _isOnboardingComplete;
   String get geminiApiKey => _geminiApiKey;
@@ -40,6 +41,14 @@ class SettingsService extends ChangeNotifier {
   /// upgrade. One of [outputLanguageLocales]'s keys.
   String get outputLanguage => _outputLanguage;
 
+  /// The app's own interface language, independent of [outputLanguage] —
+  /// null means "follow the device's system language" (the default, and
+  /// Flutter's own resolution already does the right thing for that case).
+  /// One of [AppLocalizations.supportedLocales]'s language codes when set,
+  /// letting testers switch the UI language without touching Android's
+  /// system or per-app language settings.
+  String? get appLocale => _appLocale;
+
   /// Whether history entries older than [autoPurgeDays] are deleted
   /// automatically on app startup (T95). Off by default — deletion stays
   /// manual (from the history entry itself) unless explicitly opted in.
@@ -60,6 +69,7 @@ class SettingsService extends ChangeNotifier {
     _autoPurgeDays = _prefs.getInt('auto_purge_days') ?? 30;
     _themeMode = ThemeMode.values.byName(_prefs.getString('theme_mode') ?? 'system');
     _outputLanguage = _prefs.getString('output_language') ?? defaultOutputLanguage;
+    _appLocale = _prefs.getString('app_locale');
   }
 
   /// Throws [SecureStorageUnavailableException] if the key can't be
@@ -86,6 +96,7 @@ class SettingsService extends ChangeNotifier {
     _autoPurgeDays = 30;
     _themeMode = ThemeMode.system;
     _outputLanguage = defaultOutputLanguage;
+    _appLocale = null;
     notifyListeners();
   }
 
@@ -128,6 +139,17 @@ class SettingsService extends ChangeNotifier {
   Future<void> setThemeMode(ThemeMode value) async {
     _themeMode = value;
     await _prefs.setString('theme_mode', value.name);
+    notifyListeners();
+  }
+
+  /// [value] null resets to following the device's system language.
+  Future<void> setAppLocale(String? value) async {
+    _appLocale = value;
+    if (value == null) {
+      await _prefs.remove('app_locale');
+    } else {
+      await _prefs.setString('app_locale', value);
+    }
     notifyListeners();
   }
 }

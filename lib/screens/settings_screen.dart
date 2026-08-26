@@ -151,6 +151,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 32),
 
+          // App interface language, independent of the narration language
+          // below — lets testers switch it without touching Android's
+          // system or per-app language settings.
+          _SectionHeader(l10n.settingsLanguageSection),
+          const SizedBox(height: 8),
+          Consumer<SettingsService>(
+            builder: (context, settings, _) => SegmentedButton<String?>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: null,
+                  label: Text(l10n.settingsThemeSystem),
+                ),
+                const ButtonSegment(value: 'fr', label: Text('Français')),
+                const ButtonSegment(value: 'en', label: Text('English')),
+              ],
+              selected: {settings.appLocale},
+              onSelectionChanged: (selection) =>
+                  settings.setAppLocale(selection.first),
+            ),
+          ),
+          const SizedBox(height: 32),
+
           // Provider status
           _SectionHeader(l10n.settingsActiveAiEngine),
           const SizedBox(height: 8),
