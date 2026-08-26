@@ -1,2 +1,5 @@
 New:
-• An in-app language selector in Settings, independent of your device's system language
+• Narration language can now automatically follow the app's own language
+
+Fixes:
+• Another fix for the flickering/doubled status bar, including when retrying a failed analysis from history
