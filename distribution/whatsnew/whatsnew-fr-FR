@@ -1,2 +1,1 @@
-Corrections :
-• Réduit un cas de superposition visuelle en relançant l'analyse d'une entrée pendant qu'un audio est en cours de génération
+Cette version ajoute un outil de développement interne (test de prompts pour le mode IA locale) — rien de nouveau côté utilisation normale de l'app.

@@ -1,2 +1,1 @@
-Fixes:
-• Reduced a case of visual overlap when relaunching an entry's analysis while its audio is still being generated
+This release adds an internal developer tool (prompt testing for local AI mode) — nothing new in everyday app usage.
