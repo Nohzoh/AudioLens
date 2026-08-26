@@ -216,10 +216,10 @@
   }
   .status .dot {
     width: 10px; height: 10px; border-radius: 50%;
-    background: var(--warn);
+    background: var(--success);
     margin-top: 6px;
     flex-shrink: 0;
-    box-shadow: 0 0 0 4px rgba(240,168,72,0.15);
+    box-shadow: 0 0 0 4px rgba(74,222,128,0.15);
   }
   .status p { margin: 0; color: var(--text-dim); font-size: 0.94rem; }
   .status strong { color: var(--text); }
@@ -234,6 +234,36 @@
     text-decoration: none;
   }
   .status-link:hover { text-decoration: underline; }
+  .status-steps {
+    list-style: none;
+    margin: 14px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .status-steps li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 0.9rem;
+  }
+  .status-steps .n {
+    flex-shrink: 0;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(2px);
+  }
+  .status-steps a { font-weight: 600; color: var(--accent-light); text-decoration: none; }
+  .status-steps a:hover { text-decoration: underline; }
+  .status-steps span.d { color: var(--text-dim); }
 
   /* ---------- Sections ---------- */
   section { padding: 72px 0; }
@@ -471,15 +501,26 @@
     <span class="dot"></span>
     <div>
       <p>
-        <strong>AudioLens is currently in internal testing on the Google Play Store</strong>
-        — the listing isn't public yet, so there's no install link to share.
-        The project is fully open source in the meantime: read the code,
-        follow along, or build it yourself from the
-        <a href="https://github.com/Nohzoh/AudioLens">GitHub repository</a>.
+        <strong>AudioLens is in open testing on the Google Play Store</strong>
+        — anyone can join, no invite needed. Three steps to install it:
       </p>
-      <a class="status-link" href="mailto:thomas.arnaud@gmail.com?subject=AudioLens%20beta%20tester">
-        ✉️ Want to help test it? Get in touch →
-      </a>
+      <ol class="status-steps">
+        <li>
+          <span class="n">1</span>
+          <a href="https://groups.google.com/g/audiolens" target="_blank" rel="noopener">Join the tester group</a>
+          <span class="d">— required once, before Play Store will let you opt in</span>
+        </li>
+        <li>
+          <span class="n">2</span>
+          <a href="https://play.google.com/apps/testing/io.nohzoh.audiolens" target="_blank" rel="noopener">Opt in to testing</a>
+          <span class="d">— on the Play Store's testing page</span>
+        </li>
+        <li>
+          <span class="n">3</span>
+          <a href="https://play.google.com/store/apps/details?id=io.nohzoh.audiolens" target="_blank" rel="noopener">Install from Google Play</a>
+          <span class="d">— same listing page from then on</span>
+        </li>
+      </ol>
     </div>
   </div>
 </div>
