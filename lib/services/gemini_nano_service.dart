@@ -114,6 +114,33 @@ class GeminiNanoService implements AIService {
     }
   }
 
+  /// Debug/prompt-iteration tool (Settings > Nano Prompt Lab) — a single
+  /// raw `generateContent` call with no prompt scaffolding
+  /// (buildSeg1/2/3Prompt in GeminiNanoPlugin.kt aren't applied), image
+  /// optional. Returns the model's raw text, unparsed/uncleaned — the
+  /// caller sees exactly what the model produced, not what
+  /// [analyzeImage] would extract a title/script out of it.
+  Future<String> rawPrompt({
+    required String prompt,
+    File? imageFile,
+    int? maxOutputTokens,
+    double? temperature,
+  }) async {
+    if (!_initialized) await initialize();
+    try {
+      final args = <String, dynamic>{
+        'prompt': prompt,
+        'maxOutputTokens': maxOutputTokens ?? 256,
+      };
+      if (imageFile != null) args['imagePath'] = imageFile.path;
+      if (temperature != null) args['temperature'] = temperature;
+      final result = await _channel.invokeMethod<String>('rawPrompt', args);
+      return result ?? '';
+    } on PlatformException catch (e) {
+      throw Exception('Gemini Nano: ${e.message}');
+    }
+  }
+
   /// Completes with [future]'s result, or with [CancelledException] the
   /// moment [token] is cancelled — whichever happens first. [future]
   /// itself (the native call) keeps running to completion regardless;

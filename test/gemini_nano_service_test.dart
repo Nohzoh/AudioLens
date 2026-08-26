@@ -29,6 +29,8 @@ void main() {
           return true;
         case 'describeImage':
           return 'Une description generee.';
+        case 'rawPrompt':
+          return 'Reponse brute du modele.';
         default:
           return null;
       }
@@ -335,6 +337,81 @@ void main() {
     // The native call itself is left to finish on its own — completing
     // it now must not throw into an already-completed Future.
     describeResult.complete('ignored, arrived after cancellation');
+  });
+
+  // Nano Prompt Lab (debug tool) — a raw generateContent call with no
+  // prompt scaffolding and no title/script parsing, image optional.
+  group('rawPrompt()', () {
+    test('lazily initializes if not already done', () async {
+      final service = GeminiNanoService();
+
+      await service.rawPrompt(prompt: 'Decris cette scene.');
+
+      expect(calls.first.method, 'initialize');
+      expect(calls.any((c) => c.method == 'rawPrompt'), isTrue);
+    });
+
+    test('sends prompt and default maxOutputTokens without imagePath when '
+        'no image is given', () async {
+      final service = GeminiNanoService();
+
+      await service.rawPrompt(prompt: 'Decris cette scene.');
+
+      final call = calls.firstWhere((c) => c.method == 'rawPrompt');
+      final args = call.arguments as Map;
+      expect(args['prompt'], 'Decris cette scene.');
+      expect(args['maxOutputTokens'], 256);
+      expect(args.containsKey('imagePath'), isFalse);
+      expect(args.containsKey('temperature'), isFalse);
+    });
+
+    test('includes imagePath when an image is given', () async {
+      final service = GeminiNanoService();
+
+      await service.rawPrompt(prompt: 'Decris cette scene.', imageFile: tempImage());
+
+      final call = calls.firstWhere((c) => c.method == 'rawPrompt');
+      expect((call.arguments as Map)['imagePath'], isNotNull);
+    });
+
+    test('sends custom maxOutputTokens and temperature when given', () async {
+      final service = GeminiNanoService();
+
+      await service.rawPrompt(prompt: 'x', maxOutputTokens: 128, temperature: 0.7);
+
+      final call = calls.firstWhere((c) => c.method == 'rawPrompt');
+      final args = call.arguments as Map;
+      expect(args['maxOutputTokens'], 128);
+      expect(args['temperature'], 0.7);
+    });
+
+    test('returns the raw model text, unparsed', () async {
+      final service = GeminiNanoService();
+
+      final result = await service.rawPrompt(prompt: '[Titre]\nCorps du texte.');
+
+      expect(result, 'Reponse brute du modele.');
+    });
+
+    test('wraps a PlatformException in a plain Exception', () async {
+      handler = (call) async {
+        calls.add(call);
+        if (call.method == 'rawPrompt') {
+          throw PlatformException(code: 'INFERENCE_ERROR', message: 'model not ready');
+        }
+        return true;
+      };
+      final service = GeminiNanoService();
+
+      await expectLater(
+        service.rawPrompt(prompt: 'x'),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('model not ready'),
+        )),
+      );
+    });
   });
 
   test('dispose() resets init state so a later analyzeImage() re-initializes',
