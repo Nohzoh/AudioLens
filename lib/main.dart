@@ -117,9 +117,8 @@ class AudioGuideApp extends StatelessWidget {
           // settings.appLocale (in-app override, independent of the
           // device/per-app system language setting) takes precedence over
           // both.
-          locale: settings.appLocale != null
-              ? Locale(settings.appLocale!)
-              : null,
+          locale:
+              settings.appLocale != null ? Locale(settings.appLocale!) : null,
           // #145: same seed color for both — only brightness differs.
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -128,12 +127,13 @@ class AudioGuideApp extends StatelessWidget {
             ),
             textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
             useMaterial3: true,
-            // #217 follow-up: an AppBar computes its *own* status bar style
-            // (via its own AnnotatedRegion, closer to the leaves than the
-            // builder's below) and otherwise ignores it entirely — this was
-            // still leaving screens with an AppBar (Settings, History,
-            // Logs, About analysis, map picker) on the wrong style even
-            // after the builder-level fix, confirmed by the user on-device.
+            // #217 follow-up, #236 cleanup: an AppBar computes its *own*
+            // status bar style (via its own AnnotatedRegion) and otherwise
+            // ignores any outer one — this is now the ONLY mechanism in
+            // play for AppBar screens (Settings, History list, Logs, About
+            // analysis, map picker); see the removed `builder:` comment
+            // below for why a second, app-wide mechanism used to also
+            // exist and why that was the actual cause of #236.
             appBarTheme: const AppBarTheme(
               systemOverlayStyle: SystemUiOverlayStyle.dark,
             ),
@@ -150,24 +150,24 @@ class AudioGuideApp extends StatelessWidget {
             ),
           ),
           themeMode: settings.themeMode,
-          // #217: without this, the status bar icons stayed in whatever
-          // style they defaulted to before the light theme (#145) existed
-          // — unreadable light/white icons on the light theme's pale
-          // background. `builder` runs inside the `Theme` MaterialApp
-          // itself resolves from theme/darkTheme/themeMode above, so
-          // Theme.of(context).brightness here is the theme actually on
-          // screen (already accounts for ThemeMode.system following the
-          // platform), not something recomputed separately. Covers every
-          // screen that does NOT have its own AppBar (e.g. HomeScreen's
-          // custom header) — screens that do are covered by
-          // appBarTheme.systemOverlayStyle above instead, since an AppBar
-          // takes precedence over this outer region for its own area.
-          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-            value: Theme.of(context).brightness == Brightness.dark
-                ? SystemUiOverlayStyle.light
-                : SystemUiOverlayStyle.dark,
-            child: child!,
-          ),
+          // #236: there used to be a second, app-wide status-bar-style
+          // mechanism here (a `builder:`-level AnnotatedRegion covering
+          // every non-AppBar screen, added for #217). Removed — every
+          // screen that needs one now sets its own explicit
+          // AnnotatedRegion (HomeScreen, OnboardingScreen: theme-driven,
+          // matching what this used to compute for them; PlayerScreen,
+          // HistoryDetailScreen: hard-coded `.light`, since both are
+          // always a darkened photo, never colorScheme.surface) or gets it
+          // from appBarTheme.systemOverlayStyle above (any screen with an
+          // AppBar). Having two mechanisms meant that during a push
+          // between two screens using different ones — e.g. HistoryScreen
+          // (AppBar-driven) into PlayerScreen (used to inherit this
+          // builder) — Flutter had to resolve which one's value actually
+          // won for a given frame, and could resolve it inconsistently
+          // frame to frame while both routes were briefly mounted at
+          // once, which Android rendered as a flickering/doubled status
+          // bar. One explicit source of truth per screen removes the
+          // ambiguity at its root instead of patching it pairwise.
           home: guide.isReady || settings.isOnboardingComplete
               ? const HomeScreen()
               : const OnboardingScreen(),
