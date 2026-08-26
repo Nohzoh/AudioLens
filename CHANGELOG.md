@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Add an in-app language selector, independent of the system language** (issue #260)
+  - **Verified**: 2026-08-26 (PR #261)
+  - **What was done**: direct ask — testing AudioLens in English required changing the device's system language. A screenshot the user shared to illustrate what they wanted turned out to be Android's *system* per-app language screen, not an in-app one; confirmed via AskUserQuestion to build an in-app selector instead (instant, no manifest/AppCompat work, same behavior on every Android version). New "Langue de l'application" section in Settings (Système/Français/English), mirroring the existing Appearance/theme `SegmentedButton`. `SettingsService.appLocale` (nullable, persisted, null = follow system) feeds `MaterialApp.locale` in `main.dart`.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 324/324 (one existing settings test needed `scrollUntilVisible` after the new section pushed its target below the fold — same pattern already used elsewhere in that file).
+
 - [x] 🐛 ⭐ - **Doubled/flickering status bar during PlayerScreen ↔ HistoryDetailScreen transitions** (issue #236)
   - **Verified**: 2026-08-26 (PR #258)
   - **What was done**: root-caused via a diagnosis from another Claude session that the user asked to review — two concurrent status-bar-style mechanisms in `main.dart` (a global theme-driven `AnnotatedRegion` and each `AppBar`'s own `systemOverlayStyle`) could disagree frame to frame during a push between the two full-bleed-photo screens, which Android renders as a flickering/doubled status bar. Attempted a live on-device repro of the exact user-reported scenario first (gallery photo without GPS EXIF → map picker → analyze in Local AI mode) but Gemini Nano isn't available on the test emulator, so the analysis fails before reaching the state the bug needs. Fixed by giving `PlayerScreen` and `HistoryDetailScreen` their own explicit `AnnotatedRegion(SystemUiOverlayStyle.light)` instead of inheriting the theme-driven one — both are always a darkened photo background, never `colorScheme.surface`, so the style is now identical on both sides of the transition regardless of theme.
