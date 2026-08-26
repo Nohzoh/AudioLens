@@ -109,406 +109,418 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      body: Consumer<AudioGuideService>(
-        builder: (context, guide, _) {
-          // Reset progress when new analysis starts
-          if (guide.state == GuideState.locating ||
-              guide.state == GuideState.analyzing) {
-            _readingProgress = 0.0;
-            _photoMode = false;
-          }
+    // This screen is always a darkened photo background, never
+    // colorScheme.surface, so its status bar style shouldn't follow the
+    // app theme's light/dark brightness like main.dart's global
+    // AnnotatedRegion does — that leaves it and HistoryDetailScreen (which
+    // pushes this same override below) briefly disagreeing with each other
+    // and with the theme-driven builder during the push/pop between them,
+    // which showed up as a flickering/doubled status bar.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        body: Consumer<AudioGuideService>(
+          builder: (context, guide, _) {
+            // Reset progress when new analysis starts
+            if (guide.state == GuideState.locating ||
+                guide.state == GuideState.analyzing) {
+              _readingProgress = 0.0;
+              _photoMode = false;
+            }
 
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              // #147: shared with history_screen.dart.
-              PhotoGradientBackground(
-                file: widget.imageFile,
-                rotationQuarters: widget.rotationQuarters,
-                photoMode: _photoMode,
-                readingGradientColors: [
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.95),
-                ],
-                readingGradientStops: const [0.25, 0.75],
-              ),
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                // #147: shared with history_screen.dart.
+                PhotoGradientBackground(
+                  file: widget.imageFile,
+                  rotationQuarters: widget.rotationQuarters,
+                  photoMode: _photoMode,
+                  readingGradientColors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.95),
+                  ],
+                  readingGradientStops: const [0.25, 0.75],
+                ),
 
-              SafeArea(
-                child: Column(
-                  children: [
-                    // Top bar
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        children: [
-                          ScrimIconButton(
-                            icon: Icons.arrow_back,
-                            color: Colors.white,
-                            tooltip: l10n.commonBack,
-                            onPressed: () {
-                              guide.stop();
-                              Navigator.pop(context);
-                            },
-                          ),
-                          const Spacer(),
-                          // Each trailing icon owns its own leading gap
-                          // (rather than a shared SizedBox between them)
-                          // so a hidden one — e.g. Ko-fi off in settings
-                          // — contributes zero space instead of leaving
-                          // an orphan gap or collapsing the gap next to
-                          // whatever ends up adjacent to it.
-                          if (guide.lastResult != null)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: ScrimIconButton(
-                                icon: _photoMode
-                                    ? Icons.article_outlined
-                                    : Icons.image_outlined,
-                                color: Colors.white70,
-                                tooltip: _photoMode
-                                    ? l10n.playerShowText
-                                    : l10n.playerPhotoMode,
-                                onPressed: () =>
-                                    setState(() => _photoMode = !_photoMode),
-                              ),
+                SafeArea(
+                  child: Column(
+                    children: [
+                      // Top bar
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          children: [
+                            ScrimIconButton(
+                              icon: Icons.arrow_back,
+                              color: Colors.white,
+                              tooltip: l10n.commonBack,
+                              onPressed: () {
+                                guide.stop();
+                                Navigator.pop(context);
+                              },
                             ),
-                          Consumer<SettingsService>(
-                            builder: (context, settings, _) =>
-                                settings.showKofiButton
-                                    ? const Padding(
-                                        padding: EdgeInsets.only(left: 4),
-                                        child: KofiButton(
-                                          show: true,
-                                          iconColor: Colors.white70,
-                                        ),
-                                      )
-                                    : const SizedBox.shrink(),
-                          ),
-                          if (guide.state == GuideState.cancelling)
-                            const Padding(
-                              padding: EdgeInsets.only(left: 4),
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                            const Spacer(),
+                            // Each trailing icon owns its own leading gap
+                            // (rather than a shared SizedBox between them)
+                            // so a hidden one — e.g. Ko-fi off in settings
+                            // — contributes zero space instead of leaving
+                            // an orphan gap or collapsing the gap next to
+                            // whatever ends up adjacent to it.
+                            if (guide.lastResult != null)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4),
+                                child: ScrimIconButton(
+                                  icon: _photoMode
+                                      ? Icons.article_outlined
+                                      : Icons.image_outlined,
                                   color: Colors.white70,
+                                  tooltip: _photoMode
+                                      ? l10n.playerShowText
+                                      : l10n.playerPhotoMode,
+                                  onPressed: () =>
+                                      setState(() => _photoMode = !_photoMode),
                                 ),
                               ),
-                            )
-                          else if (guide.state == GuideState.speaking ||
-                              guide.state == GuideState.paused ||
-                              guide.state == GuideState.synthesizing)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: ScrimIconButton(
-                                icon: Icons.cancel_outlined,
-                                color: Colors.white70,
-                                tooltip: l10n.playerCancel,
+                            Consumer<SettingsService>(
+                              builder: (context, settings, _) =>
+                                  settings.showKofiButton
+                                      ? const Padding(
+                                          padding: EdgeInsets.only(left: 4),
+                                          child: KofiButton(
+                                            show: true,
+                                            iconColor: Colors.white70,
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                            ),
+                            if (guide.state == GuideState.cancelling)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 4),
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              )
+                            else if (guide.state == GuideState.speaking ||
+                                guide.state == GuideState.paused ||
+                                guide.state == GuideState.synthesizing)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4),
+                                child: ScrimIconButton(
+                                  icon: Icons.cancel_outlined,
+                                  color: Colors.white70,
+                                  tooltip: l10n.playerCancel,
+                                  onPressed: () async {
+                                    await guide.cancelCurrentAction();
+                                    if (context.mounted) Navigator.pop(context);
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      const Spacer(),
+
+                      // Content area
+                      Expanded(
+                        flex: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Pipeline progress
+                              if (guide.state == GuideState.locating ||
+                                  guide.state == GuideState.analyzing ||
+                                  guide.state == GuideState.synthesizing) ...[
+                                _PipelineProgressWidget(guide: guide),
+                                const SizedBox(height: 16),
+                              ],
+
+                              // State label
+                              if (!_photoMode) ...[
+                                _StateLabel(state: guide.state),
+                                const SizedBox(height: 8),
+                              ],
+
+                              // Title
+                              if (guide.lastResult != null && !_photoMode) ...[
+                                Text(
+                                  guide.lastResult!.title,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ).animate().fadeIn().slideY(begin: 0.2),
+
+                                if (guide.lastResult!.locationName != null) ...[
+                                  const SizedBox(height: 4),
+                                  Row(children: [
+                                    // #128: white54 read low-contrast against
+                                    // this row's position in the gradient
+                                    // (still ramping up, not yet at the
+                                    // near-opaque floor lower in the column).
+                                    const Icon(Icons.location_on,
+                                        color: Colors.white70, size: 13),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      guide.lastResult!.locationName!,
+                                      style: const TextStyle(
+                                          color: Colors.white70, fontSize: 12),
+                                    ),
+                                  ]),
+                                ],
+
+                                // #126
+                                if (guide.lastGpsLatitude != null &&
+                                    guide.lastGpsLongitude != null) ...[
+                                  const SizedBox(height: 8),
+                                  MiniMap(
+                                    latitude: guide.lastGpsLatitude!,
+                                    longitude: guide.lastGpsLongitude!,
+                                  ),
+                                ],
+
+                                const SizedBox(height: 4),
+
+                                // AI-generated content disclosure — shown
+                                // wherever the AI-generated script/audio is
+                                // actually delivered, not just buried in the
+                                // detail sheet (_AiGeneratedBanner in
+                                // about_analysis_screen.dart, which stays too).
+                                Row(children: [
+                                  // #128: see the location row above for why
+                                  // this moved off white54.
+                                  const Icon(Icons.auto_awesome,
+                                      color: Colors.white70, size: 12),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    l10n.playerAiGeneratedDisclosure,
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 11),
+                                  ),
+                                ]),
+
+                                const SizedBox(height: 4),
+
+                                // #147: shared with history_screen.dart.
+                                GuideActionRow(
+                                  imagePath: widget.imageFile.path,
+                                  rotationQuarters: widget.rotationQuarters,
+                                  script: guide.lastResult!.script,
+                                  title: guide.lastResult!.title,
+                                  audioPath: guide.lastAudioPath,
+                                  aiModel:
+                                      guide.actualAiModel ?? guide.lastAiModel,
+                                  reportDate: DateTime.now(),
+                                  saveLabel: l10n.playerSave,
+                                  savedSnackbarText: l10n.playerPhotoSaved,
+                                  copyLabel: l10n.playerCopy,
+                                  copiedSnackbarText: l10n.playerTextCopied,
+                                ),
+
+                                const SizedBox(height: 8),
+
+                                // Fallback banners
+                                if (guide.state == GuideState.speaking ||
+                                    guide.state == GuideState.paused) ...[
+                                  if (guide.aiModelWasFallback)
+                                    _FallbackBanner(
+                                      icon: Icons.swap_horiz,
+                                      message: l10n.playerAiFallbackMessage(
+                                          guide.actualAiModel ?? '?'),
+                                      color: Colors.orange,
+                                    ),
+                                  if (guide.ttsWasFallback)
+                                    _FallbackBanner(
+                                      icon: Icons.volume_down,
+                                      message: guide.ttsFallbackWasRateLimit
+                                          ? l10n.playerTtsRateLimitFallback
+                                          : l10n.playerTtsFallback,
+                                      color: Colors.orange,
+                                    ),
+                                  const SizedBox(height: 8),
+                                ],
+
+                                // Scrollable script with reading progress bar
+                                Expanded(
+                                  child: Stack(
+                                    children: [
+                                      // Script text — scrollable by user + auto-scroll
+                                      SingleChildScrollView(
+                                        controller: _scrollController,
+                                        physics: const BouncingScrollPhysics(),
+                                        child: _HighlightedScript(
+                                          text: guide.lastResult!.script,
+                                          progress: _readingProgress,
+                                        ),
+                                      ),
+
+                                      // Reading progress bar on the left edge
+                                      if (guide.state == GuideState.speaking ||
+                                          guide.state == GuideState.paused)
+                                        Positioned(
+                                          left: 0,
+                                          top: 0,
+                                          bottom: 0,
+                                          child: Container(
+                                            width: 3,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white12,
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
+                                            child: FractionallySizedBox(
+                                              alignment: Alignment.topCenter,
+                                              heightFactor: _readingProgress,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(2),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              // Error
+                              if (guide.state == GuideState.error)
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xDD1a0000),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: Colors.redAccent
+                                            .withValues(alpha: 0.5)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.error_outline,
+                                              color: Colors.redAccent,
+                                              size: 18),
+                                          const SizedBox(width: 8),
+                                          Text(l10n.playerError,
+                                              style: const TextStyle(
+                                                  color: Colors.redAccent,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14)),
+                                          const Spacer(),
+                                          // Same pattern as the Save/Copy/
+                                          // Report row above — this used
+                                          // to hand-roll its own InkWell,
+                                          // drifting slightly out of sync
+                                          // (11px/no pill vs the shared
+                                          // chip's 12px pill) from every
+                                          // other copy-style action.
+                                          ScrimActionChip(
+                                            icon: Icons.copy,
+                                            label: l10n.playerCopy,
+                                            color: Colors.white54,
+                                            onTap: () {
+                                              Clipboard.setData(ClipboardData(
+                                                  text: guide.errorMessage ??
+                                                      ''));
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(SnackBar(
+                                                      content: Text(l10n
+                                                          .playerErrorCopied),
+                                                      duration: const Duration(
+                                                          seconds: 2)));
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        guide.errorMessage ??
+                                            l10n.playerUnknownError,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            height: 1.5),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Controls
+                      if (guide.state == GuideState.speaking ||
+                          guide.state == GuideState.paused)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // T118/T21: skip ±10s — only meaningful for the
+                              // Gemini/cached-WAV engine (see
+                              // AudioGuideService.canSkip's doc), hidden
+                              // entirely rather than shown-but-broken for
+                              // native TTS playback.
+                              if (guide.canSkip) ...[
+                                // #147: shared with history_screen.dart.
+                                SkipIconButton(
+                                  forward: false,
+                                  onPressed: guide.skipBack,
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              IconButton.filled(
+                                iconSize: 36,
+                                icon: Icon(guide.state == GuideState.speaking
+                                    ? Icons.pause
+                                    : Icons.play_arrow),
+                                onPressed: guide.togglePause,
+                              ),
+                              if (guide.canSkip) ...[
+                                const SizedBox(width: 8),
+                                SkipIconButton(
+                                  forward: true,
+                                  onPressed: guide.skipForward,
+                                ),
+                              ],
+                              const SizedBox(width: 16),
+                              IconButton(
+                                icon: const Icon(Icons.stop_circle_outlined,
+                                    color: Colors.white70, size: 36),
                                 onPressed: () async {
                                   await guide.cancelCurrentAction();
                                   if (context.mounted) Navigator.pop(context);
                                 },
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    const Spacer(),
-
-                    // Content area
-                    Expanded(
-                      flex: 3,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Pipeline progress
-                            if (guide.state == GuideState.locating ||
-                                guide.state == GuideState.analyzing ||
-                                guide.state == GuideState.synthesizing) ...[
-                              _PipelineProgressWidget(guide: guide),
-                              const SizedBox(height: 16),
                             ],
-
-                            // State label
-                            if (!_photoMode) ...[
-                              _StateLabel(state: guide.state),
-                              const SizedBox(height: 8),
-                            ],
-
-                            // Title
-                            if (guide.lastResult != null && !_photoMode) ...[
-                              Text(
-                                guide.lastResult!.title,
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ).animate().fadeIn().slideY(begin: 0.2),
-
-                              if (guide.lastResult!.locationName != null) ...[
-                                const SizedBox(height: 4),
-                                Row(children: [
-                                  // #128: white54 read low-contrast against
-                                  // this row's position in the gradient
-                                  // (still ramping up, not yet at the
-                                  // near-opaque floor lower in the column).
-                                  const Icon(Icons.location_on,
-                                      color: Colors.white70, size: 13),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    guide.lastResult!.locationName!,
-                                    style: const TextStyle(
-                                        color: Colors.white70, fontSize: 12),
-                                  ),
-                                ]),
-                              ],
-
-                              // #126
-                              if (guide.lastGpsLatitude != null &&
-                                  guide.lastGpsLongitude != null) ...[
-                                const SizedBox(height: 8),
-                                MiniMap(
-                                  latitude: guide.lastGpsLatitude!,
-                                  longitude: guide.lastGpsLongitude!,
-                                ),
-                              ],
-
-                              const SizedBox(height: 4),
-
-                              // AI-generated content disclosure — shown
-                              // wherever the AI-generated script/audio is
-                              // actually delivered, not just buried in the
-                              // detail sheet (_AiGeneratedBanner in
-                              // about_analysis_screen.dart, which stays too).
-                              Row(children: [
-                                // #128: see the location row above for why
-                                // this moved off white54.
-                                const Icon(Icons.auto_awesome,
-                                    color: Colors.white70, size: 12),
-                                const SizedBox(width: 4),
-                                Text(
-                                  l10n.playerAiGeneratedDisclosure,
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 11),
-                                ),
-                              ]),
-
-                              const SizedBox(height: 4),
-
-                              // #147: shared with history_screen.dart.
-                              GuideActionRow(
-                                imagePath: widget.imageFile.path,
-                                rotationQuarters: widget.rotationQuarters,
-                                script: guide.lastResult!.script,
-                                title: guide.lastResult!.title,
-                                audioPath: guide.lastAudioPath,
-                                aiModel:
-                                    guide.actualAiModel ?? guide.lastAiModel,
-                                reportDate: DateTime.now(),
-                                saveLabel: l10n.playerSave,
-                                savedSnackbarText: l10n.playerPhotoSaved,
-                                copyLabel: l10n.playerCopy,
-                                copiedSnackbarText: l10n.playerTextCopied,
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              // Fallback banners
-                              if (guide.state == GuideState.speaking ||
-                                  guide.state == GuideState.paused) ...[
-                                if (guide.aiModelWasFallback)
-                                  _FallbackBanner(
-                                    icon: Icons.swap_horiz,
-                                    message: l10n.playerAiFallbackMessage(
-                                        guide.actualAiModel ?? '?'),
-                                    color: Colors.orange,
-                                  ),
-                                if (guide.ttsWasFallback)
-                                  _FallbackBanner(
-                                    icon: Icons.volume_down,
-                                    message: guide.ttsFallbackWasRateLimit
-                                        ? l10n.playerTtsRateLimitFallback
-                                        : l10n.playerTtsFallback,
-                                    color: Colors.orange,
-                                  ),
-                                const SizedBox(height: 8),
-                              ],
-
-                              // Scrollable script with reading progress bar
-                              Expanded(
-                                child: Stack(
-                                  children: [
-                                    // Script text — scrollable by user + auto-scroll
-                                    SingleChildScrollView(
-                                      controller: _scrollController,
-                                      physics: const BouncingScrollPhysics(),
-                                      child: _HighlightedScript(
-                                        text: guide.lastResult!.script,
-                                        progress: _readingProgress,
-                                      ),
-                                    ),
-
-                                    // Reading progress bar on the left edge
-                                    if (guide.state == GuideState.speaking ||
-                                        guide.state == GuideState.paused)
-                                      Positioned(
-                                        left: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        child: Container(
-                                          width: 3,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white12,
-                                            borderRadius:
-                                                BorderRadius.circular(2),
-                                          ),
-                                          child: FractionallySizedBox(
-                                            alignment: Alignment.topCenter,
-                                            heightFactor: _readingProgress,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius:
-                                                    BorderRadius.circular(2),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-
-                            // Error
-                            if (guide.state == GuideState.error)
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xDD1a0000),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: Colors.redAccent
-                                          .withValues(alpha: 0.5)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.error_outline,
-                                            color: Colors.redAccent, size: 18),
-                                        const SizedBox(width: 8),
-                                        Text(l10n.playerError,
-                                            style: const TextStyle(
-                                                color: Colors.redAccent,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14)),
-                                        const Spacer(),
-                                        // Same pattern as the Save/Copy/
-                                        // Report row above — this used
-                                        // to hand-roll its own InkWell,
-                                        // drifting slightly out of sync
-                                        // (11px/no pill vs the shared
-                                        // chip's 12px pill) from every
-                                        // other copy-style action.
-                                        ScrimActionChip(
-                                          icon: Icons.copy,
-                                          label: l10n.playerCopy,
-                                          color: Colors.white54,
-                                          onTap: () {
-                                            Clipboard.setData(ClipboardData(
-                                                text:
-                                                    guide.errorMessage ?? ''));
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(SnackBar(
-                                                    content: Text(
-                                                        l10n.playerErrorCopied),
-                                                    duration: const Duration(
-                                                        seconds: 2)));
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      guide.errorMessage ??
-                                          l10n.playerUnknownError,
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          height: 1.5),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
 
-                    // Controls
-                    if (guide.state == GuideState.speaking ||
-                        guide.state == GuideState.paused)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // T118/T21: skip ±10s — only meaningful for the
-                            // Gemini/cached-WAV engine (see
-                            // AudioGuideService.canSkip's doc), hidden
-                            // entirely rather than shown-but-broken for
-                            // native TTS playback.
-                            if (guide.canSkip) ...[
-                              // #147: shared with history_screen.dart.
-                              SkipIconButton(
-                                forward: false,
-                                onPressed: guide.skipBack,
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            IconButton.filled(
-                              iconSize: 36,
-                              icon: Icon(guide.state == GuideState.speaking
-                                  ? Icons.pause
-                                  : Icons.play_arrow),
-                              onPressed: guide.togglePause,
-                            ),
-                            if (guide.canSkip) ...[
-                              const SizedBox(width: 8),
-                              SkipIconButton(
-                                forward: true,
-                                onPressed: guide.skipForward,
-                              ),
-                            ],
-                            const SizedBox(width: 16),
-                            IconButton(
-                              icon: const Icon(Icons.stop_circle_outlined,
-                                  color: Colors.white70, size: 36),
-                              onPressed: () async {
-                                await guide.cancelCurrentAction();
-                                if (context.mounted) Navigator.pop(context);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 8),
-                  ],
+                      const SizedBox(height: 8),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }

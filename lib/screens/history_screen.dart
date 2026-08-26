@@ -938,7 +938,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     // this screen staying mounted underneath a pushed PlayerScreen during
     // a retry) — matters for diagnosing navigation-timing issues like
     // #246.
-    AppLogger.nav('HistoryDetailScreen opened (instance ${identityHashCode(this)}, '
+    AppLogger.nav(
+        'HistoryDetailScreen opened (instance ${identityHashCode(this)}, '
         'entry: ${widget.entry.id}, "${widget.entry.title}", '
         'autoPlay: ${widget.autoPlay})');
     // Captured now, not read from context in dispose(): during a bulk
@@ -995,7 +996,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
   @override
   void dispose() {
-    AppLogger.nav('HistoryDetailScreen closed (instance ${identityHashCode(this)}, '
+    AppLogger.nav(
+        'HistoryDetailScreen closed (instance ${identityHashCode(this)}, '
         'entry: ${widget.entry.id})');
     // Stop playback when leaving screen
     channel.invokeMethod('stop');
@@ -1132,393 +1134,405 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             Localizations.localeOf(context).toString())
         .format(live.createdAt);
 
-    return Scaffold(
-      // #126: swipe between entries — only when not zoomed/panning the
-      // photo (_photoMode), so this doesn't fight BackgroundPhoto's own
-      // InteractiveViewer for the gesture arena.
-      body: GestureDetector(
-        onHorizontalDragEnd: _photoMode
-            ? null
-            : (details) {
-                final velocity = details.primaryVelocity ?? 0;
-                if (velocity < -200) {
-                  _navigateAdjacent(context, 1); // swipe left -> next/older
-                } else if (velocity > 200) {
-                  _navigateAdjacent(
-                      context, -1); // swipe right -> previous/newer
-                }
-              },
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // #147: shared with player_screen.dart. T96: the reading-mode
-            // gradient here is a 3-stop vignette (stronger at the very top
-            // than the player's) to protect the top bar icons — especially
-            // the red delete icon — over a bright photo, not just the
-            // bottom text.
-            PhotoGradientBackground(
-              file: File(live.imagePath),
-              rotationQuarters: live.rotationQuarters,
-              photoMode: _photoMode,
-              readingGradientColors: [
-                Colors.black.withValues(alpha: 0.45),
-                Colors.black.withValues(alpha: 0.15),
-                Colors.black.withValues(alpha: 0.95),
-              ],
-              readingGradientStops: const [0.0, 0.3, 1.0],
-            ),
+    // Always a darkened photo background, never colorScheme.surface — see
+    // the matching comment in player_screen.dart's build() for why this
+    // shouldn't follow the app theme's brightness like the global
+    // AnnotatedRegion in main.dart does.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        // #126: swipe between entries — only when not zoomed/panning the
+        // photo (_photoMode), so this doesn't fight BackgroundPhoto's own
+        // InteractiveViewer for the gesture arena.
+        body: GestureDetector(
+          onHorizontalDragEnd: _photoMode
+              ? null
+              : (details) {
+                  final velocity = details.primaryVelocity ?? 0;
+                  if (velocity < -200) {
+                    _navigateAdjacent(context, 1); // swipe left -> next/older
+                  } else if (velocity > 200) {
+                    _navigateAdjacent(
+                        context, -1); // swipe right -> previous/newer
+                  }
+                },
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // #147: shared with player_screen.dart. T96: the reading-mode
+              // gradient here is a 3-stop vignette (stronger at the very top
+              // than the player's) to protect the top bar icons — especially
+              // the red delete icon — over a bright photo, not just the
+              // bottom text.
+              PhotoGradientBackground(
+                file: File(live.imagePath),
+                rotationQuarters: live.rotationQuarters,
+                photoMode: _photoMode,
+                readingGradientColors: [
+                  Colors.black.withValues(alpha: 0.45),
+                  Colors.black.withValues(alpha: 0.15),
+                  Colors.black.withValues(alpha: 0.95),
+                ],
+                readingGradientStops: const [0.0, 0.3, 1.0],
+              ),
 
-            SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top bar — each icon gets its own scrim (T96) so it stays
-                  // legible regardless of gradient tuning or photo content.
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Row(
-                      children: [
-                        ScrimIconButton(
-                          icon: Icons.arrow_back,
-                          color: Colors.white,
-                          tooltip: l10n.commonBack,
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        // #235: was 6 icons in a horizontally-scrollable
-                        // Row (rotate was the newest, #152/#183) — the
-                        // least-recently-added ones (info, delete) scrolled
-                        // off-screen and weren't discoverable without
-                        // knowing to swipe. Only the two frequent, glanceable
-                        // state toggles stay visible; the rest move into the
-                        // overflow menu below.
-                        const Spacer(),
-                        ScrimIconButton(
-                          icon: live.isFavorite
-                              ? Icons.star
-                              : Icons.star_border,
-                          color: live.isFavorite
-                              ? Colors.amberAccent
-                              : Colors.white70,
-                          tooltip: live.isFavorite
-                              ? l10n.historyRemoveFromFavorites
-                              : l10n.historyAddToFavorites,
-                          // #190: same root cause as the rotate menu item
-                          // below — _liveEntry(context) reads HistoryService
-                          // via context.read, so nothing here rebuilds this
-                          // screen just because toggleFavorite() notified a
-                          // change.
-                          onPressed: () async {
-                            await context
-                                .read<HistoryService>()
-                                .toggleFavorite(live.id!);
-                            if (mounted) setState(() {});
-                          },
-                        ),
-                        const SizedBox(width: 4),
-                        ScrimIconButton(
-                          icon: _photoMode
-                              ? Icons.article_outlined
-                              : Icons.image_outlined,
-                          color: Colors.white70,
-                          tooltip: _photoMode
-                              ? l10n.playerShowText
-                              : l10n.playerPhotoMode,
-                          onPressed: () =>
-                              setState(() => _photoMode = !_photoMode),
-                        ),
-                        const SizedBox(width: 4),
-                        _DetailOverflowMenu(
-                          onAddToCollection: () =>
-                              _openCollectionsSheet(context, live),
-                          onRotate: () async {
-                            try {
+              SafeArea(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top bar — each icon gets its own scrim (T96) so it stays
+                    // legible regardless of gradient tuning or photo content.
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      child: Row(
+                        children: [
+                          ScrimIconButton(
+                            icon: Icons.arrow_back,
+                            color: Colors.white,
+                            tooltip: l10n.commonBack,
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          // #235: was 6 icons in a horizontally-scrollable
+                          // Row (rotate was the newest, #152/#183) — the
+                          // least-recently-added ones (info, delete) scrolled
+                          // off-screen and weren't discoverable without
+                          // knowing to swipe. Only the two frequent, glanceable
+                          // state toggles stay visible; the rest move into the
+                          // overflow menu below.
+                          const Spacer(),
+                          ScrimIconButton(
+                            icon: live.isFavorite
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: live.isFavorite
+                                ? Colors.amberAccent
+                                : Colors.white70,
+                            tooltip: live.isFavorite
+                                ? l10n.historyRemoveFromFavorites
+                                : l10n.historyAddToFavorites,
+                            // #190: same root cause as the rotate menu item
+                            // below — _liveEntry(context) reads HistoryService
+                            // via context.read, so nothing here rebuilds this
+                            // screen just because toggleFavorite() notified a
+                            // change.
+                            onPressed: () async {
                               await context
                                   .read<HistoryService>()
-                                  .rotateEntry(live.id!);
-                              // #190: _liveEntry(context) reads
-                              // HistoryService via context.read, not watch
-                              // — this screen never rebuilds on its own
-                              // just because HistoryService notified a
-                              // change, so without this the new rotation
-                              // stayed invisible until some unrelated
-                              // setState (e.g. toggling photo mode)
-                              // happened to force a rebuild that re-read
-                              // it fresh.
+                                  .toggleFavorite(live.id!);
                               if (mounted) setState(() {});
-                            } on HistoryStorageException catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.message)));
+                            },
+                          ),
+                          const SizedBox(width: 4),
+                          ScrimIconButton(
+                            icon: _photoMode
+                                ? Icons.article_outlined
+                                : Icons.image_outlined,
+                            color: Colors.white70,
+                            tooltip: _photoMode
+                                ? l10n.playerShowText
+                                : l10n.playerPhotoMode,
+                            onPressed: () =>
+                                setState(() => _photoMode = !_photoMode),
+                          ),
+                          const SizedBox(width: 4),
+                          _DetailOverflowMenu(
+                            onAddToCollection: () =>
+                                _openCollectionsSheet(context, live),
+                            onRotate: () async {
+                              try {
+                                await context
+                                    .read<HistoryService>()
+                                    .rotateEntry(live.id!);
+                                // #190: _liveEntry(context) reads
+                                // HistoryService via context.read, not watch
+                                // — this screen never rebuilds on its own
+                                // just because HistoryService notified a
+                                // change, so without this the new rotation
+                                // stayed invisible until some unrelated
+                                // setState (e.g. toggling photo mode)
+                                // happened to force a rebuild that re-read
+                                // it fresh.
+                                if (mounted) setState(() {});
+                              } on HistoryStorageException catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(e.message)));
+                                }
                               }
-                            }
-                          },
-                          onRegenerate: () =>
-                              _openRegenerateSheet(context, live),
-                          onInfo: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      AboutAnalysisScreen(entry: widget.entry))),
-                          onDelete: () => _deleteEntry(context),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Content
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // T94: everything but the play/generate button below
-                          // is hidden in photo mode, matching player_screen.dart
-                          // — playback stays controllable while the photo is
-                          // shown unobstructed.
-                          if (!_photoMode) ...[
-                            // Date
-                            // #128: white70, not white54 — see the matching
-                            // comment in player_screen.dart.
-                            Text(
-                              dateStr,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white70,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Title
-                            Text(
-                              live.title,
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-
-                            if (live.locationName != null) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(Icons.location_on,
-                                      color: Colors.white70, size: 14),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    live.locationName!,
-                                    style:
-                                        const TextStyle(color: Colors.white70),
-                                  ),
-                                ],
-                              ),
-                            ],
-
-                            // #126
-                            if (live.gpsLatitude != null &&
-                                live.gpsLongitude != null) ...[
-                              const SizedBox(height: 8),
-                              MiniMap(
-                                latitude: live.gpsLatitude!,
-                                longitude: live.gpsLongitude!,
-                              ),
-                            ],
-
-                            const SizedBox(height: 16),
-
-                            // #147: shared with player_screen.dart.
-                            GuideActionRow(
-                              imagePath: live.imagePath,
-                              rotationQuarters: live.rotationQuarters,
-                              script: live.script,
-                              title: live.title,
-                              audioPath: live.audioPath,
-                              aiModel: live.aiModel,
-                              reportDate: live.analyzedAt ?? live.createdAt,
-                              saveLabel: l10n.historySave,
-                              savedSnackbarText:
-                                  l10n.historyPhotoSavedToGallery,
-                              copyLabel: l10n.historyCopy,
-                              copiedSnackbarText: l10n.historyTextCopied,
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Script
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.4),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.1)),
-                              ),
-                              child: Text(
-                                live.script,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20),
-                          ], // end if (!_photoMode)
+                            },
+                            onRegenerate: () =>
+                                _openRegenerateSheet(context, live),
+                            onInfo: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => AboutAnalysisScreen(
+                                        entry: widget.entry))),
+                            onDelete: () => _deleteEntry(context),
+                          ),
                         ],
                       ),
                     ),
-                  ),
 
-                  // Upgrade TTS button — deliberately kept out of the
-                  // scrollable content above (T133): it used to live inside
-                  // the `if (!_photoMode)` section, so it silently vanished
-                  // in photo mode, and for a native-TTS-fallback entry (no
-                  // cached audioPath) it was the ONLY way back to Gemini's
-                  // better voice — same reasoning as the play/generate
-                  // button below (T122).
-                  if (_liveEntry(context).hasLowQualityTts)
-                    Consumer<AudioGuideService>(
-                      builder: (context, guide, _) {
-                        if (guide.geminiTtsService == null) {
-                          return const SizedBox.shrink();
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                          child: OutlinedButton.icon(
-                            icon: _isUpgrading
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.amber))
-                                : const Icon(Icons.auto_awesome, size: 16),
-                            label: Text(_isUpgrading
-                                ? l10n.historyUpgradingVoice
-                                : l10n.historyUpgradeVoice),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.amber,
-                              side: const BorderSide(color: Colors.amber),
-                              minimumSize: const Size(double.infinity, 48),
-                            ),
-                            onPressed: _isUpgrading
-                                ? null
-                                : () async {
-                                    final history =
-                                        context.read<HistoryService>();
-                                    setState(() => _isUpgrading = true);
-                                    try {
-                                      final tts = guide.geminiTtsService!;
-                                      tts.onComplete = () =>
-                                          setState(() => _isPlaying = false);
-                                      // Generate audio first, then play
-                                      await tts.speak(live.script);
-                                      // Save upgraded audio
-                                      final lastPath = tts.lastWavPath;
-                                      AppLogger.tts(
-                                          'upgrade lastAudioPath: $lastPath, entry.id: ${live.id}');
-                                      if (lastPath != null && live.id != null) {
-                                        await history.saveAudioPath(
-                                            live.id!, lastPath,
-                                            ttsModel: 'gemini-tts',
-                                            ttsFallback: false);
-                                        AppLogger.tts('saveAudioPath OK');
-                                      } else {
-                                        AppLogger.error(
-                                            'saveAudioPath skipped: lastPath=$lastPath id=${live.id}');
-                                      }
-                                      setState(() => _isPlaying = true);
-                                    } catch (error) {
-                                      setState(() => _isPlaying = false);
-                                      if (context.mounted) {
-                                        final message =
-                                            formatVoiceUpgradeErrorMessage(
-                                                error, l10n);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(message),
-                                            duration:
-                                                const Duration(seconds: 4),
-                                            backgroundColor:
-                                                Colors.orange.shade800,
-                                          ),
-                                        );
-                                      }
-                                    } finally {
-                                      setState(() => _isUpgrading = false);
-                                    }
-                                  },
-                          ),
-                        );
-                      },
-                    ),
-
-                  // Play / generate button — deliberately kept out of the
-                  // scrollable content above and anchored here instead
-                  // (T122): when _photoMode hides everything else, a
-                  // scroll view's remaining content aligns to its top, not
-                  // the bottom of the screen — the button used to float
-                  // awkwardly over the middle of the photo instead of
-                  // sitting at the bottom like a real control, matching
-                  // player_screen.dart's own playback controls.
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                    // Scoped to just this row: canSkip flips as the
-                    // service's own playback state changes (e.g. synthesis
-                    // finishing for a script-only entry), and the skip
-                    // buttons need to appear when it does — but nothing
-                    // else in this screen (photo, gradient, script text)
-                    // needs to rebuild on every AudioGuideService change.
-                    child: Consumer<AudioGuideService>(
-                      builder: (context, guide, _) {
-                        final showSkip = _canSkip(live, guide);
-                        return Row(
+                    // Content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Skip only when the current playback is
-                            // seekable — see _canSkip.
-                            if (showSkip) ...[
-                              // #147: shared with player_screen.dart.
-                              SkipIconButton(
-                                forward: false,
-                                onPressed: () => _skip(-10000),
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: _toggleAudio,
-                                icon: Icon(_isPlaying
-                                    ? Icons.stop
-                                    : ((live.hasAudio || live.hasLowQualityTts)
-                                        ? Icons.play_arrow
-                                        : Icons.auto_awesome)),
-                                label: Text(_isPlaying
-                                    ? l10n.historyStop
-                                    : ((live.hasAudio || live.hasLowQualityTts)
-                                        ? l10n.historyListen
-                                        : l10n.historyGenerateAudio)),
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size(0, 52),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14)),
+                            // T94: everything but the play/generate button below
+                            // is hidden in photo mode, matching player_screen.dart
+                            // — playback stays controllable while the photo is
+                            // shown unobstructed.
+                            if (!_photoMode) ...[
+                              // Date
+                              // #128: white70, not white54 — see the matching
+                              // comment in player_screen.dart.
+                              Text(
+                                dateStr,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.white70,
                                 ),
                               ),
-                            ),
-                            if (showSkip) ...[
-                              const SizedBox(width: 4),
-                              SkipIconButton(
-                                forward: true,
-                                onPressed: () => _skip(10000),
+                              const SizedBox(height: 8),
+
+                              // Title
+                              Text(
+                                live.title,
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ],
+
+                              if (live.locationName != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.location_on,
+                                        color: Colors.white70, size: 14),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      live.locationName!,
+                                      style: const TextStyle(
+                                          color: Colors.white70),
+                                    ),
+                                  ],
+                                ),
+                              ],
+
+                              // #126
+                              if (live.gpsLatitude != null &&
+                                  live.gpsLongitude != null) ...[
+                                const SizedBox(height: 8),
+                                MiniMap(
+                                  latitude: live.gpsLatitude!,
+                                  longitude: live.gpsLongitude!,
+                                ),
+                              ],
+
+                              const SizedBox(height: 16),
+
+                              // #147: shared with player_screen.dart.
+                              GuideActionRow(
+                                imagePath: live.imagePath,
+                                rotationQuarters: live.rotationQuarters,
+                                script: live.script,
+                                title: live.title,
+                                audioPath: live.audioPath,
+                                aiModel: live.aiModel,
+                                reportDate: live.analyzedAt ?? live.createdAt,
+                                saveLabel: l10n.historySave,
+                                savedSnackbarText:
+                                    l10n.historyPhotoSavedToGallery,
+                                copyLabel: l10n.historyCopy,
+                                copiedSnackbarText: l10n.historyTextCopied,
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Script
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.1)),
+                                ),
+                                child: Text(
+                                  live.script,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    height: 1.6,
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 20),
+                            ], // end if (!_photoMode)
                           ],
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+
+                    // Upgrade TTS button — deliberately kept out of the
+                    // scrollable content above (T133): it used to live inside
+                    // the `if (!_photoMode)` section, so it silently vanished
+                    // in photo mode, and for a native-TTS-fallback entry (no
+                    // cached audioPath) it was the ONLY way back to Gemini's
+                    // better voice — same reasoning as the play/generate
+                    // button below (T122).
+                    if (_liveEntry(context).hasLowQualityTts)
+                      Consumer<AudioGuideService>(
+                        builder: (context, guide, _) {
+                          if (guide.geminiTtsService == null) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                            child: OutlinedButton.icon(
+                              icon: _isUpgrading
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.amber))
+                                  : const Icon(Icons.auto_awesome, size: 16),
+                              label: Text(_isUpgrading
+                                  ? l10n.historyUpgradingVoice
+                                  : l10n.historyUpgradeVoice),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.amber,
+                                side: const BorderSide(color: Colors.amber),
+                                minimumSize: const Size(double.infinity, 48),
+                              ),
+                              onPressed: _isUpgrading
+                                  ? null
+                                  : () async {
+                                      final history =
+                                          context.read<HistoryService>();
+                                      setState(() => _isUpgrading = true);
+                                      try {
+                                        final tts = guide.geminiTtsService!;
+                                        tts.onComplete = () =>
+                                            setState(() => _isPlaying = false);
+                                        // Generate audio first, then play
+                                        await tts.speak(live.script);
+                                        // Save upgraded audio
+                                        final lastPath = tts.lastWavPath;
+                                        AppLogger.tts(
+                                            'upgrade lastAudioPath: $lastPath, entry.id: ${live.id}');
+                                        if (lastPath != null &&
+                                            live.id != null) {
+                                          await history.saveAudioPath(
+                                              live.id!, lastPath,
+                                              ttsModel: 'gemini-tts',
+                                              ttsFallback: false);
+                                          AppLogger.tts('saveAudioPath OK');
+                                        } else {
+                                          AppLogger.error(
+                                              'saveAudioPath skipped: lastPath=$lastPath id=${live.id}');
+                                        }
+                                        setState(() => _isPlaying = true);
+                                      } catch (error) {
+                                        setState(() => _isPlaying = false);
+                                        if (context.mounted) {
+                                          final message =
+                                              formatVoiceUpgradeErrorMessage(
+                                                  error, l10n);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(message),
+                                              duration:
+                                                  const Duration(seconds: 4),
+                                              backgroundColor:
+                                                  Colors.orange.shade800,
+                                            ),
+                                          );
+                                        }
+                                      } finally {
+                                        setState(() => _isUpgrading = false);
+                                      }
+                                    },
+                            ),
+                          );
+                        },
+                      ),
+
+                    // Play / generate button — deliberately kept out of the
+                    // scrollable content above and anchored here instead
+                    // (T122): when _photoMode hides everything else, a
+                    // scroll view's remaining content aligns to its top, not
+                    // the bottom of the screen — the button used to float
+                    // awkwardly over the middle of the photo instead of
+                    // sitting at the bottom like a real control, matching
+                    // player_screen.dart's own playback controls.
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                      // Scoped to just this row: canSkip flips as the
+                      // service's own playback state changes (e.g. synthesis
+                      // finishing for a script-only entry), and the skip
+                      // buttons need to appear when it does — but nothing
+                      // else in this screen (photo, gradient, script text)
+                      // needs to rebuild on every AudioGuideService change.
+                      child: Consumer<AudioGuideService>(
+                        builder: (context, guide, _) {
+                          final showSkip = _canSkip(live, guide);
+                          return Row(
+                            children: [
+                              // Skip only when the current playback is
+                              // seekable — see _canSkip.
+                              if (showSkip) ...[
+                                // #147: shared with player_screen.dart.
+                                SkipIconButton(
+                                  forward: false,
+                                  onPressed: () => _skip(-10000),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: _toggleAudio,
+                                  icon: Icon(_isPlaying
+                                      ? Icons.stop
+                                      : ((live.hasAudio ||
+                                              live.hasLowQualityTts)
+                                          ? Icons.play_arrow
+                                          : Icons.auto_awesome)),
+                                  label: Text(_isPlaying
+                                      ? l10n.historyStop
+                                      : ((live.hasAudio ||
+                                              live.hasLowQualityTts)
+                                          ? l10n.historyListen
+                                          : l10n.historyGenerateAudio)),
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(0, 52),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(14)),
+                                  ),
+                                ),
+                              ),
+                              if (showSkip) ...[
+                                const SizedBox(width: 4),
+                                SkipIconButton(
+                                  forward: true,
+                                  onPressed: () => _skip(10000),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1596,8 +1610,8 @@ class _DetailOverflowMenu extends StatelessWidget {
           ),
           PopupMenuItem(
             value: _DetailMenuAction.regenerate,
-            child:
-                _MenuRow(icon: Icons.tune, label: l10n.historyRegenerateTooltip),
+            child: _MenuRow(
+                icon: Icons.tune, label: l10n.historyRegenerateTooltip),
           ),
           PopupMenuItem(
             value: _DetailMenuAction.info,
@@ -1634,8 +1648,7 @@ class _MenuRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(label,
-              style: TextStyle(color: color),
-              overflow: TextOverflow.ellipsis),
+              style: TextStyle(color: color), overflow: TextOverflow.ellipsis),
         ),
       ],
     );
