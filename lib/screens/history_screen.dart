@@ -1020,6 +1020,20 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       return;
     }
 
+    // #246: a regenerate (or any other analysis) already running on the
+    // same shared AudioGuideService — starting a second operation here
+    // raced with it finishing (both fast-failing near-simultaneously,
+    // each with its own setState/SnackBar) right as the regenerate's own
+    // Navigator.push transition was resolving, and showed up as this
+    // screen's content bleeding through PlayerScreen. Same guard
+    // runAnalysisAndNavigate already uses for the reverse direction.
+    if (context.read<AudioGuideService>().isBusy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Une analyse est déjà en cours.')),
+      );
+      return;
+    }
+
     final live = _liveEntry(context);
     setState(() => _isPlaying = true);
 
@@ -1236,39 +1250,46 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                 setState(() => _photoMode = !_photoMode),
                           ),
                           const SizedBox(width: 4),
-                          _DetailOverflowMenu(
-                            onAddToCollection: () =>
-                                _openCollectionsSheet(context, live),
-                            onRotate: () async {
-                              try {
-                                await context
-                                    .read<HistoryService>()
-                                    .rotateEntry(live.id!);
-                                // #190: _liveEntry(context) reads
-                                // HistoryService via context.read, not watch
-                                // — this screen never rebuilds on its own
-                                // just because HistoryService notified a
-                                // change, so without this the new rotation
-                                // stayed invisible until some unrelated
-                                // setState (e.g. toggling photo mode)
-                                // happened to force a rebuild that re-read
-                                // it fresh.
-                                if (mounted) setState(() {});
-                              } on HistoryStorageException catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(e.message)));
+                          // #246: regenerate disabled while a play/generate
+                          // operation from the button below is in flight (or
+                          // any other analysis is running elsewhere) — see
+                          // the matching guard in _toggleAudio for why.
+                          Consumer<AudioGuideService>(
+                            builder: (context, guide, _) => _DetailOverflowMenu(
+                              regenerateEnabled: !_isPlaying && !guide.isBusy,
+                              onAddToCollection: () =>
+                                  _openCollectionsSheet(context, live),
+                              onRotate: () async {
+                                try {
+                                  await context
+                                      .read<HistoryService>()
+                                      .rotateEntry(live.id!);
+                                  // #190: _liveEntry(context) reads
+                                  // HistoryService via context.read, not watch
+                                  // — this screen never rebuilds on its own
+                                  // just because HistoryService notified a
+                                  // change, so without this the new rotation
+                                  // stayed invisible until some unrelated
+                                  // setState (e.g. toggling photo mode)
+                                  // happened to force a rebuild that re-read
+                                  // it fresh.
+                                  if (mounted) setState(() {});
+                                } on HistoryStorageException catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(e.message)));
+                                  }
                                 }
-                              }
-                            },
-                            onRegenerate: () =>
-                                _openRegenerateSheet(context, live),
-                            onInfo: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => AboutAnalysisScreen(
-                                        entry: widget.entry))),
-                            onDelete: () => _deleteEntry(context),
+                              },
+                              onRegenerate: () =>
+                                  _openRegenerateSheet(context, live),
+                              onInfo: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => AboutAnalysisScreen(
+                                          entry: widget.entry))),
+                              onDelete: () => _deleteEntry(context),
+                            ),
                           ),
                         ],
                       ),
@@ -1555,6 +1576,7 @@ class _DetailOverflowMenu extends StatelessWidget {
   final VoidCallback onRegenerate;
   final VoidCallback onInfo;
   final VoidCallback onDelete;
+  final bool regenerateEnabled;
 
   const _DetailOverflowMenu({
     required this.onAddToCollection,
@@ -1562,6 +1584,7 @@ class _DetailOverflowMenu extends StatelessWidget {
     required this.onRegenerate,
     required this.onInfo,
     required this.onDelete,
+    this.regenerateEnabled = true,
   });
 
   @override
@@ -1610,8 +1633,13 @@ class _DetailOverflowMenu extends StatelessWidget {
           ),
           PopupMenuItem(
             value: _DetailMenuAction.regenerate,
+            // #246: disabled while a play/generate operation is already
+            // in flight, to avoid racing it with a fresh analysis.
+            enabled: regenerateEnabled,
             child: _MenuRow(
-                icon: Icons.tune, label: l10n.historyRegenerateTooltip),
+                icon: Icons.tune,
+                label: l10n.historyRegenerateTooltip,
+                color: regenerateEnabled ? null : Colors.black38),
           ),
           PopupMenuItem(
             value: _DetailMenuAction.info,

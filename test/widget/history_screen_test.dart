@@ -323,6 +323,76 @@ void main() {
     });
   });
 
+  // #246: HistoryDetailScreen's own content bled through PlayerScreen when
+  // "Regenerate" was triggered while a play/generate operation was still
+  // in flight -- both ended up racing on the same shared AudioGuideService
+  // right as the regenerate's push transition resolved. Fixed by disabling
+  // the Regenerate menu item while _isPlaying is true.
+  group('regenerate menu item is disabled while audio is playing (#246)', () {
+    Future<void> openDetail(WidgetTester tester) async {
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('La Joconde'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('tapping Regenerate while playing does not open the sheet',
+        (tester) async {
+      await tester.runAsync(() async {
+        final e = await history.addEntry(
+          imagePath: imagePath,
+          title: 'La Joconde',
+          script: 'Bienvenue.',
+        );
+        final wav = join(tmpDir.path, 'cached.wav');
+        File(wav).writeAsBytesSync(List.filled(64, 0));
+        await history.saveAudioPath(e.id!, wav, ttsModel: 'gemini-tts');
+      });
+
+      // playWav never completes, so _isPlaying stays true for the rest of
+      // this test — same pattern as the 'skip controls' group above.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_audioPlayerChannel, (call) {
+        if (call.method == 'playWav') return Completer<void>().future;
+        return Future<dynamic>.value(null);
+      });
+      addTearDown(() => TestDefaultBinaryMessengerBinding
+          .instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_audioPlayerChannel, null));
+
+      await openDetail(tester);
+      await tester.tap(find.text('Écouter le commentaire'));
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Relancer avec d\'autres paramètres'));
+      await tester.pumpAndSettle();
+
+      // A disabled PopupMenuItem never calls onSelected, so the sheet
+      // (which would otherwise show this title) never opens.
+      expect(find.text('Relancer l\'analyse'), findsNothing);
+    });
+
+    testWidgets('is enabled again once playback is not active', (tester) async {
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+
+      await openDetail(tester);
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Relancer avec d\'autres paramètres'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Relancer l\'analyse'), findsOneWidget);
+    });
+  });
+
   // #190 — _liveEntry(context) reads HistoryService via context.read, so
   // this screen never rebuilt on its own when rotateEntry()/toggleFavorite()
   // notified a change; the new state only became visible once some
