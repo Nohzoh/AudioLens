@@ -1,3 +1,4 @@
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/output_languages.dart';
@@ -14,6 +15,7 @@ class SettingsService extends ChangeNotifier {
   int _autoPurgeDays = 30;
   ThemeMode _themeMode = ThemeMode.system;
   String _outputLanguage = defaultOutputLanguage;
+  bool _outputLanguageFollowsApp = false;
   String? _appLocale;
 
   bool get isOnboardingComplete => _isOnboardingComplete;
@@ -40,6 +42,12 @@ class SettingsService extends ChangeNotifier {
   /// existing installs see no surprise change in narration language on
   /// upgrade. One of [outputLanguageLocales]'s keys.
   String get outputLanguage => _outputLanguage;
+
+  /// Whether [outputLanguage] tracks [appLocale] (English/French,
+  /// whichever the app's interface is actually showing) instead of being
+  /// picked independently. Off by default, matching [outputLanguage]'s own
+  /// existing default-to-French-independent-of-locale behavior.
+  bool get outputLanguageFollowsApp => _outputLanguageFollowsApp;
 
   /// The app's own interface language, independent of [outputLanguage] —
   /// null means "follow the device's system language" (the default, and
@@ -69,7 +77,22 @@ class SettingsService extends ChangeNotifier {
     _autoPurgeDays = _prefs.getInt('auto_purge_days') ?? 30;
     _themeMode = ThemeMode.values.byName(_prefs.getString('theme_mode') ?? 'system');
     _outputLanguage = _prefs.getString('output_language') ?? defaultOutputLanguage;
+    _outputLanguageFollowsApp = _prefs.getBool('output_language_follows_app') ?? false;
     _appLocale = _prefs.getString('app_locale');
+    // Re-resolve in case the app's language changed (system locale, or a
+    // prior in-app override) since the last launch while this was on.
+    if (_outputLanguageFollowsApp) {
+      _outputLanguage = _resolveAppLanguageDisplayName();
+    }
+  }
+
+  /// English or Français — whichever [appLocale] resolves to, following
+  /// the same fallback main.dart's own locale resolution uses (only 'fr'
+  /// maps to French; every other/unset system locale falls back to
+  /// English, since those are the only two supported interface languages).
+  String _resolveAppLanguageDisplayName() {
+    final code = _appLocale ?? PlatformDispatcher.instance.locale.languageCode;
+    return code == 'fr' ? 'Français' : 'English';
   }
 
   /// Throws [SecureStorageUnavailableException] if the key can't be
@@ -96,6 +119,7 @@ class SettingsService extends ChangeNotifier {
     _autoPurgeDays = 30;
     _themeMode = ThemeMode.system;
     _outputLanguage = defaultOutputLanguage;
+    _outputLanguageFollowsApp = false;
     _appLocale = null;
     notifyListeners();
   }
@@ -118,9 +142,23 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Picking a language explicitly always turns off [outputLanguageFollowsApp]
+  /// — an explicit choice here is a deliberate override.
   Future<void> setOutputLanguage(String value) async {
     _outputLanguage = value;
+    _outputLanguageFollowsApp = false;
     await _prefs.setString('output_language', value);
+    await _prefs.setBool('output_language_follows_app', false);
+    notifyListeners();
+  }
+
+  Future<void> setOutputLanguageFollowsApp(bool value) async {
+    _outputLanguageFollowsApp = value;
+    await _prefs.setBool('output_language_follows_app', value);
+    if (value) {
+      _outputLanguage = _resolveAppLanguageDisplayName();
+      await _prefs.setString('output_language', _outputLanguage);
+    }
     notifyListeners();
   }
 
@@ -149,6 +187,11 @@ class SettingsService extends ChangeNotifier {
       await _prefs.remove('app_locale');
     } else {
       await _prefs.setString('app_locale', value);
+    }
+    // Keep outputLanguage in sync if it's set to track the app's language.
+    if (_outputLanguageFollowsApp) {
+      _outputLanguage = _resolveAppLanguageDisplayName();
+      await _prefs.setString('output_language', _outputLanguage);
     }
     notifyListeners();
   }

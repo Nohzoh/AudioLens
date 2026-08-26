@@ -543,10 +543,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
+                // #260 follow-up: mirrors the app's own interface language
+                // (English/French) instead of a fixed pick — stays in sync
+                // whenever settings.appLocale changes.
+                ChoiceChip(
+                  avatar: const Icon(Icons.sync, size: 18),
+                  label: Text(l10n.settingsOutputLanguageFollowApp),
+                  selected: settings.outputLanguageFollowsApp,
+                  onSelected: (_) => settings.setOutputLanguageFollowsApp(true),
+                ),
                 for (final language in outputLanguageLocales.keys)
                   ChoiceChip(
                     label: Text(language),
-                    selected: settings.outputLanguage == language,
+                    selected: !settings.outputLanguageFollowsApp &&
+                        settings.outputLanguage == language,
                     onSelected: (_) => settings.setOutputLanguage(language),
                   ),
               ],
