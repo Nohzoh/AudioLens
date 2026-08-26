@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Guard against regenerating while audio is playing/generating** (issue #246, partial)
+  - **Verified**: 2026-08-26 (PR #268)
+  - **What was done**: user asked to check whether #236/#263's status-bar fixes had also resolved #246 (HistoryDetailScreen's content bleeding through PlayerScreen during a retry/regenerate) — they hadn't. Investigation found and closed one real, narrower race: `_toggleAudio`'s `generateAudioForScript` and the regenerate flow's `analyzeAndPlay` both run on the shared `AudioGuideService` and could complete near-simultaneously right as the push transition resolved. `_toggleAudio` now bails with the existing "Une analyse est déjà en cours." message if `guide.isBusy`; the "Regenerate" menu item disables itself while `_isPlaying`/`guide.isBusy`. **Does not fully resolve #246** — a different reproduction (same trigger sequence, preceded by an unexplained 45-80s silent gap with zero app logs) persists even with nothing busy; ruled out native-TTS hanging and general emulator/ADB lag as causes. Issue stays open with full investigation notes, pending a real-device check.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 333/333 (2 new). Verified on-device that the menu item visibly disables/re-enables correctly.
+
 - [x] 🌱 ⭐ - **Add an in-app language selector, independent of the system language** (issue #260)
   - **Verified**: 2026-08-26 (PR #261)
   - **What was done**: direct ask — testing AudioLens in English required changing the device's system language. A screenshot the user shared to illustrate what they wanted turned out to be Android's *system* per-app language screen, not an in-app one; confirmed via AskUserQuestion to build an in-app selector instead (instant, no manifest/AppCompat work, same behavior on every Android version). New "Langue de l'application" section in Settings (Système/Français/English), mirroring the existing Appearance/theme `SegmentedButton`. `SettingsService.appLocale` (nullable, persisted, null = follow system) feeds `MaterialApp.locale` in `main.dart`.
