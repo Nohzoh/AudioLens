@@ -73,7 +73,7 @@ jobs:
           echo '${{ steps.filter.outputs.all_files }}' | jq -r '.[]' > /tmp/changed_files.txt
           while IFS= read -r f; do
             case "$f" in
-              *.md|benchmark/*|.github/workflows/benchmark.yml) ;;
+              *.md|benchmark/*|docs/*|.github/workflows/benchmark.yml) ;;
               *) echo true > /tmp/code_flag ;;
             esac
           done < /tmp/changed_files.txt
