@@ -80,7 +80,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Fire-and-forget: this Future only completes once playback finishes
     // (or is stopped), so awaiting it here would block the toggle itself
     // (same non-blocking pattern as HistoryDetailScreen._playCachedAudio).
-    _audioPlayerChannel.invokeMethod('playWav', {'path': entry.audioPath}).then((_) {
+    _audioPlayerChannel
+        .invokeMethod('playWav', {'path': entry.audioPath}).then((_) {
       if (!mounted || _gridPlayingEntryId != entry.id) return;
       setState(() {
         _gridPlayingEntryId = null;
@@ -203,7 +204,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     if (tooLarge) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.homeImageTooLarge)),
+        SnackBar(
+            content: Text(AppLocalizations.of(context)!.homeImageTooLarge)),
       );
       return;
     }
@@ -223,7 +225,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           MaterialPageRoute(builder: (_) => const MapPickerScreen()),
         );
         if (picked != null) {
-          knownCoordinates = (lat: picked.latitude, lon: picked.longitude, source: 'map');
+          knownCoordinates =
+              (lat: picked.latitude, lon: picked.longitude, source: 'map');
         }
       }
     }
@@ -234,7 +237,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       pendingEntry = await history.addPendingEntry(imagePath: imageFile.path);
     } on HistoryStorageException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
       return;
     }
@@ -281,7 +285,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     } on HistoryStorageException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
       return;
     }
@@ -335,12 +340,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final imageFile = File(entry.imagePath);
     if (!imageFile.existsSync()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.homeImageNotFound)),
+        SnackBar(
+            content: Text(AppLocalizations.of(context)!.homeImageNotFound)),
       );
       return;
     }
 
-    final knownCoordinates = await resolveKnownCoordinatesForRelaunch(context, entry);
+    final knownCoordinates =
+        await resolveKnownCoordinatesForRelaunch(context, entry);
     if (!mounted) return;
     await _runAnalysis(
       imageFile: imageFile,
@@ -356,12 +363,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final imageFile = File(entry.imagePath);
     if (!imageFile.existsSync()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.homeImageNotFound)),
+        SnackBar(
+            content: Text(AppLocalizations.of(context)!.homeImageNotFound)),
       );
       return;
     }
 
-    final knownCoordinates = await resolveKnownCoordinatesForRelaunch(context, entry);
+    final knownCoordinates =
+        await resolveKnownCoordinatesForRelaunch(context, entry);
     if (!mounted) return;
     await _runAnalysis(
       imageFile: imageFile,
@@ -394,7 +403,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _showImageSourceDialog() async {
     final l10n = AppLocalizations.of(context)!;
-    final choice = await showModalBottomSheet<({ImageSource source, bool analyzeNow})>(
+    final choice =
+        await showModalBottomSheet<({ImageSource source, bool analyzeNow})>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
@@ -407,7 +417,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            Container(width: 40, height: 4,
+            Container(
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                     color: Theme.of(context)
                         .colorScheme
@@ -418,475 +430,560 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ListTile(
               leading: const Icon(Icons.camera_alt),
               title: Text(l10n.homeTakePhoto),
-              onTap: () => Navigator.pop(context, (source: ImageSource.camera, analyzeNow: true)),
+              onTap: () => Navigator.pop(
+                  context, (source: ImageSource.camera, analyzeNow: true)),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: Text(l10n.homeChooseFromGallery),
-              onTap: () => Navigator.pop(context, (source: ImageSource.gallery, analyzeNow: true)),
+              onTap: () => Navigator.pop(
+                  context, (source: ImageSource.gallery, analyzeNow: true)),
             ),
             const Divider(height: 24),
             ListTile(
               leading: const Icon(Icons.cloud_off_outlined),
               title: Text(l10n.homeCaptureOnly),
               subtitle: Text(l10n.homeCaptureOnlySubtitle),
-              onTap: () => Navigator.pop(context, (source: ImageSource.camera, analyzeNow: false)),
+              onTap: () => Navigator.pop(
+                  context, (source: ImageSource.camera, analyzeNow: false)),
             ),
             const SizedBox(height: 16),
           ],
         ),
       ),
     );
-    if (choice != null) _pickImage(choice.source, analyzeNow: choice.analyzeNow);
+    if (choice != null) {
+      _pickImage(choice.source, analyzeNow: choice.analyzeNow);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.colorScheme.surface,
-              theme.colorScheme.surfaceContainerHigh,
-            ],
+    // #236: an explicit style, matching what main.dart's now-removed
+    // global AnnotatedRegion used to compute for this screen — needed
+    // now that each screen owns its own (see main.dart's `themeMode:`
+    // comment for why the shared mechanism was removed).
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: theme.brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.surface,
+                theme.colorScheme.surfaceContainerHigh,
+              ],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text('🎧 AudioLens',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold),
-                    ),
-                    const Spacer(),
-                    Consumer<SettingsService>(
-                      // T86: the default grey (Colors.grey[600], chosen to
-                      // read as subtly de-emphasized against the plain
-                      // AppBars on the other screens) has too little
-                      // contrast against this screen's surface gradient —
-                      // reported as visibly more washed out than the
-                      // history/settings icons right next to it. Matching
-                      // their color keeps it readable here without
-                      // affecting the other 5 screens.
-                      builder: (context, settings, _) => KofiButton(
-                        show: settings.showKofiButton,
-                        iconColor: theme.colorScheme.onSurfaceVariant,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(
+                        '🎧 AudioLens',
+                        style: theme.textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.history),
-                      onPressed: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                      const Spacer(),
+                      Consumer<SettingsService>(
+                        // T86: the default grey (Colors.grey[600], chosen to
+                        // read as subtly de-emphasized against the plain
+                        // AppBars on the other screens) has too little
+                        // contrast against this screen's surface gradient —
+                        // reported as visibly more washed out than the
+                        // history/settings icons right next to it. Matching
+                        // their color keeps it readable here without
+                        // affecting the other 5 screens.
+                        builder: (context, settings, _) => KofiButton(
+                          show: settings.showKofiButton,
+                          iconColor: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.settings_outlined),
-                      onPressed: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                      IconButton(
+                        icon: const Icon(Icons.history),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const HistoryScreen()),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                // T128: discreet, non-blocking banner shown once a
-                // background-downloaded Play Store update is ready to
-                // install — never a dialog, dismissible, doesn't gate
-                // any other action on this screen.
-                if (_updateReady) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.secondaryContainer
-                          .withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.system_update,
-                            size: 18,
-                            color: theme.colorScheme.onSecondaryContainer),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            l10n.homeUpdateReadyBanner,
-                            style: theme.textTheme.bodySmall,
-                          ),
+                      IconButton(
+                        icon: const Icon(Icons.settings_outlined),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const SettingsScreen()),
                         ),
-                        TextButton(
-                          onPressed: () => _appUpdateService.completeUpdate(),
-                          child: Text(l10n.homeUpdateRestart),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: () =>
-                              setState(() => _updateReady = false),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
-                ],
 
-                // Provider + location status row
-                Row(
-                  children: [
-                    Consumer<AudioGuideService>(
-                      builder: (context, guide, _) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer
-                              .withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              guide.activeProvider == AIProvider.geminiNano
-                                  ? Icons.phone_android
-                                  : Icons.cloud_outlined,
-                              size: 14,
-                              color: theme.colorScheme.primary,
+                  // T128: discreet, non-blocking banner shown once a
+                  // background-downloaded Play Store update is ready to
+                  // install — never a dialog, dismissible, doesn't gate
+                  // any other action on this screen.
+                  if (_updateReady) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondaryContainer
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.system_update,
+                              size: 18,
+                              color: theme.colorScheme.onSecondaryContainer),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              l10n.homeUpdateReadyBanner,
+                              style: theme.textTheme.bodySmall,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              // #253: matches the Settings screen's
-                              // provider card label — "IA locale", not
-                              // the raw providerName debug string, now
-                              // that this option also always guarantees
-                              // native (not cloud) TTS.
-                              guide.providerName.isEmpty
-                                  ? l10n.homeInitializing
-                                  : guide.activeProvider == AIProvider.geminiNano
-                                      ? l10n.settingsLocalAiName
-                                      : guide.providerName,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                          TextButton(
+                            onPressed: () => _appUpdateService.completeUpdate(),
+                            child: Text(l10n.homeUpdateRestart),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () =>
+                                setState(() => _updateReady = false),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 8),
+                  ],
 
-                    // Location status badge
-                    if (_permissionStatus ==
-                        LocationPermissionStatus.deniedForever)
-                      GestureDetector(
-                        onTap: _showLocationDeniedForeverDialog,
-                        child: Container(
+                  // Provider + location status row
+                  Row(
+                    children: [
+                      Consumer<AudioGuideService>(
+                        builder: (context, guide, _) => Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.2),
+                            color: theme.colorScheme.primaryContainer
+                                .withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.location_off,
-                                  size: 14, color: Colors.orange),
-                              const SizedBox(width: 4),
-                              Text(l10n.homeGpsDisabled,
-                                  style: const TextStyle(
-                                      fontSize: 11, color: Colors.orange)),
+                              Icon(
+                                guide.activeProvider == AIProvider.geminiNano
+                                    ? Icons.phone_android
+                                    : Icons.cloud_outlined,
+                                size: 14,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                // #253: matches the Settings screen's
+                                // provider card label — "IA locale", not
+                                // the raw providerName debug string, now
+                                // that this option also always guarantees
+                                // native (not cloud) TTS.
+                                guide.providerName.isEmpty
+                                    ? l10n.homeInitializing
+                                    : guide.activeProvider ==
+                                            AIProvider.geminiNano
+                                        ? l10n.settingsLocalAiName
+                                        : guide.providerName,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                      )
-                    else if (_permissionStatus ==
-                        LocationPermissionStatus.denied)
-                      GestureDetector(
-                        onTap: () async {
-                          await _checkLocationPermission();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.location_off,
-                                  size: 14, color: Colors.orange),
-                              const SizedBox(width: 4),
-                              Text(l10n.homeGpsAllow,
-                                  style: const TextStyle(
-                                      fontSize: 11, color: Colors.orange)),
-                            ],
-                          ),
-                        ),
-                      )
-                    else if (_permissionStatus ==
-                        LocationPermissionStatus.granted)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.location_on,
-                                size: 14, color: Colors.green),
-                            const SizedBox(width: 4),
-                            Text(l10n.homeGpsActive,
-                                style: const TextStyle(
-                                    fontSize: 11, color: Colors.green)),
-                          ],
                         ),
                       ),
-                  ],
-                ),
+                      const SizedBox(width: 8),
 
-                // History preview
-                Consumer<HistoryService>(
-                  builder: (context, history, _) {
-                    if (history.entries.isEmpty) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                      // Location status badge
+                      if (_permissionStatus ==
+                          LocationPermissionStatus.deniedForever)
+                        GestureDetector(
+                          onTap: _showLocationDeniedForeverDialog,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.location_off,
+                                    size: 14, color: Colors.orange),
+                                const SizedBox(width: 4),
+                                Text(l10n.homeGpsDisabled,
+                                    style: const TextStyle(
+                                        fontSize: 11, color: Colors.orange)),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (_permissionStatus ==
+                          LocationPermissionStatus.denied)
+                        GestureDetector(
+                          onTap: () async {
+                            await _checkLocationPermission();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.location_off,
+                                    size: 14, color: Colors.orange),
+                                const SizedBox(width: 4),
+                                Text(l10n.homeGpsAllow,
+                                    style: const TextStyle(
+                                        fontSize: 11, color: Colors.orange)),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (_permissionStatus ==
+                          LocationPermissionStatus.granted)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(l10n.homeRecentlyVisited,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
-                                ),
-                              ),
-                              const Spacer(),
-                              GestureDetector(
-                                onTap: () => Navigator.push(context,
-                                  MaterialPageRoute(
-                                      builder: (_) => const HistoryScreen()),
-                                ),
-                                child: Text(l10n.homeSeeAll,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                              ),
+                              const Icon(Icons.location_on,
+                                  size: 14, color: Colors.green),
+                              const SizedBox(width: 4),
+                              Text(l10n.homeGpsActive,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.green)),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 3,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                              childAspectRatio: 1.0,
+                        ),
+                    ],
+                  ),
+
+                  // History preview
+                  Consumer<HistoryService>(
+                    builder: (context, history, _) {
+                      if (history.entries.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  l10n.homeRecentlyVisited,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.38),
+                                  ),
+                                ),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => const HistoryScreen()),
+                                  ),
+                                  child: Text(
+                                    l10n.homeSeeAll,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            itemCount: history.entries.take(6).length,
-                            itemBuilder: (context, i) {
-                              final entry = history.entries[i];
-                              final isPending = entry.isPending;
-                              final isFailed = entry.status == AnalysisStatus.failed;
-                              final isCaptured = entry.isCaptured;
-                              final isDimmed = isPending || isFailed || isCaptured;
-                              return GestureDetector(
-                                key: ValueKey(entry.id),
-                                onTap: () {
-                                  if (isPending || isFailed) {
-                                    // Retry analysis
-                                    _retryAnalysis(entry);
-                                  } else if (isCaptured) {
-                                    _launchAnalysisForCaptured(entry);
-                                  } else {
-                                    _stopGridPlaybackIfActive();
-                                    Navigator.push(context,
-                                      MaterialPageRoute(
-                                        builder: (_) => HistoryDetailScreen(entry: entry),
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      // Image — greyed if pending/failed/captured
-                                      ColorFiltered(
-                                        colorFilter: isDimmed
-                                            ? const ColorFilter.matrix([
-                                                0.2126, 0.7152, 0.0722, 0, 0,
-                                                0.2126, 0.7152, 0.0722, 0, 0,
-                                                0.2126, 0.7152, 0.0722, 0, 0,
-                                                0,      0,      0,      1, 0,
-                                              ])
-                                            : const ColorFilter.mode(
-                                                Colors.transparent,
-                                                BlendMode.multiply),
-                                        child: File(entry.imagePath).existsSync()
-                                            // Square grid cell (childAspectRatio: 1.0
-                                            // above), so RotatedBox's width/height
-                                            // swap for an odd quarter turn is a no-op.
-                                            ? RotatedBox(
-                                                quarterTurns: entry.rotationQuarters,
-                                                child: Image.file(File(entry.imagePath), fit: BoxFit.cover),
-                                              )
-                                            : Container(color: theme.colorScheme.surfaceContainerHigh),
-                                      ),
-                                      // #145: colors below stay hardcoded
-                                      // white/black — this overlay sits on
-                                      // a photo thumbnail, not themed
-                                      // chrome, same as background_photo.dart's
-                                      // own scrims.
-                                      // Status overlay
-                                      if (isPending)
-                                        const Center(child: SizedBox(width: 24, height: 24,
-                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)))
-                                      else if (isFailed)
-                                        const Center(child: Icon(Icons.refresh, color: Colors.white, size: 28))
-                                      else if (isCaptured)
-                                        const Center(child: Icon(Icons.cloud_off_outlined, color: Colors.white70, size: 28)),
-                                      // #127: play/pause the cached
-                                      // narration in place — only where
-                                      // there's a cached file to play
-                                      // without re-triggering TTS.
-                                      if (!isDimmed && entry.audioPath != null)
-                                        Positioned(
-                                          top: 2, right: 2,
-                                          child: Tooltip(
-                                            message: _gridPlayingEntryId == entry.id && _gridIsPlaying
-                                                ? l10n.homeGridPauseTooltip
-                                                : l10n.homeGridPlayTooltip,
-                                            child: GestureDetector(
-                                              onTap: () => _toggleGridPlayback(entry),
-                                              // #128: bumped from a 22px hit area toward
-                                              // the 48x48 touch-target guideline — kept
-                                              // below 48 since this is a small badge
-                                              // overlaid on a grid thumbnail, not a
-                                              // standalone control.
-                                              child: Container(
-                                                padding: const EdgeInsets.all(9),
-                                                decoration: const BoxDecoration(
-                                                  color: Colors.black45,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Icon(
-                                                  _gridPlayingEntryId == entry.id && _gridIsPlaying
-                                                      ? Icons.pause
-                                                      : Icons.play_arrow,
+                            const SizedBox(height: 10),
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 1.0,
+                              ),
+                              itemCount: history.entries.take(6).length,
+                              itemBuilder: (context, i) {
+                                final entry = history.entries[i];
+                                final isPending = entry.isPending;
+                                final isFailed =
+                                    entry.status == AnalysisStatus.failed;
+                                final isCaptured = entry.isCaptured;
+                                final isDimmed =
+                                    isPending || isFailed || isCaptured;
+                                return GestureDetector(
+                                  key: ValueKey(entry.id),
+                                  onTap: () {
+                                    if (isPending || isFailed) {
+                                      // Retry analysis
+                                      _retryAnalysis(entry);
+                                    } else if (isCaptured) {
+                                      _launchAnalysisForCaptured(entry);
+                                    } else {
+                                      _stopGridPlaybackIfActive();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              HistoryDetailScreen(entry: entry),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        // Image — greyed if pending/failed/captured
+                                        ColorFiltered(
+                                          colorFilter: isDimmed
+                                              ? const ColorFilter.matrix([
+                                                  0.2126,
+                                                  0.7152,
+                                                  0.0722,
+                                                  0,
+                                                  0,
+                                                  0.2126,
+                                                  0.7152,
+                                                  0.0722,
+                                                  0,
+                                                  0,
+                                                  0.2126,
+                                                  0.7152,
+                                                  0.0722,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  1,
+                                                  0,
+                                                ])
+                                              : const ColorFilter.mode(
+                                                  Colors.transparent,
+                                                  BlendMode.multiply),
+                                          child: File(entry.imagePath)
+                                                  .existsSync()
+                                              // Square grid cell (childAspectRatio: 1.0
+                                              // above), so RotatedBox's width/height
+                                              // swap for an odd quarter turn is a no-op.
+                                              ? RotatedBox(
+                                                  quarterTurns:
+                                                      entry.rotationQuarters,
+                                                  child: Image.file(
+                                                      File(entry.imagePath),
+                                                      fit: BoxFit.cover),
+                                                )
+                                              : Container(
+                                                  color: theme.colorScheme
+                                                      .surfaceContainerHigh),
+                                        ),
+                                        // #145: colors below stay hardcoded
+                                        // white/black — this overlay sits on
+                                        // a photo thumbnail, not themed
+                                        // chrome, same as background_photo.dart's
+                                        // own scrims.
+                                        // Status overlay
+                                        if (isPending)
+                                          const Center(
+                                              child: SizedBox(
+                                                  width: 24,
+                                                  height: 24,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color:
+                                                              Colors.white70)))
+                                        else if (isFailed)
+                                          const Center(
+                                              child: Icon(Icons.refresh,
                                                   color: Colors.white,
-                                                  size: 18,
+                                                  size: 28))
+                                        else if (isCaptured)
+                                          const Center(
+                                              child: Icon(
+                                                  Icons.cloud_off_outlined,
+                                                  color: Colors.white70,
+                                                  size: 28)),
+                                        // #127: play/pause the cached
+                                        // narration in place — only where
+                                        // there's a cached file to play
+                                        // without re-triggering TTS.
+                                        if (!isDimmed &&
+                                            entry.audioPath != null)
+                                          Positioned(
+                                            top: 2,
+                                            right: 2,
+                                            child: Tooltip(
+                                              message: _gridPlayingEntryId ==
+                                                          entry.id &&
+                                                      _gridIsPlaying
+                                                  ? l10n.homeGridPauseTooltip
+                                                  : l10n.homeGridPlayTooltip,
+                                              child: GestureDetector(
+                                                onTap: () =>
+                                                    _toggleGridPlayback(entry),
+                                                // #128: bumped from a 22px hit area toward
+                                                // the 48x48 touch-target guideline — kept
+                                                // below 48 since this is a small badge
+                                                // overlaid on a grid thumbnail, not a
+                                                // standalone control.
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.all(9),
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                    color: Colors.black45,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Icon(
+                                                    _gridPlayingEntryId ==
+                                                                entry.id &&
+                                                            _gridIsPlaying
+                                                        ? Icons.pause
+                                                        : Icons.play_arrow,
+                                                    color: Colors.white,
+                                                    size: 18,
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      // Title at bottom
-                                      Positioned(
-                                        bottom: 0, left: 0, right: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.bottomCenter,
-                                              end: Alignment.topCenter,
-                                              colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+                                        // Title at bottom
+                                        Positioned(
+                                          bottom: 0,
+                                          left: 0,
+                                          right: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                begin: Alignment.bottomCenter,
+                                                end: Alignment.topCenter,
+                                                colors: [
+                                                  Colors.black
+                                                      .withValues(alpha: 0.7),
+                                                  Colors.transparent
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                          child: Text(
-                                            isFailed
-                                                ? l10n.homeTapToRetry
-                                                : isCaptured
-                                                    ? l10n.homeTapToAnalyze
-                                                    : entry.title,
-                                            style: TextStyle(
-                                              color: isFailed
-                                                  ? Colors.orangeAccent
+                                            child: Text(
+                                              isFailed
+                                                  ? l10n.homeTapToRetry
                                                   : isCaptured
-                                                      ? Colors.white70
-                                                      : Colors.white,
-                                              fontSize: 9, height: 1.2,
+                                                      ? l10n.homeTapToAnalyze
+                                                      : entry.title,
+                                              style: TextStyle(
+                                                color: isFailed
+                                                    ? Colors.orangeAccent
+                                                    : isCaptured
+                                                        ? Colors.white70
+                                                        : Colors.white,
+                                                fontSize: 9,
+                                                height: 1.2,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.camera_alt_outlined,
+                              size: 80,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.12)),
+                          const SizedBox(height: 16),
+                          Text(
+                            l10n.homeEmptyStateHint,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.38),
+                                fontSize: 15,
+                                height: 1.5),
                           ),
                         ],
                       ),
-                    );
-                  },
-                ),
-
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.camera_alt_outlined,
-                            size: 80,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.12)),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.homeEmptyStateHint,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
-                              fontSize: 15,
-                              height: 1.5),
-                        ),
-                      ],
                     ),
                   ),
-                ),
 
-                // #174: scoped to just this button (not a top-level
-                // watch) so the rest of the screen — including the
-                // "Recently visited" grid — doesn't rebuild on every
-                // AudioGuideService change. Disabled while an analysis
-                // is already running: nothing here blocked a second
-                // capture from being triggered before, which always
-                // pushed its own PlayerScreen straight into the
-                // service's existing "already in progress" guard.
-                Consumer<AudioGuideService>(
-                  builder: (context, guide, _) => FilledButton.icon(
-                    onPressed: guide.isBusy ? null : _showImageSourceDialog,
-                    icon: const Icon(Icons.camera_alt, size: 24),
-                    label: Text(l10n.homeTakePhoto,
-                        style: const TextStyle(fontSize: 18)),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 64),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
+                  // #174: scoped to just this button (not a top-level
+                  // watch) so the rest of the screen — including the
+                  // "Recently visited" grid — doesn't rebuild on every
+                  // AudioGuideService change. Disabled while an analysis
+                  // is already running: nothing here blocked a second
+                  // capture from being triggered before, which always
+                  // pushed its own PlayerScreen straight into the
+                  // service's existing "already in progress" guard.
+                  Consumer<AudioGuideService>(
+                    builder: (context, guide, _) => FilledButton.icon(
+                      onPressed: guide.isBusy ? null : _showImageSourceDialog,
+                      icon: const Icon(Icons.camera_alt, size: 24),
+                      label: Text(l10n.homeTakePhoto,
+                          style: const TextStyle(fontSize: 18)),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 64),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
                     ),
-                  ),
-                ).animate().scale(delay: 200.ms),
-                const SizedBox(height: 16),
-              ],
+                  ).animate().scale(delay: 200.ms),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
@@ -894,5 +991,3 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
-
-
