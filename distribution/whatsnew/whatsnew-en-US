@@ -1,2 +1,2 @@
 Fixes:
-• "Gemini Nano" is now "Local AI" — and picking it keeps voice playback on-device too, not just the analysis
+• Fixed a flickering/doubled status bar during certain screen transitions
