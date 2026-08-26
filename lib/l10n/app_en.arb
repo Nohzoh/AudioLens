@@ -130,6 +130,7 @@
   "settingsThemeSystem": "System",
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
+  "settingsLanguageSection": "App language",
   "settingsActiveAiEngine": "Active AI engine",
   "settingsLocalAiName": "Local AI",
   "settingsNanoDescription": "Fully local analysis and voice, offline, ~180 words",

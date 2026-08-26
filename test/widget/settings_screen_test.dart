@@ -77,12 +77,19 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'AIzaTestKey123');
+    // #260: the new "Langue de l'application" section pushed this button
+    // below the fold — needs an explicit scroll like the other off-screen
+    // finders in this file (ListView only builds children near the
+    // viewport, not the whole list).
+    final saveButton = find.text('Sauvegarder');
+    await tester.scrollUntilVisible(saveButton, 300,
+        scrollable: find.byType(Scrollable).first);
     // AudioGuideService.setGeminiApiKey does real SecureKeyStorage I/O —
     // needs tester.runAsync() (see history_screen_test.dart's file doc for
     // why: testWidgets()'s fake-async zone never resolves real async I/O
     // otherwise).
     await tester.runAsync(() async {
-      await tester.tap(find.text('Sauvegarder'));
+      await tester.tap(saveButton);
     });
     await tester.pumpAndSettle();
 

@@ -108,12 +108,18 @@ class AudioGuideApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          // No custom localeResolutionCallback needed: Flutter's default
-          // resolution already matches the device's locale when supported
-          // (fr or en) and falls back to supportedLocales.first otherwise —
-          // which is English (the generated list is alphabetical: [en, fr]).
-          // English as the fallback for unsupported system locales reaches
-          // more non-French speakers than defaulting to French would.
+          // null falls through to Flutter's default resolution, which
+          // already matches the device's locale when supported (fr or en)
+          // and falls back to supportedLocales.first otherwise — which is
+          // English (the generated list is alphabetical: [en, fr]). English
+          // as the fallback for unsupported system locales reaches more
+          // non-French speakers than defaulting to French would. A non-null
+          // settings.appLocale (in-app override, independent of the
+          // device/per-app system language setting) takes precedence over
+          // both.
+          locale: settings.appLocale != null
+              ? Locale(settings.appLocale!)
+              : null,
           // #145: same seed color for both — only brightness differs.
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(

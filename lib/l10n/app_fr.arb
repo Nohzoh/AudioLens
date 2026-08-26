@@ -145,6 +145,7 @@
   "settingsThemeSystem": "Système",
   "settingsThemeLight": "Clair",
   "settingsThemeDark": "Sombre",
+  "settingsLanguageSection": "Langue de l'application",
   "settingsActiveAiEngine": "Moteur IA actif",
   "settingsLocalAiName": "IA locale",
   "settingsNanoDescription": "Analyse et voix 100 % locales, hors ligne, ~180 mots",
