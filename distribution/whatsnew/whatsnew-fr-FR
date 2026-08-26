@@ -1,5 +1,2 @@
-Nouveautés :
-• La langue de narration peut désormais suivre automatiquement la langue de l'application
-
 Corrections :
-• Nouvelle correction du scintillement/dédoublement de la barre de statut, notamment lors de la relance d'une analyse échouée depuis l'historique
+• Réduit un cas de superposition visuelle en relançant l'analyse d'une entrée pendant qu'un audio est en cours de génération
