@@ -128,6 +128,8 @@ void main() {
     await settings.setAutoPurgeEnabled(true);
     await settings.setAutoPurgeDays(7);
     await settings.setThemeMode(ThemeMode.dark);
+    await settings.setAppLocale('en');
+    await settings.setOutputLanguageFollowsApp(true);
     await settings.setOutputLanguage('Deutsch');
 
     await settings.resetOnboarding();
@@ -141,6 +143,8 @@ void main() {
     expect(settings.autoPurgeDays, 30);
     expect(settings.themeMode, ThemeMode.system);
     expect(settings.outputLanguage, 'Français');
+    expect(settings.outputLanguageFollowsApp, isFalse);
+    expect(settings.appLocale, isNull);
   });
 
   // #145
@@ -166,6 +170,101 @@ void main() {
     final reloaded = SettingsService();
     await reloaded.init();
     expect(reloaded.themeMode, ThemeMode.dark);
+  });
+
+  // #260
+  test('setAppLocale persists across a reload, null resets to system', () async {
+    final settings = SettingsService();
+    await settings.init();
+    expect(settings.appLocale, isNull);
+
+    await settings.setAppLocale('en');
+    expect(settings.appLocale, 'en');
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.appLocale, 'en');
+
+    await reloaded.setAppLocale(null);
+    expect(reloaded.appLocale, isNull);
+    final reloadedAgain = SettingsService();
+    await reloadedAgain.init();
+    expect(reloadedAgain.appLocale, isNull);
+  });
+
+  // #263 follow-up (narration language can track the app's own language)
+  group('outputLanguageFollowsApp', () {
+    test('off by default, matching outputLanguage\'s own independent default',
+        () async {
+      final settings = SettingsService();
+      await settings.init();
+      expect(settings.outputLanguageFollowsApp, isFalse);
+    });
+
+    test('enabling resolves outputLanguage from the current appLocale',
+        () async {
+      final settings = SettingsService();
+      await settings.init();
+      await settings.setAppLocale('en');
+
+      await settings.setOutputLanguageFollowsApp(true);
+
+      expect(settings.outputLanguageFollowsApp, isTrue);
+      expect(settings.outputLanguage, 'English');
+    });
+
+    test('changing appLocale while enabled keeps outputLanguage in sync',
+        () async {
+      final settings = SettingsService();
+      await settings.init();
+      await settings.setAppLocale('en');
+      await settings.setOutputLanguageFollowsApp(true);
+      expect(settings.outputLanguage, 'English');
+
+      await settings.setAppLocale('fr');
+
+      expect(settings.outputLanguage, 'Français');
+    });
+
+    test('changing appLocale while disabled leaves outputLanguage untouched',
+        () async {
+      final settings = SettingsService();
+      await settings.init();
+      await settings.setOutputLanguage('Deutsch');
+
+      await settings.setAppLocale('en');
+
+      expect(settings.outputLanguage, 'Deutsch');
+    });
+
+    test('picking a language explicitly turns follow-app back off', () async {
+      final settings = SettingsService();
+      await settings.init();
+      await settings.setAppLocale('en');
+      await settings.setOutputLanguageFollowsApp(true);
+
+      await settings.setOutputLanguage('Español');
+
+      expect(settings.outputLanguageFollowsApp, isFalse);
+      expect(settings.outputLanguage, 'Español');
+    });
+
+    test('persists across a reload and re-resolves against the current appLocale',
+        () async {
+      final settings = SettingsService();
+      await settings.init();
+      await settings.setAppLocale('en');
+      await settings.setOutputLanguageFollowsApp(true);
+
+      // appLocale changes while the app is closed (e.g. from a different
+      // device/session) -- the reload should re-resolve, not replay the
+      // stale persisted string.
+      await settings.setAppLocale('fr');
+      final reloaded = SettingsService();
+      await reloaded.init();
+
+      expect(reloaded.outputLanguageFollowsApp, isTrue);
+      expect(reloaded.outputLanguage, 'Français');
+    });
   });
 
   test('auto-purge defaults to disabled, 30 days (T95)', () async {
