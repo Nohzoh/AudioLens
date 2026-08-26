@@ -269,6 +269,60 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 }
             }
 
+            // Debug/prompt-iteration tool (Settings > Nano Prompt Lab) — a
+            // single raw generateContent call, image optional, with no
+            // prompt scaffolding (buildSeg1/2/3Prompt) applied. Exists so
+            // prompt wording can be iterated against real on-device
+            // inference without going through the full 3-segment
+            // describeImage cascade or rebuilding the app each try.
+            "rawPrompt" -> {
+                val prompt = call.argument<String>("prompt")
+                if (prompt.isNullOrBlank()) {
+                    result.error("INVALID_ARGS", "prompt required", null)
+                    return
+                }
+                val model = generativeModel
+                if (model == null) {
+                    result.error("NOT_INITIALIZED", "Call initialize first", null)
+                    return
+                }
+                val imagePath = call.argument<String>("imagePath")
+                val rawMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
+                val rawTemperature = call.argument<Double>("temperature")?.toFloat()
+
+                scope.launch {
+                    try {
+                        var bitmap: android.graphics.Bitmap? = null
+                        val req = if (imagePath != null) {
+                            val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
+                            bitmap = BitmapFactory.decodeFile(imagePath, opts)
+                                ?: throw Exception("Cannot decode image")
+                            generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
+                                this.maxOutputTokens = rawMaxOutputTokens
+                                rawTemperature?.let { this.temperature = it }
+                            }
+                        } else {
+                            generateContentRequest(TextPart(prompt)) {
+                                this.maxOutputTokens = rawMaxOutputTokens
+                                rawTemperature?.let { this.temperature = it }
+                            }
+                        }
+                        val response = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req) }
+                        bitmap?.recycle()
+                        val text = response.candidates.firstOrNull()?.text?.trim() ?: ""
+                        withContext(Dispatchers.Main) { result.success(text) }
+                    } catch (e: TimeoutCancellationException) {
+                        withContext(Dispatchers.Main) {
+                            result.error("TIMEOUT", "Gemini Nano inference timed out", null)
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            result.error("INFERENCE_ERROR", e.message, null)
+                        }
+                    }
+                }
+            }
+
             else -> result.notImplemented()
         }
     }

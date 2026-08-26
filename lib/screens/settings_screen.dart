@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'logs_screen.dart';
+import 'nano_prompt_lab_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../constants/output_languages.dart';
@@ -387,6 +388,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               mode: LaunchMode.externalApplication,
             ),
           ),
+          // Only shown when Nano is actually usable on this device — no
+          // point offering a tool to iterate against inference that can't
+          // run here at all.
+          if (guide.nanoAvailable) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.science_outlined, size: 16),
+              label: Text(l10n.settingsNanoPromptLab),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 44),
+              ),
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const NanoPromptLabScreen())),
+            ),
+          ],
           const SizedBox(height: 16),
           Consumer<SettingsService>(
             builder: (context, settings, _) => SwitchListTile(
