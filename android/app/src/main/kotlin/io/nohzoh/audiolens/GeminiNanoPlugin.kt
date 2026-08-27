@@ -41,6 +41,45 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         // tight for real-world multimodal inference.
         private const val SEGMENT_TIMEOUT_MS = 30_000L
 
+        // #286: minimum exact-overlap length (chars) required before
+        // dropOverlapWithAccumulated treats a match as the model echoing
+        // its given excerpt back, not a legitimately short repeated
+        // phrase (e.g. "de la ville de").
+        private const val MIN_ECHO_OVERLAP_CHARS = 30
+
+        // #286: buildSeg2Prompt/buildSeg3Prompt feed the model the last
+        // ~200 characters of what it said so far as "Texte precedent" — a
+        // hard character cut, not a sentence boundary. The on-device
+        // model is far weaker at instruction-following than the cloud
+        // pipeline and sometimes echoes that excerpt back near-verbatim
+        // before actually continuing (often prefixed with an ellipsis, as
+        // if resuming a cut-off sentence), despite the prompt explicitly
+        // saying not to repeat — producing a visible duplicate once
+        // segments are concatenated. Applied only when assembling
+        // describeImage's final fullText — describeImageDebug (#279)
+        // deliberately keeps returning each segment's raw, uncleaned
+        // output, since showing exactly what the model said is its whole
+        // purpose.
+        private fun stripLeadingEllipsis(text: String): String {
+            var t = text.trim()
+            while (t.startsWith("…") || t.startsWith("...")) {
+                t = t.removePrefix("…").removePrefix("...").trimStart()
+            }
+            return t
+        }
+
+        private fun dropOverlapWithAccumulated(accumulated: String, next: String): String {
+            val cleaned = stripLeadingEllipsis(next)
+            if (accumulated.isBlank() || cleaned.isBlank()) return cleaned
+            val maxLen = minOf(accumulated.length, cleaned.length, 200)
+            for (len in maxLen downTo MIN_ECHO_OVERLAP_CHARS) {
+                if (accumulated.takeLast(len).equals(cleaned.take(len), ignoreCase = true)) {
+                    return cleaned.substring(len).trimStart()
+                }
+            }
+            return cleaned
+        }
+
         // Tone descriptor per style (T75/T48) — default (null/unrecognized)
         // is the original wording, so the default experience is unchanged.
         private fun styleTone(style: String?): String = when (style) {
@@ -274,9 +313,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val seg3 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
-                        val fullText = listOf(seg1, seg2, seg3)
-                            .filter { it.isNotBlank() }
-                            .joinToString(" ")
+                        // #286: cleaned+de-duplicated at each step, not
+                        // joined raw — see dropOverlapWithAccumulated.
+                        var fullText = seg1
+                        val cleanedSeg2 = dropOverlapWithAccumulated(fullText, seg2)
+                        fullText = listOf(fullText, cleanedSeg2).filter { it.isNotBlank() }.joinToString(" ")
+                        val cleanedSeg3 = dropOverlapWithAccumulated(fullText, seg3)
+                        fullText = listOf(fullText, cleanedSeg3).filter { it.isNotBlank() }.joinToString(" ")
 
                         withContext(Dispatchers.Main) { result.success(fullText) }
                     } catch (e: TimeoutCancellationException) {
