@@ -27,6 +27,15 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
+  final _apiKeyFocusNode = FocusNode();
+  // #278: the "Gemini API" provider card used to just render disabled
+  // (grey, no tap target) until a key was saved, with the explanation of
+  // how to get one only visible several sections further down — nothing
+  // told the user where to look. Tapping the card now scrolls this
+  // section (header + "get a free key" text + field, wrapped together so
+  // the explanation stays visible, not just the field) into view and
+  // focuses the field, instead of silently doing nothing.
+  final _apiKeySectionKey = GlobalKey();
   bool _obscure = true;
   bool _saving = false;
   String? _appVersion;
@@ -44,7 +53,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _apiKeyController.dispose();
+    _apiKeyFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _focusApiKeySection() async {
+    final sectionContext = _apiKeySectionKey.currentContext;
+    if (sectionContext != null) {
+      await Scrollable.ensureVisible(
+        sectionContext,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+    if (!mounted) return;
+    _apiKeyFocusNode.requestFocus();
   }
 
   Future<void> _testVoice() async {
@@ -200,50 +223,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
             description: l10n.settingsApiDescription,
             isActive: guide.activeProvider == AIProvider.geminiApi,
             isAvailable: guide.geminiApiKey?.isNotEmpty == true,
+            // #278: previously null (dead tap target) when no key was
+            // saved yet, leaving the user with a greyed-out option and no
+            // indication of what to do about it. Now guides them straight
+            // to where the key is entered instead.
             onTap: guide.geminiApiKey?.isNotEmpty == true
                 ? () => guide.setActiveProvider(AIProvider.geminiApi)
-                : null,
+                : _focusApiKeySection,
           ),
 
           const SizedBox(height: 32),
 
-          // Gemini API key
-          _SectionHeader(l10n.settingsApiKeySectionTitle),
-          const SizedBox(height: 8),
-          Text(
-            l10n.settingsGetFreeKey,
-            style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.54)),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _apiKeyController,
-            obscureText: _obscure,
-            decoration: InputDecoration(
-              hintText: 'AIza...',
-              filled: true,
-              fillColor: theme.colorScheme.surfaceContainerHigh,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+          // Gemini API key — wrapped in a Column (rather than left as
+          // separate ListView children) so _focusApiKeySection's
+          // Scrollable.ensureVisible brings the section header and the
+          // "get a free key" explanation into view together with the
+          // field itself (#278), not just the field alone.
+          Column(
+            key: _apiKeySectionKey,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SectionHeader(l10n.settingsApiKeySectionTitle),
+              const SizedBox(height: 8),
+              Text(
+                l10n.settingsGetFreeKey,
+                style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.54)),
               ),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                        _obscure ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscure = !_obscure),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _apiKeyController,
+                focusNode: _apiKeyFocusNode,
+                obscureText: _obscure,
+                decoration: InputDecoration(
+                  hintText: 'AIza...',
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHigh,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
-                  if (_apiKeyController.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: _clear,
-                    ),
-                ],
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                            _obscure ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                      if (_apiKeyController.text.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: _clear,
+                        ),
+                    ],
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
               ),
-            ),
-            onChanged: (_) => setState(() {}),
+            ],
           ),
           const SizedBox(height: 12),
           FilledButton(
