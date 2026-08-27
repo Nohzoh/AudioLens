@@ -1,1 +1,1 @@
-Cette version ajoute un outil de développement interne (test de prompts pour le mode IA locale) — rien de nouveau côté utilisation normale de l'app.
+Corrections : l'option "Gemini API" dans Paramètres n'était plus grisée sans explication — un clic vous amène maintenant directement au champ pour saisir votre clé API. Amélioration : les descriptions de certains lieux (mémoriaux, plaques) sont plus précises grâce à des infos récupérées automatiquement.
