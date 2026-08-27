@@ -22,6 +22,30 @@ class GeminiNanoBackgroundRestrictedException implements Exception {
   String toString() => 'Gemini Nano ne peut pas être utilisé en arrière-plan.';
 }
 
+/// One full 3-segment `describeImage` cascade run (#276), with each
+/// segment's own prompt text and raw output exposed individually instead
+/// of only the final concatenated string — lets the Nano Prompt Lab debug
+/// screen show every intermediate step of a real production-shaped run.
+class NanoDebugCascadeResult {
+  final String seg1Prompt;
+  final String seg1Output;
+  final String seg2Prompt;
+  final String seg2Output;
+  final String seg3Prompt;
+  final String seg3Output;
+  final String fullText;
+
+  const NanoDebugCascadeResult({
+    required this.seg1Prompt,
+    required this.seg1Output,
+    required this.seg2Prompt,
+    required this.seg2Output,
+    required this.seg3Prompt,
+    required this.seg3Output,
+    required this.fullText,
+  });
+}
+
 class GeminiNanoService implements AIService {
   bool _initialized = false;
 
@@ -137,6 +161,56 @@ class GeminiNanoService implements AIService {
       final result = await _channel.invokeMethod<String>('rawPrompt', args);
       return result ?? '';
     } on PlatformException catch (e) {
+      throw Exception('Gemini Nano: ${e.message}');
+    }
+  }
+
+  /// #276: Nano Prompt Lab's "full pipeline" mode — runs the exact same
+  /// 3-segment cascade as [analyzeImage] (same prompt scaffolding,
+  /// truncation, timeout handling on the native side), but returns each
+  /// segment's own prompt and raw output via `describeImageDebug`
+  /// instead of only the final title/script split [analyzeImage]
+  /// extracts. No cancellation support (unlike [analyzeImage]) — this is
+  /// a manual debug tool, not something run unattended in the background.
+  Future<NanoDebugCascadeResult> describeImageDebug({
+    required File imageFile,
+    String? locationContext,
+    String? style,
+    String? language,
+    int? maxOutputTokens,
+    double? temperature,
+  }) async {
+    if (!_initialized) await initialize();
+    try {
+      final config = RemoteConfigService.current;
+      final args = <String, dynamic>{
+        'imagePath': imageFile.path,
+        'maxOutputTokens': maxOutputTokens ?? config.geminiNanoMaxTokens,
+      };
+      if (locationContext != null) {
+        args['locationContext'] = _truncateLocationContext(locationContext);
+      }
+      if (style != null) args['style'] = style;
+      if (language != null) args['language'] = language;
+      args['temperature'] = temperature ?? config.geminiNanoTemperature;
+
+      final result =
+          await _channel.invokeMapMethod<String, dynamic>('describeImageDebug', args);
+      if (result == null) throw Exception('Gemini Nano: empty debug response');
+
+      return NanoDebugCascadeResult(
+        seg1Prompt: result['seg1Prompt'] as String? ?? '',
+        seg1Output: result['seg1Output'] as String? ?? '',
+        seg2Prompt: result['seg2Prompt'] as String? ?? '',
+        seg2Output: result['seg2Output'] as String? ?? '',
+        seg3Prompt: result['seg3Prompt'] as String? ?? '',
+        seg3Output: result['seg3Output'] as String? ?? '',
+        fullText: result['fullText'] as String? ?? '',
+      );
+    } on PlatformException catch (e) {
+      if (e.message?.contains('Background usage is blocked') ?? false) {
+        throw const GeminiNanoBackgroundRestrictedException();
+      }
       throw Exception('Gemini Nano: ${e.message}');
     }
   }
