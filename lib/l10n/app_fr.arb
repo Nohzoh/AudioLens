@@ -215,6 +215,10 @@
   "settingsStyleAnecdotal": "Anecdotique",
   "settingsStyleConcise": "Concis",
   "settingsNotConfiguredSuffix": "(non configuré)",
+  "settingsNanoUnavailableDevice": "Cet appareil ne prend pas en charge l'IA locale (Gemini Nano) — limitation matérielle ou système, indépendante de l'app.",
+  "settingsNanoDownloadable": "Modèle IA non téléchargé — le téléchargement démarre automatiquement à la première utilisation.",
+  "settingsNanoDownloading": "Téléchargement du modèle IA en cours...",
+  "settingsNanoInitError": "Échec de l'initialisation de l'IA locale — réessayez plus tard.",
   "settingsAboutGeminiApi": "À propos de Gemini API",
   "settingsGeminiApiBullets": "• Gratuit : 15 requêtes/min, 1500/jour\n• Reconnaît les œuvres d'art et monuments\n• Textes 2× plus longs et précis\n• Nécessite une connexion internet\n• Clé stockée cryptée sur cet appareil",
 

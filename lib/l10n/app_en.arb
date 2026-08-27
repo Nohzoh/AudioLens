@@ -180,6 +180,10 @@
   "settingsStyleAnecdotal": "Anecdotal",
   "settingsStyleConcise": "Concise",
   "settingsNotConfiguredSuffix": "(not configured)",
+  "settingsNanoUnavailableDevice": "This device doesn't support local AI (Gemini Nano) — a hardware or system limitation, not something the app controls.",
+  "settingsNanoDownloadable": "AI model not downloaded yet — download starts automatically on first use.",
+  "settingsNanoDownloading": "Downloading the AI model...",
+  "settingsNanoInitError": "Local AI failed to initialize — try again later.",
   "settingsAboutGeminiApi": "About Gemini API",
   "settingsGeminiApiBullets": "• Free: 15 requests/min, 1500/day\n• Recognizes artworks and landmarks\n• Texts 2× longer and more accurate\n• Requires an internet connection\n• Key stored encrypted on this device",
 
