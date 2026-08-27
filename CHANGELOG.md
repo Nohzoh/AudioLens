@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Tapping the locked Gemini API card now focuses the key field** (issue #278)
+  - **Verified**: 2026-08-27 (PR #281)
+  - **What was done**: direct ask — several testers reported not understanding how to enable the "Gemini API" option in Settings, since it rendered disabled (no tap target) until a key was saved, with the "get a free key" explanation and the field itself several sections further down. Tapping the card now scrolls that section into view — header, explanation, and field wrapped in one `Column` so the explanation stays visible too, not just the field — and focuses the field, instead of doing nothing.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 347/347 (1 new, covering the tap-to-focus behavior).
+
 - [x] 🌱 ⭐⭐ - **Add a full-pipeline mode to the Nano Prompt Lab debug screen** (issue #279)
   - **Verified**: 2026-08-27 (PR #280)
   - **What was done**: direct ask, following #276 — the raw-prompt mode couldn't exercise the actual production path (a real resolved location feeding a real 3-segment cascade). New native `describeImageDebug` (`GeminiNanoPlugin.kt`) runs the exact same cascade as `describeImage` (same prompt builders, timeout/token/temperature handling) but returns each segment's own prompt and raw output instead of only the final concatenated string. `NanoPromptLabScreen` gained a mode toggle: the existing free-form prompt tool, plus a new pipeline mode with GPS lat/lon input, a "resolve location" step running the real `LocationContextResolver` (showing POI/OSM metadata, Wikidata, Wikipedia results found — not just the merged text), and a run button rendering each of the 3 segments in its own expandable card.

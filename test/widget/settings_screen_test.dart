@@ -71,6 +71,26 @@ void main() {
     expect(find.byIcon(Icons.lock_outline), findsOneWidget);
   });
 
+  // #278: tapping the locked "Gemini API" card used to do nothing (onTap
+  // was null while no key was saved) — the only way to discover the key
+  // field existed was to scroll past it by chance. It now scrolls the key
+  // section into view and focuses the field instead.
+  testWidgets('tapping the locked Gemini API card focuses the API key field',
+      (tester) async {
+    await tester.pumpWidget(wrapScreen());
+    await tester.pumpAndSettle();
+
+    expect(guide.geminiApiKey, anyOf(isNull, isEmpty));
+    final apiKeyField = tester.widget<TextField>(find.byType(TextField));
+    expect(apiKeyField.focusNode?.hasFocus, isFalse);
+
+    await tester.tap(find.text('Gemini API'));
+    await tester.pumpAndSettle();
+
+    final focusedField = tester.widget<TextField>(find.byType(TextField));
+    expect(focusedField.focusNode?.hasFocus, isTrue);
+  });
+
   testWidgets('entering an API key and tapping Save shows the saved snackbar',
       (tester) async {
     await tester.pumpWidget(wrapScreen());
