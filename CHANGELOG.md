@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Show whether the device supports Gemini Nano in Settings** (issue #283)
+  - **Verified**: 2026-08-27 (PR #284)
+  - **What was done**: direct ask — the "Local AI" provider card showed the same generic "(not configured)" suffix as "Gemini API" whenever Nano wasn't usable, but there's nothing to configure for Nano: it's either a hardware/OS limitation (AICore unsupported) or a model not yet downloaded. New native `checkNanoStatus` (kept separate from `isAvailable`, which stays a plain bool for the shared `AIService` contract) surfaces ML Kit GenAI's real `FeatureStatus` (unavailable/downloadable/downloading/available). Settings now shows the right message per case instead of one generic suffix.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 355/355 (7 new). Real local build (`assembleDebug`) succeeds, confirming the native Kotlin addition compiles. Not verified visually on a real device reporting "unavailable" — this session's emulator has no AICore support at all either, so only the mocked-channel widget test covers that exact message.
+
 - [x] 🐛 ⭐ - **Tapping the locked Gemini API card now focuses the key field** (issue #278)
   - **Verified**: 2026-08-27 (PR #281)
   - **What was done**: direct ask — several testers reported not understanding how to enable the "Gemini API" option in Settings, since it rendered disabled (no tap target) until a key was saved, with the "get a free key" explanation and the field itself several sections further down. Tapping the card now scrolls that section into view — header, explanation, and field wrapped in one `Column` so the explanation stays visible too, not just the field — and focuses the field, instead of doing nothing.
