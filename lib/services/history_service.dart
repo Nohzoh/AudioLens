@@ -287,7 +287,7 @@ class HistoryService extends ChangeNotifier {
     final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE history(
@@ -366,6 +366,41 @@ class HistoryService extends ChangeNotifier {
           await db.execute('ALTER TABLE history ADD COLUMN scriptStyle TEXT');
           await db.execute('ALTER TABLE history ADD COLUMN outputLanguage TEXT');
           await db.execute('ALTER TABLE history ADD COLUMN promptVersion TEXT');
+        }
+        if (oldVersion < 10) {
+          // #288: AudioGuideService._synthesizeAndPlay used to cache
+          // _lastAudioPath unconditionally after every synthesis, by
+          // checking whether the single shared gemini_tts_output.wav file
+          // happened to exist on disk — not whether *this* synthesis
+          // actually wrote it. When native TTS ran (e.g. after switching
+          // to local AI) right after an earlier Gemini TTS call had left
+          // that file behind, the stale cloud file got wrongly copied in
+          // as the new entry's own cached audio. Detectable precisely
+          // because `ttsModel` still correctly says 'native-tts' (that's
+          // what actually spoke) while `audioPath` points at a real file —
+          // a combination that should never legitimately occur, since
+          // native TTS never produces a cacheable file at all. The code
+          // fix alone only stops new entries from getting corrupted this
+          // way; this repairs whatever's already sitting in an existing
+          // history.
+          final corrupted = await db.query(
+            'history',
+            columns: ['id', 'audioPath'],
+            where: "ttsModel = 'native-tts' AND audioPath IS NOT NULL",
+          );
+          for (final row in corrupted) {
+            final path = row['audioPath'] as String?;
+            if (path != null) {
+              try {
+                await File(path).delete();
+              } catch (_) {}
+            }
+          }
+          await db.update(
+            'history',
+            {'audioPath': null},
+            where: "ttsModel = 'native-tts' AND audioPath IS NOT NULL",
+          );
         }
       },
     );

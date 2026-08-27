@@ -69,6 +69,77 @@ Future<String> _createOldSchemaDb(Directory dir, int version) async {
   return path;
 }
 
+/// Builds a full v9 schema (matching HistoryService's own onCreate table
+/// definition, since v9 is the last version before #288's repair
+/// migration) with caller-supplied rows — used to set up specific
+/// ttsModel/audioPath combinations the v10 migration needs to
+/// distinguish, which the simpler incremental helper above isn't meant
+/// to express.
+Future<String> _createV9DbWithRows(
+  Directory dir,
+  String name,
+  List<Map<String, Object?>> rows,
+) async {
+  final path = join(dir.path, name);
+  final db = await databaseFactoryFfi.openDatabase(
+    path,
+    options: OpenDatabaseOptions(
+      version: 9,
+      onCreate: (db, v) async {
+        await db.execute('''
+          CREATE TABLE history(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            imagePath TEXT NOT NULL,
+            title TEXT NOT NULL,
+            script TEXT NOT NULL,
+            locationName TEXT,
+            audioPath TEXT,
+            status TEXT NOT NULL DEFAULT 'complete',
+            ttsModel TEXT,
+            aiModel TEXT,
+            analyzedAt TEXT,
+            analysisSource TEXT,
+            gpsSource TEXT,
+            wikipediaUsed INTEGER NOT NULL DEFAULT 0,
+            wordCount INTEGER,
+            analysisDurationMs INTEGER,
+            gpsLatitude REAL,
+            gpsLongitude REAL,
+            gpsAddress TEXT,
+            aiFallback INTEGER NOT NULL DEFAULT 0,
+            ttsFallback INTEGER NOT NULL DEFAULT 0,
+            isFavorite INTEGER NOT NULL DEFAULT 0,
+            rotationQuarters INTEGER NOT NULL DEFAULT 0,
+            scriptStyle TEXT,
+            outputLanguage TEXT,
+            promptVersion TEXT,
+            createdAt TEXT NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE collections(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            createdAt TEXT NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE history_collections(
+            historyId INTEGER NOT NULL,
+            collectionId INTEGER NOT NULL,
+            PRIMARY KEY (historyId, collectionId)
+          )
+        ''');
+      },
+    ),
+  );
+  for (final row in rows) {
+    await db.insert('history', row);
+  }
+  await db.close();
+  return path;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
@@ -85,7 +156,7 @@ void main() {
   });
 
   for (final oldVersion in [1, 2, 3, 4, 5, 6]) {
-    test('migrates cleanly from schema v$oldVersion to v9, keeping data (T09)', () async {
+    test('migrates cleanly from schema v$oldVersion to v10, keeping data (T09)', () async {
       final path = await _createOldSchemaDb(tempDir, oldVersion);
 
       final service = HistoryService();
@@ -114,11 +185,11 @@ void main() {
         await db.close();
         return v;
       });
-      expect(version, 9);
+      expect(version, 10);
     });
   }
 
-  test('a fresh install (no prior db) creates schema v9 directly', () async {
+  test('a fresh install (no prior db) creates schema v10 directly', () async {
     final path = join(tempDir.path, 'fresh.db');
     final service = HistoryService();
     await service.init(dbPath: path);
@@ -130,7 +201,77 @@ void main() {
       await db.close();
       return v;
     });
-    expect(version, 9);
+    expect(version, 10);
+  });
+
+  // #288
+  group('v9 -> v10 repairs entries corrupted by the stale gemini_tts_output.wav bug', () {
+    test('a native-tts entry with a wrongly-cached audioPath gets repaired', () async {
+      final staleAudio = File(join(tempDir.path, 'stale_gemini_audio.wav'));
+      await staleAudio.writeAsString('fake wav bytes');
+
+      final path = await _createV9DbWithRows(tempDir, 'corrupted.db', [
+        {
+          'imagePath': '/tmp/photo.jpg',
+          'title': 'Entrée en IA locale',
+          'script': 'Un texte.',
+          'ttsModel': 'native-tts',
+          'audioPath': staleAudio.path,
+          'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+        },
+      ]);
+
+      final service = HistoryService();
+      await service.init(dbPath: path);
+
+      final entry = service.entries.single;
+      expect(entry.ttsModel, 'native-tts');
+      expect(entry.audioPath, isNull);
+      expect(await staleAudio.exists(), isFalse,
+          reason: 'the wrongly-copied file should be deleted, not just unlinked');
+    });
+
+    test('a legitimate gemini-tts entry with a real audioPath is left untouched', () async {
+      final realAudio = File(join(tempDir.path, 'real_gemini_audio.wav'));
+      await realAudio.writeAsString('fake wav bytes');
+
+      final path = await _createV9DbWithRows(tempDir, 'legit.db', [
+        {
+          'imagePath': '/tmp/photo.jpg',
+          'title': 'Entrée cloud',
+          'script': 'Un texte.',
+          'ttsModel': 'gemini-tts',
+          'audioPath': realAudio.path,
+          'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+        },
+      ]);
+
+      final service = HistoryService();
+      await service.init(dbPath: path);
+
+      final entry = service.entries.single;
+      expect(entry.ttsModel, 'gemini-tts');
+      expect(entry.audioPath, realAudio.path);
+      expect(await realAudio.exists(), isTrue);
+    });
+
+    test('a script-only entry (no ttsModel, no audioPath) is left untouched', () async {
+      final path = await _createV9DbWithRows(tempDir, 'scriptonly.db', [
+        {
+          'imagePath': '/tmp/photo.jpg',
+          'title': 'Script seul',
+          'script': 'Un texte.',
+          'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+        },
+      ]);
+
+      final service = HistoryService();
+      await service.init(dbPath: path);
+
+      final entry = service.entries.single;
+      expect(entry.ttsModel, isNull);
+      expect(entry.audioPath, isNull);
+    });
   });
 
   test('onUpgrade runs inside a single transaction: a mid-migration failure '

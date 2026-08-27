@@ -518,8 +518,14 @@ class AudioGuideService extends ChangeNotifier {
       speed: _playbackSpeed,
     );
 
-    // Cache the generated audio for replay without re-generating
-    _lastAudioPath = await _getLastWavPath();
+    // Cache the generated audio for replay without re-generating — only
+    // meaningful when Gemini TTS actually spoke this time. _getLastWavPath()
+    // merely checks whether the shared gemini_tts_output.wav file exists on
+    // disk, which can be a stale leftover from an *earlier* Gemini TTS call
+    // if this one used native TTS instead (e.g. after switching the active
+    // provider to local AI) — without this gate, that stale cloud file got
+    // wrongly cached as this entry's own audio (#288).
+    _lastAudioPath = _lastTtsModel == 'gemini-tts' ? await _getLastWavPath() : null;
 
     _state = GuideState.speaking;
     _progressEstimator.stepProgress = 1.0;
