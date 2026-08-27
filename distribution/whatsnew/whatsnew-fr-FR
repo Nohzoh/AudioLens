@@ -1,1 +1,1 @@
-Amélioration : dans Paramètres, l'IA locale (Gemini Nano) indique maintenant clairement si votre appareil ne la prend pas en charge, ou si le modèle doit d'abord être téléchargé — au lieu d'un simple "non configuré".
+Corrections : les répétitions de phrases parfois entendues avec l'IA locale sont corrigées. Un bug faisant lire le mauvais audio (celui d'une entrée générée via l'API cloud) pour un enregistrement créé en IA locale est également corrigé — vos entrées existantes sont réparées automatiquement.

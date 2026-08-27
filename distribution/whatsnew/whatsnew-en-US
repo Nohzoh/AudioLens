@@ -1,1 +1,1 @@
-Improvement: in Settings, Local AI (Gemini Nano) now clearly shows if your device doesn't support it, or if the model still needs to download — instead of a plain "not configured".
+Fixes: sentence repetitions sometimes heard with local AI are fixed. A bug causing a locally-generated recording to play the wrong audio (from a cloud API entry instead) is also fixed — your existing entries are automatically repaired.
