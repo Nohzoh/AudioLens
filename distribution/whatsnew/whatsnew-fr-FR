@@ -1,1 +1,1 @@
-Corrections : l'option "Gemini API" dans Paramètres n'était plus grisée sans explication — un clic vous amène maintenant directement au champ pour saisir votre clé API. Amélioration : les descriptions de certains lieux (mémoriaux, plaques) sont plus précises grâce à des infos récupérées automatiquement.
+Amélioration : dans Paramètres, l'IA locale (Gemini Nano) indique maintenant clairement si votre appareil ne la prend pas en charge, ou si le modèle doit d'abord être téléchargé — au lieu d'un simple "non configuré".
