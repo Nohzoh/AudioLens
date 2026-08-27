@@ -269,6 +269,99 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 }
             }
 
+            // #276: runs the exact same 3-segment cascade as "describeImage"
+            // (same prompt builders, same timeout/token/temperature
+            // handling) but returns each segment's own prompt text and raw
+            // output instead of only the final concatenated string — lets
+            // the Nano Prompt Lab debug screen show "toutes les infos des
+            // étapes intermédiaires" for a full end-to-end run (real
+            // location context in, real 3-call cascade out), not just a
+            // single free-form call like "rawPrompt" below.
+            "describeImageDebug" -> {
+                val imagePath = call.argument<String>("imagePath")
+                val locationContext = call.argument<String>("locationContext")
+                val style = call.argument<String>("style")
+                val language = call.argument<String>("language")
+                val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
+                val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
+
+                if (imagePath == null) {
+                    result.error("INVALID_ARGS", "imagePath required", null)
+                    return
+                }
+                val model = generativeModel
+                if (model == null) {
+                    result.error("NOT_INITIALIZED", "Call initialize first", null)
+                    return
+                }
+
+                var currentSegment = 0
+
+                scope.launch {
+                    try {
+                        val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
+                        val bitmap = BitmapFactory.decodeFile(imagePath, opts)
+                            ?: throw Exception("Cannot decode image")
+
+                        currentSegment = 1
+                        val seg1Prompt = buildSeg1Prompt(locationContext, style, language)
+                        val req1 = generateContentRequest(ImagePart(bitmap), TextPart(seg1Prompt)) {
+                            this.maxOutputTokens = nanoMaxOutputTokens
+                            nanoTemperature?.let { this.temperature = it }
+                        }
+                        val seg1 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req1) }
+                            .candidates.firstOrNull()?.text?.trim() ?: ""
+
+                        bitmap.recycle()
+
+                        currentSegment = 2
+                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext)
+                        val req2 = generateContentRequest(TextPart(seg2Prompt)) {
+                            this.maxOutputTokens = nanoMaxOutputTokens
+                            nanoTemperature?.let { this.temperature = it }
+                        }
+                        val seg2 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
+                            .candidates.firstOrNull()?.text?.trim() ?: ""
+
+                        currentSegment = 3
+                        val seg3Prompt = buildSeg3Prompt("$seg1 $seg2", style, locationContext)
+                        val req3 = generateContentRequest(TextPart(seg3Prompt)) {
+                            this.maxOutputTokens = nanoMaxOutputTokens
+                            nanoTemperature?.let { this.temperature = it }
+                        }
+                        val seg3 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
+                            .candidates.firstOrNull()?.text?.trim() ?: ""
+
+                        val fullText = listOf(seg1, seg2, seg3)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" ")
+
+                        val payload = mapOf(
+                            "seg1Prompt" to seg1Prompt,
+                            "seg1Output" to seg1,
+                            "seg2Prompt" to seg2Prompt,
+                            "seg2Output" to seg2,
+                            "seg3Prompt" to seg3Prompt,
+                            "seg3Output" to seg3,
+                            "fullText" to fullText
+                        )
+                        withContext(Dispatchers.Main) { result.success(payload) }
+                    } catch (e: TimeoutCancellationException) {
+                        withContext(Dispatchers.Main) {
+                            result.error(
+                                "TIMEOUT",
+                                "Gemini Nano inference timed out (segment $currentSegment)",
+                                null
+                            )
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            result.error("INFERENCE_ERROR", e.message, null)
+                        }
+                    }
+                }
+            }
+
             // Debug/prompt-iteration tool (Settings > Nano Prompt Lab) — a
             // single raw generateContent call, image optional, with no
             // prompt scaffolding (buildSeg1/2/3Prompt) applied. Exists so
