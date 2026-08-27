@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audiolens/services/audio_guide_service.dart';
@@ -53,6 +54,8 @@ GeminiApiService _successApi() => GeminiApiService(
       dioClient: fakeDio((_) async => (statusCode: 200, body: _successJson())),
     );
 
+const _pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -61,9 +64,20 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     tmpDir = Directory.systemTemp.createTempSync('script-only-mode');
+    // #288: routes AudioGuideService's own getTemporaryDirectory() calls
+    // (the shared gemini_tts_output.wav path) into this test's isolated
+    // tmpDir, so a test can plant a file there to simulate a stale
+    // leftover from an earlier Gemini TTS call.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_pathProviderChannel, (call) async {
+      if (call.method == 'getTemporaryDirectory') return tmpDir.path;
+      return null;
+    });
   });
 
   tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_pathProviderChannel, null);
     tmpDir.deleteSync(recursive: true);
   });
 
@@ -156,6 +170,34 @@ void main() {
       expect(service.lastTtsModel, 'native-tts');
       expect(service.ttsWasFallback, isTrue);
       expect(native.speakCalled, isTrue);
+    });
+
+    // #288
+    test('does not reuse a stale gemini_tts_output.wav left over from an '
+        'earlier cloud generation when this synthesis actually used native TTS',
+        () async {
+      final staleFile = File('${tmpDir.path}/gemini_tts_output.wav');
+      await staleFile.writeAsBytes([1, 2, 3]);
+
+      final native = _FakeNativeTts();
+      final geminiTts = _FakeGeminiTts();
+      final service = AudioGuideService(nativeTtsService: native, geminiTtsService: geminiTts);
+      // Active provider defaults to geminiNano — TTS follows it (#253),
+      // so this synthesis speaks via native TTS even though geminiTts is
+      // configured, exactly like a user who switched to local AI after
+      // an earlier cloud-generated entry left this file behind.
+
+      final result = await service.generateAudioForScript(
+        title: 'Titre en IA locale',
+        script: 'Script.',
+      );
+
+      expect(result, isNotNull);
+      expect(service.lastTtsModel, 'native-tts');
+      expect(native.speakCalled, isTrue);
+      expect(geminiTts.speakCalled, isFalse);
+      expect(service.lastAudioPath, isNull,
+          reason: 'must not pick up the stale file from an earlier Gemini TTS call');
     });
 
     test('returns null and sets error state when already busy', () async {
