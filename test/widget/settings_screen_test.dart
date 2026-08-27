@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -89,6 +90,47 @@ void main() {
 
     final focusedField = tester.widget<TextField>(find.byType(TextField));
     expect(focusedField.focusNode?.hasFocus, isTrue);
+  });
+
+  // #283: the "IA locale" card used to show a generic "(non configuré)"
+  // suffix regardless of *why* Nano wasn't usable — including when the
+  // device simply doesn't support AICore, which isn't something the user
+  // configured or can fix. SettingsScreen queries
+  // GeminiNanoService.checkDeviceStatus() (over the same platform channel
+  // AudioGuideService's real nanoService uses) in initState to show the
+  // right reason instead.
+  const nanoChannel = MethodChannel('audio_guide/gemini_nano');
+
+  testWidgets('shows a device-support message when Nano is hardware/OS unavailable',
+      (tester) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(nanoChannel, (call) async {
+      if (call.method == 'checkNanoStatus') return 'unavailable';
+      return null;
+    });
+    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(nanoChannel, null));
+
+    await tester.pumpWidget(wrapScreen());
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining("ne prend pas en charge l'IA locale"), findsOneWidget);
+  });
+
+  testWidgets('shows a download-pending message when Nano is downloadable but not yet ready',
+      (tester) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(nanoChannel, (call) async {
+      if (call.method == 'checkNanoStatus') return 'downloadable';
+      return null;
+    });
+    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(nanoChannel, null));
+
+    await tester.pumpWidget(wrapScreen());
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Modèle IA non téléchargé'), findsOneWidget);
   });
 
   testWidgets('entering an API key and tapping Save shows the saved snackbar',

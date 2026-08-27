@@ -46,6 +46,16 @@ class NanoDebugCascadeResult {
   });
 }
 
+/// #283: mirrors ML Kit GenAI's `FeatureStatus` — [isAvailable] collapses
+/// downloadable/downloading/available all into a single bool, which is
+/// enough to pick an AI provider but not enough to tell a user *why*
+/// Nano isn't usable right now. [unavailable] specifically means the
+/// device doesn't meet AICore's hardware/OS requirements — the one case
+/// nothing (not even waiting) resolves, unlike [downloadable]/
+/// [downloading]. [unknown] covers a platform error or an SDK version
+/// that adds a status this app doesn't recognize yet.
+enum NanoDeviceStatus { unavailable, downloadable, downloading, available, unknown }
+
 class GeminiNanoService implements AIService {
   bool _initialized = false;
 
@@ -59,6 +69,29 @@ class GeminiNanoService implements AIService {
       return result ?? false;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// #283: for UI that needs to explain *why* Nano is or isn't usable
+  /// (Settings' provider card) rather than just a bool — see
+  /// [NanoDeviceStatus].
+  Future<NanoDeviceStatus> checkDeviceStatus() async {
+    try {
+      final result = await _channel.invokeMethod<String>('checkNanoStatus');
+      switch (result) {
+        case 'unavailable':
+          return NanoDeviceStatus.unavailable;
+        case 'downloadable':
+          return NanoDeviceStatus.downloadable;
+        case 'downloading':
+          return NanoDeviceStatus.downloading;
+        case 'available':
+          return NanoDeviceStatus.available;
+        default:
+          return NanoDeviceStatus.unknown;
+      }
+    } catch (_) {
+      return NanoDeviceStatus.unknown;
     }
   }
 

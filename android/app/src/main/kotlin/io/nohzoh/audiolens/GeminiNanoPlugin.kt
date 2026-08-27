@@ -138,6 +138,38 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 }
             }
 
+            // #283: "isAvailable" above collapses DOWNLOADABLE/DOWNLOADING/
+            // AVAILABLE all into a single "true" — enough for
+            // AiProviderManager to decide whether to use Nano, but not
+            // enough to tell a user *why* it's unavailable when it is.
+            // ML Kit GenAI's FeatureStatus.UNAVAILABLE specifically means
+            // the device doesn't meet AICore's hardware/OS requirements —
+            // that's the one distinction a user can't do anything about
+            // (vs. DOWNLOADABLE/DOWNLOADING, which resolve on their own
+            // once the model finishes downloading). Named distinctly from
+            // "isAvailable" rather than changing its return type, since
+            // that method implements the shared AIService.isAvailable()
+            // bool contract used polymorphically for both providers.
+            "checkNanoStatus" -> {
+                scope.launch {
+                    try {
+                        val model = Generation.getClient()
+                        val status = model.checkStatus()
+                        model.close()
+                        val statusName = when (status) {
+                            com.google.mlkit.genai.common.FeatureStatus.UNAVAILABLE -> "unavailable"
+                            com.google.mlkit.genai.common.FeatureStatus.DOWNLOADABLE -> "downloadable"
+                            com.google.mlkit.genai.common.FeatureStatus.DOWNLOADING -> "downloading"
+                            com.google.mlkit.genai.common.FeatureStatus.AVAILABLE -> "available"
+                            else -> "unknown"
+                        }
+                        withContext(Dispatchers.Main) { result.success(statusName) }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) { result.success("unknown") }
+                    }
+                }
+            }
+
             "initialize" -> {
                 scope.launch {
                     try {

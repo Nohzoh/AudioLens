@@ -31,6 +31,8 @@ void main() {
           return 'Une description generee.';
         case 'rawPrompt':
           return 'Reponse brute du modele.';
+        case 'checkNanoStatus':
+          return 'available';
         default:
           return null;
       }
@@ -64,6 +66,31 @@ void main() {
     final service = GeminiNanoService();
 
     expect(await service.isAvailable(), isFalse);
+  });
+
+  // #283
+  group('checkDeviceStatus()', () {
+    for (final entry in {
+      'unavailable': NanoDeviceStatus.unavailable,
+      'downloadable': NanoDeviceStatus.downloadable,
+      'downloading': NanoDeviceStatus.downloading,
+      'available': NanoDeviceStatus.available,
+      'something-a-future-sdk-added': NanoDeviceStatus.unknown,
+    }.entries) {
+      test('maps platform string "${entry.key}" to ${entry.value}', () async {
+        handler = (call) async => entry.key;
+        final service = GeminiNanoService();
+
+        expect(await service.checkDeviceStatus(), entry.value);
+      });
+    }
+
+    test('swallows a platform failure and returns unknown', () async {
+      handler = (call) async => throw PlatformException(code: 'ERROR');
+      final service = GeminiNanoService();
+
+      expect(await service.checkDeviceStatus(), NanoDeviceStatus.unknown);
+    });
   });
 
   test('initialize() only invokes the platform once across repeated calls', () async {

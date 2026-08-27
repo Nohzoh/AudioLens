@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../constants/output_languages.dart';
 import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
+import '../services/gemini_nano_service.dart' show NanoDeviceStatus;
 import '../services/remote_config_service.dart';
 import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
@@ -39,6 +40,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _obscure = true;
   bool _saving = false;
   String? _appVersion;
+  // #283: null while the check is in flight — the card falls back to the
+  // old generic "(not configured)" wording for that brief window rather
+  // than blocking on it.
+  NanoDeviceStatus? _nanoStatus;
 
   @override
   void initState() {
@@ -48,6 +53,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _appVersion = '${info.version} (${info.buildNumber})');
     });
+    guide.nanoService.checkDeviceStatus().then((status) {
+      if (mounted) setState(() => _nanoStatus = status);
+    });
   }
 
   @override
@@ -55,6 +63,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _apiKeyController.dispose();
     _apiKeyFocusNode.dispose();
     super.dispose();
+  }
+
+  // #283: null falls back to _ProviderCard's generic "(not configured)"
+  // suffix — used while the check is still in flight, when Nano is
+  // actually available (nothing to explain), or when the platform
+  // returned an unrecognized/error status (nothing more specific to say).
+  String? _nanoUnavailableReason(AppLocalizations l10n) {
+    switch (_nanoStatus) {
+      case NanoDeviceStatus.unavailable:
+        return l10n.settingsNanoUnavailableDevice;
+      case NanoDeviceStatus.downloadable:
+        return l10n.settingsNanoDownloadable;
+      case NanoDeviceStatus.downloading:
+        return l10n.settingsNanoDownloading;
+      case NanoDeviceStatus.available:
+        // The device reports Nano ready, yet AiProviderManager.init()'s
+        // own initialize() call still failed at startup (a transient
+        // error, not a device-support boundary) — distinct enough from
+        // the other cases to say so rather than the generic suffix.
+        return l10n.settingsNanoInitError;
+      case NanoDeviceStatus.unknown:
+      case null:
+        return null;
+    }
   }
 
   Future<void> _focusApiKeySection() async {
@@ -215,6 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: guide.nanoAvailable
                 ? () => guide.setActiveProvider(AIProvider.geminiNano)
                 : null,
+            unavailableReason: _nanoUnavailableReason(l10n),
           ),
           const SizedBox(height: 8),
           _ProviderCard(
@@ -678,6 +711,10 @@ class _ProviderCard extends StatelessWidget {
   final bool isActive;
   final bool isAvailable;
   final VoidCallback? onTap;
+  // #283: when set, replaces the generic "(not configured)" suffix — for
+  // Nano specifically, "not configured" is misleading (there's nothing
+  // to configure; it's a device capability or a pending download).
+  final String? unavailableReason;
 
   const _ProviderCard({
     required this.icon,
@@ -686,6 +723,7 @@ class _ProviderCard extends StatelessWidget {
     required this.isActive,
     required this.isAvailable,
     this.onTap,
+    this.unavailableReason,
   });
 
   @override
@@ -728,7 +766,9 @@ class _ProviderCard extends StatelessWidget {
             ),
           ),
           subtitle: Text(
-            isAvailable ? description : '$description\n${l10n.settingsNotConfiguredSuffix}',
+            isAvailable
+                ? description
+                : '$description\n${unavailableReason ?? l10n.settingsNotConfiguredSuffix}',
             style: TextStyle(
               color: theme.colorScheme.onSurface
                   .withValues(alpha: isAvailable ? 0.54 : 0.24),

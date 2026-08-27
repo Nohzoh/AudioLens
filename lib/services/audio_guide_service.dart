@@ -78,6 +78,10 @@ class AudioGuideService extends ChangeNotifier {
   late final AiProviderManager _providerManager;
   GuideProgressEstimator _progressEstimator = GuideProgressEstimator();
   GeminiTtsService? get geminiTtsService => _providerManager.geminiTtsService;
+  // #283: lets Settings query NanoDeviceStatus (hardware/OS support, not
+  // just the collapsed nanoAvailable bool) without AudioGuideService
+  // having to proxy every GeminiNanoService method individually.
+  GeminiNanoService get nanoService => _providerManager.nanoService;
   String? _lastAudioPath;
   String? get lastAudioPath => _lastAudioPath;
   String _lastTtsModel = "native-tts";
