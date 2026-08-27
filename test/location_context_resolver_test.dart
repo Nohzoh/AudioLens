@@ -138,4 +138,168 @@ void main() {
         promptContext.indexOf('Vincennes est une commune du Val-de-Marne.');
     expect(churchExtractIndex, lessThan(townExtractIndex));
   });
+
+  // #276
+  group('POI metadata enrichment', () {
+    http.Client emptyWikiClient(Map<String, dynamic> overpassTags) {
+      return MockClient((request) async {
+        final uri = request.url;
+        if (uri.host == 'nominatim.openstreetmap.org') {
+          return http.Response(jsonEncode({'address': {}}), 200);
+        }
+        if (uri.host == 'overpass-api.de') {
+          return http.Response(
+            jsonEncode({
+              'elements': [
+                {'type': 'node', 'lat': 48.85, 'lon': 2.47, 'tags': overpassTags},
+              ],
+            }),
+            200,
+          );
+        }
+        if (uri.host.endsWith('wikipedia.org')) {
+          if (uri.queryParameters['list'] == 'geosearch') {
+            return http.Response(jsonEncode({'query': {'geosearch': []}}), 200);
+          }
+          if (uri.queryParameters['list'] == 'search') {
+            return http.Response(jsonEncode({'query': {'search': []}}), 200);
+          }
+        }
+        if (uri.host == 'www.wikidata.org') {
+          return http.Response(
+            jsonEncode({
+              'entities': {
+                'Q89207218': {
+                  'labels': {
+                    'fr': {'value': "Stolperstein à la mémoire d'Umberto Chignoli"}
+                  },
+                  'descriptions': {
+                    'fr': {'value': 'stolperstein à Fontenay-sous-Bois, France'}
+                  },
+                },
+              },
+            }),
+            200,
+          );
+        }
+        return http.Response('{}', 404);
+      });
+    }
+
+    test('folds subtype and inscription into the POI line in promptContext',
+        () async {
+      final client = emptyWikiClient({
+        'historic': 'memorial',
+        'memorial': 'stolperstein',
+        'name': 'Umberto Chignoli',
+        'inscription': 'Ici habitait Umberto CHIGNOLI...',
+      });
+      final resolver = LocationContextResolver(
+        poiService: PoiService(client: client),
+        httpClient: client,
+      );
+
+      final ctx = await resolver.resolveFromCoordinates(
+        lat: 48.85, lon: 2.47, source: 'map',
+      );
+
+      expect(ctx.poi?.subtype, 'stolperstein');
+      expect(
+        ctx.promptContext,
+        contains('Lieu identifié à proximité : Umberto Chignoli (stolperstein). '
+            'Inscription : "Ici habitait Umberto CHIGNOLI..."'),
+      );
+    });
+
+    test('fetches and includes Wikidata info when the POI has a wikidata tag',
+        () async {
+      final client = emptyWikiClient({
+        'historic': 'memorial',
+        'name': 'Umberto Chignoli',
+        'wikidata': 'Q89207218',
+      });
+      final resolver = LocationContextResolver(
+        poiService: PoiService(client: client),
+        httpClient: client,
+      );
+
+      final ctx = await resolver.resolveFromCoordinates(
+        lat: 48.85, lon: 2.47, source: 'map',
+      );
+
+      expect(ctx.wikidataInfo?.label, "Stolperstein à la mémoire d'Umberto Chignoli");
+      expect(
+        ctx.promptContext,
+        contains("Selon Wikidata : Stolperstein à la mémoire d'Umberto Chignoli "
+            '(stolperstein à Fontenay-sous-Bois, France)'),
+      );
+    });
+
+    test('no Wikidata line when the POI has no wikidata tag', () async {
+      final client = emptyWikiClient({'amenity': 'restaurant', 'name': 'Chez Paul'});
+      final resolver = LocationContextResolver(
+        poiService: PoiService(client: client),
+        httpClient: client,
+      );
+
+      final ctx = await resolver.resolveFromCoordinates(
+        lat: 48.85, lon: 2.47, source: 'map',
+      );
+
+      expect(ctx.wikidataInfo, isNull);
+      expect(ctx.promptContext, isNot(contains('Selon Wikidata')));
+    });
+
+    test('wikipediaResults exposes the individual articles found, not just '
+        'the merged promptContext string', () async {
+      final client = MockClient((request) async {
+        final uri = request.url;
+        if (uri.host == 'nominatim.openstreetmap.org') {
+          return http.Response(jsonEncode({'address': {}}), 200);
+        }
+        if (uri.host == 'overpass-api.de') {
+          return http.Response(jsonEncode({'elements': []}), 200);
+        }
+        if (uri.host.endsWith('wikipedia.org')) {
+          if (uri.queryParameters['list'] == 'geosearch') {
+            return http.Response(
+              jsonEncode({
+                'query': {
+                  'geosearch': [
+                    {'pageid': 1, 'title': 'Vincennes'},
+                  ],
+                },
+              }),
+              200,
+            );
+          }
+          if (uri.queryParameters.containsKey('pageids')) {
+            return http.Response(
+              jsonEncode({
+                'query': {
+                  'pages': {
+                    '1': {'title': 'Vincennes', 'extract': 'Une commune.'},
+                  },
+                },
+              }),
+              200,
+            );
+          }
+        }
+        return http.Response('{}', 404);
+      });
+      final resolver = LocationContextResolver(
+        poiService: PoiService(client: client),
+        httpClient: client,
+      );
+
+      final ctx = await resolver.resolveFromCoordinates(
+        lat: 48.85, lon: 2.47, source: 'map',
+      );
+
+      expect(ctx.wikipediaResults, hasLength(1));
+      expect(ctx.wikipediaResults.first.title, 'Vincennes');
+      expect(ctx.wikipediaResults.first.extract, 'Une commune.');
+    });
+  });
 }

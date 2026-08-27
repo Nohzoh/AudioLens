@@ -3,8 +3,53 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'network_config.dart';
 
-/// Looks up the name of a nearby point of interest (POI) via the
-/// OpenStreetMap Overpass API (T74).
+/// Everything usable pulled from the closest tagged OSM element, not just
+/// its name (#276) — a plain `name` tag alone throws away structured
+/// context (memorial/monument subtype, the exact engraved/written text,
+/// a Wikidata link) that OSM often already carries for exactly the kind
+/// of small, undocumented object a generic AI description struggles
+/// with (a memorial plaque, a wayside cross, a public artwork...).
+class PoiInfo {
+  final String name;
+
+  /// The primary OSM key this element matched on (`historic`, `tourism`,
+  /// `amenity`, `leisure`) and its value, e.g. `historic=memorial` — a
+  /// coarse category, present whenever the element has one of those tags
+  /// at all (it always does, by construction of the Overpass query below).
+  final String? category;
+
+  /// The specific subtype when OSM carries one alongside [category] —
+  /// e.g. `memorial=stolperstein`, `historic=wayside_cross`. Distinct
+  /// from [category] because some of these live on their own key
+  /// (`memorial`, `artwork_type`) rather than as the matched tag's value.
+  final String? subtype;
+
+  /// Verbatim engraved/written text (OSM's `inscription` tag), when
+  /// present — plaques, memorials, gravestones. Not something a vision
+  /// model needs to be told rather than read off the photo itself, but
+  /// useful as ground truth to compare a description against, or to
+  /// supply when the text is only partially legible in the image.
+  final String? inscription;
+
+  /// Wikidata QID (OSM's `wikidata` tag), when present — lets
+  /// [WikidataService] fetch a label/description for POIs that have no
+  /// Wikipedia article at all (common for small/local memorials) but do
+  /// have a structured Wikidata entry, filling a real gap
+  /// [WikipediaService] alone can't.
+  final String? wikidataId;
+
+  const PoiInfo({
+    required this.name,
+    this.category,
+    this.subtype,
+    this.inscription,
+    this.wikidataId,
+  });
+}
+
+/// Looks up the closest point of interest (POI) via the OpenStreetMap
+/// Overpass API (T74), and now (#276) as much of its structured metadata
+/// as OSM carries, not just its name.
 ///
 /// Reverse geocoding (Nominatim, used by [LocationService]) resolves an
 /// address, but doesn't reliably surface the name of a specific business or
@@ -13,14 +58,19 @@ import 'network_config.dart';
 class PoiService {
   static const _overpassUrl = 'https://overpass-api.de/api/interpreter';
 
+  /// The tag keys queried, in priority order for [PoiInfo.category] when
+  /// an element happens to carry more than one (rare, but Overpass's
+  /// query OR's them together rather than picking one).
+  static const _categoryKeys = ['historic', 'tourism', 'amenity', 'leisure'];
+
   /// [client] allows injecting a mock HTTP client in tests.
   const PoiService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
 
-  /// Returns the name of the closest named POI within [radius] meters of
-  /// (lat, lon), or null if none found / on any failure.
-  Future<String?> findNearbyName({
+  /// Returns the closest named POI within [radius] meters of (lat, lon),
+  /// or null if none found / on any failure.
+  Future<PoiInfo?> findNearby({
     required double lat,
     required double lon,
     int radius = 75,
@@ -56,7 +106,7 @@ class PoiService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final elements = data['elements'] as List? ?? [];
 
-      String? closestName;
+      PoiInfo? closest;
       double closestDistance = double.infinity;
 
       for (final el in elements) {
@@ -74,14 +124,37 @@ class PoiService {
         final distance = _distanceMeters(lat, lon, elLat, elLon);
         if (distance < closestDistance) {
           closestDistance = distance;
-          closestName = name;
+          closest = _toPoiInfo(name, tags!);
         }
       }
 
-      return closestName;
+      return closest;
     } catch (_) {
       return null;
     }
+  }
+
+  static PoiInfo _toPoiInfo(String name, Map<String, dynamic> tags) {
+    String? category;
+    for (final key in _categoryKeys) {
+      final value = tags[key] as String?;
+      if (value != null && value.isNotEmpty) {
+        category = '$key=$value';
+        break;
+      }
+    }
+    // `memorial`/`artwork_type` carry the specific subtype for their
+    // respective `historic=memorial`/`tourism=artwork` category — only
+    // meaningful alongside that category, not a general-purpose tag.
+    final subtype = (tags['memorial'] as String?) ?? (tags['artwork_type'] as String?);
+
+    return PoiInfo(
+      name: name,
+      category: category,
+      subtype: subtype,
+      inscription: tags['inscription'] as String?,
+      wikidataId: tags['wikidata'] as String?,
+    );
   }
 
   static double _distanceMeters(

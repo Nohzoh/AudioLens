@@ -4,6 +4,7 @@ import 'exif_location_service.dart';
 import 'location_service.dart';
 import 'poi_service.dart';
 import 'remote_config_service.dart';
+import 'wikidata_service.dart';
 import 'wikipedia_service.dart';
 
 /// Result of resolving where a photo was taken and enriching it with
@@ -16,7 +17,9 @@ class LocationContext {
     this.longitude,
     this.address,
     this.city,
-    this.poiName,
+    this.poi,
+    this.wikidataInfo,
+    this.wikipediaResults = const [],
     this.wikipediaUsed = false,
     this.promptContext,
   });
@@ -30,9 +33,25 @@ class LocationContext {
   final String? address;
   final String? city;
 
-  /// Name of the closest tagged point of interest (business, venue,
-  /// landmark...), if one was found nearby (T74).
-  final String? poiName;
+  /// Closest tagged point of interest (business, venue, landmark,
+  /// memorial...) found nearby (T74), with whatever structured metadata
+  /// OSM carries for it (#276) — not just a name.
+  final PoiInfo? poi;
+
+  /// Name of the closest tagged POI, if one was found — convenience for
+  /// callers that only need the name, not the full [PoiInfo].
+  String? get poiName => poi?.name;
+
+  /// Label/description fetched from Wikidata (#276) when [poi] carries a
+  /// `wikidata` tag — fills the gap for POIs with no Wikipedia article
+  /// (common for small/local memorials) but a structured Wikidata entry.
+  final WikidataInfo? wikidataInfo;
+
+  /// The individual Wikipedia articles found (geosearch + name search,
+  /// merged and deduped) — exposed alongside the combined [promptContext]
+  /// so a caller (e.g. a debug trace view) can show what was actually
+  /// found article by article, not just the final merged text.
+  final List<WikipediaResult> wikipediaResults;
   final bool wikipediaUsed;
 
   /// Combined location + Wikipedia text to feed the AI prompt, or null.
@@ -48,6 +67,9 @@ class LocationContext {
 /// T78 — split GPS resolution from enrichment (POI/Wikipedia/reverse
 /// geocoding) so a deferred capture can supply coordinates already known
 /// from capture time, without repeating the GPS step.
+/// #276 — POI lookup now surfaces structured OSM metadata (category,
+/// subtype, inscription, Wikidata link) instead of just a bare name, and
+/// a Wikidata description is fetched when available.
 class LocationContextResolver {
   LocationContextResolver({PoiService? poiService, http.Client? httpClient})
       : _poiService = poiService ?? PoiService(client: httpClient),
@@ -97,20 +119,26 @@ class LocationContextResolver {
 
     final cfg = RemoteConfigService.current;
 
-    String? poiName;
+    PoiInfo? poi;
+    WikidataInfo? wikidataInfo;
     String? wikiContext;
+    var wikiResults = <WikipediaResult>[];
     var wikipediaUsed = false;
     if (locationResult.info != null) {
       final lat = locationResult.info!.latitude;
       final lon = locationResult.info!.longitude;
 
-      poiName = await _poiService.findNearbyName(
+      poi = await _poiService.findNearby(
         lat: lat,
         lon: lon,
         radius: cfg.poiRadiusMeters,
       );
 
-      var wikiResults = await WikipediaService.searchNearby(
+      if (poi?.wikidataId != null) {
+        wikidataInfo = await WikidataService.fetchInfo(poi!.wikidataId!, client: _httpClient);
+      }
+
+      wikiResults = await WikipediaService.searchNearby(
         lat: lat,
         lon: lon,
         radius: cfg.wikipediaRadiusMeters,
@@ -119,8 +147,8 @@ class LocationContextResolver {
         client: _httpClient,
       );
 
-      if (poiName != null) {
-        final nameQuery = [poiName, locationResult.info!.city].where((s) => s != null && s.isNotEmpty).join(' ');
+      if (poi != null) {
+        final nameQuery = [poi.name, locationResult.info!.city].where((s) => s != null && s.isNotEmpty).join(' ');
         final nameResults = await WikipediaService.searchByName(
           query: nameQuery,
           limit: cfg.wikipediaMaxResults,
@@ -146,7 +174,8 @@ class LocationContextResolver {
     }
 
     final promptContext = [
-      poiName != null ? 'Lieu identifié à proximité : $poiName' : null,
+      poi != null ? 'Lieu identifié à proximité : ${_poiLine(poi)}' : null,
+      wikidataInfo != null ? 'Selon Wikidata : ${wikidataInfo.summary}' : null,
       locationResult.info?.contextForPrompt,
       wikiContext,
     ].where((s) => s != null && s.isNotEmpty).join('\n\n');
@@ -158,9 +187,27 @@ class LocationContextResolver {
       longitude: longitude,
       address: address,
       city: locationResult.info?.city,
-      poiName: poiName,
+      poi: poi,
+      wikidataInfo: wikidataInfo,
+      wikipediaResults: wikiResults,
       wikipediaUsed: wikipediaUsed,
       promptContext: promptContext.isNotEmpty ? promptContext : null,
     );
+  }
+
+  /// #276: folds [PoiInfo.subtype] and [PoiInfo.inscription] into the
+  /// same "Lieu identifié" line the prompt already had a slot for,
+  /// rather than adding new top-level promptContext sections per field
+  /// — keeps the addition proportional (most POIs still have neither).
+  static String _poiLine(PoiInfo poi) {
+    final parts = <String>[poi.name];
+    if (poi.subtype != null && poi.subtype!.isNotEmpty) {
+      parts.add('(${poi.subtype})');
+    }
+    var line = parts.join(' ');
+    if (poi.inscription != null && poi.inscription!.isNotEmpty) {
+      line += '. Inscription : "${poi.inscription}"';
+    }
+    return line;
   }
 }
