@@ -1,1 +1,1 @@
-Fixes: the "Gemini API" option in Settings no longer looks disabled without explanation — tapping it now takes you straight to the field to enter your API key. Improvement: descriptions of certain places (memorials, plaques) are more accurate thanks to extra info fetched automatically.
+Improvement: in Settings, Local AI (Gemini Nano) now clearly shows if your device doesn't support it, or if the model still needs to download — instead of a plain "not configured".
