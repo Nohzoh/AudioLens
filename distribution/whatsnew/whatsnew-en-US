@@ -1,1 +1,1 @@
-Fixes: sentence repetitions sometimes heard with local AI are fixed. A bug causing a locally-generated recording to play the wrong audio (from a cloud API entry instead) is also fixed — your existing entries are automatically repaired.
+New: a welcome screen now explains how to use the app to new users, and updates show what changed. You can also send feedback directly from Settings, with a screenshot attached if you want.

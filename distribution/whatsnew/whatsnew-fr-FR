@@ -1,1 +1,1 @@
-Corrections : les répétitions de phrases parfois entendues avec l'IA locale sont corrigées. Un bug faisant lire le mauvais audio (celui d'une entrée générée via l'API cloud) pour un enregistrement créé en IA locale est également corrigé — vos entrées existantes sont réparées automatiquement.
+Nouveautés : un écran d'accueil explique maintenant comment utiliser l'app aux nouveaux utilisateurs, et les mises à jour affichent ce qui a changé. Vous pouvez aussi envoyer un feedback directement depuis Réglages, capture d'écran à l'appui.
