@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐⭐ - **Add in-app feedback via Telegram, no backend** (issue #294)
+  - **Verified**: 2026-08-28 (PR #295)
+  - **What was done**: direct ask — an in-app feedback option without maintaining a backend service. Posts directly to a Telegram chat via the Bot API's `sendMessage`. No backend means the bot token can't be hidden server-side — discussed explicitly with the user and accepted: it's injected at CI build time via `--dart-define` from GitHub Actions secrets (never committed to source, same mechanism as `PLAY_STORE_SERVICE_ACCOUNT_JSON`), extractable from the compiled APK but bounded to spam risk in the feedback chat only, recoverable by regenerating the token. New `FeedbackService` posts the message prefixed with app version/platform. Settings gains a "Send feedback" button (Tools section), only shown when the build actually has the secrets baked in.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 370/371 (11 new; the 1 failure is the pre-existing unrelated `tts_chunking_test.dart` flake). Dart-only change plus a CI workflow YAML edit, no native Kotlin touched.
+
 - [x] 🐛 ⭐⭐ - **Retry Overpass POI lookups instead of giving up after 6s** (issue #248)
   - **Verified**: 2026-08-28 (PR #293)
   - **What was done**: `PoiService.findNearby` silently returned null on any Overpass failure, losing the POI name/metadata that feeds the prompt's priority line — reproduced for real, ordinary coordinates (not an edge case), not just in theory. Live-tested against the real failing coordinates: `overpass-api.de`'s own `/api/status` self-reports "Rate limit: 2" concurrent slots; a rapid burst of requests reproduced multi-second stalls and a 504, while a paced burst (1/sec) was 100% reliable. Tried 5 alternative mirrors as a possible fallback host — all rejected (two errored outright, one was unreachable, one had a stale/empty database that would silently claim "no POI found" for a real one, one had correct data but was comparably slow) — so the fix retries against the same host instead of switching: one retry after a 2s delay on any failed attempt (never on a legitimate zero-element success), timeout bumped 6s → 10s (both now remote-configurable, matching the existing `poiRadiusMeters` pattern).
