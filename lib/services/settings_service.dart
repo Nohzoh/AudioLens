@@ -95,13 +95,18 @@ class SettingsService extends ChangeNotifier {
     return code == 'fr' ? 'Français' : 'English';
   }
 
-  /// Throws [SecureStorageUnavailableException] if the key can't be
-  /// persisted securely — onboarding isn't marked complete in that case,
-  /// so the user sees the same screen again rather than an app that
-  /// silently forgot its key was ever entered.
-  Future<void> completeOnboarding({required String apiKey}) async {
-    await SecureKeyStorage.writeApiKey(apiKey);
-    _geminiApiKey = apiKey;
+  /// #298: [apiKey] is now optional — the onboarding carousel only
+  /// requires one on a device where local AI (Nano) isn't available;
+  /// that requirement is enforced by the carousel's own final page, not
+  /// here. Throws [SecureStorageUnavailableException] if a given key
+  /// can't be persisted securely — onboarding isn't marked complete in
+  /// that case, so the user sees the same screen again rather than an
+  /// app that silently forgot its key was ever entered.
+  Future<void> completeOnboarding({String? apiKey}) async {
+    if (apiKey != null && apiKey.isNotEmpty) {
+      await SecureKeyStorage.writeApiKey(apiKey);
+      _geminiApiKey = apiKey;
+    }
     _isOnboardingComplete = true;
     await _prefs.setBool('onboarding_complete', true);
     notifyListeners();
