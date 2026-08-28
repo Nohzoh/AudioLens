@@ -224,6 +224,8 @@ jobs:
             --target-platform android-arm,android-arm64 \
             --build-number="${{ github.run_number }}" \
             --dart-define=BUILD_DATE="$BUILD_DATE" \
+            --dart-define=TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            --dart-define=TELEGRAM_CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}" \
             2>&1 | tee build_output.txt
           exit ${PIPESTATUS[0]}
 
@@ -289,6 +291,8 @@ jobs:
           flutter build appbundle --release \
             --build-number="${{ github.run_number }}" \
             --dart-define=BUILD_DATE="$BUILD_DATE" \
+            --dart-define=TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            --dart-define=TELEGRAM_CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}" \
             2>&1 | tee build_output_aab.txt
           exit ${PIPESTATUS[0]}
 
