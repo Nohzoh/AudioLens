@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'logs_screen.dart';
 import 'nano_prompt_lab_screen.dart';
@@ -872,11 +874,19 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
   final _controller = TextEditingController();
   bool _sending = false;
   String? _error;
+  // #296: e.g. a screenshot of the problem being reported.
+  File? _image;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final xFile = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
+    if (xFile == null || !mounted) return;
+    setState(() => _image = File(xFile.path));
   }
 
   Future<void> _send() async {
@@ -893,6 +903,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         text,
         appVersion: widget.appVersion ?? 'unknown',
         platform: defaultTargetPlatform.name,
+        image: _image,
       );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -926,6 +937,33 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
               hintText: l10n.feedbackDialogHint,
               border: const OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (_image != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.file(_image!, width: 40, height: 40, fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.image_outlined, size: 16),
+                  label: Text(_image == null
+                      ? l10n.feedbackDialogAttachScreenshot
+                      : l10n.feedbackDialogChangeScreenshot),
+                  onPressed: _sending ? null : _pickImage,
+                ),
+              ),
+              if (_image != null)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: l10n.feedbackDialogRemoveScreenshot,
+                  onPressed: _sending ? null : () => setState(() => _image = null),
+                ),
+            ],
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),

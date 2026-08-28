@@ -159,6 +159,20 @@ void main() {
           history: history,
         );
 
+    testWidgets('shows an attach-screenshot button (#296)', (tester) async {
+      final client = MockClient((request) async => http.Response('{"ok":true}', 200));
+
+      await tester.pumpWidget(wrapConfiguredScreen(client));
+      await tester.pumpAndSettle();
+
+      final button = find.text('Envoyer un feedback');
+      await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Joindre une capture d'écran"), findsOneWidget);
+    });
+
     testWidgets('shows the button, and a successful send closes the dialog '
         'with a confirmation snackbar', (tester) async {
       Map<String, String>? sentFields;
