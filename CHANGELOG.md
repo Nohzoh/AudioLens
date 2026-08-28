@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Show a one-time "what's new" dialog after an app update** (issue #299)
+  - **Verified**: 2026-08-28 (PR #301)
+  - **What was done**: follow-up direct ask on the onboarding carousel (#298) — existing users who update should see what changed, once. Reuses `distribution/whatsnew/whatsnew-{fr-FR,en-US}` (already hand-written at ship time for the Play Store listing) bundled as Flutter assets, instead of a third source of release-note text. `SettingsService` tracks the last app version seen; `HomeScreen` (only reachable post-onboarding) checks once per session: no stored version → records silently (fresh install, onboarding already covered "how it works"); differs from current → shows the matching-locale whatsnew text in a dialog, then records it; already matches → no-op.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 393/394 (5 new; the 1 failure is the pre-existing unrelated `tts_chunking_test.dart` flake). Dart-only change plus a `pubspec.yaml` asset addition, no native Kotlin touched.
+
 - [x] 🐛 ⭐⭐⭐ - **Fix dead onboarding routing, rewrite onboarding as a carousel** (issue #298)
   - **Verified**: 2026-08-28 (PR #300)
   - **What was done**: direct ask — present new users a carousel explaining how to use the app and its two AI modes. Investigation found `AudioGuideService.isReady` hardcoded to `true` since the multi-provider refactor (Nano/Gemini API/Anthropic), silently making `main.dart`'s onboarding routing dead code — `OnboardingScreen` has been unreachable for everyone, new user or not, since that refactor landed. `isReady` now reflects real provider availability, restoring the route. `OnboardingScreen` rewritten from a single mandatory "enter your API key" gate into a 4-page carousel (intro, how it works, the two AI modes with a device-specific local-AI status line reusing #283's copy, then an API key page — optional when Nano is available, mandatory otherwise). `SettingsService.completeOnboarding`'s `apiKey` is now optional.
