@@ -132,6 +132,8 @@ class LocationContextResolver {
         lat: lat,
         lon: lon,
         radius: cfg.poiRadiusMeters,
+        timeoutSeconds: cfg.poiTimeoutSeconds,
+        maxAttempts: cfg.poiMaxAttempts,
       );
 
       if (poi?.wikidataId != null) {

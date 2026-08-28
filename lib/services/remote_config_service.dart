@@ -30,6 +30,24 @@ class RemoteConfig {
   // POI (point of interest) lookup — T74
   final int poiRadiusMeters;
 
+  /// #248: the free public Overpass instance enforces its own concurrent
+  /// request "slot" limit — live testing against `/api/status` confirmed
+  /// "Rate limit: 2", with queued requests taking 10+ seconds or
+  /// returning 504 under load, well past the previous flat 6s client
+  /// timeout. Requests paced a second or so apart were 100% reliable in
+  /// the same testing, so a longer timeout plus [poiMaxAttempts] (a
+  /// short-delay retry) recovers most of these transient failures
+  /// without needing a second, less-trustworthy mirror — several
+  /// alternatives were tried and rejected: some mirrors errored outright,
+  /// and one (overpass.osm.ch) responded fast but with a stale/empty
+  /// database, which is worse than a timeout since it would silently
+  /// report "no POI found" for a real one.
+  final int poiTimeoutSeconds;
+
+  /// Total attempts (including the first), not additional retries — 2
+  /// means "try once, retry once more on failure".
+  final int poiMaxAttempts;
+
   // TTS
   final double ttsSpeed;
   final int ttsSid;
@@ -66,6 +84,8 @@ class RemoteConfig {
     this.wikipediaMaxResults = 3,
     this.wikipediaExtractChars = 1500,
     this.poiRadiusMeters = 75,
+    this.poiTimeoutSeconds = 10,
+    this.poiMaxAttempts = 2,
     this.ttsSpeed = 1.2,
     this.ttsSid = 0,
     this.ttsNumThreads = 2,
@@ -95,6 +115,8 @@ class RemoteConfig {
       wikipediaMaxResults: json['wikipedia_max_results'] as int? ?? 3,
       wikipediaExtractChars: json['wikipedia_extract_chars'] as int? ?? 1500,
       poiRadiusMeters: json['poi_radius_meters'] as int? ?? 75,
+      poiTimeoutSeconds: json['poi_timeout_seconds'] as int? ?? 10,
+      poiMaxAttempts: json['poi_max_attempts'] as int? ?? 2,
       ttsSpeed: (json['tts_speed'] as num?)?.toDouble() ?? 1.2,
       ttsSid: json['tts_sid'] as int? ?? 0,
       ttsNumThreads: json['tts_num_threads'] as int? ?? 2,
@@ -124,6 +146,8 @@ class RemoteConfig {
     'wikipedia_max_results': wikipediaMaxResults,
     'wikipedia_extract_chars': wikipediaExtractChars,
     'poi_radius_meters': poiRadiusMeters,
+    'poi_timeout_seconds': poiTimeoutSeconds,
+    'poi_max_attempts': poiMaxAttempts,
     'tts_speed': ttsSpeed,
     'tts_sid': ttsSid,
     'tts_num_threads': ttsNumThreads,

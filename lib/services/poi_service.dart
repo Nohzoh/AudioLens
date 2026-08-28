@@ -58,6 +58,13 @@ class PoiInfo {
 class PoiService {
   static const _overpassUrl = 'https://overpass-api.de/api/interpreter';
 
+  /// #248: delay between retry attempts. Live testing against the public
+  /// instance's `/api/status` (self-reported "Rate limit: 2" concurrent
+  /// slots) showed requests spaced roughly a second or more apart were
+  /// 100% reliable, while a rapid burst reproduced 10+ second stalls and
+  /// outright 504s — this waits comfortably past that.
+  static const _retryDelay = Duration(seconds: 2);
+
   /// The tag keys queried, in priority order for [PoiInfo.category] when
   /// an element happens to carry more than one (rare, but Overpass's
   /// query OR's them together rather than picking one).
@@ -69,13 +76,28 @@ class PoiService {
   final http.Client? _client;
 
   /// Returns the closest named POI within [radius] meters of (lat, lon),
-  /// or null if none found / on any failure.
+  /// or null if none found / if every attempt failed.
+  ///
+  /// #248: the free public Overpass instance enforces its own concurrent
+  /// request "slot" limit and can queue or 504 under load — confirmed by
+  /// direct testing against the exact coordinates from a real user
+  /// report, which reproduced repeated 10-12s stalls and a 504 well past
+  /// the previous flat 6s timeout, alongside runs that succeeded in
+  /// under a second. [maxAttempts] (default from
+  /// [RemoteConfigService.poiMaxAttempts]) retries after [_retryDelay] on
+  /// any failed attempt — a non-200 response or a thrown exception (a
+  /// client-side timeout included) — but never on a successful response
+  /// that simply parsed to zero elements, since that's a legitimate "no
+  /// POI nearby" answer, not a failure to retry.
   Future<PoiInfo?> findNearby({
     required double lat,
     required double lon,
     int radius = 75,
+    int timeoutSeconds = 10,
+    int maxAttempts = 2,
   }) async {
-    final query = '[out:json][timeout:5];'
+    final serverTimeout = (timeoutSeconds - 2).clamp(1, timeoutSeconds);
+    final query = '[out:json][timeout:$serverTimeout];'
         '('
         'node(around:$radius,$lat,$lon)[leisure];'
         'node(around:$radius,$lat,$lon)[tourism];'
@@ -88,6 +110,44 @@ class PoiService {
         ');'
         'out center tags;';
 
+    List<dynamic>? elements;
+    for (var attempt = 1; attempt <= maxAttempts && elements == null; attempt++) {
+      elements = await _fetchElements(query, Duration(seconds: timeoutSeconds));
+      if (elements == null && attempt < maxAttempts) {
+        await Future.delayed(_retryDelay);
+      }
+    }
+    if (elements == null) return null;
+
+    PoiInfo? closest;
+    double closestDistance = double.infinity;
+
+    for (final el in elements) {
+      final map = el as Map<String, dynamic>;
+      final tags = map['tags'] as Map<String, dynamic>?;
+      final name = tags?['name'] as String?;
+      if (name == null || name.isEmpty) continue;
+
+      final elLat = (map['lat'] as num?)?.toDouble() ??
+          (map['center']?['lat'] as num?)?.toDouble();
+      final elLon = (map['lon'] as num?)?.toDouble() ??
+          (map['center']?['lon'] as num?)?.toDouble();
+      if (elLat == null || elLon == null) continue;
+
+      final distance = _distanceMeters(lat, lon, elLat, elLon);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closest = _toPoiInfo(name, tags!);
+      }
+    }
+
+    return closest;
+  }
+
+  /// One HTTP attempt. Returns the raw `elements` list on a 200 (possibly
+  /// empty — a real answer), or null on any failure (non-200, thrown
+  /// exception, timeout) for [findNearby] to decide whether to retry.
+  Future<List<dynamic>?> _fetchElements(String query, Duration timeout) async {
     try {
       final client = _client ?? http.Client();
       final response = await client
@@ -99,36 +159,12 @@ class PoiService {
             },
             body: {'data': query},
           )
-          .timeout(const Duration(seconds: 6));
+          .timeout(timeout);
 
       if (response.statusCode != 200) return null;
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final elements = data['elements'] as List? ?? [];
-
-      PoiInfo? closest;
-      double closestDistance = double.infinity;
-
-      for (final el in elements) {
-        final map = el as Map<String, dynamic>;
-        final tags = map['tags'] as Map<String, dynamic>?;
-        final name = tags?['name'] as String?;
-        if (name == null || name.isEmpty) continue;
-
-        final elLat = (map['lat'] as num?)?.toDouble() ??
-            (map['center']?['lat'] as num?)?.toDouble();
-        final elLon = (map['lon'] as num?)?.toDouble() ??
-            (map['center']?['lon'] as num?)?.toDouble();
-        if (elLat == null || elLon == null) continue;
-
-        final distance = _distanceMeters(lat, lon, elLat, elLon);
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closest = _toPoiInfo(name, tags!);
-        }
-      }
-
-      return closest;
+      return data['elements'] as List? ?? [];
     } catch (_) {
       return null;
     }
