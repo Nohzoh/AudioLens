@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../l10n/app_localizations.dart';
@@ -79,9 +80,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _error = null;
     });
     try {
-      await context
-          .read<SettingsService>()
-          .completeOnboarding(apiKey: key.isEmpty ? null : key);
+      final settings = context.read<SettingsService>();
+      await settings.completeOnboarding(apiKey: key.isEmpty ? null : key);
+      // #299 follow-up: a fresh install must leave onboarding with
+      // lastSeenVersion already stamped to the version it installed
+      // with — otherwise HomeScreen's whats-new check can't tell a
+      // brand-new install (nothing "new" to report — onboarding just
+      // covered it) apart from an *existing* install upgrading from a
+      // version that predates this feature entirely (lastSeenVersion
+      // null for a completely different reason: it was never recorded,
+      // not because there's nothing to show). Recording it here is what
+      // lets HomeScreen treat every other null case as "show it".
+      final info = await PackageInfo.fromPlatform();
+      await settings.recordSeenVersion(info.version);
     } on SecureStorageUnavailableException {
       if (mounted) {
         setState(() {

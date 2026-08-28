@@ -150,6 +150,11 @@ void main() {
         () => history.saveAudioPath(entry!.id!, audioSourcePath),
       );
 
+      // #303: these tests don't exercise the whats-new dialog — pre-stamp
+      // lastSeenVersion to the mocked PackageInfo version (see setUp) so
+      // it doesn't pop up over the play/pause tile these tests tap.
+      await settings.recordSeenVersion('9.9.9');
+
       await tester.runAsync(() => tester.pumpWidget(wrapWithProviders(
             const HomeScreen(),
             settings: settings,
@@ -219,13 +224,32 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('not shown on a brand-new install — records the current '
-        'version silently instead', (tester) async {
-      expect(settings.lastSeenVersion, isNull);
+    // #303: a bug caught live the first time this shipped — lastSeenVersion
+    // being null does NOT by itself mean "fresh install, nothing to show".
+    // A fresh install has it stamped by OnboardingScreen on completion
+    // (simulated here via recordSeenVersion, since this test bypasses
+    // onboarding and goes straight to HomeScreen); an *existing* install
+    // updating in from a pre-#299 version also has it null, but for the
+    // opposite reason (never recorded — the feature didn't exist yet), and
+    // should see the dialog.
+    testWidgets('not shown on a fresh install (lastSeenVersion already '
+        'stamped to the current version, as OnboardingScreen now does)',
+        (tester) async {
+      await settings.recordSeenVersion('9.9.9');
 
       await pumpHome(tester);
 
       expect(find.text('Nouveautés'), findsNothing);
+    });
+
+    testWidgets('shown on a pre-#299 install upgrading in — lastSeenVersion '
+        'null because it was never recorded, not because there\'s nothing '
+        'to show', (tester) async {
+      expect(settings.lastSeenVersion, isNull);
+
+      await pumpHome(tester);
+
+      expect(find.text('Nouveautés'), findsOneWidget);
       expect(settings.lastSeenVersion, '9.9.9');
     });
 
