@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐ - **Show a one-time "what's new" dialog after an app update** (issue #299)
+  - **Verified**: 2026-08-28 (PR #301)
+  - **What was done**: follow-up direct ask on the onboarding carousel (#298) — existing users who update should see what changed, once. Reuses `distribution/whatsnew/whatsnew-{fr-FR,en-US}` (already hand-written at ship time for the Play Store listing) bundled as Flutter assets, instead of a third source of release-note text. `SettingsService` tracks the last app version seen; `HomeScreen` (only reachable post-onboarding) checks once per session: no stored version → records silently (fresh install, onboarding already covered "how it works"); differs from current → shows the matching-locale whatsnew text in a dialog, then records it; already matches → no-op.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 393/394 (5 new; the 1 failure is the pre-existing unrelated `tts_chunking_test.dart` flake). Dart-only change plus a `pubspec.yaml` asset addition, no native Kotlin touched.
+
 - [x] 🌱 ⭐ - **Allow attaching a screenshot to feedback, chunk long messages** (issue #296)
   - **Verified**: 2026-08-28 (PR #297)
   - **What was done**: follow-up direct ask on #294 — let users attach a screenshot to a feedback report. `FeedbackService.send()` accepts an optional image, sent via Telegram's `sendPhoto` (multipart) with the message as caption instead of a plain `sendMessage`; reuses `image_picker`, already a dependency. Telegram caps a photo caption at 1024 chars (vs. 4096 for a plain message), so a message is now split at word boundaries into chunks instead of truncated: the first goes out as the caption (or the whole message via `sendMessage` without an image), the rest as sequential follow-up messages. A single word longer than the budget is hard-cut as a last resort. The version/platform prefix stays intact on chunk one rather than passing through the word-splitter.
