@@ -18,6 +18,14 @@
   "onboardingApiKeyInstructions": "Obtenez une clé gratuite sur aistudio.google.com\nRubrique \"API Keys\"",
   "onboardingLetsGo": "C'est parti !",
   "onboardingKeyStoredLocally": "🔒 Clé stockée uniquement sur votre téléphone",
+  "onboardingNext": "Suivant",
+  "onboardingHowItWorksTitle": "Comment ça marche ?",
+  "onboardingStep1": "Prenez en photo un lieu ou un monument",
+  "onboardingStep2": "L'IA identifie ce que vous regardez",
+  "onboardingStep3": "Écoutez instantanément un guide audio",
+  "onboardingAiModesTitle": "Deux modes d'IA",
+  "onboardingNanoAvailableOnDevice": "✅ Disponible sur votre appareil — activée par défaut",
+  "onboardingApiKeyOptionalHint": "Optionnel — votre appareil peut déjà fonctionner sans clé. Vous pourrez en ajouter une plus tard dans Réglages.",
 
   "logsTitle": "Logs ({count})",
   "@logsTitle": {
