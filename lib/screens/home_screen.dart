@@ -119,20 +119,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// see pubspec.yaml) rather than a separate in-app content source:
   /// those are already hand-written at ship time (the `ship` skill) for
   /// the Play Store listing, capped at 500 chars, user-facing tone.
+  ///
+  /// `lastSeenVersion == null` is NOT treated as "fresh install, nothing
+  /// to show" — a bug caught live (#303) the first time this shipped: a
+  /// pre-#299 install updating in has `lastSeenVersion` null too, for a
+  /// completely different reason (never recorded, since the feature
+  /// didn't exist yet), and that user *should* see it. What actually
+  /// distinguishes a genuinely fresh install is that `OnboardingScreen`
+  /// stamps `lastSeenVersion` to the version it installed with right as
+  /// onboarding completes — so by the time any fresh install reaches
+  /// HomeScreen, `lastSeenVersion` already equals `currentVersion` and
+  /// this whole method is a no-op for it. Null here can therefore only
+  /// mean "this device predates the feature", which warrants showing it.
   Future<void> _checkWhatsNew() async {
     final info = await PackageInfo.fromPlatform();
     if (!mounted) return;
     final settings = context.read<SettingsService>();
     final currentVersion = info.version;
-    final lastSeen = settings.lastSeenVersion;
-
-    if (lastSeen == null) {
-      // Nothing "changed" relative to a version this device never had —
-      // onboarding just covered how the app works.
-      await settings.recordSeenVersion(currentVersion);
-      return;
-    }
-    if (lastSeen == currentVersion) return;
+    if (settings.lastSeenVersion == currentVersion) return;
 
     final locale = Localizations.localeOf(context).languageCode;
     final assetPath = locale == 'fr'

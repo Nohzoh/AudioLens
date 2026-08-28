@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audiolens/screens/onboarding_screen.dart';
@@ -38,6 +39,15 @@ void main() {
     tmpDir = await Directory.systemTemp.createTemp('onboarding_screen_test');
     SharedPreferences.setMockInitialValues({});
     setUpSecureStorageMock();
+    // #303: _finish() now stamps lastSeenVersion via PackageInfo.fromPlatform()
+    // on completion.
+    PackageInfo.setMockInitialValues(
+      appName: 'AudioLens',
+      packageName: 'io.nohzoh.audiolens',
+      version: '9.9.9',
+      buildNumber: '1',
+      buildSignature: '',
+    );
     settings = SettingsService();
     await settings.init();
     history = HistoryService();
@@ -159,12 +169,21 @@ void main() {
 
     await tester.runAsync(() async {
       await tester.tap(find.text('C\'est parti !'));
+      // _finish() chains two real-async calls (secure storage,
+      // PackageInfo.fromPlatform()) — give both a chance to actually
+      // complete before asserting, not just the first.
+      await Future<void>.delayed(Duration.zero);
     });
     await tester.pump();
     await tester.pump();
 
     expect(settings.isOnboardingComplete, isTrue);
     expect(settings.geminiApiKey, isEmpty);
+    // #303: onboarding itself must stamp lastSeenVersion on completion —
+    // otherwise HomeScreen's whats-new check can't tell "fresh install"
+    // apart from "pre-#299 install upgrading in", both of which see
+    // lastSeenVersion as null before this fix.
+    expect(settings.lastSeenVersion, '9.9.9');
   });
 
   testWidgets('entering a key and finishing stores it and completes '
@@ -183,11 +202,13 @@ void main() {
     await tester.enterText(find.byType(TextField), 'AIza-test-key');
     await tester.runAsync(() async {
       await tester.tap(find.text('C\'est parti !'));
+      await Future<void>.delayed(Duration.zero);
     });
     await tester.pump();
     await tester.pump();
 
     expect(settings.isOnboardingComplete, isTrue);
     expect(settings.geminiApiKey, 'AIza-test-key');
+    expect(settings.lastSeenVersion, '9.9.9');
   });
 }
