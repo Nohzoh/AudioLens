@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'logs_screen.dart';
@@ -7,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../constants/output_languages.dart';
 import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
+import '../services/feedback_service.dart';
 import '../services/gemini_nano_service.dart' show NanoDeviceStatus;
 import '../services/remote_config_service.dart';
 import '../services/secure_key_storage.dart';
@@ -20,13 +22,22 @@ const _ttsPreviewSample =
     'Remarquez le rythme et l\'intonation sur cette phrase.';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  // #294: overridable for tests — a plain `flutter test` run has no
+  // --dart-define TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID (those only exist
+  // in a CI build), so FeedbackService() alone would always be
+  // unconfigured under test.
+  const SettingsScreen({super.key, FeedbackService? feedbackService})
+      : _feedbackService = feedbackService;
+
+  final FeedbackService? _feedbackService;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  late final FeedbackService _feedback =
+      widget._feedbackService ?? FeedbackService();
   final _apiKeyController = TextEditingController();
   final _apiKeyFocusNode = FocusNode();
   // #278: the "Gemini API" provider card used to just render disabled
@@ -87,6 +98,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case null:
         return null;
     }
+  }
+
+  Future<void> _showFeedbackDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _FeedbackDialog(
+        feedback: _feedback,
+        appVersion: _appVersion,
+      ),
+    );
   }
 
   Future<void> _focusApiKeySection() async {
@@ -459,6 +480,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               mode: LaunchMode.externalApplication,
             ),
           ),
+          // #294: only shown when this build actually has the Telegram
+          // secrets baked in (real CI builds only) — a local/dev build
+          // has nothing to send to, so the button would just fail.
+          if (_feedback.isConfigured) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.feedback_outlined, size: 16),
+              label: Text(l10n.settingsSendFeedback),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 44),
+              ),
+              onPressed: _showFeedbackDialog,
+            ),
+          ],
           // Only shown when Nano is actually usable on this device — no
           // point offering a tool to iterate against inference that can't
           // run here at all.
@@ -818,6 +853,96 @@ class _ConfigRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// #294
+class _FeedbackDialog extends StatefulWidget {
+  const _FeedbackDialog({required this.feedback, required this.appVersion});
+
+  final FeedbackService feedback;
+  final String? appVersion;
+
+  @override
+  State<_FeedbackDialog> createState() => _FeedbackDialogState();
+}
+
+class _FeedbackDialogState extends State<_FeedbackDialog> {
+  final _controller = TextEditingController();
+  bool _sending = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _sending) return;
+
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+
+    try {
+      await widget.feedback.send(
+        text,
+        appVersion: widget.appVersion ?? 'unknown',
+        platform: defaultTargetPlatform.name,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.feedbackDialogSuccess)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _sending = false;
+        _error = AppLocalizations.of(context)!.feedbackDialogError;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return AlertDialog(
+      title: Text(l10n.feedbackDialogTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _controller,
+            maxLines: 5,
+            minLines: 3,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: l10n.feedbackDialogHint,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _sending ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.feedbackDialogCancel),
+        ),
+        FilledButton(
+          onPressed: _sending ? null : _send,
+          child: Text(_sending ? l10n.feedbackDialogSending : l10n.feedbackDialogSend),
+        ),
+      ],
     );
   }
 }

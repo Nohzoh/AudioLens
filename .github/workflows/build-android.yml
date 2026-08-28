@@ -196,6 +196,33 @@ jobs:
       - name: Get dependencies
         run: flutter pub get 2>&1 | tee /tmp/pub_get.txt && cat /tmp/pub_get.txt | tail -30
 
+      # #294: XOR-obfuscates the Telegram secrets (hex-encoded) before
+      # they're embedded via --dart-define below, instead of passing the
+      # raw values — defeats a naive `strings`/regex scan of the compiled
+      # APK for a recognizable Telegram-token-shaped string (see
+      # feedback_service.dart's _deobfuscate, which undoes this exact
+      # transform at runtime; the key must match exactly on both sides).
+      # Computed once here (not duplicated in both build steps below) and
+      # exported via $GITHUB_ENV so later steps in this job can read it.
+      - name: Obfuscate Telegram secrets for embedding
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 - <<'PYEOF' >> "$GITHUB_ENV"
+          import os
+
+          KEY = "AudioLensObfuscationKeyDoNotUseElsewhere".encode()
+
+          def obfuscate(value: str) -> str:
+              data = value.encode()
+              xored = bytes(b ^ KEY[i % len(KEY)] for i, b in enumerate(data))
+              return xored.hex()
+
+          print(f"TELEGRAM_BOT_TOKEN_OBF={obfuscate(os.environ.get('TELEGRAM_BOT_TOKEN', ''))}")
+          print(f"TELEGRAM_CHAT_ID_OBF={obfuscate(os.environ.get('TELEGRAM_CHAT_ID', ''))}")
+          PYEOF
+
       # The APK is only ever consumed for direct-sideload testing/manual
       # QA (e.g. via adb) or as a release-build sanity check (aapt can
       # inspect an APK, not an AAB) â€” never for the actual Play Store
@@ -224,6 +251,8 @@ jobs:
             --target-platform android-arm,android-arm64 \
             --build-number="${{ github.run_number }}" \
             --dart-define=BUILD_DATE="$BUILD_DATE" \
+            --dart-define=TELEGRAM_BOT_TOKEN_OBF="$TELEGRAM_BOT_TOKEN_OBF" \
+            --dart-define=TELEGRAM_CHAT_ID_OBF="$TELEGRAM_CHAT_ID_OBF" \
             2>&1 | tee build_output.txt
           exit ${PIPESTATUS[0]}
 
@@ -289,6 +318,8 @@ jobs:
           flutter build appbundle --release \
             --build-number="${{ github.run_number }}" \
             --dart-define=BUILD_DATE="$BUILD_DATE" \
+            --dart-define=TELEGRAM_BOT_TOKEN_OBF="$TELEGRAM_BOT_TOKEN_OBF" \
+            --dart-define=TELEGRAM_CHAT_ID_OBF="$TELEGRAM_CHAT_ID_OBF" \
             2>&1 | tee build_output_aab.txt
           exit ${PIPESTATUS[0]}
 

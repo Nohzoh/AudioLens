@@ -5,8 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:audiolens/screens/settings_screen.dart';
 import 'package:audiolens/services/audio_guide_service.dart';
+import 'package:audiolens/services/feedback_service.dart';
 import 'package:audiolens/services/history_service.dart';
 import 'package:audiolens/services/settings_service.dart';
 import '../support/service_fakes.dart';
@@ -131,6 +134,88 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Modèle IA non téléchargé'), findsOneWidget);
+  });
+
+  // #294: the feedback button only exists on a build that actually has
+  // TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID baked in (a real CI build) —
+  // wrapScreen()'s plain FeedbackService() is always unconfigured here,
+  // since a `flutter test` run never passes --dart-define.
+  testWidgets('hides the feedback button when FeedbackService is not configured',
+      (tester) async {
+    await tester.pumpWidget(wrapScreen());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Envoyer un feedback'), findsNothing);
+  });
+
+  group('feedback dialog (#294)', () {
+    Widget wrapConfiguredScreen(http.Client client) => wrapWithProviders(
+          SettingsScreen(
+            feedbackService:
+                FeedbackService(botToken: '123:ABC', chatId: '-100999', client: client),
+          ),
+          settings: settings,
+          guide: guide,
+          history: history,
+        );
+
+    testWidgets('shows the button, and a successful send closes the dialog '
+        'with a confirmation snackbar', (tester) async {
+      Map<String, String>? sentFields;
+      final client = MockClient((request) async {
+        sentFields = request.bodyFields;
+        return http.Response('{"ok":true}', 200);
+      });
+
+      await tester.pumpWidget(wrapConfiguredScreen(client));
+      await tester.pumpAndSettle();
+
+      final button = find.text('Envoyer un feedback');
+      await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
+      expect(button, findsOneWidget);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Ça plante au lancement');
+      await tester.tap(find.widgetWithText(FilledButton, 'Envoyer'));
+      // Bounded pumps, not pumpAndSettle — the SnackBar has its own timed
+      // dismissal, and settling would run straight past its display
+      // window (matches this suite's established caution elsewhere about
+      // pumpAndSettle racing timed/async UI).
+      await tester.runAsync(() async {
+        await Future<void>.delayed(Duration.zero);
+      });
+      await tester.pump();
+      await tester.pump();
+
+      expect(sentFields?['text'], contains('Ça plante au lancement'));
+      expect(find.text('Feedback envoyé, merci !'), findsOneWidget);
+    });
+
+    testWidgets('shows an inline error and keeps the dialog open on failure',
+        (tester) async {
+      final client = MockClient((request) async => http.Response('error', 500));
+
+      await tester.pumpWidget(wrapConfiguredScreen(client));
+      await tester.pumpAndSettle();
+
+      final button = find.text('Envoyer un feedback');
+      await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Test');
+      await tester.tap(find.widgetWithText(FilledButton, 'Envoyer'));
+      await tester.runAsync(() async {
+        await Future<void>.delayed(Duration.zero);
+      });
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text("L'envoi a échoué. Réessayez plus tard."), findsOneWidget);
+      // Dialog stayed open — the text field is still there to retry from.
+      expect(find.byType(TextField), findsOneWidget);
+    });
   });
 
   testWidgets('entering an API key and tapping Save shows the saved snackbar',
