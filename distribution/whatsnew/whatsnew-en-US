@@ -1,1 +1,1 @@
-New: a welcome screen now explains how to use the app to new users, and updates show what changed. You can also send feedback directly from Settings, with a screenshot attached if you want.
+Fixes: the "What's new" message shown after an update wasn't appearing for some users — fixed.
