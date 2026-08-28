@@ -80,6 +80,31 @@ void main() {
     expect(reloaded.geminiApiKey, 'AIza-test-key');
   });
 
+  // #299
+  test('lastSeenVersion is null by default and persists across a reload '
+      'once recorded', () async {
+    final settings = SettingsService();
+    await settings.init();
+    expect(settings.lastSeenVersion, isNull);
+
+    await settings.recordSeenVersion('1.2.3');
+    expect(settings.lastSeenVersion, '1.2.3');
+
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.lastSeenVersion, '1.2.3');
+  });
+
+  test('resetOnboarding clears lastSeenVersion too', () async {
+    final settings = SettingsService();
+    await settings.init();
+    await settings.recordSeenVersion('1.2.3');
+
+    await settings.resetOnboarding();
+
+    expect(settings.lastSeenVersion, isNull);
+  });
+
   test('setShowKofiButton persists across a reload', () async {
     final settings = SettingsService();
     await settings.init();

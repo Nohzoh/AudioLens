@@ -17,6 +17,7 @@ class SettingsService extends ChangeNotifier {
   String _outputLanguage = defaultOutputLanguage;
   bool _outputLanguageFollowsApp = false;
   String? _appLocale;
+  String? _lastSeenVersion;
 
   bool get isOnboardingComplete => _isOnboardingComplete;
   String get geminiApiKey => _geminiApiKey;
@@ -66,6 +67,15 @@ class SettingsService extends ChangeNotifier {
   /// it, when [autoPurgeEnabled] is true.
   int get autoPurgeDays => _autoPurgeDays;
 
+  /// #299 — the app version (`pubspec.yaml`'s X.Y.Z, not the build
+  /// number) this device last showed a "what's new" dialog for, or
+  /// recorded as already-seen at the end of onboarding. Null only for an
+  /// install that's never gotten past `init()` once — HomeScreen (the
+  /// only place this is read) is unreachable before onboarding
+  /// completes, so in practice this is always set by the time anything
+  /// checks it.
+  String? get lastSeenVersion => _lastSeenVersion;
+
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _isOnboardingComplete = _prefs.getBool('onboarding_complete') ?? false;
@@ -79,6 +89,7 @@ class SettingsService extends ChangeNotifier {
     _outputLanguage = _prefs.getString('output_language') ?? defaultOutputLanguage;
     _outputLanguageFollowsApp = _prefs.getBool('output_language_follows_app') ?? false;
     _appLocale = _prefs.getString('app_locale');
+    _lastSeenVersion = _prefs.getString('last_seen_version');
     // Re-resolve in case the app's language changed (system locale, or a
     // prior in-app override) since the last launch while this was on.
     if (_outputLanguageFollowsApp) {
@@ -121,7 +132,21 @@ class SettingsService extends ChangeNotifier {
     _outputLanguage = defaultOutputLanguage;
     _outputLanguageFollowsApp = false;
     _appLocale = null;
+    _lastSeenVersion = null;
     notifyListeners();
+  }
+
+  /// #299 — called once HomeScreen has either shown the "what's new"
+  /// dialog for [version] or decided not to (a brand-new install that
+  /// just finished onboarding shouldn't also see what's-new for the
+  /// version it installed with). Not tied to [completeOnboarding]
+  /// itself: that runs before `PackageInfo` is necessarily available to
+  /// the onboarding flow, and mixing the two concerns would make
+  /// onboarding responsible for what's-new bookkeeping it has no other
+  /// reason to know about.
+  Future<void> recordSeenVersion(String version) async {
+    _lastSeenVersion = version;
+    await _prefs.setString('last_seen_version', version);
   }
 
   Future<void> setShowKofiButton(bool value) async {

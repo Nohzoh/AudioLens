@@ -1,6 +1,8 @@
 {
   "@@locale": "fr",
   "commonBack": "Retour",
+  "commonOk": "OK",
+  "whatsNewTitle": "Nouveautés",
   "kofiButtonTooltip": "Soutenir AudioLens",
 
   "mapPickerTitle": "Indiquer le lieu sur la carte",

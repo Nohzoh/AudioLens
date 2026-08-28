@@ -50,3 +50,10 @@ flutter:
   generate: true
   assets:
     - assets/images/
+    # #299: bundled as app assets (not just Play Console metadata) so the
+    # in-app "what's new" dialog can show the same text without a third
+    # copy of release notes to maintain — see HomeScreen's whats-new
+    # check and the `ship` skill, which already writes these every
+    # release.
+    - distribution/whatsnew/whatsnew-fr-FR
+    - distribution/whatsnew/whatsnew-en-US

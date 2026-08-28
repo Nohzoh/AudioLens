@@ -5,6 +5,7 @@ import '../services/exif_location_service.dart';
 import '../l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
@@ -102,6 +103,66 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted) setState(() => _updateReady = true);
     };
     _appUpdateService.checkAndStartUpdate();
+    // #299: only reachable post-onboarding (OnboardingScreen owns first
+    // launch), so this never fires for a brand-new install's very first
+    // session — exactly the "don't show what's-new right after
+    // onboarding already explained the app" behavior wanted. Deferred to
+    // a post-frame callback since showing a dialog needs a fully built
+    // context, not one still inside initState.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkWhatsNew());
+  }
+
+  /// #299 — shows what changed since the last version this device saw,
+  /// once, never again until the next version bump. Reuses
+  /// `distribution/whatsnew/whatsnew-{fr-FR,en-US}` (bundled as assets —
+  /// see pubspec.yaml) rather than a separate in-app content source:
+  /// those are already hand-written at ship time (the `ship` skill) for
+  /// the Play Store listing, capped at 500 chars, user-facing tone.
+  Future<void> _checkWhatsNew() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    final settings = context.read<SettingsService>();
+    final currentVersion = info.version;
+    final lastSeen = settings.lastSeenVersion;
+
+    if (lastSeen == null) {
+      // Nothing "changed" relative to a version this device never had —
+      // onboarding just covered how the app works.
+      await settings.recordSeenVersion(currentVersion);
+      return;
+    }
+    if (lastSeen == currentVersion) return;
+
+    final locale = Localizations.localeOf(context).languageCode;
+    final assetPath = locale == 'fr'
+        ? 'distribution/whatsnew/whatsnew-fr-FR'
+        : 'distribution/whatsnew/whatsnew-en-US';
+    String? text;
+    try {
+      text = (await rootBundle.loadString(assetPath)).trim();
+    } catch (e) {
+      AppLogger.error('Failed to load whats-new asset: $e');
+    }
+
+    // Recorded regardless of whether the text loaded — a missing/corrupt
+    // asset shouldn't leave the device re-checking (and failing) forever.
+    await settings.recordSeenVersion(currentVersion);
+    if (!mounted || text == null || text.isEmpty) return;
+
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.whatsNewTitle),
+        content: SingleChildScrollView(child: Text(text!)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.commonOk),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

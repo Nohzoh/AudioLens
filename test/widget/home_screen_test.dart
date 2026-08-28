@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audiolens/screens/home_screen.dart';
@@ -61,6 +62,16 @@ void main() {
     playWavCompleter = Completer<dynamic>();
     SharedPreferences.setMockInitialValues({});
     setUpSecureStorageMock();
+    // #299: HomeScreen's whats-new check calls PackageInfo.fromPlatform()
+    // in a post-frame callback — needs a value or it throws
+    // MissingPluginException even for tests that don't care about it.
+    PackageInfo.setMockInitialValues(
+      appName: 'AudioLens',
+      packageName: 'io.nohzoh.audiolens',
+      version: '9.9.9',
+      buildNumber: '1',
+      buildSignature: '',
+    );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_pathProviderChannel, (call) async {
       if (call.method == 'getApplicationDocumentsDirectory') return tmpDir.path;
@@ -184,6 +195,62 @@ void main() {
       await tester.pump();
 
       expect(find.text('Prendre une photo'), findsOneWidget);
+    });
+  });
+
+  // #299
+  group('"what\'s new" dialog', () {
+    final whatsNewText = File('distribution/whatsnew/whatsnew-fr-FR').readAsStringSync().trim();
+
+    Future<void> pumpHome(WidgetTester tester) async {
+      await tester.runAsync(() => tester.pumpWidget(wrapWithProviders(
+            const HomeScreen(),
+            settings: settings,
+            guide: guide,
+            history: history,
+          )));
+      await tester.pump();
+      // Bounded pumps, not pumpAndSettle — matches this suite's established
+      // caution about pumpAndSettle racing an async post-frame callback
+      // (PackageInfo.fromPlatform + rootBundle.loadString here) that a full
+      // settle can run straight past.
+      await tester.runAsync(() async => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      await tester.pump();
+    }
+
+    testWidgets('not shown on a brand-new install — records the current '
+        'version silently instead', (tester) async {
+      expect(settings.lastSeenVersion, isNull);
+
+      await pumpHome(tester);
+
+      expect(find.text('Nouveautés'), findsNothing);
+      expect(settings.lastSeenVersion, '9.9.9');
+    });
+
+    testWidgets('shown once when the stored last-seen version differs from '
+        'the current one, then records the current version', (tester) async {
+      await settings.recordSeenVersion('0.0.1');
+
+      await pumpHome(tester);
+
+      expect(find.text('Nouveautés'), findsOneWidget);
+      expect(find.text(whatsNewText), findsOneWidget);
+      expect(settings.lastSeenVersion, '9.9.9');
+
+      await tester.tap(find.text('OK'));
+      await tester.pump();
+      expect(find.text('Nouveautés'), findsNothing);
+    });
+
+    testWidgets('not shown again once the stored version already matches '
+        'the current one', (tester) async {
+      await settings.recordSeenVersion('9.9.9');
+
+      await pumpHome(tester);
+
+      expect(find.text('Nouveautés'), findsNothing);
     });
   });
 }
