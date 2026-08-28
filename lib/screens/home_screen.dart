@@ -19,6 +19,7 @@ import '../services/quick_capture_service.dart';
 import '../services/settings_service.dart';
 import '../services/share_intent_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_sanitizer.dart';
 import '../widgets/kofi_button.dart';
 import 'history_screen.dart';
 import 'map_picker_screen.dart';
@@ -141,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       text = (await rootBundle.loadString(assetPath)).trim();
     } catch (e) {
-      AppLogger.error('Failed to load whats-new asset: $e');
+      AppLogger.error('Failed to load whats-new asset: ${sanitizeError(e.toString())}');
     }
 
     // Recorded regardless of whether the text loaded — a missing/corrupt
