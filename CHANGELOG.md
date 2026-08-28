@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Fix whats-new dialog never showing on real updates** (issue #303)
+  - **Verified**: 2026-08-29 (PR #304)
+  - **What was done**: live bug caught right after v0.11.0 shipped — updating users saw no "what's new" dialog. `HomeScreen._checkWhatsNew()` (#299) treated a `null` `lastSeenVersion` as unambiguously "fresh install, nothing to show", but that value is also `null` for any existing install that predates the whats-new feature entirely, since it was never recorded by an earlier app version — real upgraders fell into that branch and the dialog was silently suppressed. `OnboardingScreen._finish()` now stamps `lastSeenVersion` to the current version on completing onboarding, so a genuinely fresh install always has it set by the time it reaches `HomeScreen`; the check there simplifies to a single comparison against the current version, so any other value (now unambiguously "pre-existing install") correctly shows the dialog.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 395/395 (including a fix for two unrelated `#127` play/pause tests that started failing once the corrected logic began showing the dialog whenever `lastSeenVersion` is null). Dart-only change, no native Kotlin touched.
+
 - [x] 🌱 ⭐ - **Show a one-time "what's new" dialog after an app update** (issue #299)
   - **Verified**: 2026-08-28 (PR #301)
   - **What was done**: follow-up direct ask on the onboarding carousel (#298) — existing users who update should see what changed, once. Reuses `distribution/whatsnew/whatsnew-{fr-FR,en-US}` (already hand-written at ship time for the Play Store listing) bundled as Flutter assets, instead of a third source of release-note text. `SettingsService` tracks the last app version seen; `HomeScreen` (only reachable post-onboarding) checks once per session: no stored version → records silently (fresh install, onboarding already covered "how it works"); differs from current → shows the matching-locale whatsnew text in a dialog, then records it; already matches → no-op.
