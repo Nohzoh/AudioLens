@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐⭐⭐ - **Fix dead onboarding routing, rewrite onboarding as a carousel** (issue #298)
+  - **Verified**: 2026-08-28 (PR #300)
+  - **What was done**: direct ask — present new users a carousel explaining how to use the app and its two AI modes. Investigation found `AudioGuideService.isReady` hardcoded to `true` since the multi-provider refactor (Nano/Gemini API/Anthropic), silently making `main.dart`'s onboarding routing dead code — `OnboardingScreen` has been unreachable for everyone, new user or not, since that refactor landed. `isReady` now reflects real provider availability, restoring the route. `OnboardingScreen` rewritten from a single mandatory "enter your API key" gate into a 4-page carousel (intro, how it works, the two AI modes with a device-specific local-AI status line reusing #283's copy, then an API key page — optional when Nano is available, mandatory otherwise). `SettingsService.completeOnboarding`'s `apiKey` is now optional.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 389/389 (11 new). Real local build succeeds. Verified live on-device: cleared app data, confirmed the carousel now actually renders (proving the fix — it didn't before), swiped through all 4 pages, confirmed the device-specific status line and the mandatory-key gate both behave correctly.
+
 - [x] 🌱 ⭐ - **Allow attaching a screenshot to feedback, chunk long messages** (issue #296)
   - **Verified**: 2026-08-28 (PR #297)
   - **What was done**: follow-up direct ask on #294 — let users attach a screenshot to a feedback report. `FeedbackService.send()` accepts an optional image, sent via Telegram's `sendPhoto` (multipart) with the message as caption instead of a plain `sendMessage`; reuses `image_picker`, already a dependency. Telegram caps a photo caption at 1024 chars (vs. 4096 for a plain message), so a message is now split at word boundaries into chunks instead of truncated: the first goes out as the caption (or the whole message via `sendMessage` without an image), the rest as sequential follow-up messages. A single word longer than the budget is hard-cut as a last resort. The version/platform prefix stays intact on chunk one rather than passing through the word-splitter.

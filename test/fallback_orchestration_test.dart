@@ -10,6 +10,7 @@ import 'package:audiolens/services/gemini_tts_service.dart';
 import 'package:audiolens/services/native_tts_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
 import 'support/fake_dio_adapter.dart';
+import 'support/service_fakes.dart' show setUpSecureStorageMock, tearDownSecureStorageMock;
 
 class _FakeNativeTts extends NativeTtsService {
   bool speakCalled = false;
@@ -317,5 +318,38 @@ void main() {
     expect(native.speakCalled, isTrue);
     expect(geminiTts.speakCalled, isFalse);
     expect(service.lastTtsModel, 'native-tts');
+  });
+
+  // #298: isReady used to be hardcoded `true`, which silently made
+  // main.dart's onboarding routing dead code (the condition
+  // `guide.isReady || settings.isOnboardingComplete` was always true) —
+  // it now reflects whether an AI provider is actually usable.
+  group('isReady (#298)', () {
+    setUp(setUpSecureStorageMock);
+    tearDown(tearDownSecureStorageMock);
+
+    test('false when neither Nano nor a Gemini API key is available', () async {
+      final service = AudioGuideService(nanoService: _FakeNano(available: false));
+      await service.init();
+
+      expect(service.isReady, isFalse);
+    });
+
+    test('true when Nano is available, even with no API key', () async {
+      final service = AudioGuideService(nanoService: _FakeNano(available: true));
+      await service.init();
+
+      expect(service.isReady, isTrue);
+    });
+
+    test('true when a Gemini API key is configured, even without Nano', () async {
+      final service = AudioGuideService(nanoService: _FakeNano(available: false));
+      await service.init();
+      expect(service.isReady, isFalse);
+
+      await service.setGeminiApiKey('AIza-test-key');
+
+      expect(service.isReady, isTrue);
+    });
   });
 }

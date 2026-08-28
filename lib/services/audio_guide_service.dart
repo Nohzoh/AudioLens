@@ -163,7 +163,16 @@ class AudioGuideService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String get providerName => _providerManager.providerName;
   File? get lastImageFile => _lastImageFile;
-  bool get isReady => true;
+  /// #298: used by main.dart's routing to decide Onboarding vs Home —
+  /// was hardcoded `true` since the multi-provider refactor (Nano/Gemini
+  /// API/Anthropic) introduced `_providerManager` and nothing recomputed
+  /// this against it, which silently made `OnboardingScreen`
+  /// unreachable for everyone (the routing condition
+  /// `guide.isReady || settings.isOnboardingComplete` was always true).
+  /// Now reflects whether an AI provider is actually usable: local
+  /// (Nano, if the device supports it) or a configured cloud API key —
+  /// either makes the app functional without onboarding.
+  bool get isReady => _providerManager.nanoAvailable || (_providerManager.geminiApiKey?.isNotEmpty ?? false);
   LocationPermissionStatus get lastLocationStatus => _lastLocationStatus;
 
   PipelineProgress get progress => PipelineProgress(

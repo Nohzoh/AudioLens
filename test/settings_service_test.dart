@@ -80,6 +80,19 @@ void main() {
     expect(reloaded.geminiApiKey, 'AIza-test-key');
   });
 
+  // #298: apiKey is optional — a device where local AI (Nano) already
+  // works can finish onboarding without one.
+  test('completeOnboarding without an apiKey still marks onboarding '
+      'complete, leaving geminiApiKey empty', () async {
+    final settings = SettingsService();
+    await settings.init();
+
+    await settings.completeOnboarding();
+
+    expect(settings.isOnboardingComplete, isTrue);
+    expect(settings.geminiApiKey, isEmpty);
+  });
+
   test('setShowKofiButton persists across a reload', () async {
     final settings = SettingsService();
     await settings.init();
