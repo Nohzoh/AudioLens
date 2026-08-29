@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Fix whats-new dialog dismissing itself before it can be read** (issue #306)
+  - **Verified**: 2026-08-29 (PR #310)
+  - **What was done**: root cause of #303's follow-up report — the dialog wasn't failing to show at all, it was showing and immediately self-dismissing. `showDialog()` defaults `barrierDismissible` to `true`; a residual touch-up from whatever action just relaunched the app (tapping "Open" on the update notification, the Play Store's own update-ready prompt) lands on the barrier right as the dialog renders and dismisses it before it can be read. Diagnosed live with the reporting user via diagnostic logging added in #306's first pass, then confirmed by reproducing the exact update scenario (old buggy build → onboarding → silently-recorded `lastSeenVersion` → in-place update to the fixed build) on a real release APK on an emulator, both in debug and release mode — the fix (`barrierDismissible: false`) forces an explicit OK tap instead.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 395/395. Dart-only change, no native Kotlin touched.
+
 - [x] 🐛 ⭐ - **Fix whats-new dialog never showing on real updates** (issue #303)
   - **Verified**: 2026-08-29 (PR #304)
   - **What was done**: live bug caught right after v0.11.0 shipped — updating users saw no "what's new" dialog. `HomeScreen._checkWhatsNew()` (#299) treated a `null` `lastSeenVersion` as unambiguously "fresh install, nothing to show", but that value is also `null` for any existing install that predates the whats-new feature entirely, since it was never recorded by an earlier app version — real upgraders fell into that branch and the dialog was silently suppressed. `OnboardingScreen._finish()` now stamps `lastSeenVersion` to the current version on completing onboarding, so a genuinely fresh install always has it set by the time it reaches `HomeScreen`; the check there simplifies to a single comparison against the current version, so any other value (now unambiguously "pre-existing install") correctly shows the dialog.
