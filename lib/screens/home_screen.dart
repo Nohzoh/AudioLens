@@ -132,11 +132,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// this whole method is a no-op for it. Null here can therefore only
   /// mean "this device predates the feature", which warrants showing it.
   Future<void> _checkWhatsNew() async {
+    AppLogger.info('Whats-new: check starting');
     final info = await PackageInfo.fromPlatform();
-    if (!mounted) return;
+    if (!mounted) {
+      AppLogger.info('Whats-new: unmounted before check could run');
+      return;
+    }
     final settings = context.read<SettingsService>();
     final currentVersion = info.version;
-    if (settings.lastSeenVersion == currentVersion) return;
+    final lastSeen = settings.lastSeenVersion;
+    if (lastSeen == currentVersion) {
+      AppLogger.info('Whats-new: already seen $currentVersion, skipping');
+      return;
+    }
 
     final locale = Localizations.localeOf(context).languageCode;
     final assetPath = locale == 'fr'
@@ -152,8 +160,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Recorded regardless of whether the text loaded — a missing/corrupt
     // asset shouldn't leave the device re-checking (and failing) forever.
     await settings.recordSeenVersion(currentVersion);
-    if (!mounted || text == null || text.isEmpty) return;
+    if (!mounted || text == null || text.isEmpty) {
+      AppLogger.info(
+          'Whats-new: not showing for $currentVersion (previously $lastSeen) — text empty or unmounted');
+      return;
+    }
 
+    AppLogger.info('Whats-new: showing dialog for $currentVersion (previously $lastSeen)');
     final l10n = AppLocalizations.of(context)!;
     showDialog<void>(
       context: context,
