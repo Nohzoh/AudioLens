@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Don't skip onboarding on a fresh install with local AI available** (issue #313)
+  - **Verified**: 2026-08-29 (PR #314)
+  - **What was done**: caught live while reinstalling to test the onboarding carousel (#298) — it never showed. `main.dart` routed on `guide.isReady || settings.isOnboardingComplete`, an OR predating the carousel, meant to skip onboarding for an *existing* user who already had AI configured before onboarding existed. `guide.isReady` is equally true on a brand-new install on a device that exposes Gemini Nano natively, which skipped the carousel entirely, never stamped `lastSeenVersion`, and landed on `HomeScreen` — where the whats-new dialog (#299) then fired incorrectly for what was actually a first launch. Routing now uses `settings.isOnboardingComplete` alone.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 395/395. Dart-only change, no native Kotlin touched. Not shipped yet — held pending more changes today.
+
 - [x] 🐛 ⭐ - **Fix whats-new dialog dismissing itself before it can be read** (issue #306)
   - **Verified**: 2026-08-29 (PR #310)
   - **What was done**: root cause of #303's follow-up report — the dialog wasn't failing to show at all, it was showing and immediately self-dismissing. `showDialog()` defaults `barrierDismissible` to `true`; a residual touch-up from whatever action just relaunched the app (tapping "Open" on the update notification, the Play Store's own update-ready prompt) lands on the barrier right as the dialog renders and dismisses it before it can be read. Diagnosed live with the reporting user via diagnostic logging added in #306's first pass, then confirmed by reproducing the exact update scenario (old buggy build → onboarding → silently-recorded `lastSeenVersion` → in-place update to the fixed build) on a real release APK on an emulator, both in debug and release mode — the fix (`barrierDismissible: false`) forces an explicit OK tap instead.
