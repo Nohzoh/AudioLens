@@ -73,8 +73,19 @@ void main() async {
     ));
   };
 
+  // #312: guide.isReady used to be enough on its own to skip onboarding —
+  // meant for an existing install where AI was already configured before
+  // onboarding existed. But it's equally true on a brand-new install on a
+  // device that happens to support on-device Nano out of the box, which
+  // then skipped the carousel entirely (never explaining the app, never
+  // stamping lastSeenVersion) and went straight to HomeScreen, where the
+  // whats-new dialog fired incorrectly for what was actually a first
+  // launch. isOnboardingComplete alone is the only signal that actually
+  // means "this device has been through onboarding" — always route there
+  // when it's false; the carousel has its own "Passer" button for anyone
+  // who doesn't need it.
   AppLogger.nav('Routing to initial screen: '
-      '${guide.isReady || settings.isOnboardingComplete ? "HomeScreen" : "OnboardingScreen"} '
+      '${settings.isOnboardingComplete ? "HomeScreen" : "OnboardingScreen"} '
       '(guide.isReady=${guide.isReady}, isOnboardingComplete=${settings.isOnboardingComplete})');
 
   runApp(
@@ -101,7 +112,6 @@ class AudioGuideApp extends StatelessWidget {
     // again after the first build.
     return Consumer<SettingsService>(
       builder: (context, settings, _) {
-        final guide = context.read<AudioGuideService>();
         return MaterialApp(
           navigatorKey: navigatorKey,
           title: 'AudioLens',
@@ -168,7 +178,9 @@ class AudioGuideApp extends StatelessWidget {
           // once, which Android rendered as a flickering/doubled status
           // bar. One explicit source of truth per screen removes the
           // ambiguity at its root instead of patching it pairwise.
-          home: guide.isReady || settings.isOnboardingComplete
+          // #312: see the routing-decision AppLogger.nav() call above —
+          // guide.isReady is no longer part of this condition.
+          home: settings.isOnboardingComplete
               ? const HomeScreen()
               : const OnboardingScreen(),
         );
