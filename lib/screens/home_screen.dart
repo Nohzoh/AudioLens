@@ -170,6 +170,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final l10n = AppLocalizations.of(context)!;
     showDialog<void>(
       context: context,
+      // #306: barrierDismissible defaults to true — a stray tap right as
+      // the dialog renders (e.g. the residual touch-up from tapping
+      // "Open"/the update notification that just relaunched the app)
+      // lands on the barrier and dismisses it before the user can read
+      // anything, looking exactly like the dialog "erasing itself".
+      // Require an explicit OK instead.
+      barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.whatsNewTitle),
         content: SingleChildScrollView(child: Text(text!)),
