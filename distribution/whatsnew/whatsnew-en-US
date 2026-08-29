@@ -1,1 +1,1 @@
-Fixes: the "What's new" message shown after an update wasn't appearing for some users — fixed.
+Fixes: the "What's new" message would sometimes close itself before you could read it — fixed.
