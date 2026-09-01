@@ -12,6 +12,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/feedback_service.dart';
 import '../services/gemini_nano_service.dart' show NanoDeviceStatus;
+import '../services/history_service.dart';
 import '../services/remote_config_service.dart';
 import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
@@ -108,6 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (_) => _FeedbackDialog(
         feedback: _feedback,
         appVersion: _appVersion,
+        history: context.read<HistoryService>(),
       ),
     );
   }
@@ -861,10 +863,15 @@ class _ConfigRow extends StatelessWidget {
 
 // #294
 class _FeedbackDialog extends StatefulWidget {
-  const _FeedbackDialog({required this.feedback, required this.appVersion});
+  const _FeedbackDialog({
+    required this.feedback,
+    required this.appVersion,
+    required this.history,
+  });
 
   final FeedbackService feedback;
   final String? appVersion;
+  final HistoryService history;
 
   @override
   State<_FeedbackDialog> createState() => _FeedbackDialogState();
@@ -876,6 +883,10 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
   String? _error;
   // #296: e.g. a screenshot of the problem being reported.
   File? _image;
+  // #315: an analysis picked from history instead of a manual screenshot —
+  // mutually exclusive with _image (Telegram only takes one photo per
+  // message), see _pickImage/_pickAnalysis.
+  HistoryEntry? _selectedEntry;
 
   @override
   void dispose() {
@@ -886,7 +897,83 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
   Future<void> _pickImage() async {
     final xFile = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
     if (xFile == null || !mounted) return;
-    setState(() => _image = File(xFile.path));
+    setState(() {
+      _image = File(xFile.path);
+      _selectedEntry = null;
+    });
+  }
+
+  Future<void> _pickAnalysis() async {
+    final l10n = AppLocalizations.of(context)!;
+    final entries = widget.history.entries;
+    final selected = await showDialog<HistoryEntry>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.feedbackDialogSelectAnalysisTitle),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: entries.isEmpty
+              ? Text(l10n.feedbackDialogNoAnalyses)
+              : SizedBox(
+                  height: 320,
+                  child: ListView.builder(
+                    itemCount: entries.length,
+                    itemBuilder: (context, index) {
+                      final entry = entries[index];
+                      return ListTile(
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.file(File(entry.imagePath),
+                              width: 40, height: 40, fit: BoxFit.cover),
+                        ),
+                        title: Text(entry.title,
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(formatLocalDateTime(
+                            entry.createdAt, Localizations.localeOf(context).toString())),
+                        onTap: () => Navigator.of(dialogContext).pop(entry),
+                      );
+                    },
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.feedbackDialogCancel),
+          ),
+        ],
+      ),
+    );
+    if (selected != null && mounted) {
+      setState(() {
+        _selectedEntry = selected;
+        _image = null;
+      });
+    }
+  }
+
+  /// #315: appended to the typed message so the report carries the same
+  /// details (model used, timing, etc.) visible in About analysis, without
+  /// asking the user to copy them by hand.
+  String _formatAttachedAnalysis(HistoryEntry entry) {
+    final lines = <String>['', '--- Analyse jointe : ${entry.title} ---'];
+    if (entry.aiModel != null) {
+      lines.add('Modèle IA : ${entry.aiModel}${entry.aiFallback ? ' (secours)' : ''}');
+    }
+    if (entry.ttsModel != null) {
+      lines.add('Voix : ${entry.ttsModel}${entry.ttsFallback ? ' (secours)' : ''}');
+    }
+    if (entry.analysisSource != null) lines.add('Source : ${entry.analysisSource}');
+    if (entry.analysisDurationMs != null) {
+      lines.add('Durée : ${entry.analysisDurationMs} ms');
+    }
+    if (entry.wordCount != null) lines.add('Mots : ${entry.wordCount}');
+    lines.add('Wikipedia : ${entry.wikipediaUsed ? 'oui' : 'non'}');
+    if (entry.scriptStyle != null) lines.add('Style : ${entry.scriptStyle}');
+    if (entry.outputLanguage != null) lines.add('Langue : ${entry.outputLanguage}');
+    if (entry.gpsSource != null) lines.add('GPS : ${entry.gpsSource}');
+    lines.addAll(['', 'Script :', entry.script]);
+    return lines.join('\n');
   }
 
   Future<void> _send() async {
@@ -898,12 +985,16 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
       _error = null;
     });
 
+    final analysisEntry = _selectedEntry;
+    final fullText =
+        analysisEntry != null ? '$text\n${_formatAttachedAnalysis(analysisEntry)}' : text;
+
     try {
       await widget.feedback.send(
-        text,
+        fullText,
         appVersion: widget.appVersion ?? 'unknown',
         platform: defaultTargetPlatform.name,
-        image: _image,
+        image: analysisEntry != null ? File(analysisEntry.imagePath) : _image,
       );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -954,7 +1045,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                   label: Text(_image == null
                       ? l10n.feedbackDialogAttachScreenshot
                       : l10n.feedbackDialogChangeScreenshot),
-                  onPressed: _sending ? null : _pickImage,
+                  onPressed: _sending || _selectedEntry != null ? null : _pickImage,
                 ),
               ),
               if (_image != null)
@@ -962,6 +1053,34 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                   icon: const Icon(Icons.close),
                   tooltip: l10n.feedbackDialogRemoveScreenshot,
                   onPressed: _sending ? null : () => setState(() => _image = null),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (_selectedEntry != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.file(File(_selectedEntry!.imagePath),
+                      width: 40, height: 40, fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.history, size: 16),
+                  label: Text(_selectedEntry == null
+                      ? l10n.feedbackDialogAttachAnalysis
+                      : l10n.feedbackDialogChangeAnalysis),
+                  onPressed: _sending || _image != null ? null : _pickAnalysis,
+                ),
+              ),
+              if (_selectedEntry != null)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: l10n.feedbackDialogRemoveAnalysis,
+                  onPressed: _sending ? null : () => setState(() => _selectedEntry = null),
                 ),
             ],
           ),
