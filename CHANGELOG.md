@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🌱 ⭐⭐ - **Feedback: attach an existing analysis (photo, script, details)** (issue #315)
+  - **Verified**: 2026-09-01 (PR #316)
+  - **What was done**: direct ask — let a user pick a past analysis when giving feedback, sending its photo, script, and analysis details (model used, etc.) instead of asking them to describe/re-attach everything by hand. The feedback dialog gains a "Joindre une analyse" button opening a picker over `HistoryService.entries` (thumbnail, title, date), mutually exclusive with the existing manual screenshot (#296) — only one photo fits a Telegram message. Selecting an entry sends its photo via `sendPhoto` and appends a details block: `aiModel`/`ttsModel` (+ fallback flags), `analysisSource`, duration, word count, Wikipedia usage, `scriptStyle`, `outputLanguage`, `gpsSource`, then the full script.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 397/397 (2 new tests, including a real multipart send end-to-end through the picker). Dart-only change, no native Kotlin touched. Not shipped yet — held pending more changes today.
+
 - [x] 🐛 ⭐ - **Don't skip onboarding on a fresh install with local AI available** (issue #313)
   - **Verified**: 2026-08-29 (PR #314)
   - **What was done**: caught live while reinstalling to test the onboarding carousel (#298) — it never showed. `main.dart` routed on `guide.isReady || settings.isOnboardingComplete`, an OR predating the carousel, meant to skip onboarding for an *existing* user who already had AI configured before onboarding existed. `guide.isReady` is equally true on a brand-new install on a device that exposes Gemini Nano natively, which skipped the carousel entirely, never stamped `lastSeenVersion`, and landed on `HomeScreen` — where the whats-new dialog (#299) then fired incorrectly for what was actually a first launch. Routing now uses `settings.isOnboardingComplete` alone.
