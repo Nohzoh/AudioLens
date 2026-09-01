@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -13,6 +15,10 @@ import 'package:audiolens/services/feedback_service.dart';
 import 'package:audiolens/services/history_service.dart';
 import 'package:audiolens/services/settings_service.dart';
 import '../support/service_fakes.dart';
+
+// #315: HistoryService.addPendingEntry/addEntry copy the source image to
+// permanent storage via path_provider — needs a mock or MissingPluginException.
+const _pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
 /// T105 — first widget-level coverage for SettingsScreen. Deliberately
 /// skips tapping "View source code" / "Get a free key" (external
@@ -40,6 +46,12 @@ void main() {
       buildSignature: '',
     );
 
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_pathProviderChannel, (call) async {
+      if (call.method == 'getApplicationDocumentsDirectory') return tmpDir.path;
+      return null;
+    });
+
     settings = SettingsService();
     await settings.init();
     guide = AudioGuideService(nativeTtsService: FakeNativeTts());
@@ -49,6 +61,8 @@ void main() {
 
   tearDown(() async {
     tearDownSecureStorageMock();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_pathProviderChannel, null);
     await tmpDir.delete(recursive: true);
   });
 
@@ -229,6 +243,93 @@ void main() {
       expect(find.text("L'envoi a échoué. Réessayez plus tard."), findsOneWidget);
       // Dialog stayed open — the text field is still there to retry from.
       expect(find.byType(TextField), findsOneWidget);
+    });
+
+    // #315
+    testWidgets('shows an attach-analysis button, and selecting one from '
+        'history attaches its photo, script, and analysis details',
+        (tester) async {
+      final placeholder = img.Image(width: 4, height: 4);
+      img.fill(placeholder, color: img.ColorRgb8(80, 40, 160));
+      final imagePath = '${tmpDir.path}/analysis.jpg';
+      File(imagePath).writeAsBytesSync(img.encodeJpg(placeholder));
+
+      final entry =
+          await tester.runAsync(() => history.addPendingEntry(imagePath: imagePath));
+      await tester.runAsync(() => history.completeEntry(
+            entryId: entry!.id!,
+            title: 'Tour Eiffel',
+            script: 'Un monument emblematique construit en 1889.',
+            aiModel: 'gemini-3.5-flash',
+            analysisSource: 'camera',
+          ));
+
+      final requests = <http.BaseRequest>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        return http.Response('{"ok":true}', 200);
+      });
+
+      await tester.pumpWidget(wrapConfiguredScreen(client));
+      await tester.pumpAndSettle();
+
+      final button = find.text('Envoyer un feedback');
+      await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Joindre une analyse'), findsOneWidget);
+      await tester.tap(find.text('Joindre une analyse'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Choisir une analyse'), findsOneWidget);
+      await tester.tap(find.text('Tour Eiffel'));
+      await tester.pumpAndSettle();
+
+      // Selected — the button relabels and a thumbnail appears.
+      expect(find.text("Changer l'analyse"), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'Le titre est faux');
+      await tester.runAsync(() async {
+        await tester.tap(find.widgetWithText(FilledButton, 'Envoyer'));
+        // A multipart send (sendPhoto) resolves through MockClient's
+        // streamed response, which needs more turns than the single
+        // microtask a plain sendMessage POST does — poll briefly instead
+        // of a single Future.delayed(Duration.zero).
+        for (var i = 0; i < 20 && requests.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+      });
+      await tester.pump();
+      await tester.pump();
+
+      expect(requests, hasLength(1));
+      final request = requests.single as http.Request;
+      // Sent via sendPhoto (the entry's own photo), not sendMessage.
+      expect(request.url.toString(), contains('/sendPhoto'));
+      final body = latin1.decode(request.bodyBytes);
+      expect(body, contains('Le titre est faux'));
+      expect(body, contains('Analyse jointe : Tour Eiffel'));
+      expect(body, contains('gemini-3.5-flash'));
+      expect(body, contains('Un monument emblematique'));
+    });
+
+    testWidgets("shows an empty state in the picker when history has no entries",
+        (tester) async {
+      final client = MockClient((request) async => http.Response('{"ok":true}', 200));
+
+      await tester.pumpWidget(wrapConfiguredScreen(client));
+      await tester.pumpAndSettle();
+
+      final button = find.text('Envoyer un feedback');
+      await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Joindre une analyse'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Aucune analyse dans l\'historique'), findsOneWidget);
     });
   });
 
