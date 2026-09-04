@@ -138,8 +138,12 @@ class AudioGuideService extends ChangeNotifier {
   File? _lastImageFile;
   LocationPermissionStatus _lastLocationStatus = LocationPermissionStatus.granted;
 
-  // Cancellation support
-  final CancelToken _cancelToken = CancelToken();
+  // Cancellation support. Not final: #322 — a fresh instance is created for
+  // every analyzeAndPlay()/generateAudioForScript() call (see there) rather
+  // than reusing+resetting one shared token, so an old, still-running
+  // invocation that was cancelled can never have its own cancellation
+  // silently undone by a newer call resetting the same shared instance.
+  CancelToken _cancelToken = CancelToken();
   CancelToken get cancelToken => _cancelToken;
 
   AIProvider get activeProvider => _providerManager.activeProvider;
@@ -304,7 +308,12 @@ class AudioGuideService extends ChangeNotifier {
     }
 
     _analysisInProgress = true;
-    _cancelToken.reset(); // Reset cancellation for new analysis
+    // #322: a fresh token for this invocation specifically — see the field
+    // doc. Every check/pass-through below uses this local capture, not
+    // _cancelToken directly, so a later overlapping call reassigning
+    // _cancelToken can't affect this one.
+    _cancelToken = CancelToken();
+    final cancelToken = _cancelToken;
     await _foregroundService.start();
     await _audioReadyNotifier.requestPermissionIfNeeded();
 
@@ -319,7 +328,7 @@ class AudioGuideService extends ChangeNotifier {
       notifyListeners();
 
       // Check for cancellation before starting
-      if (_cancelToken.isCancelled) {
+      if (cancelToken.isCancelled) {
         _state = GuideState.idle;
         _analysisInProgress = false;
         notifyListeners();
@@ -344,7 +353,7 @@ class AudioGuideService extends ChangeNotifier {
           DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
 
       // Check cancellation before AI analysis
-      if (_cancelToken.isCancelled) {
+      if (cancelToken.isCancelled) {
         _state = GuideState.idle;
         _analysisInProgress = false;
         notifyListeners();
@@ -367,7 +376,7 @@ class AudioGuideService extends ChangeNotifier {
         _lastResult = await service.analyzeImage(
           imageFile,
           locationContext: locationContext.promptContext,
-          cancelToken: _cancelToken,
+          cancelToken: cancelToken,
           style: style,
           language: language,
         );
@@ -407,6 +416,7 @@ class AudioGuideService extends ChangeNotifier {
             _lastResult = await _providerManager.nanoService.analyzeImage(
               imageFile,
               locationContext: locationContext.promptContext,
+              cancelToken: cancelToken,
               style: style,
               language: language,
             );
@@ -438,7 +448,7 @@ class AudioGuideService extends ChangeNotifier {
       }
 
       // Check cancellation before TTS synthesis
-      if (_cancelToken.isCancelled) {
+      if (cancelToken.isCancelled) {
         _state = GuideState.idle;
         _analysisInProgress = false;
         notifyListeners();
@@ -458,9 +468,10 @@ class AudioGuideService extends ChangeNotifier {
 
       if (generateAudio && isBackgrounded) {
         deferredForBackground = true;
-        await _synthesizeOnlyForBackground(_lastResult!.script);
+        await _synthesizeOnlyForBackground(_lastResult!.script, cancelToken: cancelToken);
       } else if (generateAudio) {
-        await _synthesizeAndPlay(_lastResult!.script, language: language);
+        await _synthesizeAndPlay(_lastResult!.script,
+            language: language, cancelToken: cancelToken);
       } else {
         _lastAudioPath = null;
         _state = GuideState.scriptReady;
@@ -507,7 +518,11 @@ class AudioGuideService extends ChangeNotifier {
   /// [language] (#130) is applied to the native TTS fallback engine before
   /// speaking — Gemini TTS needs no such hint, it reads the language off
   /// [script]'s own text.
-  Future<void> _synthesizeAndPlay(String script, {String? language}) async {
+  Future<void> _synthesizeAndPlay(
+    String script, {
+    String? language,
+    required CancelToken cancelToken,
+  }) async {
     _prepareNativeTtsLanguage(language);
     _state = GuideState.synthesizing;
     _currentStep = 2;
@@ -522,7 +537,7 @@ class AudioGuideService extends ChangeNotifier {
     // speakChunked() and its tests are untouched, ready to swap back in.
     _lastTtsModel = await _ttsOrchestrator.speak(
       script,
-      cancelToken: _cancelToken,
+      cancelToken: cancelToken,
       geminiTts: _providerManager.geminiTtsForCurrentProvider,
       speed: _playbackSpeed,
     );
@@ -556,7 +571,10 @@ class AudioGuideService extends ChangeNotifier {
   /// #253: gated on the active provider too, same as [_synthesizeAndPlay]
   /// — nothing to pre-generate here when Nano is active either, native
   /// TTS will speak it live on demand just like the foreground path.
-  Future<void> _synthesizeOnlyForBackground(String script) async {
+  Future<void> _synthesizeOnlyForBackground(
+    String script, {
+    required CancelToken cancelToken,
+  }) async {
     _state = GuideState.synthesizing;
     _progressEstimator.stepProgress = -1.0;
     notifyListeners();
@@ -565,7 +583,7 @@ class AudioGuideService extends ChangeNotifier {
     if (geminiTts != null) {
       try {
         final path = await _getGeminiWavPath();
-        await geminiTts.synthesizeToFile(script, path, cancelToken: _cancelToken);
+        await geminiTts.synthesizeToFile(script, path, cancelToken: cancelToken);
         _lastAudioPath = path;
         _lastTtsModel = 'gemini-tts';
       } catch (e) {
@@ -606,7 +624,9 @@ class AudioGuideService extends ChangeNotifier {
     }
 
     _analysisInProgress = true;
-    _cancelToken.reset();
+    // #322: see the field doc on _cancelToken.
+    _cancelToken = CancelToken();
+    final cancelToken = _cancelToken;
     await _foregroundService.start();
     await _audioReadyNotifier.requestPermissionIfNeeded();
 
@@ -615,7 +635,7 @@ class AudioGuideService extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      await _synthesizeAndPlay(script, language: language);
+      await _synthesizeAndPlay(script, language: language, cancelToken: cancelToken);
 
       await _audioReadyNotifier.notifyReady();
       return _lastResult;
@@ -685,14 +705,26 @@ class AudioGuideService extends ChangeNotifier {
   Future<void> cancelCurrentAction() async {
     _progressEstimator.stop();
     _errorMessage = null;
-    _analysisInProgress = false;
-    
-    // Cancel all ongoing operations
+
+    // Cancel all ongoing operations. #322: deliberately NOT resetting
+    // _analysisInProgress here (it used to be) — analyzeAndPlay()/
+    // generateAudioForScript() each clear their own flag in a `finally`
+    // once they actually observe the cancellation and return, however
+    // long their current await (location resolution, an in-flight AI
+    // call...) takes to unwind. Clearing it early let a brand-new
+    // analysis start while the old one was still running in the
+    // background against the same shared mutable state (_lastResult,
+    // _state, _progressEstimator...) — a real race, not just a stale
+    // read. isBusy staying true a little longer after Cancel is a safe
+    // trade: worst case a new analysis is briefly refused, never two
+    // running at once. Same reasoning for not resetting _cancelToken
+    // below — each of those methods now creates its own fresh instance
+    // per call instead of reusing+resetting this shared field.
     _cancelToken.cancel();
-    
+
     _state = GuideState.cancelling;
     notifyListeners();
-    
+
     // Try to stop TTS with a timeout to prevent hanging. Native TTS
     // manages its own playback internally (not the shared
     // audio_guide/audio_player channel Gemini TTS's WAV playback uses),
@@ -705,10 +737,7 @@ class AudioGuideService extends ChangeNotifier {
     } catch (_) {
       // Timeout reached, TTS is still running in background but we can proceed
     }
-    
-    // Reset the token for next operation
-    _cancelToken.reset();
-    
+
     _state = GuideState.idle;
     notifyListeners();
   }
