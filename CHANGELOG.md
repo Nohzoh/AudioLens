@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Pick up a "ready" notification tap that cold-starts the app** (issue #324)
+  - **Verified**: 2026-09-05 (PR #334)
+  - **What was done**: found by a global code-review pass. `AudioReadyNotifier`'s `onDidReceiveNotificationResponse` only fires for a tap received while the plugin is already running — never for the tap that cold-starts the app (process killed while backgrounded, a deferred analysis finished, notification posted, tap relaunches the app). `main.dart` never checked for this case, so a cold-start tap silently opened a plain `HomeScreen` instead of the entry that was actually ready. New `AudioReadyNotifier.consumeColdStartPayload()` queries `getNotificationAppLaunchDetails()`; `main.dart` invokes the existing `onPlayRequested` callback with it from a post-frame callback once the Navigator exists.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 402/402 (4 new tests). Dart-only change, no native Kotlin touched.
+
 - [x] 🐛 ⭐ - **Strip EXIF metadata from the photo attached to feedback** (issue #328)
   - **Verified**: 2026-09-05 (PR #332)
   - **What was done**: found by a global code-review pass, on the #315 feature freshly merged. The photo attached when joining an analysis to feedback kept its original EXIF intact — including GPS tags — even though the accompanying text deliberately omits GPS coordinates for privacy. New `lib/utils/exif_strip.dart` (mirrors the existing `rotated_image_export.dart` pattern) decodes, clears `ExifData`, and re-encodes to a temp file before attaching, never touching the original (still needed untouched for EXIF GPS extraction and history).
