@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Strip EXIF metadata from the photo attached to feedback** (issue #328)
+  - **Verified**: 2026-09-05 (PR #332)
+  - **What was done**: found by a global code-review pass, on the #315 feature freshly merged. The photo attached when joining an analysis to feedback kept its original EXIF intact — including GPS tags — even though the accompanying text deliberately omits GPS coordinates for privacy. New `lib/utils/exif_strip.dart` (mirrors the existing `rotated_image_export.dart` pattern) decodes, clears `ExifData`, and re-encodes to a temp file before attaching, never touching the original (still needed untouched for EXIF GPS extraction and history).
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 398/398 (1 new test verifying a real EXIF marker doesn't survive into the uploaded bytes). Dart-only change, no native Kotlin touched.
+
 - [x] 🐛 ⭐⭐ - **cancelCurrentAction() no longer lets a cancelled analysis persist** (issue #322)
   - **Verified**: 2026-09-05 (PR #331)
   - **What was done**: found by a global code-review pass. `_cancelToken` was a single shared instance, reset by every new `analyzeAndPlay()`/`generateAudioForScript()` call, and also reset by `cancelCurrentAction()` after a fixed 5s wait regardless of whether the pipeline had actually returned — a slow step with no cancellation check of its own (location resolution, the Nano fallback, neither previously given the token at all) still running past that window got silently "un-cancelled" and persisted to history despite the UI already showing idle. Each analysis call now creates and captures its own `CancelToken` instance instead of reusing+resetting a shared field; the Nano fallback now receives it too. `cancelCurrentAction()` no longer clears `_analysisInProgress` early either — each pipeline clears its own flag once it actually observes cancellation, preventing a new analysis from racing the old one against shared mutable service state. Scope note: fixes the concrete harm without plumbing cancellation into the location/POI/Wikipedia services for true mid-flight network abort (a much larger refactor, not required here).
