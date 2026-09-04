@@ -152,6 +152,38 @@ void main() {
     expect(find.textContaining('Modèle IA non téléchargé'), findsOneWidget);
   });
 
+  // #325: guide (constructed above, never guide.init()-ed) starts with
+  // nanoAvailable false and no other path in this test to change that —
+  // proving the card only unlocks because initState() explicitly
+  // re-resolves it, not because init() happened to run first.
+  testWidgets("unlocks the Local AI card once Nano's availability check "
+      'resolves (refreshNanoAvailability)', (tester) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(nanoChannel, (call) async {
+      switch (call.method) {
+        case 'checkNanoStatus':
+          return 'available';
+        case 'isAvailable':
+          return true;
+        case 'initialize':
+          return null;
+      }
+      return null;
+    });
+    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(nanoChannel, null));
+
+    await tester.pumpWidget(wrapScreen());
+    await tester.pumpAndSettle();
+
+    final tile = tester.widget<ListTile>(find.ancestor(
+      of: find.text('IA locale'),
+      matching: find.byType(ListTile),
+    ));
+    expect(tile.onTap, isNotNull);
+    expect(guide.nanoAvailable, isTrue);
+  });
+
   // #294: the feedback button only exists on a build that actually has
   // TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID baked in (a real CI build) —
   // wrapScreen()'s plain FeedbackService() is always unconfigured here,

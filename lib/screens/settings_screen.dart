@@ -71,6 +71,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     guide.nanoService.checkDeviceStatus().then((status) {
       if (mounted) setState(() => _nanoStatus = status);
     });
+    // #325: checkDeviceStatus() above only refreshes the display string —
+    // this re-checks the actual gate the provider card's onTap/isAvailable
+    // uses, so Nano finishing its download mid-session (revealed by the
+    // status above) actually unlocks the card instead of requiring an app
+    // restart. notifyListeners() inside triggers this screen's own
+    // context.watch<AudioGuideService>() rebuild.
+    guide.refreshNanoAvailability();
   }
 
   @override
