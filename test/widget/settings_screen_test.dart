@@ -49,6 +49,8 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_pathProviderChannel, (call) async {
       if (call.method == 'getApplicationDocumentsDirectory') return tmpDir.path;
+      // #328: imagePathWithExifStripped writes its stripped copy here.
+      if (call.method == 'getTemporaryDirectory') return tmpDir.path;
       return null;
     });
 
@@ -312,6 +314,62 @@ void main() {
       expect(body, contains('Analyse jointe : Tour Eiffel'));
       expect(body, contains('gemini-3.5-flash'));
       expect(body, contains('Un monument emblematique'));
+    });
+
+    // #328
+    testWidgets('strips EXIF metadata from the photo before attaching an '
+        'analysis to feedback', (tester) async {
+      final placeholder = img.Image(width: 4, height: 4);
+      img.fill(placeholder, color: img.ColorRgb8(80, 40, 160));
+      // Standin for real GPS EXIF: a distinctive, greppable marker in an
+      // arbitrary IFD0 tag proves whether it survived into the uploaded
+      // bytes, without needing to hand-craft a real GPS IFD entry.
+      placeholder.exif['ifd0'][0x010e] = 'GPS: 48.8584, 2.2945 EXIF_MARKER';
+      final imagePath = '${tmpDir.path}/geotagged.jpg';
+      File(imagePath).writeAsBytesSync(img.encodeJpg(placeholder));
+
+      final entry =
+          await tester.runAsync(() => history.addPendingEntry(imagePath: imagePath));
+      await tester.runAsync(() => history.completeEntry(
+            entryId: entry!.id!,
+            title: 'Tour Eiffel',
+            script: 'Un monument emblematique.',
+          ));
+
+      final requests = <http.BaseRequest>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        return http.Response('{"ok":true}', 200);
+      });
+
+      await tester.pumpWidget(wrapConfiguredScreen(client));
+      await tester.pumpAndSettle();
+
+      final button = find.text('Envoyer un feedback');
+      await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Joindre une analyse'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tour Eiffel'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Test EXIF');
+      await tester.runAsync(() async {
+        await tester.tap(find.widgetWithText(FilledButton, 'Envoyer'));
+        for (var i = 0; i < 20 && requests.isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+      });
+      await tester.pump();
+      await tester.pump();
+
+      expect(requests, hasLength(1));
+      final request = requests.single as http.Request;
+      expect(request.url.toString(), contains('/sendPhoto'));
+      final body = latin1.decode(request.bodyBytes);
+      expect(body, isNot(contains('EXIF_MARKER')));
     });
 
     testWidgets("shows an empty state in the picker when history has no entries",
