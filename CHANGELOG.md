@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Re-check Nano availability when Settings opens** (issue #325)
+  - **Verified**: 2026-09-05 (PR #335)
+  - **What was done**: found by a global code-review pass. `AiProviderManager._nanoAvailable` was resolved once in `init()` and never touched again — Settings' own on-demand `checkDeviceStatus()` call only refreshed a display string, never the actual field the "Local AI" provider card's gate reads. A device where Nano finished downloading mid-session showed "available" in the status text while the card stayed locked, fixable only by restarting the app. Extracted the resolving logic into a reusable `refreshNanoAvailability()` on both `AiProviderManager` and `AudioGuideService`; `SettingsScreen.initState()` now calls it alongside `checkDeviceStatus()`. Deliberately doesn't touch `activeProvider`.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 400/400 (2 new tests). Dart-only change, no native Kotlin touched.
+
 - [x] 🐛 ⭐ - **Use a distinct notification ID for the "analysis ready" alert** (issue #323)
   - **Verified**: 2026-09-05 (PR #333)
   - **What was done**: found by a global code-review pass. `AudioReadyNotifier` posted with Android notification ID `4202`, identical to `PlaybackForegroundService.kt`'s `NOTIFICATION_ID` (the native foreground-service notification carrying lock-screen playback controls). Neither side used a tag, so posting one silently replaced the other — a second analysis finishing in the background while a guide was already playing wiped out the user's playback controls. Moved to `4203`, distinct from both `PlaybackForegroundService`'s `4202` and `AnalysisForegroundService`'s `4201`.
