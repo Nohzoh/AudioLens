@@ -9,7 +9,13 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 class AudioReadyNotifier {
   static const _channelId = 'analysis_result';
   static const _channelName = 'Résultat de l\'analyse';
-  static const _notificationId = 4202;
+  // #323: was 4202, identical to PlaybackForegroundService.kt's
+  // NOTIFICATION_ID (native foreground-service notification with the
+  // lock-screen playback controls) — posting this one silently replaced
+  // that one whenever both were active at once (a second, earlier-started
+  // analysis finishing while a guide was already playing). Also distinct
+  // from AnalysisForegroundService.kt's 4201.
+  static const _notificationId = 4203;
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
