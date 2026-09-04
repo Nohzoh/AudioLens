@@ -956,38 +956,47 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
   late final AudioGuideService _guide;
 
-  /// Set only while this screen owns [AudioGuideService.nativeTtsService]'s
-  /// `onComplete` (see [_withTrackedNativeCompletion]) — the callback it's about to
-  /// restore once the current speech either finishes or this screen goes
-  /// away, whichever comes first.
-  void Function()? _restoreNativeOnComplete;
+  /// Set only while this screen owns some TTS service's `onComplete` (see
+  /// [_withTrackedCompletion]) — the callback it's about to restore once
+  /// the current speech either finishes or this screen goes away,
+  /// whichever comes first. [_completionOwner] remembers which service
+  /// (`nativeTtsService` or `geminiTtsService` — both expose the same
+  /// `Function()? onComplete` shape, no common interface to type this as)
+  /// that restore belongs to.
+  void Function()? _restoreOnComplete;
+  dynamic _completionOwner;
 
-  /// Speaks [script] via native TTS, tracking `_isPlaying` without
-  /// permanently hijacking the shared [AudioGuideService.nativeTtsService]
-  /// singleton's `onComplete`.
+  /// Speaks via [tts] (`nativeTtsService` or `geminiTtsService`), tracking
+  /// `_isPlaying` without permanently hijacking that shared singleton's
+  /// `onComplete`.
   ///
-  /// A plain `guide.nativeTtsService.onComplete = () => setState(...)`
-  /// (what this used to do) leaks two ways: if this screen closes before
-  /// speech finishes, the closure still fires later and calls `setState`
-  /// on a disposed State; and since it's never restored, it permanently
+  /// A plain `tts.onComplete = () => setState(...)` (what this used to do,
+  /// for both services independently — #315's code review caught the
+  /// Gemini TTS one still doing this after the native TTS instance was
+  /// already fixed) leaks two ways: if this screen closes before speech
+  /// finishes, the closure still fires later and calls `setState` on a
+  /// disposed State; and since it's never restored, it permanently
   /// replaces [AudioGuideService]'s own default completion handler (the
   /// one set in `init()`, which resets `_state`/`canSkip`) — starving
   /// every later screen's read of that state until the app restarts.
   ///
   /// [action] is whatever triggers the speech this screen wants to track
-  /// — a direct `nativeTtsService.speak()` call, or the orchestrated
-  /// `generateAudioForScript()` pipeline (which copies whatever's set
-  /// here onto Gemini TTS too, see [TtsOrchestrator.speak]) — the
-  /// tracking closure itself self-restores the instant it fires, so both
-  /// call sites can share this without needing to know which one wins.
-  Future<T> _withTrackedNativeCompletion<T>(
-    AudioGuideService guide,
+  /// — a direct `nativeTtsService.speak()`/`geminiTtsService.speak()` call,
+  /// or the orchestrated `generateAudioForScript()` pipeline (which copies
+  /// whatever's set on native onto Gemini TTS too, see
+  /// [TtsOrchestrator.speak]) — the tracking closure itself self-restores
+  /// the instant it fires, so every call site can share this without
+  /// needing to know which one wins.
+  Future<T> _withTrackedCompletion<T>(
+    dynamic tts,
     Future<T> Function() action,
   ) async {
-    _restoreNativeOnComplete = guide.nativeTtsService.onComplete;
-    guide.nativeTtsService.onComplete = () {
-      guide.nativeTtsService.onComplete = _restoreNativeOnComplete;
-      _restoreNativeOnComplete = null;
+    _restoreOnComplete = tts.onComplete;
+    _completionOwner = tts;
+    tts.onComplete = () {
+      tts.onComplete = _restoreOnComplete;
+      _restoreOnComplete = null;
+      _completionOwner = null;
       if (!mounted) return;
       setState(() => _isPlaying = false);
     };
@@ -1006,8 +1015,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     // installed — put the previous handler back so a completion firing
     // after this screen is gone doesn't touch a disposed State or leave
     // AudioGuideService's own state stuck.
-    if (_restoreNativeOnComplete != null) {
-      _guide.nativeTtsService.onComplete = _restoreNativeOnComplete;
+    if (_restoreOnComplete != null) {
+      _completionOwner.onComplete = _restoreOnComplete;
     }
     super.dispose();
   }
@@ -1056,8 +1065,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       guide.prepareNativeTtsLanguageForReplay(
         context.read<SettingsService>().outputLanguage,
       );
-      await _withTrackedNativeCompletion(
-          guide, () => guide.nativeTtsService.speak(live.script));
+      await _withTrackedCompletion(
+          guide.nativeTtsService, () => guide.nativeTtsService.speak(live.script));
       return;
     }
 
@@ -1066,8 +1075,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     // and persist the result so it's cached from now on.
     final guide = context.read<AudioGuideService>();
     final history = context.read<HistoryService>();
-    final result = await _withTrackedNativeCompletion(
-      guide,
+    final result = await _withTrackedCompletion(
+      guide.nativeTtsService,
       () => guide.generateAudioForScript(
         title: live.title,
         script: live.script,
@@ -1437,10 +1446,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                       setState(() => _isUpgrading = true);
                                       try {
                                         final tts = guide.geminiTtsService!;
-                                        tts.onComplete = () =>
-                                            setState(() => _isPlaying = false);
                                         // Generate audio first, then play
-                                        await tts.speak(live.script);
+                                        await _withTrackedCompletion(
+                                            tts, () => tts.speak(live.script));
                                         // Save upgraded audio
                                         final lastPath = tts.lastWavPath;
                                         AppLogger.tts(

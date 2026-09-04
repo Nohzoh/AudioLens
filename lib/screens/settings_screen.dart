@@ -19,6 +19,7 @@ import '../services/settings_service.dart';
 import '../widgets/kofi_button.dart';
 import '../utils/build_info.dart';
 import '../utils/date_format_utils.dart';
+import '../utils/exif_strip.dart';
 
 const _ttsPreviewSample =
     'Voici un exemple de la voix qui sera utilisée pour vos guides audio. '
@@ -990,11 +991,16 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         analysisEntry != null ? '$text\n${_formatAttachedAnalysis(analysisEntry)}' : text;
 
     try {
+      // #328: the details text above deliberately omits GPS coordinates —
+      // the photo itself must not silently reintroduce them via EXIF.
+      final image = analysisEntry != null
+          ? File(await imagePathWithExifStripped(analysisEntry.imagePath))
+          : _image;
       await widget.feedback.send(
         fullText,
         appVersion: widget.appVersion ?? 'unknown',
         platform: defaultTargetPlatform.name,
-        image: analysisEntry != null ? File(analysisEntry.imagePath) : _image,
+        image: image,
       );
       if (!mounted) return;
       Navigator.of(context).pop();

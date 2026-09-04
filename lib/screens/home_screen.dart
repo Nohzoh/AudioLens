@@ -70,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_gridPlayingEntryId == entry.id) {
       // Same entry: toggle pause/resume in place.
       await _audioPlayerChannel.invokeMethod(_gridIsPlaying ? 'pause' : 'play');
+      if (!mounted) return;
       setState(() => _gridIsPlaying = !_gridIsPlaying);
       return;
     }
