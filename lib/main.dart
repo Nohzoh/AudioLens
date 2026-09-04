@@ -73,6 +73,19 @@ void main() async {
     ));
   };
 
+  // #324: a tap that cold-starts the app (process was killed while
+  // backgrounded, the deferred analysis finished, notification posted)
+  // never reaches onPlayRequested above — that only fires for a tap
+  // received while the plugin's already running. Deferred to a
+  // post-frame callback so the Navigator (built by runApp() below) exists
+  // by the time onPlayRequested tries to push onto it.
+  final coldStartEntryId = await audioReadyNotifier.consumeColdStartPayload();
+  if (coldStartEntryId != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      audioReadyNotifier.onPlayRequested?.call(coldStartEntryId);
+    });
+  }
+
   // #312: guide.isReady used to be enough on its own to skip onboarding —
   // meant for an existing install where AI was already configured before
   // onboarding existed. But it's equally true on a brand-new install on a
