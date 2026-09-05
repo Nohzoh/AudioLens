@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐⭐ - **Estimate playback progress for Gemini TTS** (issue #329)
+  - **Verified**: 2026-09-05 (PR #338)
+  - **What was done**: found by a global code-review pass. `PlayerScreen` only wired `nativeTtsService.onProgress` — `GeminiTtsService` had none at all, so the progress bar/auto-scroll stayed frozen at 0.0 for the whole guide whenever the active provider is Gemini API (the common cloud path). Added an estimated `onProgress` to `GeminiTtsService` from the same words-per-second rate `HistoryEntry.audioDurationEstimate` already uses, ticked by a `Stopwatch` (pause/resume map directly onto stop/start) plus a manual offset for ±10s skips. Also moved `AudioGuideService.togglePause()`'s Gemini-resume off a direct platform-channel poke and onto a proper `GeminiTtsService.resume()`, so resuming also resumes the estimate.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 408/408 (4 new tests). Dart-only change, no native Kotlin touched.
+
 - [x] 🐛 ⭐ - **Refresh the permission badge after a capture-only GPS attempt** (issue #327)
   - **Verified**: 2026-09-05 (PR #337)
   - **What was done**: found by a global code-review pass. `_captureOnly()` calls `LocationService.getCurrentRawCoordinates()` directly, which collapses every failure reason (permission denied, timeout, no fix) into a plain `null`. Unlike other capture paths, `_captureOnly()` never re-checked `_permissionStatus`, so a denial left the badge showing whatever it last happened to say, with no indication why the entry saved without GPS. Now calls the existing `_checkLocationPermission()` right after the GPS attempt.
