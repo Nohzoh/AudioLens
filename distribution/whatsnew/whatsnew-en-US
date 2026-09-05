@@ -1,1 +1,1 @@
-Fixes: the "What's new" message would sometimes close itself before you could read it — fixed.
+New: you can attach an existing analysis (photo, script, details) to feedback from Settings. Fixes: the audio progress bar finally works in Gemini API mode, the welcome carousel shows correctly on fresh installs, and several crashes were fixed.
