@@ -83,6 +83,27 @@ class AiProviderManager {
     }
   }
 
+  /// Re-resolves on-device Nano availability. Extracted out of [init] so
+  /// it can also be called again later (#325) — [init] only ever runs
+  /// once at startup, so a device where AICore/Nano finishes downloading
+  /// mid-session stayed stuck on whatever [nanoAvailable] read at launch,
+  /// even though Settings' own on-demand device-status check (a purely
+  /// cosmetic display string, unrelated to this field) would have shown
+  /// the user it just became available. Deliberately doesn't touch
+  /// [activeProvider] — becoming available shouldn't silently switch the
+  /// user onto it, only unlock picking it.
+  Future<void> refreshNanoAvailability() async {
+    _nanoAvailable = await nanoService.isAvailable();
+    if (_nanoAvailable) {
+      try {
+        await nanoService.initialize();
+      } catch (e) {
+        debugPrint('Gemini Nano init failed: $e');
+        _nanoAvailable = false;
+      }
+    }
+  }
+
   void _updateProviderName() {
     switch (_activeProvider) {
       case AIProvider.geminiNano:
@@ -110,15 +131,7 @@ class AiProviderManager {
       );
     }
 
-    _nanoAvailable = await nanoService.isAvailable();
-    if (_nanoAvailable) {
-      try {
-        await nanoService.initialize();
-      } catch (e) {
-        debugPrint('Gemini Nano init failed: $e');
-        _nanoAvailable = false;
-      }
-    }
+    await refreshNanoAvailability();
 
     // Nano was the chosen provider but isn't actually available on this
     // device — fall back to the cloud API if a key is configured, rather

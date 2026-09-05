@@ -14,7 +14,9 @@ const _secureChannel =
 
 class _FakeNano extends GeminiNanoService {
   _FakeNano({required this.available});
-  final bool available;
+  // Mutable — #325's regression test flips this mid-test to simulate Nano
+  // finishing its download after init() already ran once.
+  bool available;
 
   @override
   Future<bool> isAvailable() async => available;
@@ -106,6 +108,28 @@ void main() {
     expect(manager.activeProvider, AIProvider.geminiApi);
     expect(manager.providerName, 'Gemini API');
     expect(manager.currentService, isA<GeminiApiService>());
+  });
+
+  // #325
+  test('refreshNanoAvailability() re-resolves availability after init() '
+      'already ran once', () async {
+    final nano = _FakeNano(available: false);
+    final manager = AiProviderManager(
+      preferencesStore: GuidePreferencesStore(),
+      nanoService: nano,
+    );
+    await manager.init();
+    expect(manager.nanoAvailable, isFalse);
+
+    // Nano finishes downloading mid-session — init() never re-runs, so
+    // without a way to re-check, nanoAvailable would stay stuck false.
+    nano.available = true;
+    await manager.refreshNanoAvailability();
+
+    expect(manager.nanoAvailable, isTrue);
+    expect(manager.currentService, same(manager.nanoService));
+    // Becoming available doesn't silently switch the user onto it.
+    expect(manager.activeProvider, AIProvider.geminiNano);
   });
 
   test('init() stays on Nano (currentService null) when unavailable and no key is stored', () async {

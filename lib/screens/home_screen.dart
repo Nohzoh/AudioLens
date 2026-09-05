@@ -361,6 +361,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         lon = raw.lon;
         gpsSource = 'realtime';
       }
+      // #327: getCurrentRawCoordinates() collapses every failure reason
+      // (permission denied, timeout, no fix) into a plain null, so a
+      // denial here otherwise leaves the permission badge showing
+      // whatever it last happened to say instead of reflecting reality.
+      await _checkLocationPermission();
     }
 
     try {
