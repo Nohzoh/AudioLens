@@ -150,6 +150,16 @@ class AudioGuideService extends ChangeNotifier {
   bool get nanoAvailable => _providerManager.nanoAvailable;
   String? get geminiApiKey => _providerManager.geminiApiKey;
 
+  /// #325: re-checks on-device Nano availability — [init] only resolves
+  /// it once at startup, so a device where Nano finishes downloading
+  /// mid-session would otherwise stay locked out of picking it as long
+  /// as the app keeps running. Called from Settings alongside its own
+  /// (purely cosmetic) device-status display check.
+  Future<void> refreshNanoAvailability() async {
+    await _providerManager.refreshNanoAvailability();
+    notifyListeners();
+  }
+
   int _currentStep = 0;
   bool _analysisInProgress = false;
 
