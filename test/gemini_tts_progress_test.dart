@@ -23,21 +23,26 @@ String _successBody() => jsonEncode({
       ],
     });
 
-/// #329: GeminiTtsService has no real playback-position signal (it plays a
-/// pre-rendered WAV via a plain MediaPlayer, no word-boundary callback like
-/// native TTS gets) — onProgress is an estimate, ticked by a real
-/// Stopwatch/Timer. These tests use short real delays rather than
-/// fake_async (not a dependency here) since the tick interval is only
-/// 200ms.
+/// #329 follow-up: GeminiTtsService.onProgress now polls
+/// AudioPlayerPlugin.kt's real MediaPlayer position ("getPosition") rather
+/// than estimating from a words-per-second speaking rate, which live use
+/// showed drifted visibly from actual audio over a whole script. These
+/// tests drive that native call via a mutable [mockPosition]/[mockDuration]
+/// pair instead of real timing, since correctness here is "reports
+/// whatever the native side says", not any particular wall-clock rate.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Directory tmpDir;
   late Completer<dynamic> playWavCompleter;
+  late int mockPosition;
+  late int mockDuration;
 
   setUp(() {
     tmpDir = Directory.systemTemp.createTempSync('gemini_tts_progress_test');
     playWavCompleter = Completer<dynamic>();
+    mockPosition = 0;
+    mockDuration = 10000;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_pathProviderChannel, (call) async {
       if (call.method == 'getTemporaryDirectory') return tmpDir.path;
@@ -45,7 +50,18 @@ void main() {
     });
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_audioPlayerChannel, (call) async {
-      if (call.method == 'playWav') return playWavCompleter.future;
+      switch (call.method) {
+        case 'playWav':
+          return playWavCompleter.future;
+        case 'getPosition':
+          return {'position': mockPosition, 'duration': mockDuration};
+        case 'seekForward':
+          mockPosition += (call.arguments as Map)['deltaMs'] as int;
+          return null;
+        case 'seekBack':
+          mockPosition -= (call.arguments as Map)['deltaMs'] as int;
+          return null;
+      }
       return null;
     });
   });
@@ -63,81 +79,83 @@ void main() {
         dioClient: fakeDio((_) async => (statusCode: 200, body: _successBody())),
       );
 
-  // 20 words at the 2.5 words/sec heuristic -> ~8s estimated, so a short
-  // real wait below lands comfortably mid-playback, never near 1.0.
-  String longText() => List.generate(20, (i) => 'mot$i').join(' ');
-
-  test('ticks upward while playing, driven by the estimated speaking rate',
+  test('reports progress from the real native position via polling',
       () async {
     final service = buildService();
     final progressValues = <double>[];
     service.onProgress = progressValues.add;
 
-    await service.speak(longText());
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    await service.speak('some text');
+    mockPosition = 5000;
+    await Future<void>.delayed(const Duration(milliseconds: 250));
 
     expect(progressValues, isNotEmpty);
-    expect(progressValues.last, greaterThan(0.0));
-    expect(progressValues.last, lessThan(1.0));
+    expect(progressValues.last, closeTo(0.5, 0.01));
 
     playWavCompleter.complete(null);
     await Future<void>.delayed(Duration.zero);
   });
 
-  test('stops changing once playback completes', () async {
+  test('stops polling once playback completes', () async {
     final service = buildService();
     final progressValues = <double>[];
     service.onProgress = progressValues.add;
 
-    await service.speak('mot0 mot1 mot2');
+    await service.speak('some text');
+    mockPosition = 3000;
     await Future<void>.delayed(const Duration(milliseconds: 250));
     expect(progressValues, isNotEmpty);
 
     playWavCompleter.complete(null);
     await Future<void>.delayed(Duration.zero);
     final countAtComplete = progressValues.length;
+    mockPosition = 9000; // shouldn't matter once polling has stopped
     await Future<void>.delayed(const Duration(milliseconds: 250));
 
     expect(progressValues.length, countAtComplete);
   });
 
-  test('pause() freezes the estimate, resume() continues it', () async {
+  test('pause() needs no special handling — the real position simply '
+      "doesn't advance while paused", () async {
     final service = buildService();
     final progressValues = <double>[];
     service.onProgress = progressValues.add;
 
-    await service.speak(longText());
+    await service.speak('some text');
+    mockPosition = 2000;
     await Future<void>.delayed(const Duration(milliseconds: 250));
     await service.pause();
-    final afterPause = progressValues.length;
     await Future<void>.delayed(const Duration(milliseconds: 250));
-    expect(progressValues.length, afterPause,
-        reason: 'no new ticks while paused');
+    expect(progressValues.last, closeTo(0.2, 0.01));
 
     await service.resume();
+    mockPosition = 6000;
     await Future<void>.delayed(const Duration(milliseconds: 250));
-    expect(progressValues.length, greaterThan(afterPause));
+    expect(progressValues.last, closeTo(0.6, 0.01));
 
     playWavCompleter.complete(null);
     await Future<void>.delayed(Duration.zero);
   });
 
-  test('skipForward()/skipBack() immediately adjust the reported progress',
-      () async {
+  test('skipForward()/skipBack() move the real native position, picked up '
+      'by the next poll', () async {
     final service = buildService();
     final progressValues = <double>[];
     service.onProgress = progressValues.add;
 
-    await service.speak(longText());
+    await service.speak('some text');
+    mockPosition = 3000;
     await Future<void>.delayed(const Duration(milliseconds: 250));
     final before = progressValues.last;
 
     await service.skipForward();
+    await Future<void>.delayed(const Duration(milliseconds: 250));
     expect(progressValues.last, greaterThan(before));
 
-    final afterSkipForward = progressValues.last;
+    final afterForward = progressValues.last;
     await service.skipBack();
-    expect(progressValues.last, lessThan(afterSkipForward));
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    expect(progressValues.last, lessThan(afterForward));
 
     playWavCompleter.complete(null);
     await Future<void>.delayed(Duration.zero);
