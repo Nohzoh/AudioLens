@@ -201,6 +201,37 @@ void main() {
 
       expect(find.text('Prendre une photo'), findsOneWidget);
     });
+
+    // #326 — investigated as a possible bug (icon stuck on "playing" if
+    // playback is stopped by something other than tapping this tile, e.g.
+    // HistoryDetailScreen.dispose()'s unconditional stop() while browsing
+    // history via the app-bar icon rather than this tile). Traced into
+    // AudioPlayerPlugin.kt: its "stop" handler always calls
+    // resolvePendingPlay() (added for T76), resolving *whichever* playWav
+    // call is currently pending regardless of who started it or who calls
+    // stop — which is exactly what completes this tile's own .then()
+    // callback and resets its state. Confirmed here rather than assumed:
+    // the shared setUp() mock doesn't replicate that native resolution on
+    // its own, so completing the same completer any other "stop" source
+    // would resolve is enough to prove the existing .then() correctly
+    // notices and resets, with no code change needed.
+    testWidgets('resets correctly when playback is stopped by something '
+        'other than the tile itself', (tester) async {
+      await pumpWithCachedAudioEntry(tester);
+
+      await tester.tap(find.byIcon(Icons.play_arrow));
+      await tester.pump();
+      expect(find.byIcon(Icons.pause), findsOneWidget);
+
+      await tester.runAsync(() async {
+        playWavCompleter.complete(null);
+        await Future<void>.delayed(Duration.zero);
+      });
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+    });
   });
 
   // #299
