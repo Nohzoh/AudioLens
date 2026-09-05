@@ -46,6 +46,28 @@ class AudioReadyNotifier {
     }
   }
 
+  /// #324: `onDidReceiveNotificationResponse` (wired in [_ensureInitialized])
+  /// only fires for a tap received while the plugin is already running —
+  /// it never fires for the tap that cold-starts the app (process was
+  /// killed while backgrounded, the deferred analysis finished, the
+  /// notification posted, and the user's tap is what relaunches the app).
+  /// That specific case needs this separate query instead. Returns the
+  /// deferred entry ID carried in the notification's payload, or null if
+  /// the app wasn't launched this way (the overwhelmingly common case) or
+  /// the payload wasn't a valid entry ID (the deliberate "script only",
+  /// T16, notification carries none).
+  Future<int?> consumeColdStartPayload() async {
+    await _ensureInitialized();
+    try {
+      final details = await _plugin.getNotificationAppLaunchDetails();
+      if (details?.didNotificationLaunchApp != true) return null;
+      return int.tryParse(details?.notificationResponse?.payload ?? '');
+    } catch (_) {
+      // Best-effort — see class doc.
+      return null;
+    }
+  }
+
   /// Requests the Android 13+ POST_NOTIFICATIONS runtime permission. Safe
   /// to call repeatedly (no-ops once granted or permanently denied) —
   /// intended to be called once, lazily, on the first analysis attempt.

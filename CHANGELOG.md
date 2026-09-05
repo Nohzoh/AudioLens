@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Pick up a "ready" notification tap that cold-starts the app** (issue #324)
+  - **Verified**: 2026-09-05 (PR #334)
+  - **What was done**: found by a global code-review pass. `AudioReadyNotifier`'s `onDidReceiveNotificationResponse` only fires for a tap received while the plugin is already running — never for the tap that cold-starts the app (process killed while backgrounded, a deferred analysis finished, notification posted, tap relaunches the app). `main.dart` never checked for this case, so a cold-start tap silently opened a plain `HomeScreen` instead of the entry that was actually ready. New `AudioReadyNotifier.consumeColdStartPayload()` queries `getNotificationAppLaunchDetails()`; `main.dart` invokes the existing `onPlayRequested` callback with it from a post-frame callback once the Navigator exists.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 402/402 (4 new tests). Dart-only change, no native Kotlin touched.
+
 - [x] 🐛 ⭐ - **Use a distinct notification ID for the "analysis ready" alert** (issue #323)
   - **Verified**: 2026-09-05 (PR #333)
   - **What was done**: found by a global code-review pass. `AudioReadyNotifier` posted with Android notification ID `4202`, identical to `PlaybackForegroundService.kt`'s `NOTIFICATION_ID` (the native foreground-service notification carrying lock-screen playback controls). Neither side used a tag, so posting one silently replaced the other — a second analysis finishing in the background while a guide was already playing wiped out the user's playback controls. Moved to `4203`, distinct from both `PlaybackForegroundService`'s `4202` and `AnalysisForegroundService`'s `4201`.
