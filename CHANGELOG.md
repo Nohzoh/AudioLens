@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐⭐ - **Read real MediaPlayer position for Gemini TTS progress instead of estimating** (issue #339)
+  - **Verified**: 2026-09-05 (PR #340)
+  - **What was done**: live use of #329's estimated progress (words-per-second heuristic) showed real Gemini TTS speech doesn't speak at that rate consistently enough — the estimate visibly drifted from the audio over a whole script, worst right at the end (audio finished, highlighted text stuck partway through). `AudioPlayerPlugin.kt` gains a `getPosition` method returning the current MediaPlayer's position/duration; `GeminiTtsService` polls it every 200ms instead of ticking a `Stopwatch`. Simpler than the estimate it replaced too: pause/seek need no special handling since the real position already reflects both — removed the Stopwatch/skip-offset bookkeeping entirely.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 409/409 (rewrote the 4 progress tests to drive the mocked native position directly). Native Kotlin touched — real local build verified via `scripts/build_android_local.sh`.
+
 - [x] 🐛 ⭐⭐ - **Estimate playback progress for Gemini TTS** (issue #329)
   - **Verified**: 2026-09-05 (PR #338)
   - **What was done**: found by a global code-review pass. `PlayerScreen` only wired `nativeTtsService.onProgress` — `GeminiTtsService` had none at all, so the progress bar/auto-scroll stayed frozen at 0.0 for the whole guide whenever the active provider is Gemini API (the common cloud path). Added an estimated `onProgress` to `GeminiTtsService` from the same words-per-second rate `HistoryEntry.audioDurationEstimate` already uses, ticked by a `Stopwatch` (pause/resume map directly onto stop/start) plus a manual offset for ±10s skips. Also moved `AudioGuideService.togglePause()`'s Gemini-resume off a direct platform-channel poke and onto a proper `GeminiTtsService.resume()`, so resuming also resumes the estimate.
