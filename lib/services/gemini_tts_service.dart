@@ -46,62 +46,39 @@ class GeminiTtsService {
 
   bool get isPlaying => _isPlaying;
 
-  /// #329: unlike native TTS (which gets a real word-boundary callback
-  /// from the platform's speech engine, see NativeTtsService's
-  /// setProgressHandler), Gemini TTS plays a pre-rendered WAV through a
-  /// plain MediaPlayer with no position-reporting of its own. Estimated
-  /// instead, from a words-per-second speaking rate -- the same
-  /// heuristic HistoryEntry.audioDurationEstimate already uses elsewhere
-  /// for duration display -- ticked by a Stopwatch (start/stop map
-  /// directly onto pause/resume) plus a manual offset for ±10s skips,
-  /// which Stopwatch has no API to represent directly. Approximate, not
-  /// true playback position, but a large improvement over the progress
-  /// bar/auto-scroll being permanently frozen at zero.
+  /// #329 follow-up: the first version of this estimated progress from a
+  /// words-per-second speaking rate (the same heuristic
+  /// HistoryEntry.audioDurationEstimate uses for duration display) —
+  /// live use showed real Gemini TTS speech doesn't actually speak at
+  /// that rate consistently enough, so the estimate visibly drifted from
+  /// the audio over a whole script, worst right at the end (audio
+  /// finished, highlighted text stuck partway through). Polls the real
+  /// MediaPlayer position instead (AudioPlayerPlugin.kt's "getPosition"),
+  /// which is also simpler: pause/seek need no special handling here,
+  /// since the native position itself already reflects them (it doesn't
+  /// advance while paused, and seekForward/seekBack already move it).
   Function(double progress)? onProgress;
-  final Stopwatch _progressStopwatch = Stopwatch();
   Timer? _progressTimer;
-  int _estimatedTotalMs = 1;
-  int _progressSkipOffsetMs = 0;
 
-  int get _elapsedEstimateMs =>
-      _progressStopwatch.elapsedMilliseconds + _progressSkipOffsetMs;
-
-  void _startProgressTicking() {
+  void _startProgressPolling() {
     _progressTimer?.cancel();
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
-      onProgress?.call((_elapsedEstimateMs / _estimatedTotalMs).clamp(0.0, 1.0));
+    const channel = MethodChannel('audio_guide/audio_player');
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 200), (_) async {
+      try {
+        final result = await channel.invokeMethod<Map>('getPosition');
+        final position = (result?['position'] as num?)?.toInt() ?? -1;
+        final duration = (result?['duration'] as num?)?.toInt() ?? -1;
+        if (position < 0 || duration <= 0) return;
+        onProgress?.call((position / duration).clamp(0.0, 1.0));
+      } catch (_) {
+        // Best-effort — a progress bar hiccup must never disrupt playback.
+      }
     });
   }
 
-  void _startProgressEstimate(String text, double speed) {
-    final trimmed = text.trim();
-    final wordCount = trimmed.isEmpty ? 0 : trimmed.split(RegExp(r'\s+')).length;
-    final estimatedSeconds = (wordCount / 2.5) / speed;
-    _estimatedTotalMs = (estimatedSeconds * 1000).round().clamp(1, 1 << 30);
-    _progressSkipOffsetMs = 0;
-    _progressStopwatch
-      ..reset()
-      ..start();
-    _startProgressTicking();
-  }
-
-  void _pauseProgressEstimate() {
+  void _stopProgressPolling() {
     _progressTimer?.cancel();
     _progressTimer = null;
-    _progressStopwatch.stop();
-  }
-
-  void _resumeProgressEstimate() {
-    _progressStopwatch.start();
-    _startProgressTicking();
-  }
-
-  void _stopProgressEstimate() {
-    _progressTimer?.cancel();
-    _progressTimer = null;
-    _progressStopwatch
-      ..stop()
-      ..reset();
   }
 
   /// [dioClient] allows injecting a mock Dio instance in tests — see
@@ -124,11 +101,11 @@ class GeminiTtsService {
 
     AppLogger.tts('Gemini TTS playing $wavPath...');
     _isPlaying = true;
-    _startProgressEstimate(text, speed);
+    _startProgressPolling();
     const channel = MethodChannel('audio_guide/audio_player');
     channel.invokeMethod('playWav', {'path': wavPath, 'speed': speed}).then((_) {
       _isPlaying = false;
-      _stopProgressEstimate();
+      _stopProgressPolling();
       onComplete?.call();
     });
   }
@@ -329,25 +306,26 @@ class GeminiTtsService {
     const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('pause');
     _isPlaying = false;
-    _pauseProgressEstimate();
+    // Progress polling deliberately keeps running — MediaPlayer's
+    // currentPosition simply stops advancing while paused, no special
+    // handling needed to keep the reported progress correctly frozen.
   }
 
   /// #329: previously handled by AudioGuideService.togglePause() poking
   /// the platform channel directly (mirrored pause()/stop()/skipForward()/
   /// skipBack(), all of which already went through this class) — pulled
-  /// in here too so resuming can also resume the progress estimate.
+  /// in here too for consistency.
   Future<void> resume() async {
     const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('play');
     _isPlaying = true;
-    _resumeProgressEstimate();
   }
 
   Future<void> stop() async {
     const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('stop');
     _isPlaying = false;
-    _stopProgressEstimate();
+    _stopProgressPolling();
   }
 
   /// T118/T21 — skip ±10s within the currently playing cached WAV
@@ -361,14 +339,13 @@ class GeminiTtsService {
   Future<void> skipForward() async {
     const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('seekForward', {'deltaMs': _skipMs});
-    _progressSkipOffsetMs += _skipMs;
-    onProgress?.call((_elapsedEstimateMs / _estimatedTotalMs).clamp(0.0, 1.0));
+    // The next poll tick (≤200ms away) picks up the new real position —
+    // no manual offset bookkeeping needed, unlike the estimate this
+    // replaced.
   }
 
   Future<void> skipBack() async {
     const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('seekBack', {'deltaMs': _skipMs});
-    _progressSkipOffsetMs -= _skipMs;
-    onProgress?.call((_elapsedEstimateMs / _estimatedTotalMs).clamp(0.0, 1.0));
   }
 }

@@ -157,6 +157,22 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 seekBy(-(call.argument<Int>("deltaMs") ?: 10000))
                 result.success(null)
             }
+            "getPosition" -> {
+                // Real MediaPlayer position (T329-follow-up): reading this
+                // instead of estimating from a words-per-second heuristic
+                // is what makes the Dart-side progress bar/auto-scroll
+                // track actual audio playback exactly, including through
+                // pause (position simply doesn't advance) and seek (this
+                // already reads whatever seekForward/seekBack just set).
+                // -1 for either value means "no active player" -- the
+                // Dart side treats that as nothing to report yet.
+                result.success(
+                    mapOf(
+                        "position" to (mediaPlayer?.currentPosition ?: -1),
+                        "duration" to (mediaPlayer?.duration ?: -1),
+                    )
+                )
+            }
             "stop" -> {
                 mediaPlayer?.stop(); mediaPlayer?.release()
                 mediaPlayer = null
