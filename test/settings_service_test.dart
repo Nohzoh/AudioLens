@@ -118,6 +118,40 @@ void main() {
     expect(settings.lastSeenVersion, isNull);
   });
 
+  // #312 diagnostic breadcrumb
+  test('whatsNewShownVersion/whatsNewDismissedVersion are null by default '
+      'and persist across a reload once recorded', () async {
+    final settings = SettingsService();
+    await settings.init();
+    expect(settings.whatsNewShownVersion, isNull);
+    expect(settings.whatsNewDismissedVersion, isNull);
+
+    await settings.recordWhatsNewShown('1.2.3');
+    expect(settings.whatsNewShownVersion, '1.2.3');
+    expect(settings.whatsNewDismissedVersion, isNull);
+
+    await settings.recordWhatsNewDismissed('1.2.3');
+    expect(settings.whatsNewDismissedVersion, '1.2.3');
+
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.whatsNewShownVersion, '1.2.3');
+    expect(reloaded.whatsNewDismissedVersion, '1.2.3');
+  });
+
+  test('resetOnboarding clears the whats-new shown/dismissed breadcrumb too',
+      () async {
+    final settings = SettingsService();
+    await settings.init();
+    await settings.recordWhatsNewShown('1.2.3');
+    await settings.recordWhatsNewDismissed('1.2.3');
+
+    await settings.resetOnboarding();
+
+    expect(settings.whatsNewShownVersion, isNull);
+    expect(settings.whatsNewDismissedVersion, isNull);
+  });
+
   test('setShowKofiButton persists across a reload', () async {
     final settings = SettingsService();
     await settings.init();

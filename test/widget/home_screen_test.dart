@@ -293,10 +293,15 @@ void main() {
       expect(find.text('Nouveautés'), findsOneWidget);
       expect(find.text(whatsNewText), findsOneWidget);
       expect(settings.lastSeenVersion, '9.9.9');
+      // #312 diagnostic breadcrumb: recorded as shown as soon as the
+      // dialog goes up, dismissed only once OK is actually tapped.
+      expect(settings.whatsNewShownVersion, '9.9.9');
+      expect(settings.whatsNewDismissedVersion, isNull);
 
       await tester.tap(find.text('OK'));
       await tester.pump();
       expect(find.text('Nouveautés'), findsNothing);
+      expect(settings.whatsNewDismissedVersion, '9.9.9');
     });
 
     testWidgets('not shown again once the stored version already matches '
@@ -306,6 +311,22 @@ void main() {
       await pumpHome(tester);
 
       expect(find.text('Nouveautés'), findsNothing);
+    });
+
+    // #312: a stale "shown but never dismissed" breadcrumb from a
+    // different version is purely diagnostic (logged) — it doesn't gate
+    // anything, so a genuinely new version still shows normally.
+    testWidgets('a leftover undismissed breadcrumb from another version '
+        "doesn't block the dialog for the current one", (tester) async {
+      await settings.recordSeenVersion('0.0.1');
+      await settings.recordWhatsNewShown('0.0.1');
+      // Deliberately no recordWhatsNewDismissed('0.0.1') call — simulates
+      // #312 itself (shown last time, never confirmed dismissed).
+
+      await pumpHome(tester);
+
+      expect(find.text('Nouveautés'), findsOneWidget);
+      expect(settings.whatsNewShownVersion, '9.9.9');
     });
   });
 }

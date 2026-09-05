@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔧 ⭐ - **Persist a shown/dismissed breadcrumb for the whats-new dialog** (issue #312)
+  - **Verified**: 2026-09-05 (PR #342)
+  - **What was done**: diagnostic follow-up on the third reported occurrence of #312 (dialog missing/disappearing after an update). `AppLogger`'s buffer is in-memory and never survives the process restart #312's own reports keep implicating, so there's no way to confirm "shown but lost" vs. "never attempted" from the next session's logs alone. `SettingsService` now persists `whatsNewShownVersion`/`whatsNewDismissedVersion`; `HomeScreen._checkWhatsNew()` logs clear evidence when they mismatch. Purely diagnostic — doesn't change whether/when the dialog shows.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → 412/412 (4 new tests). Dart-only change, no native Kotlin touched.
+
 - [x] 🐛 ⭐⭐ - **Read real MediaPlayer position for Gemini TTS progress instead of estimating** (issue #339)
   - **Verified**: 2026-09-05 (PR #340)
   - **What was done**: live use of #329's estimated progress (words-per-second heuristic) showed real Gemini TTS speech doesn't speak at that rate consistently enough — the estimate visibly drifted from the audio over a whole script, worst right at the end (audio finished, highlighted text stuck partway through). `AudioPlayerPlugin.kt` gains a `getPosition` method returning the current MediaPlayer's position/duration; `GeminiTtsService` polls it every 200ms instead of ticking a `Stopwatch`. Simpler than the estimate it replaced too: pause/seek need no special handling since the real position already reflects both — removed the Stopwatch/skip-offset bookkeeping entirely.

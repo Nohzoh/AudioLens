@@ -141,6 +141,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     final settings = context.read<SettingsService>();
     final currentVersion = info.version;
+
+    // #312 diagnostic: settings.whatsNewShownVersion/whatsNewDismissedVersion
+    // are persisted (unlike AppLogger's in-memory buffer, which never
+    // survives the process restart #312 keeps implicating) specifically so
+    // a dialog that was shown then lost before the user could dismiss it
+    // leaves durable evidence visible in the *next* session's own log.
+    final shown = settings.whatsNewShownVersion;
+    final dismissed = settings.whatsNewDismissedVersion;
+    if (shown != null && shown != dismissed) {
+      AppLogger.info(
+          'Whats-new: #312 evidence — dialog for $shown was shown in a '
+          'previous session but never recorded as dismissed (dismissed: '
+          '$dismissed)');
+    }
+
     final lastSeen = settings.lastSeenVersion;
     if (lastSeen == currentVersion) {
       AppLogger.info('Whats-new: already seen $currentVersion, skipping');
@@ -168,6 +183,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     AppLogger.info('Whats-new: showing dialog for $currentVersion (previously $lastSeen)');
+    // #312 diagnostic — recorded right before showDialog, not after: if
+    // the dialog is shown then lost before the user dismisses it, this
+    // is the only trace of that ever having happened (see the check at
+    // the top of this method).
+    await settings.recordWhatsNewShown(currentVersion);
+    if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
     showDialog<void>(
       context: context,
@@ -183,7 +204,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         content: SingleChildScrollView(child: Text(text!)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
+            onPressed: () {
+              settings.recordWhatsNewDismissed(currentVersion);
+              Navigator.of(dialogContext).pop();
+            },
             child: Text(l10n.commonOk),
           ),
         ],
