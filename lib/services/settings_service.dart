@@ -18,6 +18,8 @@ class SettingsService extends ChangeNotifier {
   bool _outputLanguageFollowsApp = false;
   String? _appLocale;
   String? _lastSeenVersion;
+  String? _whatsNewShownVersion;
+  String? _whatsNewDismissedVersion;
 
   bool get isOnboardingComplete => _isOnboardingComplete;
   String get geminiApiKey => _geminiApiKey;
@@ -76,6 +78,29 @@ class SettingsService extends ChangeNotifier {
   /// checks it.
   String? get lastSeenVersion => _lastSeenVersion;
 
+  /// #312 diagnostic breadcrumb: which version's whats-new dialog
+  /// HomeScreen most recently *attempted* to show (recorded right before
+  /// `showDialog`) vs. which one the user actually dismissed (recorded
+  /// when they tap OK). Both persisted (not just logged) because
+  /// AppLogger's buffer is in-memory and doesn't survive the process
+  /// restart #312's own reports keep implicating — if the dialog is
+  /// shown-then-lost during that restart, [shownVersion] surviving to
+  /// the *next* launch (while [dismissedVersion] doesn't match it) is
+  /// the only way to actually confirm that happened, since the session
+  /// where it happened never gets a chance to report it.
+  String? get whatsNewShownVersion => _whatsNewShownVersion;
+  String? get whatsNewDismissedVersion => _whatsNewDismissedVersion;
+
+  Future<void> recordWhatsNewShown(String version) async {
+    _whatsNewShownVersion = version;
+    await _prefs.setString('whats_new_shown_version', version);
+  }
+
+  Future<void> recordWhatsNewDismissed(String version) async {
+    _whatsNewDismissedVersion = version;
+    await _prefs.setString('whats_new_dismissed_version', version);
+  }
+
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _isOnboardingComplete = _prefs.getBool('onboarding_complete') ?? false;
@@ -90,6 +115,8 @@ class SettingsService extends ChangeNotifier {
     _outputLanguageFollowsApp = _prefs.getBool('output_language_follows_app') ?? false;
     _appLocale = _prefs.getString('app_locale');
     _lastSeenVersion = _prefs.getString('last_seen_version');
+    _whatsNewShownVersion = _prefs.getString('whats_new_shown_version');
+    _whatsNewDismissedVersion = _prefs.getString('whats_new_dismissed_version');
     // Re-resolve in case the app's language changed (system locale, or a
     // prior in-app override) since the last launch while this was on.
     if (_outputLanguageFollowsApp) {
@@ -138,6 +165,8 @@ class SettingsService extends ChangeNotifier {
     _outputLanguageFollowsApp = false;
     _appLocale = null;
     _lastSeenVersion = null;
+    _whatsNewShownVersion = null;
+    _whatsNewDismissedVersion = null;
     notifyListeners();
   }
 
