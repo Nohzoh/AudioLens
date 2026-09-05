@@ -4,7 +4,6 @@ import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 import '../utils/error_sanitizer.dart';
 import '../models/guide_error.dart';
-import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/widgets.dart';
 import 'ai_provider_manager.dart';
@@ -682,8 +681,9 @@ class AudioGuideService extends ChangeNotifier {
       _state = GuideState.paused;
     } else if (_state == GuideState.paused) {
       if (geminiIsPlaying) {
-        const channel = MethodChannel('audio_guide/audio_player');
-        await channel.invokeMethod('play');
+        // #329: resume() (not a raw channel poke, like before) also
+        // resumes GeminiTtsService's own progress estimate.
+        await _providerManager.geminiTtsService!.resume();
       } else {
         await _nativeTtsService.resume();
       }

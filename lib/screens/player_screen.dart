@@ -73,11 +73,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     // Listen to TTS progress from service
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final guide = context.read<AudioGuideService>();
-      guide.nativeTtsService.onProgress = (progress) {
+      void onProgress(double progress) {
         if (!mounted) return;
         setState(() => _readingProgress = progress);
         _scrollToProgress(progress);
-      };
+      }
+
+      guide.nativeTtsService.onProgress = onProgress;
+      // #329: previously only nativeTtsService was wired, so the
+      // progress bar/auto-scroll stayed frozen at 0.0 for the entire
+      // duration whenever Gemini TTS (the cloud voice) was the engine
+      // actually speaking — GeminiTtsService had no onProgress at all
+      // until its own estimated-progress addition.
+      guide.geminiTtsService?.onProgress = onProgress;
     });
   }
 
