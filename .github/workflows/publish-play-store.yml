@@ -1,14 +1,16 @@
 name: Publish to Play Store (from existing build)
 
 # Publishes an AAB that was already built by a "Build Android APK" run,
-# instead of rebuilding from scratch. Every push to main already produces
-# a fresh, tested AAB artifact (30-day retention) — this workflow just
-# grabs one and uploads it, saving the ~8-10 min rebuild that
+# instead of rebuilding from scratch — grabs the artifact (30-day
+# retention) and uploads it, saving the ~8-10 min rebuild that
 # build-android.yml's own workflow_dispatch path would otherwise repeat.
 #
-# Use build-android.yml's workflow_dispatch instead when you need a
-# genuinely fresh build (e.g. no recent artifact exists, or you want to
-# publish a commit that was never built on main).
+# Since #389, only a *release* push to main (a chore/publish-v* version
+# bump) produces an AAB artifact — a routine merge skips the build. So
+# the intended flow is: publish right after a release merge's build
+# finishes, passing that run's id. If you need to publish any other
+# commit, dispatch build-android.yml's workflow_dispatch first (it
+# always builds) and pass its run_id here.
 
 on:
   workflow_dispatch:

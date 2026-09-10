@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📝 ⭐ - **Fix stale "every push to main produces an AAB" mentions** (issue #398)
+  - **Verified**: 2026-09-10 (PR #399)
+  - **What was done**: post-#389 cleanup — `publish-play-store.yml`'s header comment and `AGENTS.md`'s publishing section still claimed every push to `main` builds an AAB and still pointed at the "latest successful build on `main`" default, which since #389 usually resolves to a routine merge whose `build` was skipped (no artifact). Both now say to pass the release build's `run_id` explicitly.
+  - **Final validation**: docs-only; `publish-play-store.yml` YAML re-validated.
+
 - [x] 🔧 ⭐ - **Serve remote config from GitHub Pages instead of raw.githubusercontent.com** (issue #384)
   - **Verified**: 2026-09-10 (PR #396)
   - **What was done**: `RemoteConfigService` now fetches `config.json`/`config.json.sig` from `https://nohzoh.github.io/AudioLens/` (served from `docs/`) — a static-hosting service with more predictable rate limits than raw's developer-convenience endpoint. The repo-root copies stay in service for builds shipped before this change (the URL is compiled in); `scripts/sign_config.dart` now writes both pairs and a drift test fails CI if they diverge.

@@ -163,21 +163,24 @@ accidentally reach the Play Store. All publishing goes through:
 
 - **`publish-play-store.yml`'s `workflow_dispatch`** — reuses the
   AAB/mapping artifacts from an already-completed `build-android.yml`
-  run (defaults to the latest successful one on `main`; pass a
-  specific `run_id` to target another) instead of rebuilding. Every
-  push to `main` already produces a tested AAB artifact (30-day
-  retention), so this is normally already available. **Important**: it
-  checks out the repo at *that build's* commit to read
+  run instead of rebuilding. **Always pass an explicit `run_id`** —
+  since #389 only a *release* push to `main` (a `chore/publish-v*`
+  version bump) produces an AAB, so the workflow's "latest successful
+  build on `main`" default will usually land on a routine merge whose
+  `build` job was skipped and which has no artifact. The right `run_id`
+  is the `build-android.yml` run triggered by the release merge itself.
+  **Important**: it checks out the repo at *that build's* commit to read
   `distribution/whatsnew/*` and the package name — not whatever `main`
   is at dispatch time — so the release notes below must already be
   committed and merged *before* the build you're about to publish ran,
-  not just before you click "Run workflow." If they're not, push the
-  whatsnew update first and wait for the next `main` build.
+  not just before you click "Run workflow."
 
-If no recent build exists yet, or you need to publish a commit that
-was never built on `main`, dispatch `build-android.yml` first (a plain
-build, no track/publish involved) and wait for it to finish, then
-dispatch `publish-play-store.yml` with that run's ID.
+If you need to publish a commit that was never built on `main` as a
+release (or the release build's artifact has expired), dispatch
+`build-android.yml`'s `workflow_dispatch` first (it always builds,
+regardless of #389's release gate — no track/publish involved) and
+wait for it to finish, then dispatch `publish-play-store.yml` with that
+run's ID.
 
 ### Play Store Release Notes (2026-08-20 onward)
 
