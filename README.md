@@ -6,9 +6,9 @@
 [![Last commit](https://img.shields.io/github/last-commit/Nohzoh/AudioLens)](https://github.com/Nohzoh/AudioLens/commits/main)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-An AI-powered audio guide mobile app. Take a photo of a place and instantly get an audio explanation.
+An AI-powered audio guide app for Android. Take a photo of a place and instantly get a spoken explanation — fully on-device or in the cloud, your choice.
 
-**[📄 Project site & screenshots](https://nohzoh.github.io/AudioLens/)** · [ARCHITECTURE.md](ARCHITECTURE.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
+**[📄 Project site & screenshots](https://nohzoh.github.io/AudioLens/)** · [ARCHITECTURE.md](ARCHITECTURE.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [PRIVACY.md](PRIVACY.md)
 
 <p align="center">
   <img src="docs/assets/screenshot-home.png" width="220" alt="Home screen with recently visited places">
@@ -31,7 +31,6 @@ An AI-powered audio guide mobile app. Take a photo of a place and instantly get 
 - 📜 Analysis **history** (SQLite) with replay and retry
 - 🧾 **Analysis detail sheet** (model, fallback, GPS, duration)
 - 📋 Built-in **logs screen** for field debugging
-- 🆓 **Ko-fi** button to support the project
 
 ## Architecture
 
@@ -58,20 +57,32 @@ Pipeline details and diagrams in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 | **Gemini TTS** | Cloud | Primary when an API key is configured |
 | **Native Android TTS** | Local | Automatic fallback + offline mode, female/male voice choice |
 
+## Privacy
+
+No analytics, no tracking, no ads. Photos and location are used only to generate the guide, and are sent to Google's Gemini API **only in cloud mode** — local mode (Gemini Nano + on-device TTS) sends nothing off the device. Full details in [`PRIVACY.md`](PRIVACY.md).
+
 ## Platforms
 
-**Android** only. Automatically built via **GitHub Actions** on every push to `main`.
+**Android** only (an iOS port isn't started). CI builds the app on every pull request; releases go to a Play Store closed-testing track.
 
-## Build
+## Building from source
 
 ```bash
 flutter pub get
 flutter build apk --debug
 ```
 
+Full contributor setup (Android SDK, JDK, local signed build, tests) is in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## Configuration
 
-Configuration (models, fallbacks, TTS, GPS) is centralized in [`config.json`](config.json) and fetched remotely by `RemoteConfigService`, with built-in defaults as a fallback.
+Configuration (models, fallbacks, TTS, GPS) is centralized in [`config.json`](config.json), served from the project's GitHub Pages site and fetched at startup by `RemoteConfigService`, with built-in defaults as a fallback.
+
+## Support
+
+AudioLens is free and open-source. If it's useful to you, a tip helps keep it maintained:
+
+[![Support on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/tarnaud)
 
 ## License
 
