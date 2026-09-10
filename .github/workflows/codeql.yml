@@ -1,21 +1,22 @@
 name: CodeQL
 
 # #408: advanced setup, replacing the repo's CodeQL "default setup".
-# Default setup auto-detected the committed Kotlin plugin sources
-# (android/app/src/main/kotlin/**) and tried to analyse java-kotlin with
-# *autobuild* — which fails here ("Could not detect a suitable build
-# command"): android/ isn't committed, there's no Gradle wrapper, and the
-# project only becomes buildable after `flutter create` + the
-# scripts/ci/* patches. So java-kotlin never got a clean analysis and the
-# Security tab kept surfacing that one stale failed run.
 #
-# This workflow analyses every language with build-mode: none — CodeQL
-# extracts straight from source, no build. actions/python were already
-# source-only under default setup; java-kotlin now works the same way.
+# Default setup auto-detected the committed Kotlin plugin sources and
+# tried to analyse java-kotlin with autobuild — which fails here
+# ("Could not detect a suitable build command": android/ isn't
+# committed, no Gradle wrapper, needs `flutter create` + scripts/ci/*
+# patches). That stale failed run kept showing in the Security tab.
 #
-# CodeQL is not a required status check (only `test` and `build` are), so
-# this can be skipped on docs-only changes without leaving a check stuck
-# "Expected".
+# java-kotlin is deliberately NOT analysed here: CodeQL's Kotlin
+# extractor is a kotlinc compiler plugin, so Kotlin needs a real build
+# (build-mode: none only covers Java, of which this repo has none). See
+# #408 for the weekly-manual-build option that would add it back.
+#
+# actions + python analyse with build-mode: none (source only, as they
+# did under default setup). CodeQL is not a required status check (only
+# `test` and `build` are), so paths-ignore skips it on docs-only changes
+# without leaving a check stuck "Expected".
 
 on:
   push:
@@ -54,8 +55,6 @@ jobs:
           - language: actions
             build-mode: none
           - language: python
-            build-mode: none
-          - language: java-kotlin
             build-mode: none
 
     steps:
