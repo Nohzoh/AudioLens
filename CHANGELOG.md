@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📝 ⭐ - **README polish: privacy, Ko-fi, use-vs-build** (issue #406)
+  - **Verified**: 2026-09-10 (PR #407)
+  - **What was done**: added a Privacy section + `PRIVACY.md` link (on-device / no-tracking is the main differentiator and was unmentioned); made Ko-fi a real ask via `.github/FUNDING.yml` (native Sponsor button) + a Support section; split "Platforms" from "Building from source" and removed the stale "built on every push to main" claim (untrue since #389).
+  - **Final validation**: docs-only; all links and the Ko-fi button URL checked.
+
 - [x] 🐛 ⭐ - **Startup tip unreadable in dark mode** (issue #404)
   - **Verified**: 2026-09-10 (PR #405)
   - **What was done**: the tip SnackBar (#363) set a fixed dark olive background but left the text/action at the Material 3 theme defaults, which are dark in dark mode → dark-on-dark. Pinned the content colour (`DefaultTextStyle.merge`) and the Ko-fi action `textColor` to a warm light tone that reads in either theme. Regression test added.
