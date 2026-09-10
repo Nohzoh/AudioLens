@@ -410,6 +410,29 @@ void main() {
       expect(settings.tipIndex, 1);
     });
 
+    // #404: the tip SnackBar has a fixed dark background, so it must pin
+    // its own content colour — the M3 theme default is dark in dark mode,
+    // which made the text dark-on-dark and unreadable.
+    testWidgets('the tip text is rendered with an explicit light colour',
+        (tester) async {
+      await settings.recordSeenVersion('9.9.9');
+      for (var i = 0; i < 9; i++) {
+        await settings.incrementLaunchCount();
+      }
+
+      await pumpHome(tester);
+
+      final wrapper = tester.widget<DefaultTextStyle>(
+        find
+            .ancestor(
+              of: find.text(firstTipText),
+              matching: find.byType(DefaultTextStyle),
+            )
+            .first,
+      );
+      expect(wrapper.style.color, const Color(0xFFF3E6C4));
+    });
+
     testWidgets('does not show a tip before the 10th launch', (tester) async {
       await settings.recordSeenVersion('9.9.9');
       for (var i = 0; i < 8; i++) {

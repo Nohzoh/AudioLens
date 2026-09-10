@@ -352,6 +352,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       SnackBar(
         behavior: SnackBarBehavior.floating,
         backgroundColor: const Color(0xFF3D3418),
+        // #404: the background is a fixed dark olive regardless of theme,
+        // but the M3 default content/action colours are theme-derived
+        // (onInverseSurface / inversePrimary) — in dark mode those are
+        // *dark*, giving dark-on-dark. The content Text and the
+        // SnackBarAction below each pin an explicit warm light tone that
+        // reads on the olive in either theme.
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: Colors.amber.withValues(alpha: 0.4)),
@@ -360,18 +366,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         // + its own height) sitting at the very bottom of this screen —
         // 84 landed right on top of it, overlapping on a 3-line tip.
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 100),
-        content: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('💡', style: TextStyle(fontSize: 20)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(tip.text(l10n))),
-          ],
+        content: DefaultTextStyle.merge(
+          // #404: see backgroundColor above — explicit light content
+          // colour so the tip reads on the dark olive in both themes.
+          style: const TextStyle(color: Color(0xFFF3E6C4)),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('💡', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(tip.text(l10n))),
+            ],
+          ),
         ),
         duration: const Duration(seconds: 6),
         action: tip.isKofi
             ? SnackBarAction(
                 label: l10n.startupTipKofiAction,
+                textColor: Colors.amber.shade200,
                 onPressed: () => launchUrl(
                   Uri.parse('https://ko-fi.com/tarnaud'),
                   mode: LaunchMode.externalApplication,
