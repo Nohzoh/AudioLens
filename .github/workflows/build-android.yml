@@ -195,19 +195,21 @@ jobs:
           print(f"TELEGRAM_CHAT_ID_OBF={obfuscate(os.environ.get('TELEGRAM_CHAT_ID', ''))}")
           PYEOF
 
-      # The APK is only ever consumed for direct-sideload testing/manual
-      # QA (e.g. via adb) or as a release-build sanity check (aapt can
-      # inspect an APK, not an AAB) â€” never for the actual Play Store
-      # publish, which needs the AAB below. A PR is never published, so
-      # building it there is purely that sanity check; skip it on a plain
-      # push to main, where the AAB is what actually matters and doing
-      # both doubles the native build time (assembleRelease *and*
-      # bundleRelease are separate Gradle invocations sharing the same
-      # build graph) for no benefit. workflow_dispatch keeps both, since
-      # that path is a full manual build+publish where having the APK for
-      # a quick manual check before publishing is still useful.
+      # The Play Store publish needs the AAB below, not this APK. The APK
+      # is for direct sideload: manual QA (aapt/adb), and — since #402 —
+      # the asset attached to each GitHub Release. So it's built on a
+      # release push too, not just PR/workflow_dispatch. It never runs on
+      # a non-release push (that never reaches this job — see the job
+      # `if:` above). Building both APK and AAB is two Gradle invocations
+      # sharing one build graph; the extra minutes only land on release
+      # pushes, which are rare.
+      #
+      # Note: this APK is signed with the *upload* key. Play App Signing
+      # means the Play Store copy is re-signed by Google, so the two have
+      # different signatures and can't cross-update — documented in the
+      # README's Download section and the Release notes.
       - name: Build APK (release)
-        if: github.event_name != 'push'
+        if: github.event_name != 'push' || needs.changes.outputs.release == 'true'
         run: |
           BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           # T83: only real-device ABIs â€” x86/x86_64 are emulator-only and
@@ -229,7 +231,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Show errors on failure
-        if: failure() && github.event_name != 'push'
+        if: failure() && (github.event_name != 'push' || needs.changes.outputs.release == 'true')
         run: |
           echo "## Build errors" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -237,7 +239,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Verify APK exists and is valid
-        if: github.event_name != 'push'
+        if: github.event_name != 'push' || needs.changes.outputs.release == 'true'
         run: |
           APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
           if [ ! -f "$APK_PATH" ]; then
@@ -267,7 +269,7 @@ jobs:
           echo "âœ… APK build verified: $APK_PATH ($(stat -f%z "$APK_PATH" 2>/dev/null || stat -c%s "$APK_PATH") bytes)"
 
       - name: Upload APK
-        if: success() && github.event_name != 'push'
+        if: success() && (github.event_name != 'push' || needs.changes.outputs.release == 'true')
         uses: actions/upload-artifact@v7
         with:
           name: AudioLens-release-${{ github.sha }}
