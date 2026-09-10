@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **GitHub Pages site: header overflowed on mobile** (issue #410)
+  - **Verified**: 2026-09-10 (PR #411)
+  - **What was done**: below the nav breakpoint the three header CTAs (language / Ko-fi / GitHub) kept full-size text pills and ran off the right edge on phones. Added a `max-width:600px` rule that visually-hides the labels (kept in the a11y tree) and tightens header spacing, leaving just the 🇫🇷 / ☕ / ★ icons. Both locales.
+  - **Final validation**: static site only; visual check on `main` after Pages redeploys.
+
 - [x] 📝 ⭐ - **README polish: privacy, Ko-fi, use-vs-build** (issue #406)
   - **Verified**: 2026-09-10 (PR #407)
   - **What was done**: added a Privacy section + `PRIVACY.md` link (on-device / no-tracking is the main differentiator and was unmentioned); made Ko-fi a real ask via `.github/FUNDING.yml` (native Sponsor button) + a Support section; split "Platforms" from "Building from source" and removed the stale "built on every push to main" claim (untrue since #389).
