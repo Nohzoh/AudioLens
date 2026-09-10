@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Startup tip unreadable in dark mode** (issue #404)
+  - **Verified**: 2026-09-10 (PR #405)
+  - **What was done**: the tip SnackBar (#363) set a fixed dark olive background but left the text/action at the Material 3 theme defaults, which are dark in dark mode → dark-on-dark. Pinned the content colour (`DefaultTextStyle.merge`) and the Ko-fi action `textColor` to a warm light tone that reads in either theme. Regression test added.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → all passing (incl. new test).
+
 - [x] 📝 ⭐ - **Add README status badges + complete the AGPL-3.0 LICENSE** (issue #401)
   - **Verified**: 2026-09-10 (PR #403)
   - **What was done**: 5-badge row in the README (Tests, Build Android, License, last commit, PRs welcome). `LICENSE` held only the AGPL header notice, not the full text, so GitHub classified it as "Other" — replaced with the verbatim canonical AGPL-3.0 text. Repo homepage URL + topics still to be set manually (admin-only).
