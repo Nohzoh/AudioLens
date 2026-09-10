@@ -1,1 +1,3 @@
-Internal maintenance release: more resilient delivery of the app's remote configuration, updated dependencies, and hardening of the build pipeline. No user-facing changes in this version.
+Fixes: the tip that occasionally appears when you open the app is readable again in dark mode (it was showing dark text on a dark background).
+
+Also: updated dependencies and project documentation.
