@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📝 ⭐ - **README: spell out the Play Store tester opt-in steps** (issue #413)
+  - **Verified**: 2026-09-10 (PR #414)
+  - **What was done**: the `## Download` section's Google Play line bounced the reader to the project site for the steps — now it carries the 3-step opt-in flow (join the Google Group → opt in → install) directly, matching the GitHub Pages site.
+  - **Final validation**: docs-only; links checked.
+
 - [x] 🚀 ⭐ - **Cut a GitHub Release with a downloadable APK on each ship** (issue #402)
   - **Verified**: 2026-09-10 (PR #412)
   - **What was done**: `build-android.yml` now builds + uploads the release APK on a release push too (not just PR/dispatch), so `ship` can attach it. Added a `## Download` section to the README (GitHub Releases + Google Play open testing, with the Play App Signing signature-mismatch caveat). The `ship` skill gained a "cut the GitHub Release" step. `v0.14.5` created as the first Release.
