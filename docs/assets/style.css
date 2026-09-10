@@ -439,6 +439,30 @@ footer a:hover { color: var(--text-dim); }
   .dev-grid { grid-template-columns: 1fr; }
   nav.site-links { display: none; }
 }
+/* #410: the three header CTAs (lang / Ko-fi / GitHub) kept full-width
+   text pills below the nav breakpoint and ran off the right edge on
+   phones. Collapse them to their icon; the label stays in the a11y
+   tree (visually hidden, not display:none) so screen readers still
+   announce "Support" / "GitHub" / the language. */
+@media (max-width: 600px) {
+  header.site { padding: 16px 0; }
+  header.site .wrap { gap: 10px; }
+  .brand { font-size: 1.05rem; }
+  .header-ctas { gap: 8px; }
+  .btn-kofi, .btn-github { padding: 8px 11px; }
+  .lang-switch { padding: 8px 2px; font-size: 1.05rem; }
+  .header-ctas .cta-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
 @media (max-width: 520px) {
   .features { grid-template-columns: 1fr; }
   .phone { transform: none; }
