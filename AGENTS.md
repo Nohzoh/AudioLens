@@ -113,12 +113,21 @@ and never touched for the same reason:
 
 ### Remote Config Signing (2026-08-20 onward)
 
-`config.json` is fetched at every app startup from
-`raw.githubusercontent.com` and applied *immediately* to every installed
-build — unlike a code change, it bypasses the whole release pipeline
-(CI, Play Store review, staged rollout). It's therefore signed
-(Ed25519) so that write access to the repo or CI alone is not enough to
-push a config change the app will accept.
+`config.json` is fetched at every app startup and applied *immediately*
+to every installed build — unlike a code change, it bypasses the whole
+release pipeline (CI, Play Store review, staged rollout). It's therefore
+signed (Ed25519) so that write access to the repo or CI alone is not
+enough to push a config change the app will accept.
+
+Current builds fetch it from the GitHub Pages site
+(`https://nohzoh.github.io/AudioLens/config.json{,.sig}`, served from
+`docs/`) — #384. Builds shipped before #384 fetch from
+`raw.githubusercontent.com/Nohzoh/AudioLens/main/config.json{,.sig}`
+instead (the URL is compiled into the binary), so **both the repo-root
+`config.json`/`config.json.sig` and the `docs/` copies must stay in
+service and byte-identical** — `scripts/sign_config.dart` writes all
+four files, and a test in `test/remote_config_service_test.dart` fails
+CI if the two pairs ever drift. Don't delete the root copies.
 
 **The private signing key never touches CI, GitHub secrets, or this
 repo — it lives offline (Keeper) and only ever gets used locally.**
@@ -128,8 +137,10 @@ This is the entire point: even a fully compromised CI run can edit
 **Whenever `config.json` changes**, after editing it:
 ```bash
 dart run scripts/sign_config.dart   # prompts for the private key (Keeper)
-git add config.json config.json.sig # always commit both together
+git add config.json config.json.sig docs/config.json docs/config.json.sig
 ```
+(the script rewrites all four — edit only the root `config.json`, never
+a `docs/` copy by hand.)
 `RemoteConfigService.load()` fetches both `config.json` and
 `config.json.sig`, verifies the signature against the public key
 embedded in `lib/services/remote_config_service.dart`, and falls back

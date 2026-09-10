@@ -164,8 +164,17 @@ class RemoteConfig {
 }
 
 class RemoteConfigService {
+  // #384: served from the GitHub Pages site (docs/) rather than
+  // raw.githubusercontent.com — Pages is purpose-built for static
+  // hosting at volume, with more predictable rate limits than raw's
+  // developer-convenience endpoint. docs/config.json{,.sig} are kept
+  // byte-identical to the repo-root copies (enforced by
+  // scripts/sign_config.dart writing both, and a drift test) — the
+  // root copies stay in place because this URL is compiled into the
+  // binary, so builds shipped before this change keep fetching from
+  // raw.githubusercontent.com until the user updates.
   static const _configUrl =
-      'https://raw.githubusercontent.com/Nohzoh/AudioLens/main/config.json';
+      'https://nohzoh.github.io/AudioLens/config.json';
   static const _cacheKey = 'remote_config_cache';
   static const _cacheSigKey = 'remote_config_cache_sig';
   static const _cacheLoadedAtKey = 'remote_config_cache_loaded_at';
@@ -189,7 +198,7 @@ class RemoteConfigService {
   // for it — the app rejects anything that doesn't verify.
   static const _publicKeyB64 = 'PRUKkHzANB7y05yMvxk8XAM01o3e2YDTLCKy1JJm5Ys=';
   static const _signatureUrl =
-      'https://raw.githubusercontent.com/Nohzoh/AudioLens/main/config.json.sig';
+      'https://nohzoh.github.io/AudioLens/config.json.sig';
 
   static RemoteConfig _current = const RemoteConfig();
   static DateTime? _loadedAt;

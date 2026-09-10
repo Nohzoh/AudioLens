@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -123,6 +124,34 @@ void main() {
     });
   });
 
+
+  group('config.json / docs mirror (#384)', () {
+    // #384 moved the app's fetch URL to the GitHub Pages site (docs/),
+    // keeping the repo-root copies for builds shipped before the change.
+    // The signature is over file *content*, so the same .sig only stays
+    // valid for both locations as long as the bodies are byte-identical.
+    // scripts/sign_config.dart writes both pairs; this is the CI backstop
+    // against someone editing one copy by hand.
+    test('docs/config.json is byte-identical to config.json', () {
+      expect(
+        File('docs/config.json').readAsBytesSync(),
+        File('config.json').readAsBytesSync(),
+      );
+    });
+
+    test('docs/config.json.sig is byte-identical to config.json.sig', () {
+      expect(
+        File('docs/config.json.sig').readAsBytesSync(),
+        File('config.json.sig').readAsBytesSync(),
+      );
+    });
+
+    test('the committed config.json.sig actually verifies config.json', () async {
+      final body = File('config.json').readAsBytesSync();
+      final sig = File('config.json.sig').readAsStringSync();
+      expect(await RemoteConfigService.verifySignature(body, sig), isTrue);
+    });
+  });
 
   group('isAllowedApiUrl (T81)', () {
     test('accepts the real Gemini API host', () {
