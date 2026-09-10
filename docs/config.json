@@ -1,0 +1,28 @@
+{
+  "gemini_model": "gemini-3.6-flash",
+  "gemini_api_url": "https://generativelanguage.googleapis.com/v1beta",
+  "gemini_max_tokens": 3000,
+  "gemini_temperature": 0.7,
+  "gemini_nano_max_tokens": 256,
+  "gemini_nano_cascade_segments": 3,
+  "wikipedia_radius_meters": 500,
+  "wikipedia_max_results": 3,
+  "wikipedia_extract_chars": 1500,
+  "poi_radius_meters": 75,
+  "tts_speed": 1.2,
+  "tts_sid": 0,
+  "tts_num_threads": 2,
+  "location_timeout_seconds": 10,
+  "image_max_width": 1280,
+  "image_quality": 85,
+  "timing_history_size": 5,
+  "progress_simulation_interval_ms": 150,
+  "gemini_model_fallbacks": [
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3-flash-preview"
+  ],
+  "gemini_tts_model": "gemini-2.5-flash-preview-tts",
+  "gemini_tts_voice": "Aoede",
+  "gemini_thinking_budget": 512
+}
