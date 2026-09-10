@@ -65,10 +65,15 @@ No analytics, no tracking, no ads. Photos and location are used only to generate
 
 **Android** only (an iOS port isn't started).
 
-- **[GitHub Releases](https://github.com/Nohzoh/AudioLens/releases/latest)** — signed APK, sideload it directly.
-- **Google Play** — [open testing](https://play.google.com/apps/testing/io.nohzoh.audiolens), anyone can join; the steps are on the [project site](https://nohzoh.github.io/AudioLens/).
+**Google Play — open testing** (anyone can join, no invite):
 
-> The APK on GitHub is signed with the project's upload key. The Google Play build is re-signed by Google (Play App Signing), so the two have different signatures and can't update over each other — install from one source and stay on it.
+1. Join the [tester group](https://groups.google.com/g/audiolens) — one-time, required before Play lets you opt in.
+2. [Opt in to testing](https://play.google.com/apps/testing/io.nohzoh.audiolens).
+3. [Install from Google Play](https://play.google.com/store/apps/details?id=io.nohzoh.audiolens) — automatic updates from then on.
+
+**GitHub Releases** — [latest release](https://github.com/Nohzoh/AudioLens/releases/latest), a signed APK to sideload directly.
+
+> The APK on GitHub is signed with the project's upload key; the Google Play build is re-signed by Google (Play App Signing). The two have different signatures and can't update over each other — pick one source and stay on it.
 
 ## Building from source
 
