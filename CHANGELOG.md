@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📝 ⭐ - **Add README status badges + complete the AGPL-3.0 LICENSE** (issue #401)
+  - **Verified**: 2026-09-10 (PR #403)
+  - **What was done**: 5-badge row in the README (Tests, Build Android, License, last commit, PRs welcome). `LICENSE` held only the AGPL header notice, not the full text, so GitHub classified it as "Other" — replaced with the verbatim canonical AGPL-3.0 text. Repo homepage URL + topics still to be set manually (admin-only).
+  - **Final validation**: docs-only; badge/link targets checked against real workflow files and paths.
+
 - [x] 📝 ⭐ - **Fix stale "every push to main produces an AAB" mentions** (issue #398)
   - **Verified**: 2026-09-10 (PR #399)
   - **What was done**: post-#389 cleanup — `publish-play-store.yml`'s header comment and `AGENTS.md`'s publishing section still claimed every push to `main` builds an AAB and still pointed at the "latest successful build on `main`" default, which since #389 usually resolves to a routine merge whose `build` was skipped (no artifact). Both now say to pass the release build's `run_id` explicitly.
