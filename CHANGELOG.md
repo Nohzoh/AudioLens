@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔧 ⭐ - **Serve remote config from GitHub Pages instead of raw.githubusercontent.com** (issue #384)
+  - **Verified**: 2026-09-10 (PR #396)
+  - **What was done**: `RemoteConfigService` now fetches `config.json`/`config.json.sig` from `https://nohzoh.github.io/AudioLens/` (served from `docs/`) — a static-hosting service with more predictable rate limits than raw's developer-convenience endpoint. The repo-root copies stay in service for builds shipped before this change (the URL is compiled in); `scripts/sign_config.dart` now writes both pairs and a drift test fails CI if they diverge.
+  - **Final validation**: `flutter analyze` → 0 issues; `flutter test` → all passing (3 new `#384` tests); Pages serving confirmed post-merge before the release build.
+
 - [x] ⚡ ⭐⭐ - **Only build+sign the AAB on an actual release push** (issue #389)
   - **Verified**: 2026-09-10 (PR #395)
   - **What was done**: fourth sub-issue of the CI pipeline review (#385), directly implementing the user's own observation that a routine merge to `main` never needs a signed AAB — only a real release (a `chore/publish-v*` version bump) does. `changes.yml` now also outputs `release`, true only when a push's `pubspec.yaml` `version:` line actually changed; `build-android.yml`'s `build` job skips entirely on any other push to `main` (unaffected on `pull_request`/`workflow_dispatch`).
