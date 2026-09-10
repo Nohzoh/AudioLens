@@ -1,0 +1,73 @@
+name: CodeQL
+
+# #408: advanced setup, replacing the repo's CodeQL "default setup".
+#
+# Default setup auto-detected the committed Kotlin plugin sources and
+# tried to analyse java-kotlin with autobuild — which fails here
+# ("Could not detect a suitable build command": android/ isn't
+# committed, no Gradle wrapper, needs `flutter create` + scripts/ci/*
+# patches). That stale failed run kept showing in the Security tab.
+#
+# java-kotlin is deliberately NOT analysed here: CodeQL's Kotlin
+# extractor is a kotlinc compiler plugin, so Kotlin needs a real build
+# (build-mode: none only covers Java, of which this repo has none). See
+# #408 for the weekly-manual-build option that would add it back.
+#
+# actions + python analyse with build-mode: none (source only, as they
+# did under default setup). CodeQL is not a required status check (only
+# `test` and `build` are), so paths-ignore skips it on docs-only changes
+# without leaving a check stuck "Expected".
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'distribution/**'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'distribution/**'
+  schedule:
+    # Weekly — picks up new/updated CodeQL queries even with no code change.
+    - cron: '27 4 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: python
+            build-mode: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}

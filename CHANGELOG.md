@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 ⭐ - **CodeQL: advanced setup, drop the broken java-kotlin analysis** (issue #408)
+  - **Verified**: 2026-09-10 (PR #415)
+  - **What was done**: CodeQL "default setup" analysed `java-kotlin` with autobuild, which can't build this repo (android/ not committed) — a stale failed run kept showing in the Security tab. Replaced with an explicit `codeql.yml` (advanced setup) for `actions` + `python`, `build-mode: none`, `paths-ignore` for docs. `java-kotlin` is intentionally left out: CodeQL's Kotlin extractor needs a real build (source-only mode only covers Java, of which this repo has none) — not worth a weekly build job for a ~10-file glue surface. Stale analysis deleted.
+  - **Final validation**: `Analyze (actions)` / `Analyze (python)` green on the PR.
+
 - [x] 📝 ⭐ - **README: spell out the Play Store tester opt-in steps** (issue #413)
   - **Verified**: 2026-09-10 (PR #414)
   - **What was done**: the `## Download` section's Google Play line bounced the reader to the project site for the steps — now it carries the 3-step opt-in flow (join the Google Group → opt in → install) directly, matching the GitHub Pages site.
