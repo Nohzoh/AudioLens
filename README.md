@@ -1,5 +1,11 @@
 # 🎧 AudioLens
 
+[![Tests](https://github.com/Nohzoh/AudioLens/actions/workflows/test.yml/badge.svg)](https://github.com/Nohzoh/AudioLens/actions/workflows/test.yml)
+[![Build Android](https://github.com/Nohzoh/AudioLens/actions/workflows/build-android.yml/badge.svg)](https://github.com/Nohzoh/AudioLens/actions/workflows/build-android.yml)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/Nohzoh/AudioLens)](https://github.com/Nohzoh/AudioLens/commits/main)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 An AI-powered audio guide mobile app. Take a photo of a place and instantly get an audio explanation.
 
 **[📄 Project site & screenshots](https://nohzoh.github.io/AudioLens/)** · [ARCHITECTURE.md](ARCHITECTURE.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
