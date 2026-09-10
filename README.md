@@ -61,9 +61,14 @@ Pipeline details and diagrams in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 No analytics, no tracking, no ads. Photos and location are used only to generate the guide, and are sent to Google's Gemini API **only in cloud mode** — local mode (Gemini Nano + on-device TTS) sends nothing off the device. Full details in [`PRIVACY.md`](PRIVACY.md).
 
-## Platforms
+## Download
 
-**Android** only (an iOS port isn't started). CI builds the app on every pull request; releases go to a Play Store closed-testing track.
+**Android** only (an iOS port isn't started).
+
+- **[GitHub Releases](https://github.com/Nohzoh/AudioLens/releases/latest)** — signed APK, sideload it directly.
+- **Google Play** — [open testing](https://play.google.com/apps/testing/io.nohzoh.audiolens), anyone can join; the steps are on the [project site](https://nohzoh.github.io/AudioLens/).
+
+> The APK on GitHub is signed with the project's upload key. The Google Play build is re-signed by Google (Play App Signing), so the two have different signatures and can't update over each other — install from one source and stay on it.
 
 ## Building from source
 

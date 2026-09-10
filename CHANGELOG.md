@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🚀 ⭐ - **Cut a GitHub Release with a downloadable APK on each ship** (issue #402)
+  - **Verified**: 2026-09-10 (PR #412)
+  - **What was done**: `build-android.yml` now builds + uploads the release APK on a release push too (not just PR/dispatch), so `ship` can attach it. Added a `## Download` section to the README (GitHub Releases + Google Play open testing, with the Play App Signing signature-mismatch caveat). The `ship` skill gained a "cut the GitHub Release" step. `v0.14.5` created as the first Release.
+  - **Final validation**: `build-android.yml` YAML re-validated; the release APK step's `if:` gate exercised on the next release push.
+
 - [x] 🐛 ⭐ - **GitHub Pages site: header overflowed on mobile** (issue #410)
   - **Verified**: 2026-09-10 (PR #411)
   - **What was done**: below the nav breakpoint the three header CTAs (language / Ko-fi / GitHub) kept full-size text pills and ran off the right edge on phones. Added a `max-width:600px` rule that visually-hides the labels (kept in the a11y tree) and tightens header spacing, leaving just the 🇫🇷 / ☕ / ★ icons. Both locales.
