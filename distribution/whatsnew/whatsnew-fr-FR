@@ -1,1 +1,3 @@
-Version de maintenance interne : distribution plus résiliente de la configuration distante de l'app, dépendances mises à jour et renforcement de la chaîne de build. Aucun changement visible dans cette version.
+Corrections : l'astuce qui apparaît de temps en temps à l'ouverture de l'app est de nouveau lisible en mode sombre (elle s'affichait en texte sombre sur fond sombre).
+
+Aussi : dépendances et documentation du projet mises à jour.
