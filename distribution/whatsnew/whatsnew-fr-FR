@@ -1,2 +1,1 @@
-Corrections : le quiz n'affiche plus de question provisoire pendant qu'une question générée est en cours de chargement.
-Améliorations : le quiz réutilise des questions déjà générées lors d'une visite répétée, ce qui le rend un peu plus rapide.
+Version de maintenance interne : distribution plus résiliente de la configuration distante de l'app, dépendances mises à jour et renforcement de la chaîne de build. Aucun changement visible dans cette version.

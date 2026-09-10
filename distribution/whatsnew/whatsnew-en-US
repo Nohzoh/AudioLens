@@ -1,2 +1,1 @@
-Fixes: the quiz no longer shows a placeholder question while a generated one is still loading.
-Improvements: the quiz reuses previously generated questions on a repeat visit, making it a bit faster.
+Internal maintenance release: more resilient delivery of the app's remote configuration, updated dependencies, and hardening of the build pipeline. No user-facing changes in this version.
