@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,7 +35,7 @@ void main() {
 
   tearDown(() => tmpDir.deleteSync(recursive: true));
 
-  HistoryEntry entryWithPhoto() {
+  HistoryEntry entryWithPhoto({int? rating}) {
     final photo = img.Image(width: 4, height: 4);
     final path = '${tmpDir.path}/photo.jpg';
     File(path).writeAsBytesSync(img.encodeJpg(photo));
@@ -44,6 +45,7 @@ void main() {
       title: 'La Joconde',
       script: 'Bienvenue devant ce chef-d\'oeuvre.',
       createdAt: DateTime(2026, 1, 1),
+      rating: rating,
     );
   }
 
@@ -102,5 +104,19 @@ void main() {
     await tapSend(tester);
 
     expect(requests, isEmpty);
+  });
+
+  testWidgets('#421: the attached analysis carries its rating', (tester) async {
+    await tester.pumpWidget(wrap(FeedbackDialog(
+      feedback: feedback,
+      appVersion: '1.0.0 (1)',
+      history: HistoryService(),
+      initialEntry: entryWithPhoto(rating: 1),
+    )));
+
+    await tapSend(tester);
+
+    final body = utf8.decode((requests.single as http.Request).bodyBytes, allowMalformed: true);
+    expect(body, contains('Note : 1/5'));
   });
 }

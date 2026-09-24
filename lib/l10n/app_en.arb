@@ -378,6 +378,12 @@
     }
   },
   "guideErrorStorageRotationFailed": "Couldn't save the photo rotation.",
+  "guideErrorStorageRatingFailed": "Couldn't save the rating.",
+  "ratingStarLabel": "{stars} out of 5",
+  "ratingLowPromptTitle": "Not happy with this script?",
+  "ratingLowPromptBody": "Send the analysis to the developers to help them improve it.",
+  "ratingLowPromptDecline": "No thanks",
+  "ratingLowPromptAccept": "Send the analysis",
   "quizIconTooltip": "Quiz",
   "quizScreenTitle": "Quiz",
   "quizQuestionWhereIsThis": "Where was this?",

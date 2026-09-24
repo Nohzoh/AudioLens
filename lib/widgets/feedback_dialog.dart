@@ -163,6 +163,7 @@ class FeedbackDialogStateX extends State<FeedbackDialog> {
     if (entry.scriptStyle != null) lines.add('Style : ${entry.scriptStyle}');
     if (entry.outputLanguage != null) lines.add('Langue : ${entry.outputLanguage}');
     if (entry.gpsSource != null) lines.add('GPS : ${entry.gpsSource}');
+    if (entry.rating != null) lines.add('Note : ${entry.rating}/5');
     lines.addAll(['', 'Script :', entry.script]);
     return lines.join('\n');
   }
