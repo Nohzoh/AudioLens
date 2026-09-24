@@ -8,4 +8,7 @@
 /// title/script JSON output shape meaningfully changes in
 /// `gemini_api_service.dart`, `gemini_nano_service.dart`, or
 /// `GeminiNanoPlugin.kt` — not on unrelated changes to those files.
-const promptSchemaVersion = 'v1';
+///
+/// History: v1 = original prompts; v2 = cloud structured output (#433,
+/// `responseSchema` replaces the prompt's "JSON only" instructions).
+const promptSchemaVersion = 'v2';
