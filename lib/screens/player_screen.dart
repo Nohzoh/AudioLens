@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
+import '../services/history_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../utils/app_logger.dart';
@@ -44,11 +45,17 @@ class PlayerScreen extends StatefulWidget {
   /// (default 0 — there's nothing to have rotated yet).
   final int rotationQuarters;
 
+  /// #426: the history entry this analysis is saved to, so the actions
+  /// sheet can attach it as feedback once it's complete. Null when the
+  /// caller has none (the action is then simply not offered).
+  final int? entryId;
+
   const PlayerScreen({
     super.key,
     required this.imageFile,
     this.deleteImageOnDispose = false,
     this.rotationQuarters = 0,
+    this.entryId,
   });
 
   @override
@@ -56,6 +63,18 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
+  /// #426: this analysis's history entry once it's saved as complete
+  /// (analysis_runner.dart completes it right after the result arrives),
+  /// watched so the feedback action appears as soon as it is.
+  HistoryEntry? _completedEntry(BuildContext context) {
+    final id = widget.entryId;
+    if (id == null) return null;
+    for (final e in context.watch<HistoryService>().entries) {
+      if (e.id == id) return e.status == AnalysisStatus.complete ? e : null;
+    }
+    return null;
+  }
+
   final ScrollController _scrollController = ScrollController();
   // #344: measures the rendered height of the location/map/disclosure/
   // actions/fallback-banners block that now scrolls together with the
@@ -407,12 +426,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                                       guide.actualAiModel ??
                                                           guide.lastAiModel,
                                                   reportDate: DateTime.now(),
-                                                  saveLabel: l10n.playerSave,
-                                                  savedSnackbarText:
-                                                      l10n.playerPhotoSaved,
-                                                  copyLabel: l10n.playerCopy,
-                                                  copiedSnackbarText:
-                                                      l10n.playerTextCopied,
+                                                  feedbackEntry:
+                                                      _completedEntry(context),
                                                 ),
 
                                                 const SizedBox(height: 8),

@@ -66,6 +66,7 @@ Future<void> runAnalysisAndNavigate({
       imageFile: imageFile,
       deleteImageOnDispose: deleteImageOnDispose,
       rotationQuarters: existingEntry?.rotationQuarters ?? 0,
+      entryId: entryId,
     ),
   ));
 
