@@ -83,7 +83,14 @@ class AboutAnalysisScreen extends StatelessWidget {
 
           _Section(title: l10n.aboutAnalysisSectionModels, children: [
             _Row(l10n.aboutAnalysisModelAnalysis, live.aiModel ?? l10n.aboutAnalysisUnknown),
-            _Row(l10n.aboutAnalysisModelTts, live.ttsModel ?? l10n.aboutAnalysisUnknown),
+            // #422: no model *and* no audio file means no audio was generated
+            // (auto-generation off), which isn't the same as "unknown".
+            _Row(
+                l10n.aboutAnalysisModelTts,
+                live.ttsModel ??
+                    (live.audioPath == null
+                        ? l10n.aboutAnalysisNoAudio
+                        : l10n.aboutAnalysisUnknown)),
             _Row(l10n.aboutAnalysisImageSource, _sourceLabel(l10n, live.analysisSource)),
             if (live.aiFallback)
               _Row(
@@ -218,7 +225,7 @@ Title: ${live.title}
 Created: ${live.createdAt.toIso8601String()}
 Analyzed: ${live.analyzedAt?.toIso8601String() ?? 'unknown'}
 AI Model: ${live.aiModel ?? 'unknown'}
-TTS Model: ${live.ttsModel ?? 'unknown'}
+TTS Model: ${live.ttsModel ?? (live.audioPath == null ? 'none (no audio generated)' : 'unknown')}
 AI Fallback: ${live.aiFallback}
 TTS Fallback: ${live.ttsFallback}
 Script style: ${live.scriptStyle ?? 'unknown'}
