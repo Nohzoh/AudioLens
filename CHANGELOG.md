@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ ⭐ - **New "For kids" script style (ages 6 to 10)** (issue #425)
+  - **Verified**: 2026-09-24 (PR #440)
+  - **What was done**: new `kids` style in Settings and the history regenerate sheet. Gemini API prompt: « tu », short sentences, simple words, everyday comparisons, observation questions, accurate facts, no violent/scary details, 150-250 words. Gemini Nano: matching tone, focus and a closing observation question. "About this analysis" now shows the style's localized label instead of the raw key.
+  - **Final validation**: prompt test for the new style, Settings chip test, About screen label test; full suite green. On-device check on a few monuments still to do.
+
 - [x] 🔒 ⭐ - **CodeQL: advanced setup, drop the broken java-kotlin analysis** (issue #408)
   - **Verified**: 2026-09-10 (PR #415)
   - **What was done**: CodeQL "default setup" analysed `java-kotlin` with autobuild, which can't build this repo (android/ not committed) — a stale failed run kept showing in the Security tab. Replaced with an explicit `codeql.yml` (advanced setup) for `actions` + `python`, `build-mode: none`, `paths-ignore` for docs. `java-kotlin` is intentionally left out: CodeQL's Kotlin extractor needs a real build (source-only mode only covers Java, of which this repo has none) — not worth a weekly build job for a ~10-file glue surface. Stale analysis deleted.
