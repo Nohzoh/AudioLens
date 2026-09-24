@@ -129,4 +129,76 @@ void main() {
 
     await expectLater(service.analyzeImage(tempImage()), throwsException);
   });
+
+  group('#433 structured output', () {
+    String responseWithParts(List<Map<String, Object>> parts) => jsonEncode({
+          'candidates': [
+            {
+              'content': {'parts': parts},
+            },
+          ],
+        });
+
+    test('request body asks for JSON with the {title, script} schema', () async {
+      Map<String, dynamic>? sent;
+      final service = GeminiApiService(
+        apiKey: 'test-key',
+        dioClient: fakeDio((options) async {
+          sent = jsonDecode(options.data as String) as Map<String, dynamic>;
+          return (
+            statusCode: 200,
+            body: _responseWithText('{"title": "T", "script": "Un script."}'),
+          );
+        }),
+      );
+
+      await service.analyzeImage(tempImage());
+
+      final config = sent!['generationConfig'] as Map<String, dynamic>;
+      expect(config['responseMimeType'], 'application/json');
+      expect(config['responseSchema'], guideResponseSchema);
+      expect((guideResponseSchema['required'] as List), ['title', 'script']);
+    });
+
+    test('a schema-conformant response with a quote in the script parses as-is', () async {
+      final service = await serviceReturning(jsonEncode({
+        'title': 'La Joconde',
+        'script': 'On l\'appelle "Mona Lisa" dans le monde entier.',
+      }));
+
+      final result = await service.analyzeImage(tempImage());
+
+      expect(result.title, 'La Joconde');
+      expect(result.script, 'On l\'appelle "Mona Lisa" dans le monde entier.');
+    });
+
+    test('thought parts are skipped, and JSON in a later part is used', () async {
+      final service = GeminiApiService(
+        apiKey: 'test-key',
+        dioClient: fakeDio((_) async => (
+              statusCode: 200,
+              body: responseWithParts([
+                {'text': 'Thinking about the chapel...', 'thought': true},
+                {'text': '1. Analyse. 2. Draft. Le texte respecte toutes les contraintes.'},
+                {'text': '{"title": "Chapelle de l\'Ecole Militaire", "script": "Entrez dans la chapelle."}'},
+              ]),
+            )),
+      );
+
+      final result = await service.analyzeImage(tempImage());
+
+      expect(result.title, "Chapelle de l'Ecole Militaire");
+      expect(result.script, 'Entrez dans la chapelle.');
+    });
+
+    test('model planning notes with no JSON are rejected, not saved as a guide', () async {
+      // Real 2026-09-20 response (Gemini 3.5 Flash), see #433.
+      final service = await serviceReturning(
+          "Analyse de la chapelle de l'École Militaire et du tableau d'Amédée "
+          'Van Loo. Le texte est fluide, historique, immersif et respecte toutes '
+          'les contraintes. 4. Final JSON generation: Ensure no markdown, only JSON.');
+
+      await expectLater(service.analyzeImage(tempImage()), throwsException);
+    });
+  });
 }

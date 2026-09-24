@@ -139,4 +139,21 @@ void main() {
 
     expect(questions, isEmpty);
   });
+
+  test('#433: request body asks for JSON with the quiz schema', () async {
+    Map<String, dynamic>? sent;
+    final service = GeminiApiService(
+      apiKey: 'test-key',
+      dioClient: fakeDio((options) async {
+        sent = jsonDecode(options.data as String) as Map<String, dynamic>;
+        return (statusCode: 200, body: _questionsBody([_question()]));
+      }),
+    );
+
+    await service.generateQuizQuestions(script: 'La Tour Eiffel...');
+
+    final config = sent!['generationConfig'] as Map<String, dynamic>;
+    expect(config['responseMimeType'], 'application/json');
+    expect(config['responseSchema'], quizResponseSchema);
+  });
 }
