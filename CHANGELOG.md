@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ ⭐ - **Rate a script 1 to 5 stars, offer feedback on 1 star** (issue #421)
+  - **Verified**: 2026-09-24 (PR #439)
+  - **What was done**: a complete analysis shows a 5-star `ScriptRatingBar` left of the Actions chip (player + history detail). The rating is stored on the entry (new `rating` column, DB schema v12) and can be changed any time. On 1 star, a feedback-configured build offers to send the analysis; accepting opens the feedback dialog with it attached (comment optional) and the sent text carries `Note : n/5`. Declining keeps the rating.
+  - **Final validation**: migration tests (all older schemas to v12, rating persisted across reopen, out-of-range rejected), widget tests for the stars and the 1-star prompt (accept/decline/unconfigured), rating line in the feedback text; existing narrow-screen overflow test still green.
+
 - [x] ✨ ⭐ - **Analysis actions sheet + send the displayed analysis as feedback** (issues #427, #426)
   - **Verified**: 2026-09-24 (PR #438)
   - **What was done**: the 4 chips under the map (Save / Copy / Share / Report) are replaced by one "Actions" chip opening a sheet of explicit actions: save photo to gallery, share text, share audio (only with an audio file), send as feedback, report inappropriate content. Copy is removed (the share sheet offers it). A failed gallery save now shows an error and is logged. The feedback dialog moved out of Settings into `lib/widgets/feedback_dialog.dart` with an optional pre-attached analysis; from the sheet it opens with the displayed analysis attached (configured builds, complete analyses only), and the comment is optional when an analysis is attached.

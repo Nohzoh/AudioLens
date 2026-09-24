@@ -422,6 +422,13 @@
     }
   },
   "guideErrorStorageRotationFailed": "Impossible d'enregistrer la rotation de la photo.",
+  "guideErrorStorageRatingFailed": "Impossible d'enregistrer la note.",
+  "ratingStarLabel": "{stars} sur 5",
+  "@ratingStarLabel": {"placeholders": {"stars": {"type": "int"}}},
+  "ratingLowPromptTitle": "Pas satisfait de ce script ?",
+  "ratingLowPromptBody": "Envoyez l'analyse aux développeurs pour les aider à l'améliorer.",
+  "ratingLowPromptDecline": "Non merci",
+  "ratingLowPromptAccept": "Envoyer l'analyse",
   "quizIconTooltip": "Quiz",
   "quizScreenTitle": "Quiz",
   "quizQuestionWhereIsThis": "Où était-ce ?",

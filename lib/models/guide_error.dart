@@ -58,6 +58,9 @@ enum GuideErrorKind {
   /// Saving a manual photo rotation failed.
   storageRotationFailed,
 
+  /// Saving a script rating failed (#421).
+  storageRatingFailed,
+
   /// Any other, truly unexpected exception — [GuideError.detail] carries a
   /// sanitized diagnostic.
   unknown,
