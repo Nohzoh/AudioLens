@@ -291,6 +291,7 @@
   "aboutAnalysisSectionContent": "CONTENU",
   "aboutAnalysisWordCount": "Mots",
   "aboutAnalysisUnknown": "Inconnu",
+  "aboutAnalysisNoAudio": "Aucun (audio non généré)",
   "aboutAnalysisAudioDuration": "Durée audio estimée",
   "aboutAnalysisStatus": "Statut",
   "aboutAnalysisCachedAudio": "Audio en cache",
