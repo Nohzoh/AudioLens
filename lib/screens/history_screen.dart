@@ -1379,11 +1379,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                 audioPath: live.audioPath,
                                 aiModel: live.aiModel,
                                 reportDate: live.analyzedAt ?? live.createdAt,
-                                saveLabel: l10n.historySave,
-                                savedSnackbarText:
-                                    l10n.historyPhotoSavedToGallery,
-                                copyLabel: l10n.historyCopy,
-                                copiedSnackbarText: l10n.historyTextCopied,
+                                feedbackEntry: live,
                               ),
                               const SizedBox(height: 8),
 
