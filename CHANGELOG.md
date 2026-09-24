@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ ⭐ - **Analysis actions sheet + send the displayed analysis as feedback** (issues #427, #426)
+  - **Verified**: 2026-09-24 (PR #438)
+  - **What was done**: the 4 chips under the map (Save / Copy / Share / Report) are replaced by one "Actions" chip opening a sheet of explicit actions: save photo to gallery, share text, share audio (only with an audio file), send as feedback, report inappropriate content. Copy is removed (the share sheet offers it). A failed gallery save now shows an error and is logged. The feedback dialog moved out of Settings into `lib/widgets/feedback_dialog.dart` with an optional pre-attached analysis; from the sheet it opens with the displayed analysis attached (configured builds, complete analyses only), and the comment is optional when an analysis is attached.
+  - **Final validation**: widget tests for the sheet's contents and conditions, text/audio share, the gallery error, and the dialog (pre-attached analysis, send without comment, comment still required without one); full suite green.
+
 - [x] 🔒 ⭐ - **CodeQL: advanced setup, drop the broken java-kotlin analysis** (issue #408)
   - **Verified**: 2026-09-10 (PR #415)
   - **What was done**: CodeQL "default setup" analysed `java-kotlin` with autobuild, which can't build this repo (android/ not committed) — a stale failed run kept showing in the Security tab. Replaced with an explicit `codeql.yml` (advanced setup) for `actions` + `python`, `build-mode: none`, `paths-ignore` for docs. `java-kotlin` is intentionally left out: CodeQL's Kotlin extractor needs a real build (source-only mode only covers Java, of which this repo has none) — not worth a weekly build job for a ~10-file glue surface. Stale analysis deleted.
