@@ -19,6 +19,7 @@ import '../widgets/scrim_icon_button.dart';
 import '../widgets/skip_icon_button.dart';
 import '../utils/guide_error_localizer.dart';
 import '../utils/user_message_utils.dart';
+import '../utils/script_style_label.dart';
 import 'about_analysis_screen.dart';
 
 /// Launches the analysis for a captured entry (T78), using the raw GPS
@@ -181,12 +182,7 @@ class _RegenerateSheetState extends State<_RegenerateSheet> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final (value, label) in [
-                  ('immersive', l10n.settingsStyleImmersive),
-                  ('academic', l10n.settingsStyleAcademic),
-                  ('anecdotal', l10n.settingsStyleAnecdotal),
-                  ('concise', l10n.settingsStyleConcise),
-                ])
+                for (final (value, label) in scriptStyleOptions(l10n))
                   ChoiceChip(
                     label: Text(label),
                     selected: _style == value,

@@ -1,7 +1,8 @@
 /// Sanity-caps an AI-generated script's length before it reaches history
 /// and TTS (T117).
 ///
-/// The prompt asks for 300-400 words (100-150 in 'concise' style), but
+/// The prompt asks for 300-400 words (100-150 in 'concise' style, 150-250
+/// in 'kids' style, #425), but
 /// nothing enforced that: a model that ignored the instruction and
 /// returned a runaway script would sail straight through to synthesis,
 /// where an over-long script costs real time and money (Gemini TTS is

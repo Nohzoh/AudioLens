@@ -80,4 +80,26 @@ void main() {
     expect(copied, contains('gemini-3.5-flash'));
     expect(find.text('Infos copiées'), findsOneWidget);
   });
+
+  testWidgets('#425: the script style shows its localized label, not the raw key',
+      (tester) async {
+    await tester.pumpWidget(wrapWithProviders(
+      AboutAnalysisScreen(
+        entry: HistoryEntry(
+          imagePath: '/nonexistent/photo.jpg',
+          title: 'Tour Eiffel',
+          script: 'Un monument.',
+          createdAt: DateTime(2026, 1, 1),
+          scriptStyle: 'kids',
+        ),
+      ),
+      settings: SettingsService(),
+      guide: AudioGuideService(nativeTtsService: FakeNativeTts()),
+      history: HistoryService(),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pour enfants'), findsOneWidget);
+    expect(find.text('kids'), findsNothing);
+  });
 }

@@ -76,4 +76,14 @@ void main() {
     expect(prompt, contains('Entre 100 et 150 mots'));
     expect(prompt, isNot(contains('Entre 300 et 400 mots')));
   });
+
+  test('style=kids (#425) asks for a child-friendly, shorter script', () async {
+    final prompt = await promptSentFor('kids');
+    expect(prompt, contains('enfant de 6 a 10 ans'));
+    expect(prompt, contains('tu le tutoies'));
+    expect(prompt, contains('Evite les details violents ou effrayants'));
+    expect(prompt, contains('Entre 150 et 250 mots'));
+    expect(prompt, isNot(contains('Entre 300 et 400 mots')));
+    expect(prompt, isNot(contains('narratif et immersif')));
+  });
 }
