@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **Gemini API: structured output, never save planning notes as a guide** (issue #433)
+  - **Verified**: 2026-09-24 (PR #436)
+  - **What was done**: `analyzeImage` and `generateQuizQuestions` now send `responseMimeType: application/json` + a `responseSchema`, and the prompts no longer ask for "JSON only". Safety net for the 2026-09-20 case (planning notes saved as the script): thought parts are skipped and the part holding the JSON is used instead of `parts.first`; the plain-text fallback rejects meta text (`looksLikeModelMetaText`) so the next model is tried; each fallback path is logged under `AI` with part counts only.
+  - **Final validation**: unit tests for both request bodies, a multi-part response with a thought part, and the real example rejected; `flutter analyze` clean. On-device batch check still to do.
+
 - [x] 🔒 ⭐ - **CodeQL: advanced setup, drop the broken java-kotlin analysis** (issue #408)
   - **Verified**: 2026-09-10 (PR #415)
   - **What was done**: CodeQL "default setup" analysed `java-kotlin` with autobuild, which can't build this repo (android/ not committed) — a stale failed run kept showing in the Security tab. Replaced with an explicit `codeql.yml` (advanced setup) for `actions` + `python`, `build-mode: none`, `paths-ignore` for docs. `java-kotlin` is intentionally left out: CodeQL's Kotlin extractor needs a real build (source-only mode only covers Java, of which this repo has none) — not worth a weekly build job for a ~10-file glue surface. Stale analysis deleted.
