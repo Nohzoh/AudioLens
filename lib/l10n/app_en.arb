@@ -216,6 +216,7 @@
   "settingsStyleAcademic": "Academic",
   "settingsStyleAnecdotal": "Anecdotal",
   "settingsStyleConcise": "Concise",
+  "settingsStyleKids": "For kids",
   "settingsNotConfiguredSuffix": "(not configured)",
   "settingsNanoUnavailableDevice": "This device doesn't support local AI (Gemini Nano) — a hardware or system limitation, not something the app controls.",
   "settingsNanoDownloadable": "AI model not downloaded yet — download starts automatically on first use.",

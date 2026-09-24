@@ -608,6 +608,21 @@ void main() {
     expect(find.text('30 jours'), findsOneWidget);
   });
 
+  testWidgets('#425: the "Pour enfants" style chip selects the kids style',
+      (tester) async {
+    await tester.pumpWidget(wrapScreen());
+    await tester.pumpAndSettle();
+
+    final chip = find.widgetWithText(ChoiceChip, 'Pour enfants');
+    await tester.scrollUntilVisible(chip, 300, scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(chip);
+    await tester.pumpAndSettle();
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+
+    expect(settings.scriptStyle, 'kids');
+  });
+
   testWidgets(
       'the version label renders from the mocked PackageInfo, on the Advanced screen (#366)',
       (tester) async {

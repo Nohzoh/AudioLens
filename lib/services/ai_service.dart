@@ -22,7 +22,8 @@ abstract class AIService {
   /// calls (e.g. on-device inference) may ignore it.
   ///
   /// [style] is one of 'immersive' (default), 'academic', 'anecdotal',
-  /// 'concise' (T75/T48) — steers the script's tone and length.
+  /// 'concise' (T75/T48), 'kids' (#425) — steers the script's tone and
+  /// length.
   ///
   /// [language] (#130) is a display name from `outputLanguageLocales`
   /// (e.g. 'English', 'Español') — the language the title/script must be

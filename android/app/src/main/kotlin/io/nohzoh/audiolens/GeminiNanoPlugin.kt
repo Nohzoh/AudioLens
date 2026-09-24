@@ -86,6 +86,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "academic" -> "un ton documentaire et precis, avec des faits verifies"
             "anecdotal" -> "un ton complice qui met en avant anecdotes et curiosites"
             "concise" -> "un ton direct et efficace"
+            // #425: for children aged 6 to 10.
+            "kids" -> "un ton joyeux pour un enfant de 6 a 10 ans, en le tutoyant, avec des phrases courtes et des mots simples, sans details effrayants"
             else -> "un ton chaleureux et vivant"
         }
 
@@ -135,6 +137,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 "academic" -> "le contexte historique precis (dates, faits averes, contexte culturel)"
                 "anecdotal" -> "une anecdote ou curiosite peu connue liee a ce lieu"
                 "concise" -> "l'information essentielle"
+                "kids" -> "un fait etonnant explique simplement, compare a la vie de tous les jours d'un enfant, en le tutoyant"
                 else -> "le contexte historique et culturel"
             }
             val sentences = if (style == "concise") "1 phrase" else "2-3 phrases qui s'enchainent naturellement"
@@ -144,7 +147,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         fun buildSeg3Prompt(previousText: String, style: String? = null, locationContext: String? = null): String {
             val excerpt = previousText.takeLast(200)
             val sentences = if (style == "concise") "1 phrase" else "2 phrases"
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${locationHint(locationContext)} Conclus en $sentences sur ce qui rend ce lieu unique et l'emotion qu'il inspire, sans repeter ce qui a deja ete dit."
+            // #425: a kids' guide ends on a question inviting the child to look.
+            val ending = if (style == "kids") {
+                "sur une question qui invite l'enfant a observer un detail, en le tutoyant"
+            } else {
+                "sur ce qui rend ce lieu unique et l'emotion qu'il inspire"
+            }
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${locationHint(locationContext)} Conclus en $sentences $ending, sans repeter ce qui a deja ete dit."
         }
     }
 

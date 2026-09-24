@@ -37,7 +37,8 @@ class SettingsService extends ChangeNotifier {
   /// can be generated later on demand from the history entry.
   bool get autoGenerateAudio => _autoGenerateAudio;
 
-  /// One of 'immersive' (default), 'academic', 'anecdotal', 'concise' —
+  /// One of 'immersive' (default), 'academic', 'anecdotal', 'concise',
+  /// 'kids' (#425) —
   /// passed to the AI prompt (both cloud and on-device) to steer the
   /// script's tone and length (T75/T48).
   String get scriptStyle => _scriptStyle;

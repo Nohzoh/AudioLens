@@ -245,6 +245,7 @@
   "settingsStyleAcademic": "Académique",
   "settingsStyleAnecdotal": "Anecdotique",
   "settingsStyleConcise": "Concis",
+  "settingsStyleKids": "Pour enfants",
   "settingsNotConfiguredSuffix": "(non configuré)",
   "settingsNanoUnavailableDevice": "Cet appareil ne prend pas en charge l'IA locale (Gemini Nano) — limitation matérielle ou système, indépendante de l'app.",
   "settingsNanoDownloadable": "Modèle IA non téléchargé — le téléchargement démarre automatiquement à la première utilisation.",

@@ -65,8 +65,13 @@ class GeminiApiService implements AIService {
         ? '\n\nContexte et informations factuelles disponibles :\n$locationContext'
         : '';
 
-    final wordCount =
-        style == 'concise' ? 'Entre 100 et 150 mots' : 'Entre 300 et 400 mots';
+    // #425: a child's attention span is shorter, so 'kids' sits between
+    // 'concise' and the default length.
+    final wordCount = switch (style) {
+      'concise' => 'Entre 100 et 150 mots',
+      'kids' => 'Entre 150 et 250 mots',
+      _ => 'Entre 300 et 400 mots',
+    };
 
     // #130: an explicit override directive is enough to steer the actual
     // content language regardless of what language the rest of this
@@ -484,6 +489,19 @@ class GeminiApiService implements AIService {
             '"vous". Va droit au but : l\'essentiel seulement, sans digression '
             'ni developpement long. Une accroche courte, un ou deux faits '
             'marquants, une conclusion breve.';
+      case 'kids': // #425, for children aged 6 to 10
+        return 'Le script : pour un enfant de 6 a 10 ans, tu le tutoies. '
+            'Phrases courtes, mots simples, et explique chaque mot difficile. '
+            'Ton joyeux et curieux : commence par une accroche intrigante, '
+            'compare avec la vie de tous les jours d\'un enfant (aussi haut '
+            'que 10 girafes, aussi vieux que 30 grands-parents), et pose une '
+            'ou deux questions qui l\'invitent a observer ("Tu vois la petite '
+            'tete sculptee tout en haut ?"). Les faits restent exacts : '
+            'n\'invente rien pour rendre l\'histoire plus drole. Evite les '
+            'details violents ou effrayants (batailles, supplices...), ou '
+            'evoque-les avec tact. Construis : accroche, deux ou trois faits '
+            'etonnants expliques simplement, une question d\'observation, '
+            'une conclusion qui donne envie d\'en savoir plus.';
       default: // 'immersive'
         return 'Le script : narratif et immersif, tu t\'adresses au visiteur '
             'avec "vous". Varie toujours l\'accroche d\'ouverture : ne commence '

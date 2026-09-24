@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ ⭐ - **New "For kids" script style (ages 6 to 10)** (issue #425)
+  - **Verified**: 2026-09-24 (PR #440)
+  - **What was done**: new `kids` style in Settings and the history regenerate sheet. Gemini API prompt: « tu », short sentences, simple words, everyday comparisons, observation questions, accurate facts, no violent/scary details, 150-250 words. Gemini Nano: matching tone, focus and a closing observation question. "About this analysis" now shows the style's localized label instead of the raw key.
+  - **Final validation**: prompt test for the new style, Settings chip test, About screen label test; full suite green. On-device check on a few monuments still to do.
+
 - [x] ✨ ⭐ - **Rate a script 1 to 5 stars, offer feedback on 1 star** (issue #421)
   - **Verified**: 2026-09-24 (PR #439)
   - **What was done**: a complete analysis shows a 5-star `ScriptRatingBar` left of the Actions chip (player + history detail). The rating is stored on the entry (new `rating` column, DB schema v12) and can be changed any time. On 1 star, a feedback-configured build offers to send the analysis; accepting opens the feedback dialog with it attached (comment optional) and the sent text carries `Note : n/5`. Declining keeps the rating.

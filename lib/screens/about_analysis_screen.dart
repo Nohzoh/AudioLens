@@ -8,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
 import '../utils/date_format_utils.dart';
+import '../utils/script_style_label.dart';
 import '../widgets/kofi_button.dart';
 
 class AboutAnalysisScreen extends StatelessWidget {
@@ -102,7 +103,7 @@ class AboutAnalysisScreen extends StatelessWidget {
               _Row(l10n.aboutAnalysisTtsFallback, l10n.aboutAnalysisTtsFallbackValue),
             // #138
             if (live.scriptStyle != null)
-              _Row(l10n.aboutAnalysisStyle, live.scriptStyle!),
+              _Row(l10n.aboutAnalysisStyle, scriptStyleLabel(l10n, live.scriptStyle!)),
             if (live.outputLanguage != null)
               _Row(l10n.aboutAnalysisLanguage, live.outputLanguage!),
             if (live.promptVersion != null)

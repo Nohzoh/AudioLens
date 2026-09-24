@@ -255,13 +255,16 @@ void main() {
             history: history,
           )));
       await tester.pump();
-      await tester.runAsync(() async {
-        for (var i = 0; i < 50 && !responded; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-        }
-      });
-      await tester.pump();
-      await tester.pump();
+      // Waiting only for the request to be *sent* raced the work after it
+      // (decoding, caching the batch in the DB), which is real async I/O
+      // and could still be running under CI load. Wait for the question
+      // itself to show instead, with the same overall time budget.
+      for (var i = 0; i < 100; i++) {
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await tester.pump();
+        if (responded && find.text('En quelle année ?').evaluate().isNotEmpty) break;
+      }
 
       expect(find.text('En quelle année ?'), findsOneWidget);
       expect(find.text('1889'), findsOneWidget);

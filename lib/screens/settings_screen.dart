@@ -559,6 +559,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   selected: settings.scriptStyle == 'concise',
                   onSelected: (_) => settings.setScriptStyle('concise'),
                 ),
+                ChoiceChip(
+                  label: Text(l10n.settingsStyleKids),
+                  selected: settings.scriptStyle == 'kids',
+                  onSelected: (_) => settings.setScriptStyle('kids'),
+                ),
               ],
             ),
           ),
