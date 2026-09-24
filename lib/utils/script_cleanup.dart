@@ -38,3 +38,29 @@ String cleanMarkdown(String text) {
   }).toList();
   return filtered.join('\n').trim();
 }
+
+/// #433: true when [text] reads like the model's own planning/meta notes
+/// rather than a guide script — e.g. a real 2026-09-20 response that ended
+/// with "respecte toutes les contraintes. 4. Final JSON generation: Ensure
+/// no markdown, only JSON." and got saved as a guide.
+///
+/// Only meant for the plain-text fallback (a response with no JSON at
+/// all): a genuine visitor-facing script never talks about JSON, markdown
+/// or "the constraints", nor lays itself out as numbered steps, so those
+/// signals are safe to reject on. [cleanMarkdown]'s line filter can't
+/// catch this case: the meta text is often on the same line as real prose.
+bool looksLikeModelMetaText(String text) {
+  final lower = text.toLowerCase();
+  const metaPhrases = [
+    'json', 'markdown', 'toutes les contraintes', 'les contraintes',
+    'constraints', 'final output', 'final answer',
+  ];
+  for (final p in metaPhrases) {
+    if (lower.contains(p)) return true;
+  }
+  // Two or more numbered steps ("1. Analyse", "2. Draft"...), at a line
+  // start or mid-line after a sentence end — the prompt asks for prose
+  // with no formatting, so this layout is planning, not a script.
+  final steps = RegExp(r'(?:^|[\n.!?]\s*)\d{1,2}\.\s+[A-Za-zÀ-ÿ]').allMatches(text);
+  return steps.length >= 2;
+}
