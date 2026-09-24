@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 ⭐ - **About this analysis: "no audio generated" instead of "TTS model: Unknown"** (issue #422)
+  - **Verified**: 2026-09-24 (PR #437)
+  - **What was done**: with no TTS model and no audio file (auto audio generation off), the TTS model row now reads "Aucun (audio non généré)" / "None (no audio generated)"; "Unknown" stays for an audio file with no recorded model (old entries). Same distinction in the copied debug text. New FR/EN string.
+  - **Final validation**: widget tests for no audio, audio with model, audio without model, and the debug text; `flutter analyze` clean.
+
 - [x] 🔒 ⭐ - **CodeQL: advanced setup, drop the broken java-kotlin analysis** (issue #408)
   - **Verified**: 2026-09-10 (PR #415)
   - **What was done**: CodeQL "default setup" analysed `java-kotlin` with autobuild, which can't build this repo (android/ not committed) — a stale failed run kept showing in the Security tab. Replaced with an explicit `codeql.yml` (advanced setup) for `actions` + `python`, `build-mode: none`, `paths-ignore` for docs. `java-kotlin` is intentionally left out: CodeQL's Kotlin extractor needs a real build (source-only mode only covers Java, of which this repo has none) — not worth a weekly build job for a ~10-file glue surface. Stale analysis deleted.
