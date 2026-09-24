@@ -156,7 +156,7 @@ void main() {
   });
 
   for (final oldVersion in [1, 2, 3, 4, 5, 6]) {
-    test('migrates cleanly from schema v$oldVersion to v11, keeping data (T09)', () async {
+    test('migrates cleanly from schema v$oldVersion to v12, keeping data (T09)', () async {
       final path = await _createOldSchemaDb(tempDir, oldVersion);
 
       final service = HistoryService();
@@ -178,6 +178,7 @@ void main() {
       expect(entry.scriptStyle, isNull); // #138
       expect(entry.outputLanguage, isNull); // #138
       expect(entry.promptVersion, isNull); // #138
+      expect(entry.rating, isNull); // #421
       expect(service.collections, isEmpty); // T51
 
       final version = await databaseFactoryFfi.openDatabase(path).then((db) async {
@@ -185,11 +186,11 @@ void main() {
         await db.close();
         return v;
       });
-      expect(version, 11);
+      expect(version, 12);
     });
   }
 
-  test('a fresh install (no prior db) creates schema v11 directly', () async {
+  test('a fresh install (no prior db) creates schema v12 directly', () async {
     final path = join(tempDir.path, 'fresh.db');
     final service = HistoryService();
     await service.init(dbPath: path);
@@ -201,10 +202,43 @@ void main() {
       await db.close();
       return v;
     });
-    expect(version, 11);
+    expect(version, 12);
   });
 
   // #288
+  test('#421: a rating survives a reopen after migrating from v9', () async {
+    final path = await _createV9DbWithRows(tempDir, 'rating.db', [
+      {
+        'imagePath': '/tmp/photo.jpg',
+        'title': 'Tour Eiffel',
+        'script': 'Un monument.',
+        'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+      },
+    ]);
+
+    final service = HistoryService();
+    await service.init(dbPath: path);
+    final id = service.entries.single.id!;
+    expect(service.entries.single.rating, isNull);
+
+    await service.setRating(id, 4);
+    expect(service.entries.single.rating, 4);
+    await service.setRating(id, 1); // changeable at any time
+    expect(service.entries.single.rating, 1);
+
+    final reopened = HistoryService();
+    await reopened.init(dbPath: path);
+    expect(reopened.entries.single.rating, 1);
+  });
+
+  test('#421: an out-of-range rating is rejected', () async {
+    final service = HistoryService();
+    await service.init(dbPath: join(tempDir.path, 'range.db'));
+
+    expect(() => service.setRating(1, 0), throwsArgumentError);
+    expect(() => service.setRating(1, 6), throwsArgumentError);
+  });
+
   group('v9 -> v10 repairs entries corrupted by the stale gemini_tts_output.wav bug', () {
     test('a native-tts entry with a wrongly-cached audioPath gets repaired', () async {
       final staleAudio = File(join(tempDir.path, 'stale_gemini_audio.wav'));

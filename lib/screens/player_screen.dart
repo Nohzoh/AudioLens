@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
+import '../services/history_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_service.dart';
 import '../utils/app_logger.dart';
@@ -15,6 +16,7 @@ import '../widgets/mini_map.dart';
 import '../widgets/photo_gradient_background.dart';
 import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
+import '../widgets/script_rating_bar.dart';
 import '../widgets/skip_icon_button.dart';
 
 /// #145: every `Colors.white*`/`Colors.black*` literal in this file is
@@ -44,11 +46,17 @@ class PlayerScreen extends StatefulWidget {
   /// (default 0 — there's nothing to have rotated yet).
   final int rotationQuarters;
 
+  /// #426: the history entry this analysis is saved to, so the actions
+  /// sheet can attach it as feedback once it's complete. Null when the
+  /// caller has none (the action is then simply not offered).
+  final int? entryId;
+
   const PlayerScreen({
     super.key,
     required this.imageFile,
     this.deleteImageOnDispose = false,
     this.rotationQuarters = 0,
+    this.entryId,
   });
 
   @override
@@ -56,6 +64,18 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
+  /// #426: this analysis's history entry once it's saved as complete
+  /// (analysis_runner.dart completes it right after the result arrives),
+  /// watched so the feedback action appears as soon as it is.
+  HistoryEntry? _completedEntry(BuildContext context) {
+    final id = widget.entryId;
+    if (id == null) return null;
+    for (final e in context.watch<HistoryService>().entries) {
+      if (e.id == id) return e.status == AnalysisStatus.complete ? e : null;
+    }
+    return null;
+  }
+
   final ScrollController _scrollController = ScrollController();
   // #344: measures the rendered height of the location/map/disclosure/
   // actions/fallback-banners block that now scrolls together with the
@@ -392,28 +412,50 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                                                 // #147: shared with
                                                 // history_screen.dart.
-                                                GuideActionRow(
-                                                  imagePath:
-                                                      widget.imageFile.path,
-                                                  rotationQuarters:
-                                                      widget.rotationQuarters,
-                                                  script:
-                                                      guide.lastResult!.script,
-                                                  title:
-                                                      guide.lastResult!.title,
-                                                  audioPath:
-                                                      guide.lastAudioPath,
-                                                  aiModel:
-                                                      guide.actualAiModel ??
-                                                          guide.lastAiModel,
-                                                  reportDate: DateTime.now(),
-                                                  saveLabel: l10n.playerSave,
-                                                  savedSnackbarText:
-                                                      l10n.playerPhotoSaved,
-                                                  copyLabel: l10n.playerCopy,
-                                                  copiedSnackbarText:
-                                                      l10n.playerTextCopied,
-                                                ),
+                                                Builder(builder: (context) {
+                                                  final completed =
+                                                      _completedEntry(context);
+                                                  // #421: rating left (scaled
+                                                  // down on a narrow screen),
+                                                  // actions right.
+                                                  return Row(children: [
+                                                    Expanded(
+                                                      child: completed == null
+                                                          ? const SizedBox
+                                                              .shrink()
+                                                          : Align(
+                                                              alignment: Alignment
+                                                                  .centerLeft,
+                                                              child: FittedBox(
+                                                                fit: BoxFit
+                                                                    .scaleDown,
+                                                                child: ScriptRatingBar(
+                                                                    entry:
+                                                                        completed),
+                                                              ),
+                                                            ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    GuideActionRow(
+                                                      imagePath:
+                                                          widget.imageFile.path,
+                                                      rotationQuarters:
+                                                          widget.rotationQuarters,
+                                                      script:
+                                                          guide.lastResult!.script,
+                                                      title:
+                                                          guide.lastResult!.title,
+                                                      audioPath:
+                                                          guide.lastAudioPath,
+                                                      aiModel:
+                                                          guide.actualAiModel ??
+                                                              guide.lastAiModel,
+                                                      reportDate: DateTime.now(),
+                                                      feedbackEntry:
+                                                          completed,
+                                                    ),
+                                                  ]);
+                                                }),
 
                                                 const SizedBox(height: 8),
 

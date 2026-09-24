@@ -12,6 +12,7 @@ import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/guide_action_row.dart';
+import '../widgets/script_rating_bar.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/mini_map.dart';
 import '../widgets/photo_gradient_background.dart';
@@ -1367,20 +1368,33 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                               const SizedBox(height: 16),
 
                               // #147: shared with player_screen.dart.
-                              GuideActionRow(
-                                imagePath: live.imagePath,
-                                rotationQuarters: live.rotationQuarters,
-                                script: live.script,
-                                title: live.title,
-                                audioPath: live.audioPath,
-                                aiModel: live.aiModel,
-                                reportDate: live.analyzedAt ?? live.createdAt,
-                                saveLabel: l10n.historySave,
-                                savedSnackbarText:
-                                    l10n.historyPhotoSavedToGallery,
-                                copyLabel: l10n.historyCopy,
-                                copiedSnackbarText: l10n.historyTextCopied,
-                              ),
+                              // #421: rating on the left (scaled down
+                              // rather than overflowing on a narrow
+                              // screen), actions on the right.
+                              Row(children: [
+                                Expanded(
+                                  child: live.status == AnalysisStatus.complete
+                                      ? Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: ScriptRatingBar(entry: live),
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                                const SizedBox(width: 8),
+                                GuideActionRow(
+                                  imagePath: live.imagePath,
+                                  rotationQuarters: live.rotationQuarters,
+                                  script: live.script,
+                                  title: live.title,
+                                  audioPath: live.audioPath,
+                                  aiModel: live.aiModel,
+                                  reportDate: live.analyzedAt ?? live.createdAt,
+                                  feedbackEntry: live,
+                                ),
+                              ]),
                               const SizedBox(height: 8),
 
                               // Script

@@ -7,6 +7,8 @@ import 'package:sqflite/sqflite.dart';
 import '../constants/analysis_provenance.dart';
 import '../models/guide_error.dart';
 import '../models/quiz_question.dart';
+import '../utils/app_logger.dart';
+import '../utils/error_sanitizer.dart';
 
 /// Thrown when copying a photo or audio file to permanent storage fails
 /// (T116) — most commonly because the device is out of storage. Callers
@@ -89,6 +91,9 @@ class HistoryEntry {
   /// instead.
   final int rotationQuarters;
 
+  /// #421: the user's 1-5 star rating of the script, null until rated.
+  final int? rating;
+
   const HistoryEntry({
     this.id,
     required this.imagePath,
@@ -116,6 +121,7 @@ class HistoryEntry {
     this.scriptStyle,
     this.outputLanguage,
     this.promptVersion,
+    this.rating,
   });
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
@@ -160,6 +166,7 @@ class HistoryEntry {
     'ttsFallback': ttsFallback ? 1 : 0,
     'isFavorite': isFavorite ? 1 : 0,
     'rotationQuarters': rotationQuarters,
+    'rating': rating,
     'scriptStyle': scriptStyle,
     'outputLanguage': outputLanguage,
     'promptVersion': promptVersion,
@@ -188,6 +195,7 @@ class HistoryEntry {
     ttsFallback: (map['ttsFallback'] as int? ?? 0) == 1,
     isFavorite: (map['isFavorite'] as int? ?? 0) == 1,
     rotationQuarters: map['rotationQuarters'] as int? ?? 0,
+    rating: map['rating'] as int?,
     scriptStyle: map['scriptStyle'] as String?,
     outputLanguage: map['outputLanguage'] as String?,
     promptVersion: map['promptVersion'] as String?,
@@ -218,6 +226,7 @@ class HistoryEntry {
     bool? ttsFallback,
     bool? isFavorite,
     int? rotationQuarters,
+    int? rating,
     String? scriptStyle,
     String? outputLanguage,
     String? promptVersion,
@@ -245,6 +254,7 @@ class HistoryEntry {
     ttsFallback: ttsFallback ?? this.ttsFallback,
     isFavorite: isFavorite ?? this.isFavorite,
     rotationQuarters: rotationQuarters ?? this.rotationQuarters,
+    rating: rating ?? this.rating,
     scriptStyle: scriptStyle ?? this.scriptStyle,
     outputLanguage: outputLanguage ?? this.outputLanguage,
     promptVersion: promptVersion ?? this.promptVersion,
@@ -291,7 +301,7 @@ class HistoryService extends ChangeNotifier {
     final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE history(
@@ -320,6 +330,7 @@ class HistoryService extends ChangeNotifier {
             scriptStyle TEXT,
             outputLanguage TEXT,
             promptVersion TEXT,
+            rating INTEGER,
             createdAt TEXT NOT NULL
           )
         ''');
@@ -411,6 +422,10 @@ class HistoryService extends ChangeNotifier {
           // #373 (follow-up): batch-generated quiz questions cached for
           // reuse — see takeCachedQuizQuestion/cacheQuizQuestions below.
           await db.execute(_createQuizQuestionsTableSql);
+        }
+        if (oldVersion < 12) {
+          // #421: null = not rated yet, for every pre-existing entry.
+          await db.execute('ALTER TABLE history ADD COLUMN rating INTEGER');
         }
       },
     );
@@ -851,6 +866,33 @@ class HistoryService extends ChangeNotifier {
       whereArgs: [entryId],
     );
     _entries[idx] = _entries[idx].copyWith(isFavorite: newValue);
+    notifyListeners();
+  }
+
+  /// #421: sets an entry's 1-5 star script rating. Can be changed at any
+  /// time; throws [HistoryStorageException] if the write fails, leaving
+  /// the previous rating in place.
+  Future<void> setRating(int entryId, int rating) async {
+    if (rating < 1 || rating > 5) {
+      throw ArgumentError.value(rating, 'rating', 'must be 1-5');
+    }
+    final idx = _entries.indexWhere((e) => e.id == entryId);
+    if (idx == -1) return;
+    try {
+      await _db!.update(
+        'history',
+        {'rating': rating},
+        where: 'id = ?',
+        whereArgs: [entryId],
+      );
+    } catch (e) {
+      AppLogger.db('Rating save failed: ${sanitizeError(e.toString())}');
+      throw const HistoryStorageException(GuideErrorKind.storageRatingFailed);
+    }
+    final stillIdx = _entries.indexWhere((e) => e.id == entryId);
+    if (stillIdx == -1) return;
+    _entries[stillIdx] = _entries[stillIdx].copyWith(rating: rating);
+    AppLogger.db('Entry rated: $rating/5');
     notifyListeners();
   }
 

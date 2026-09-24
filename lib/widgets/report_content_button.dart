@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/date_format_utils.dart';
-import 'scrim_action_chip.dart';
 
 /// The address AI-generated content reports are sent to — same contact
 /// address published in PRIVACY.md. Not remote-configured, matching
@@ -10,43 +9,36 @@ import 'scrim_action_chip.dart';
 /// URL isn't worth the extra indirection).
 const _reportContactEmail = 'thomas.arnaud@gmail.com';
 
-/// A small "Report this content" action (T91 — Google Play's
+/// Opens the "Report this content" dialog (T91 — Google Play's
 /// AI-Generated Content policy requires an in-app way to flag offensive
 /// or incorrect AI output). No backend exists for this app, so the report
 /// is composed as a pre-filled email via the device's own mail client —
 /// the user sees exactly what's being sent before choosing to send it.
 ///
-/// Matches the visual style of the existing Save/Copy action rows in
-/// player_screen.dart and history_screen.dart — all three now render as
-/// a [ScrimActionChip] (#149), so this stays a sibling item in that same
-/// Row and any future styling change to the row happens in one place.
-class ReportContentButton extends StatelessWidget {
+/// Reached from the analysis actions sheet (`GuideActionRow`, #427),
+/// which replaced the old standalone "Report" chip.
+Future<void> showReportContentDialog(
+  BuildContext context, {
+  required String title,
+  required String script,
+  required DateTime date,
+  String? aiModel,
+}) =>
+    _ReportContent(title: title, script: script, date: date, aiModel: aiModel)
+        ._showReportDialog(context);
+
+class _ReportContent {
   final String title;
   final String script;
   final String? aiModel;
   final DateTime date;
 
-  const ReportContentButton({
-    super.key,
+  const _ReportContent({
     required this.title,
     required this.script,
     required this.date,
     this.aiModel,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return ScrimActionChip(
-      icon: Icons.flag_outlined,
-      label: l10n.reportContentButton,
-      // Kept dimmer than Save/Copy on purpose: reporting is a rare,
-      // deliberate action and shouldn't compete with them visually.
-      // #145: on-scrim color, stays fixed regardless of app theme.
-      color: Colors.white54,
-      onTap: () => _showReportDialog(context),
-    );
-  }
 
   Future<void> _showReportDialog(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;

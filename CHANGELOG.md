@@ -21,6 +21,26 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **What was done**: new `kids` style in Settings and the history regenerate sheet. Gemini API prompt: « tu », short sentences, simple words, everyday comparisons, observation questions, accurate facts, no violent/scary details, 150-250 words. Gemini Nano: matching tone, focus and a closing observation question. "About this analysis" now shows the style's localized label instead of the raw key.
   - **Final validation**: prompt test for the new style, Settings chip test, About screen label test; full suite green. On-device check on a few monuments still to do.
 
+- [x] ✨ ⭐ - **Rate a script 1 to 5 stars, offer feedback on 1 star** (issue #421)
+  - **Verified**: 2026-09-24 (PR #439)
+  - **What was done**: a complete analysis shows a 5-star `ScriptRatingBar` left of the Actions chip (player + history detail). The rating is stored on the entry (new `rating` column, DB schema v12) and can be changed any time. On 1 star, a feedback-configured build offers to send the analysis; accepting opens the feedback dialog with it attached (comment optional) and the sent text carries `Note : n/5`. Declining keeps the rating.
+  - **Final validation**: migration tests (all older schemas to v12, rating persisted across reopen, out-of-range rejected), widget tests for the stars and the 1-star prompt (accept/decline/unconfigured), rating line in the feedback text; existing narrow-screen overflow test still green.
+
+- [x] ✨ ⭐ - **Analysis actions sheet + send the displayed analysis as feedback** (issues #427, #426)
+  - **Verified**: 2026-09-24 (PR #438)
+  - **What was done**: the 4 chips under the map (Save / Copy / Share / Report) are replaced by one "Actions" chip opening a sheet of explicit actions: save photo to gallery, share text, share audio (only with an audio file), send as feedback, report inappropriate content. Copy is removed (the share sheet offers it). A failed gallery save now shows an error and is logged. The feedback dialog moved out of Settings into `lib/widgets/feedback_dialog.dart` with an optional pre-attached analysis; from the sheet it opens with the displayed analysis attached (configured builds, complete analyses only), and the comment is optional when an analysis is attached.
+  - **Final validation**: widget tests for the sheet's contents and conditions, text/audio share, the gallery error, and the dialog (pre-attached analysis, send without comment, comment still required without one); full suite green.
+
+- [x] 🐛 ⭐ - **About this analysis: "no audio generated" instead of "TTS model: Unknown"** (issue #422)
+  - **Verified**: 2026-09-24 (PR #437)
+  - **What was done**: with no TTS model and no audio file (auto audio generation off), the TTS model row now reads "Aucun (audio non généré)" / "None (no audio generated)"; "Unknown" stays for an audio file with no recorded model (old entries). Same distinction in the copied debug text. New FR/EN string.
+  - **Final validation**: widget tests for no audio, audio with model, audio without model, and the debug text; `flutter analyze` clean.
+
+- [x] 🐛 ⭐ - **Gemini API: structured output, never save planning notes as a guide** (issue #433)
+  - **Verified**: 2026-09-24 (PR #436)
+  - **What was done**: `analyzeImage` and `generateQuizQuestions` now send `responseMimeType: application/json` + a `responseSchema`, and the prompts no longer ask for "JSON only". Safety net for the 2026-09-20 case (planning notes saved as the script): thought parts are skipped and the part holding the JSON is used instead of `parts.first`; the plain-text fallback rejects meta text (`looksLikeModelMetaText`) so the next model is tried; each fallback path is logged under `AI` with part counts only.
+  - **Final validation**: unit tests for both request bodies, a multi-part response with a thought part, and the real example rejected; `flutter analyze` clean. On-device batch check still to do.
+
 - [x] 🔒 ⭐ - **CodeQL: advanced setup, drop the broken java-kotlin analysis** (issue #408)
   - **Verified**: 2026-09-10 (PR #415)
   - **What was done**: CodeQL "default setup" analysed `java-kotlin` with autobuild, which can't build this repo (android/ not committed) — a stale failed run kept showing in the Security tab. Replaced with an explicit `codeql.yml` (advanced setup) for `actions` + `python`, `build-mode: none`, `paths-ignore` for docs. `java-kotlin` is intentionally left out: CodeQL's Kotlin extractor needs a real build (source-only mode only covers Java, of which this repo has none) — not worth a weekly build job for a ~10-file glue surface. Stale analysis deleted.
