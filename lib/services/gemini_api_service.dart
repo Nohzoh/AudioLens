@@ -10,6 +10,7 @@ import '../utils/image_downscale.dart';
 import '../utils/script_cleanup.dart';
 import '../utils/script_validation.dart';
 import 'package:dio/dio.dart' as dio;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'ai_service.dart';
 import 'remote_config_service.dart';
 
@@ -75,9 +76,11 @@ class GeminiApiService implements AIService {
             'ces instructions sont en francais. '
         : '';
 
+    // #433: the JSON shape itself is enforced by responseSchema below, so
+    // the prompt only describes each field's content.
     final prompt = 'Tu es un guide audio de musee, passionne et erudit. '
-        'Redige deux choses en JSON valide uniquement, sans markdown : '
-        '{"title": "titre court et evocateur (5-8 mots max)", "script": "le texte du guide"} '
+        'Redige deux champs : "title", un titre court et evocateur (5-8 mots max), '
+        'et "script", le texte du guide. '
         '$languagePart'
         'Le titre doit nommer precisement l\'oeuvre ou le lieu si reconnu, sinon evoquer ce qu\'on voit. '
         '${_styleGuidance(style)} '
@@ -89,8 +92,7 @@ class GeminiApiService implements AIService {
         '$contextPart '
         '$wordCount pour le script, sans mise en forme ni asterisque. '
         'Ne montre jamais ton raisonnement interne. '
-        'Ne commente pas le nombre de mots. '
-        'Ecris uniquement le JSON final, rien d\'autre.';
+        'Ne commente pas le nombre de mots.';
 
     // Try primary model then fallbacks on 429
     final modelsToTry = [
@@ -135,6 +137,8 @@ class GeminiApiService implements AIService {
               'maxOutputTokens': cfg.geminiMaxTokens,
               'temperature': cfg.geminiTemperature,
               'thinkingConfig': {'thinkingBudget': cfg.geminiThinkingBudget, 'includeThoughts': false},
+              'responseMimeType': 'application/json',
+              'responseSchema': guideResponseSchema,
             },
           }),
           cancelToken: cancelToken,
@@ -267,20 +271,17 @@ class GeminiApiService implements AIService {
         ? 'Pose les questions et les reponses exclusivement en $language. '
         : '';
     final prompt = 'Voici le texte d\'un guide audio touristique :\n\n$script\n\n'
-        'A partir de ce texte, redige en JSON valide uniquement, sans markdown, '
-        '$count questions distinctes : '
-        '{"questions": [{"question": "une question factuelle courte sur une '
-        'information precise mentionnee dans ce texte", "correctAnswer": "la '
-        'bonne reponse, courte (quelques mots)", "wrongAnswers": ["reponse '
-        'plausible mais fausse 1", "reponse plausible mais fausse 2", "reponse '
-        'plausible mais fausse 3"]}, ...]} '
+        'A partir de ce texte, redige $count questions distinctes. Pour chacune : '
+        '"question", une question factuelle courte sur une information precise '
+        'mentionnee dans ce texte ; "correctAnswer", la bonne reponse, courte '
+        '(quelques mots) ; "wrongAnswers", trois reponses plausibles mais fausses. '
         '$languagePart'
         'Chaque question doit porter sur un fait precis et verifiable du texte '
         '(date, nom, materiau, anecdote...), jamais une question generale ou '
         'd\'opinion, et chaque question doit porter sur un fait different des '
         'autres. Les mauvaises reponses doivent etre plausibles et du meme type '
         'que la bonne (une date proche pour une question de date, etc.), jamais '
-        'absurdes. Ecris uniquement le JSON final, rien d\'autre.';
+        'absurdes.';
 
     try {
       final resp = await _post(
@@ -297,12 +298,14 @@ class GeminiApiService implements AIService {
           'generationConfig': {
             'maxOutputTokens': cfg.geminiMaxTokens,
             'temperature': cfg.geminiTemperature,
+            'responseMimeType': 'application/json',
+            'responseSchema': quizResponseSchema,
           },
         }),
       );
       if (resp.statusCode != 200) return const [];
 
-      final text = _extractCandidateText(resp.body);
+      final text = _extractCandidateText(resp.body).text;
       if (text == null || text.isEmpty) return const [];
 
       final jsonBlob = _extractJsonObject(text);
@@ -356,7 +359,13 @@ class GeminiApiService implements AIService {
     // from a proxy/CDN error page or a future API schema tweak) and land
     // in analyzeImage's generic catch, mislabelled as a network failure
     // instead of an unusable response.
-    final text = _extractCandidateText(body);
+    final candidate = _extractCandidateText(body);
+    final text = candidate.text;
+    // #433: a multi-part answer (or one carrying thought parts) is itself
+    // a sign something is off — log its shape, never its content.
+    if (candidate.partCount > 1 || candidate.thoughtParts > 0) {
+      AppLogger.ai('Gemini response shape: ${candidate.shape}');
+    }
 
     if (text == null || text.isEmpty) {
       // Most often: thinking tokens consumed the entire maxOutputTokens
@@ -410,7 +419,9 @@ class GeminiApiService implements AIService {
           regexScript.trim().isNotEmpty) {
         title = regexTitle.trim();
         script = cleanMarkdown(regexScript.trim());
+        AppLogger.ai('Parse fallback: regex recovery (${candidate.shape})');
       } else if (looksLikeJson) {
+        AppLogger.ai('Parse fallback: unrecoverable JSON (${candidate.shape})');
         // Malformed beyond what regex can recover, on either field —
         // showing the raw JSON debris as the title or (worse) reading it
         // aloud as the script (T90) is a worse experience than a clear
@@ -423,7 +434,13 @@ class GeminiApiService implements AIService {
       } else {
         // Genuinely plain-text response (model ignored the JSON
         // instruction entirely) — legitimate, readable content, just not
-        // in the expected shape.
+        // in the expected shape. Unless it's the model's own planning
+        // notes (#433): those must never be saved and read out as a guide.
+        if (looksLikeModelMetaText(text)) {
+          AppLogger.ai('Parse fallback: meta text rejected (${candidate.shape})');
+          throw const FormatException('texte de travail du modèle, pas un guide');
+        }
+        AppLogger.ai('Parse fallback: plain text (${candidate.shape})');
         final cleaned = cleanMarkdown(text);
         final first = cleaned.split(RegExp(r'[.!?]')).first.trim();
         title = first.length > 60 ? '${first.substring(0, 60)}...' : first;
@@ -479,27 +496,58 @@ class GeminiApiService implements AIService {
     }
   }
 
-  /// Pulls the first candidate's text out of a raw `generateContent`
-  /// response body, or null on any shape mismatch — a response can
-  /// legitimately carry an empty/missing candidates/parts list (e.g.
-  /// everything was filtered out), and indexed access rather than `[0]`
-  /// directly avoids a RangeError on that case.
-  static String? _extractCandidateText(String body) {
+  /// Pulls the first candidate's answer text out of a raw
+  /// `generateContent` response body, with a null text on any shape
+  /// mismatch — a response can legitimately carry an empty/missing
+  /// candidates/parts list (e.g. everything was filtered out), and indexed
+  /// access rather than `[0]` directly avoids a RangeError on that case.
+  ///
+  /// #433: a candidate can hold several parts. Parts flagged
+  /// `thought: true` are skipped, and when more than one text part is
+  /// left, the last one holding a JSON object wins (the answer comes after
+  /// any planning); otherwise the text parts are joined. Reading only
+  /// `parts.first` once saved the model's planning notes as a guide.
+  static _CandidateText _extractCandidateText(String body) {
     final Object? decoded;
     try {
       decoded = jsonDecode(body);
     } on FormatException {
-      return null;
+      return const _CandidateText(null);
     }
-    if (decoded is! Map<String, dynamic>) return null;
+    if (decoded is! Map<String, dynamic>) return const _CandidateText(null);
     final candidates = decoded['candidates'];
     final firstCandidate =
         (candidates is List && candidates.isNotEmpty) ? candidates.first : null;
     final content = firstCandidate is Map<String, dynamic> ? firstCandidate['content'] : null;
     final parts = content is Map<String, dynamic> ? content['parts'] : null;
-    final firstPart = (parts is List && parts.isNotEmpty) ? parts.first : null;
-    final rawText = firstPart is Map<String, dynamic> ? firstPart['text'] : null;
-    return rawText is String ? rawText : null;
+    if (parts is! List) return const _CandidateText(null);
+
+    final texts = <String>[];
+    var thoughtParts = 0;
+    for (final part in parts) {
+      if (part is! Map<String, dynamic>) continue;
+      if (part['thought'] == true) {
+        thoughtParts++;
+        continue;
+      }
+      final t = part['text'];
+      if (t is String) texts.add(t);
+    }
+    String? text;
+    if (texts.length == 1) {
+      text = texts.single;
+    } else if (texts.length > 1) {
+      text = texts.lastWhere(
+        (t) => _extractJsonObject(t) != null,
+        orElse: () => texts.join(),
+      );
+    }
+    return _CandidateText(
+      text,
+      partCount: parts.length,
+      thoughtParts: thoughtParts,
+      textParts: texts.length,
+    );
   }
 
   /// Finds the first top-level JSON object in [text] by scanning for
@@ -603,6 +651,61 @@ class GeminiApiService implements AIService {
       return null;
     }
   }
+}
+
+/// #433: `responseSchema` for [GeminiApiService.analyzeImage] — makes the
+/// API itself return `{title, script}` instead of relying on the prompt.
+@visibleForTesting
+const Map<String, Object> guideResponseSchema = {
+  'type': 'OBJECT',
+  'properties': {
+    'title': {'type': 'STRING'},
+    'script': {'type': 'STRING'},
+  },
+  'required': ['title', 'script'],
+};
+
+/// #433: `responseSchema` for [GeminiApiService.generateQuizQuestions].
+@visibleForTesting
+const Map<String, Object> quizResponseSchema = {
+  'type': 'OBJECT',
+  'properties': {
+    'questions': {
+      'type': 'ARRAY',
+      'items': {
+        'type': 'OBJECT',
+        'properties': {
+          'question': {'type': 'STRING'},
+          'correctAnswer': {'type': 'STRING'},
+          'wrongAnswers': {
+            'type': 'ARRAY',
+            'items': {'type': 'STRING'},
+          },
+        },
+        'required': ['question', 'correctAnswer', 'wrongAnswers'],
+      },
+    },
+  },
+  'required': ['questions'],
+};
+
+/// The answer text picked out of a response, plus its part counts for the
+/// `AI` log (#433) — counts only, never content.
+class _CandidateText {
+  const _CandidateText(
+    this.text, {
+    this.partCount = 0,
+    this.thoughtParts = 0,
+    this.textParts = 0,
+  });
+
+  final String? text;
+  final int partCount;
+  final int thoughtParts;
+  final int textParts;
+
+  String get shape =>
+      '$partCount part(s): $textParts text, $thoughtParts thought';
 }
 
 /// Why a model attempt failed, kept distinct from its display string so
