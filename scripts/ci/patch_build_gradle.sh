@@ -48,13 +48,27 @@ if ! grep -q 'genai-prompt' "$FILE"; then
   cat >> "$FILE" << 'DEPS'
 
 dependencies {
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
+    // #434: generates the schema for GeminiNanoPlugin's @Generable
+    // classes (structured output), run through KSP (see below).
+    ksp("com.google.mlkit:genai-schema-compiler:1.0.0-alpha1")
     implementation("com.google.guava:guava:32.1.3-android")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
 }
 DEPS
+fi
+
+# #434: ML Kit's structured output needs KSP >= 2.3.6 to generate the
+# schema of the @Generable classes. Declared in settings.gradle.kts next
+# to the Android/Kotlin plugins, then applied to the app module.
+SETTINGS="android/settings.gradle.kts"
+if [ -f "$SETTINGS" ] && ! grep -q 'com.google.devtools.ksp' "$SETTINGS"; then
+  sed -i 's|^\(\s*\)id("com.android.application") version "\([^"]*\)" apply false|&\n\1id("com.google.devtools.ksp") version "2.3.6" apply false|' "$SETTINGS"
+fi
+if ! grep -q 'com.google.devtools.ksp' "$FILE"; then
+  sed -i '0,/^\(\s*\)id("com.android.application")$/s||&\n\1id("com.google.devtools.ksp")|' "$FILE"
 fi
 
 # T118/T21: MediaSessionCompat/PlaybackStateCompat/MediaButtonReceiver

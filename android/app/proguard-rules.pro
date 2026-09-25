@@ -20,3 +20,7 @@
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
+
+# #434: ML Kit structured output reads the @Generable classes (and the
+# schema KSP generates next to them) by reflection — keep them whole.
+-keep class io.nohzoh.audiolens.nano.** { *; }
