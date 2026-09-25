@@ -51,6 +51,8 @@ Pipeline details and diagrams in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 | **Gemini API** | Cloud | Configurable (`config.json`, default `gemini-3.6-flash`) |
 | **Gemini Nano** | On-device | Local Android model |
 
+Testers can also try Google's newer on-device **preview models** (AICore Developer Preview) in the Nano Prompt Lab (Settings > Tools): see [how to enable them](https://nohzoh.github.io/AudioLens/nano-preview.html). Regular guides always use the stable model.
+
 ### Text-to-Speech
 | Engine | Location | Role |
 |---|---|---|

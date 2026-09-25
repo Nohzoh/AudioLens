@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ ⭐ - **Gemini Nano: model picker in the Nano Prompt Lab, typed segment-1 title, preview-models guide** (issues #431, #434, #432)
+  - **Verified**: 2026-09-25 (PR #441)
+  - **What was done**: `genai-prompt` bumped 1.0.0-beta1 -> 1.0.0-beta4. The Nano Prompt Lab can target the default model or a Stable/Preview x Fast/Full variant, shows each one's availability, downloads a downloadable one, blocks runs on a variant that isn't ready, and tags every result (history, pipeline, `AI` logs) with its variant. Production calls send no variant, so they keep ML Kit's default Stable/Full model. Segment 1 uses ML Kit structured output (`NanoSeg1` title/text, KSP 2.3.6 + `genai-schema-compiler`) when `isStructuredOutputFeatureAvailable()` is true, and falls back to the bracket-title text path on any other failure; the text path and non-STOP finish reasons are logged. New `nano-preview.html` pages (EN/FR) explain how to enable the AICore Developer Preview, linked from both home pages and the README
+  - **Final validation**: new service tests (typed title, text-path fallback, blank typed title, no variant sent by default, variant forwarded, download failure), full suite and `flutter analyze` green, release build compiles the Kotlin in CI; guide pages checked at phone width. On-device check (Stable and, on an enrolled phone, Preview; typed titles in real guides) still to do.
+
 - [x] ✨ ⭐ - **New "For kids" script style (ages 6 to 10)** (issue #425)
   - **Verified**: 2026-09-24 (PR #440)
   - **What was done**: new `kids` style in Settings and the history regenerate sheet. Gemini API prompt: « tu », short sentences, simple words, everyday comparisons, observation questions, accurate facts, no violent/scary details, 150-250 words. Gemini Nano: matching tone, focus and a closing observation question. "About this analysis" now shows the style's localized label instead of the raw key.

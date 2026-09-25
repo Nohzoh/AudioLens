@@ -467,3 +467,21 @@ footer a:hover { color: var(--text-dim); }
   .features { grid-template-columns: 1fr; }
   .phone { transform: none; }
 }
+
+/* #432: long-form guide pages (e.g. nano-preview.html). */
+.guide { max-width: 760px; }
+.guide h2 { margin-top: 44px; }
+.guide h2:first-of-type { margin-top: 0; }
+.guide p, .guide li { color: var(--text-dim); font-size: 0.98rem; }
+.guide strong { color: var(--text); }
+.guide a { color: var(--accent-light); }
+.guide .status-steps li { font-size: 0.98rem; align-items: flex-start; }
+.guide .status-steps li > div { flex: 1; min-width: 0; }
+.guide .note {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 18px 0;
+}
+.guide .meta { font-size: 0.85rem; color: var(--text-faint); }

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>AudioLens — Essayer les modèles Preview de Gemini Nano</title>
+<meta name="description" content="Comment activer les modèles Preview de Gemini Nano sur l'appareil (AICore Developer Preview) et les essayer dans AudioLens.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../assets/icon.png">
+<link rel="alternate" hreflang="en" href="https://nohzoh.github.io/AudioLens/nano-preview.html">
+<link rel="alternate" hreflang="fr" href="https://nohzoh.github.io/AudioLens/fr/nano-preview.html">
+<link rel="alternate" hreflang="x-default" href="https://nohzoh.github.io/AudioLens/nano-preview.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <img src="../assets/icon.png" alt="">
+      AudioLens
+    </a>
+    <nav class="site-links">
+      <a href="./#features">Fonctionnalités</a>
+      <a href="./#how-it-works">Fonctionnement</a>
+      <a href="./#developers">Développeurs</a>
+    </nav>
+    <div class="header-ctas">
+      <a class="lang-switch" href="../nano-preview.html" onclick="localStorage.setItem('audiolens-lang','en')" hreflang="en">🇬🇧<span class="cta-label"> English</span></a>
+      <a class="btn-kofi" href="https://ko-fi.com/tarnaud" target="_blank" rel="noopener">☕<span class="cta-label"> Soutenir</span></a>
+      <a class="btn-github" href="https://github.com/Nohzoh/AudioLens">★<span class="cta-label"> GitHub</span></a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap guide">
+    <div class="section-head">
+      <span class="eyebrow">Pour les testeurs</span>
+      <h1 style="font-size:2.2rem">Essayer les modèles Preview de Gemini Nano</h1>
+      <p class="meta">
+        Dernière vérification : 25/09/2026, d'après la page officielle de Google
+        <a href="https://developers.google.com/ml-kit/genai/aicore-dev-preview" target="_blank" rel="noopener">AICore Developer Preview</a>
+        (en anglais). Google peut modifier ces étapes : en cas de différence, c'est cette page qui fait foi.
+      </p>
+    </div>
+
+    <h2>De quoi s'agit-il ?</h2>
+    <p>
+      Quand AudioLens fonctionne sur l'appareil, il utilise Gemini Nano via
+      le service système Android <strong>AICore</strong>. Google installe un
+      modèle <strong>Stable</strong>, testé, sur tous les téléphones
+      compatibles. Avec l'<strong>AICore Developer Preview</strong>, Google
+      propose aussi des modèles <strong>Preview</strong> plus récents (comme
+      Gemini Nano 4) avant leur sortie pour tous.
+    </p>
+    <p>
+      Rien de tout cela n'est nécessaire pour utiliser AudioLens. L'app
+      utilise toujours le modèle Stable pour ses guides. Les modèles Preview
+      servent seulement aux testeurs qui veulent les comparer dans le
+      <strong>Nano Prompt Lab</strong> d'AudioLens.
+    </p>
+
+    <div class="note">
+      <p style="margin:0">
+        <strong>Avant de commencer :</strong> les modèles de pré-production
+        peuvent être plus lents et moins précis que le modèle Stable, et la
+        toute première requête peut prendre environ une minute. Ils peuvent
+        aussi affecter la stabilité, le stockage et les performances du
+        téléphone. N'inscrivez qu'un téléphone sur lequel vous acceptez de
+        faire des tests.
+      </p>
+    </div>
+
+    <h2>Prérequis</h2>
+    <ul>
+      <li>Un téléphone Android compatible avec l'API Prompt de ML Kit (voir les
+        <a href="https://developers.google.com/ml-kit/genai#prompt-device" target="_blank" rel="noopener">appareils compatibles</a>).
+        Les modèles Preview demandent en plus un accélérateur IA de Google, MediaTek ou Qualcomm.</li>
+      <li>Le compte Google utilisé sur ce téléphone.</li>
+      <li>Du Wi-Fi pour télécharger le modèle, qui est volumineux.</li>
+      <li>AudioLens installé, avec Gemini Nano disponible (il apparaît comme fournisseur d'IA dans les paramètres).</li>
+    </ul>
+
+    <h2>Activer les modèles Preview</h2>
+    <ol class="status-steps">
+      <li><span class="n">1</span><div>
+        <strong>Rejoignez le groupe Google</strong>
+        <a href="https://groups.google.com/g/aicore-experimental" target="_blank" rel="noopener">aicore-experimental</a>
+        avec le compte Google du téléphone.</div></li>
+      <li><span class="n">2</span><div>
+        <strong>Devenez testeur</strong> du
+        <a href="https://play.google.com/apps/testing/com.google.android.aicore" target="_blank" rel="noopener">programme de test Android AICore</a>.</div></li>
+      <li><span class="n">3</span><div>
+        <strong>Mettez à jour AICore</strong> : sur le téléphone, ouvrez
+        Paramètres, puis Google, Tous les services, Services système, AICore,
+        et appuyez sur Mettre à jour quand c'est proposé.</div></li>
+      <li><span class="n">4</span><div>
+        <strong>Ouvrez l'app AICore</strong> (son icône apparaît après la
+        mise à jour) et acceptez les conditions.</div></li>
+      <li><span class="n">5</span><div>
+        <strong>Téléchargez un modèle Preview</strong> : dans l'app AICore,
+        ouvrez le sélecteur de modèle et choisissez une version Preview de
+        Gemini Nano. Le téléchargement demande du Wi-Fi et prend plusieurs
+        minutes.</div></li>
+      <li><span class="n">6</span><div>
+        <strong>Pixel uniquement, facultatif</strong> : activez
+        <em>Bypass quota limits</em> dans les paramètres de l'app AICore pour
+        éviter les erreurs <code>BUSY</code> quand vous faites beaucoup de
+        tests.</div></li>
+    </ol>
+
+    <h2>L'utiliser dans AudioLens</h2>
+    <ol class="status-steps">
+      <li><span class="n">1</span><div>
+        Ouvrez <strong>Paramètres &gt; Outils &gt; Nano Prompt Lab</strong>.</div></li>
+      <li><span class="n">2</span><div>
+        Sous <strong>Modèle</strong>, chaque option affiche son état sur
+        votre téléphone. Choisissez <strong>Preview · Fast</strong> ou
+        <strong>Preview · Full</strong> : Fast privilégie la vitesse, Full la
+        précision.</div></li>
+      <li><span class="n">3</span><div>
+        Si l'option indique <em>à télécharger</em>, appuyez sur
+        <strong>Télécharger ce modèle</strong>. Si elle indique
+        <em>indisponible</em>, votre téléphone n'est pas encore inscrit ou ne
+        prend pas en charge les modèles Preview.</div></li>
+      <li><span class="n">4</span><div>
+        Lancez un prompt libre ou le pipeline complet. Chaque résultat
+        indique le modèle qui l'a produit, et les logs de l'app l'enregistrent
+        aussi : vous pouvez comparer Preview et Stable sur la même photo.</div></li>
+    </ol>
+    <p>Vos guides habituels continuent d'utiliser le modèle Stable, quel que soit votre choix dans le Lab.</p>
+
+    <h2>Quitter le programme</h2>
+    <ol class="status-steps">
+      <li><span class="n">1</span><div>
+        Appuyez sur <strong>Quitter le programme</strong> sur la
+        <a href="https://play.google.com/apps/testing/com.google.android.aicore" target="_blank" rel="noopener">page de test d'AICore</a>.</div></li>
+      <li><span class="n">2</span><div>
+        Dans Paramètres, Google, Tous les services, Services système, AICore,
+        désinstallez les mises à jour pour revenir à la version de production.</div></li>
+    </ol>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Licence AGPL-3.0 · © Contributeurs AudioLens</span>
+    <nav>
+      <a href="./">Accueil</a>
+      <a href="https://github.com/Nohzoh/AudioLens/blob/main/PRIVACY.md">Confidentialité</a>
+      <a href="https://github.com/Nohzoh/AudioLens">GitHub</a>
+      <a href="../nano-preview.html" onclick="localStorage.setItem('audiolens-lang','en')" hreflang="en">🇬🇧 English</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
