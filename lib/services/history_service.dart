@@ -975,6 +975,54 @@ class HistoryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// #428: adds or removes several entries from one collection in a
+  /// single transaction, with one [notifyListeners] — the multi-select
+  /// path, instead of looping over [setEntryInCollection] (one DB write
+  /// and one rebuild per entry). All-or-nothing: on failure nothing is
+  /// changed in memory and a [HistoryStorageException] is thrown for the
+  /// UI to show.
+  Future<void> setEntriesInCollection(
+      Set<int> entryIds, int collectionId, bool inCollection) async {
+    if (entryIds.isEmpty) return;
+    try {
+      await _db!.transaction((txn) async {
+        final batch = txn.batch();
+        for (final entryId in entryIds) {
+          if (inCollection) {
+            batch.insert(
+              'history_collections',
+              {'historyId': entryId, 'collectionId': collectionId},
+              conflictAlgorithm: ConflictAlgorithm.ignore,
+            );
+          } else {
+            batch.delete(
+              'history_collections',
+              where: 'historyId = ? AND collectionId = ?',
+              whereArgs: [entryId, collectionId],
+            );
+          }
+        }
+        await batch.commit(noResult: true);
+      });
+    } catch (e) {
+      AppLogger.db('Collection update failed (${entryIds.length} entries, '
+          '${inCollection ? 'add' : 'remove'}): '
+          '${sanitizeError(e.toString())}');
+      throw const HistoryStorageException(
+          GuideErrorKind.storageCollectionFailed);
+    }
+    for (final entryId in entryIds) {
+      if (inCollection) {
+        (_entryCollectionIds[entryId] ??= <int>{}).add(collectionId);
+      } else {
+        _entryCollectionIds[entryId]?.remove(collectionId);
+      }
+    }
+    AppLogger.db('${entryIds.length} entries '
+        '${inCollection ? 'added to' : 'removed from'} collection $collectionId');
+    notifyListeners();
+  }
+
   /// Deletes every entry older than [days] (T95) — same deletion mechanics
   /// as [deleteEntry] (photo/audio files + DB row), just triggered
   /// automatically instead of by a user tap. Meant to be called once per

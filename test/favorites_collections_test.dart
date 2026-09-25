@@ -84,6 +84,43 @@ void main() {
     expect(reopened.collectionIdsForEntry(entry.id!), {rome.id});
   });
 
+  test('setEntriesInCollection adds/removes several entries with one notify',
+      () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final a = await service.addPendingEntry(imagePath: sourceImagePath);
+    final b = await service.addPendingEntry(imagePath: sourceImagePath);
+    final c = await service.addPendingEntry(imagePath: sourceImagePath);
+    final louvre = await service.createCollection('Louvre');
+    // Already a member: the batch insert must not trip over it.
+    await service.setEntryInCollection(a.id!, louvre.id!, true);
+
+    var notifications = 0;
+    service.addListener(() => notifications++);
+
+    await service.setEntriesInCollection({a.id!, b.id!}, louvre.id!, true);
+    expect(notifications, 1);
+    expect(service.collectionIdsForEntry(a.id!), {louvre.id});
+    expect(service.collectionIdsForEntry(b.id!), {louvre.id});
+    expect(service.collectionIdsForEntry(c.id!), isEmpty);
+
+    final reopened = HistoryService();
+    await reopened.init(dbPath: dbPath);
+    expect(reopened.collectionIdsForEntry(a.id!), {louvre.id});
+    expect(reopened.collectionIdsForEntry(b.id!), {louvre.id});
+
+    await service.setEntriesInCollection(
+        {a.id!, b.id!, c.id!}, louvre.id!, false);
+    expect(notifications, 2);
+    for (final e in [a, b, c]) {
+      expect(service.collectionIdsForEntry(e.id!), isEmpty);
+    }
+
+    // An empty selection is a no-op, not a rebuild.
+    await service.setEntriesInCollection({}, louvre.id!, true);
+    expect(notifications, 2);
+  });
+
   test('deleteEntry also removes its collection memberships', () async {
     final service = HistoryService();
     await service.init(dbPath: dbPath);

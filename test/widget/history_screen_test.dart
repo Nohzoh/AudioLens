@@ -676,4 +676,134 @@ void main() {
       expect(find.byType(AboutAnalysisScreen), findsOneWidget);
     });
   });
+  group('multi-select to add to a collection (#428)', () {
+    Future<List<HistoryEntry>> addThree(WidgetTester tester) async {
+      late List<HistoryEntry> added;
+      await tester.runAsync(() async {
+        added = [
+          for (final title in ['Pyramide', 'Joconde', 'Victoire'])
+            await history.addEntry(
+                imagePath: imagePath, title: title, script: 'Bienvenue.'),
+        ];
+      });
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      return added;
+    }
+
+    // DB writes from sheet taps run outside the fake-async zone.
+    Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
+      await tester.runAsync(() async {
+        await tester.tap(finder);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('long-press enters selection mode, taps then toggle cards',
+        (tester) async {
+      await addThree(tester);
+
+      await tester.longPress(find.text('Joconde'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 sélectionnée'), findsOneWidget);
+      expect(find.byType(HistoryDetailScreen), findsNothing);
+
+      await tester.tap(find.text('Pyramide'));
+      await tester.pumpAndSettle();
+      expect(find.text('2 sélectionnées'), findsOneWidget);
+      expect(find.byType(HistoryDetailScreen), findsNothing);
+
+      await tester.tap(find.text('Pyramide'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 sélectionnée'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Tout sélectionner'));
+      await tester.pumpAndSettle();
+      expect(find.text('3 sélectionnées'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+      expect(find.text('Historique'), findsOneWidget);
+    });
+
+    testWidgets('back exits selection mode instead of leaving the screen',
+        (tester) async {
+      await addThree(tester);
+      await tester.longPress(find.text('Joconde'));
+      await tester.pumpAndSettle();
+
+      final handled = await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(handled, isTrue);
+      expect(find.text('1 sélectionnée'), findsNothing);
+      expect(find.byType(HistoryScreen), findsOneWidget);
+    });
+
+    testWidgets(
+        'the sheet shows the mixed state and adds every selected entry',
+        (tester) async {
+      final added = await addThree(tester);
+      late int louvreId;
+      await tester.runAsync(() async {
+        louvreId = (await history.createCollection('Louvre')).id!;
+        await history.setEntryInCollection(added[0].id!, louvreId, true);
+      });
+      await tester.pumpAndSettle();
+
+      await tester.longPress(find.text('Pyramide'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Joconde'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Ajouter à une collection'));
+      await tester.pumpAndSettle();
+
+      final tile = find.widgetWithText(CheckboxListTile, 'Louvre');
+      expect(tester.widget<CheckboxListTile>(tile).value, isNull);
+
+      await tapAndSettle(tester, tile);
+      expect(tester.widget<CheckboxListTile>(tile).value, isTrue);
+      expect(history.collectionIdsForEntry(added[1].id!), {louvreId});
+      expect(history.collectionIdsForEntry(added[2].id!), isEmpty);
+
+      // Ticked -> unticking removes both.
+      await tapAndSettle(tester, tile);
+      expect(tester.widget<CheckboxListTile>(tile).value, isFalse);
+      expect(history.collectionIdsForEntry(added[0].id!), isEmpty);
+      expect(history.collectionIdsForEntry(added[1].id!), isEmpty);
+    });
+
+    testWidgets('a collection created from the sheet gets every selected entry',
+        (tester) async {
+      final added = await addThree(tester);
+
+      await tester.longPress(find.text('Pyramide'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Tout sélectionner'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Ajouter à une collection'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.descendant(
+              of: find.byType(BottomSheet), matching: find.byType(TextField)),
+          'Louvre');
+      await tapAndSettle(
+          tester,
+          find.descendant(
+              of: find.byType(BottomSheet), matching: find.text('Créer')));
+
+      final louvre = history.collections.single;
+      expect(louvre.name, 'Louvre');
+      for (final e in added) {
+        expect(history.collectionIdsForEntry(e.id!), {louvre.id});
+      }
+
+      // Closing the sheet after a change ends selection mode.
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(find.text('3 sélectionnées'), findsNothing);
+    });
+  });
 }

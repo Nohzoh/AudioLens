@@ -131,6 +131,13 @@
     }
   },
   "historyNoFilterResults": "Nothing here yet",
+  "historySelectedCount": "{count, plural, =1{1 selected} other{{count} selected}}",
+  "@historySelectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "historySelectAll": "Select all",
 
   "settingsNoVoiceProduced": "No sound produced — the system TTS doesn't seem to be available on this device",
   "settingsSaved": "Settings saved",
@@ -395,6 +402,7 @@
   },
   "guideErrorStorageRotationFailed": "Couldn't save the photo rotation.",
   "guideErrorStorageRatingFailed": "Couldn't save the rating.",
+  "guideErrorStorageCollectionFailed": "Couldn't update the collection.",
   "ratingStarLabel": "{stars} out of 5",
   "ratingLowPromptTitle": "Not happy with this script?",
   "ratingLowPromptBody": "Send the analysis to the developers to help them improve it.",

@@ -47,6 +47,8 @@ String localizeGuideErrorKind(
       return l10n.guideErrorStorageRotationFailed;
     case GuideErrorKind.storageRatingFailed:
       return l10n.guideErrorStorageRatingFailed;
+    case GuideErrorKind.storageCollectionFailed:
+      return l10n.guideErrorStorageCollectionFailed;
     case GuideErrorKind.unknown:
       // No fixed template for a truly unknown failure — the sanitized
       // diagnostic (already the whole message pre-#230) stands alone.
