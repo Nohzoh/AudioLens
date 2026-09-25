@@ -131,6 +131,9 @@
     }
   },
   "historyNoFilterResults": "Nothing here yet",
+  "historyMapTooltip": "Map of analyses",
+  "analysesMapTitle": "Map of analyses",
+  "analysesMapEmpty": "No analysis here has a location yet. Analyses made with GPS on, or from a photo with a location, will show up on the map.",
 
   "settingsNoVoiceProduced": "No sound produced — the system TTS doesn't seem to be available on this device",
   "settingsSaved": "Settings saved",

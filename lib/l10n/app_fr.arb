@@ -146,6 +146,9 @@
     }
   },
   "historyNoFilterResults": "Aucune entrée ici pour l'instant",
+  "historyMapTooltip": "Carte des analyses",
+  "analysesMapTitle": "Carte des analyses",
+  "analysesMapEmpty": "Aucune analyse ici n'a encore de position. Les analyses faites avec le GPS activé, ou depuis une photo géolocalisée, apparaîtront sur la carte.",
 
   "settingsNoVoiceProduced": "Aucun son produit — le TTS système ne semble pas disponible sur cet appareil",
   "settingsSaved": "Paramètres sauvegardés",
