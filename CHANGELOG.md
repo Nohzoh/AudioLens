@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ ⭐ - **History: multi-select entries to add them to a collection** (issue #428)
+  - **Verified**: 2026-09-25 (PR #443)
+  - **What was done**: long-press on a history card enters selection mode (taps then toggle; check overlay and highlighted card). The contextual bar shows the count, ✕, "Select all" (current filter) and "Add to collection"; back or ✕ exits, changing the filter clears the selection. The collections sheet now works on a set of entries with tri-state checkboxes (all / none / some); ticking adds every selected entry, unticking removes them, and a collection created from the sheet receives all of them. Single-entry assignment stays in the detail ⋮ menu. New `HistoryService.setEntriesInCollection` does one transaction and one `notifyListeners()`, logs under `DB`, and failures show inline in the sheet (new `storageCollectionFailed` error kind).
+  - **Final validation**: service test (batch add/remove, already-member entries, single notify, reload, empty set), widget tests (enter/toggle/select all/✕, back exits selection, mixed state add/remove, new collection gets every entry); full suite and `flutter analyze` green. On-device check still to do.
+
 - [x] ✨ ⭐ - **Gemini Nano: model picker in the Nano Prompt Lab, typed segment-1 title, preview-models guide** (issues #431, #434, #432)
   - **Verified**: 2026-09-25 (PR #441)
   - **What was done**: `genai-prompt` bumped 1.0.0-beta1 -> 1.0.0-beta4. The Nano Prompt Lab can target the default model or a Stable/Preview x Fast/Full variant, shows each one's availability, downloads a downloadable one, blocks runs on a variant that isn't ready, and tags every result (history, pipeline, `AI` logs) with its variant. Production calls send no variant, so they keep ML Kit's default Stable/Full model. Segment 1 uses ML Kit structured output (`NanoSeg1` title/text, KSP 2.3.6 + `genai-schema-compiler`) when `isStructuredOutputFeatureAvailable()` is true, and falls back to the bracket-title text path on any other failure; the text path and non-STOP finish reasons are logged. New `nano-preview.html` pages (EN/FR) explain how to enable the AICore Developer Preview, linked from both home pages and the README
