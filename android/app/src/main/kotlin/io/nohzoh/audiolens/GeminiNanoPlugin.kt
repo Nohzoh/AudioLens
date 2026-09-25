@@ -143,14 +143,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
 
         // #434: typed finish reasons, named for the Dart-side logs.
-        // Anything else (a reason a later SDK adds) is logged by value.
+        // Only STOP and MAX_TOKENS are public constants in beta4; the
+        // parse/validation reasons are logged by their raw value.
         private fun typedFinishReasonName(reason: Int?): String? = when (reason) {
             null -> null
             TypedCandidate.TypedFinishReason.STOP -> "STOP"
             TypedCandidate.TypedFinishReason.MAX_TOKENS -> "MAX_TOKENS"
-            TypedCandidate.TypedFinishReason.PARSE_CLASS_ERROR -> "PARSE_CLASS_ERROR"
-            TypedCandidate.TypedFinishReason.STRUCTURE_VALUES_INVALID -> "STRUCTURE_VALUES_INVALID"
-            else -> "UNKNOWN($reason)"
+            else -> "OTHER($reason)"
         }
 
         private fun statusName(status: Int): String = when (status) {
