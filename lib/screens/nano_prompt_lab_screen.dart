@@ -20,7 +20,11 @@ class _LabAttempt {
   final String? error;
   final Duration elapsed;
 
+  /// #431: model variant used, null = default model.
+  final NanoModelVariant? variant;
+
   const _LabAttempt({
+    required this.variant,
     required this.prompt,
     required this.image,
     required this.maxOutputTokens,
@@ -60,6 +64,14 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
 
   _LabMode _mode = _LabMode.raw;
 
+  // #431: model variant (null = default client, same as production) and
+  // each option's availability on this device, keyed by variant (null
+  // key = default model).
+  NanoModelVariant? _variant;
+  final Map<NanoModelVariant?, NanoDeviceStatus> _statuses = {};
+  bool _downloading = false;
+  String? _downloadError;
+
   // Shared knobs (both modes).
   final _maxTokensController = TextEditingController(text: '256');
   final _temperatureController = TextEditingController();
@@ -71,6 +83,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   String? _output;
   String? _error;
   Duration? _elapsed;
+  NanoModelVariant? _outputVariant;
   final List<_LabAttempt> _history = [];
 
   // Pipeline mode.
@@ -81,8 +94,49 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   String? _locationError;
   bool _runningPipeline = false;
   NanoDebugCascadeResult? _debugResult;
+  NanoModelVariant? _pipelineVariant;
   String? _pipelineError;
   Duration? _pipelineElapsed;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatuses();
+  }
+
+  Future<void> _refreshStatuses() async {
+    for (final v in <NanoModelVariant?>[null, ...NanoModelVariant.all]) {
+      final status = await _nano.checkDeviceStatus(variant: v);
+      if (!mounted) return;
+      setState(() => _statuses[v] = status);
+    }
+  }
+
+  bool get _variantReady =>
+      _variant == null || _statuses[_variant] == NanoDeviceStatus.available;
+
+  Future<void> _downloadVariant() async {
+    final variant = _variant;
+    if (variant == null || _downloading) return;
+    setState(() {
+      _downloading = true;
+      _downloadError = null;
+      _statuses[variant] = NanoDeviceStatus.downloading;
+    });
+    String? error;
+    try {
+      await _nano.downloadVariant(variant);
+    } catch (e) {
+      error = e.toString();
+    }
+    final status = await _nano.checkDeviceStatus(variant: variant);
+    if (!mounted) return;
+    setState(() {
+      _downloading = false;
+      _downloadError = error;
+      _statuses[variant] = status;
+    });
+  }
 
   @override
   void dispose() {
@@ -108,6 +162,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
     final maxTokens = int.tryParse(_maxTokensController.text) ?? 256;
     final temperature = double.tryParse(_temperatureController.text);
     final image = _image;
+    final variant = _variant;
 
     setState(() {
       _sending = true;
@@ -124,6 +179,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         imageFile: image,
         maxOutputTokens: maxTokens,
         temperature: temperature,
+        variant: variant,
       );
     } catch (e) {
       error = e.toString();
@@ -136,9 +192,11 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       _output = output;
       _error = error;
       _elapsed = stopwatch.elapsed;
+      _outputVariant = variant;
       _history.insert(
         0,
         _LabAttempt(
+          variant: variant,
           prompt: prompt,
           image: image,
           maxOutputTokens: maxTokens,
@@ -157,9 +215,11 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       _maxTokensController.text = attempt.maxOutputTokens.toString();
       _temperatureController.text = attempt.temperature?.toString() ?? '';
       _image = attempt.image;
+      _variant = attempt.variant;
       _output = attempt.output;
       _error = attempt.error;
       _elapsed = attempt.elapsed;
+      _outputVariant = attempt.variant;
     });
   }
 
@@ -196,9 +256,11 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
 
     final maxTokens = int.tryParse(_maxTokensController.text) ?? 256;
     final temperature = double.tryParse(_temperatureController.text);
+    final variant = _variant;
 
     setState(() {
       _runningPipeline = true;
+      _pipelineVariant = variant;
       _debugResult = null;
       _pipelineError = null;
     });
@@ -212,6 +274,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         locationContext: _locationContext?.promptContext,
         maxOutputTokens: maxTokens,
         temperature: temperature,
+        variant: variant,
       );
     } catch (e) {
       error = e.toString();
@@ -249,6 +312,8 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
             selected: {_mode},
             onSelectionChanged: (s) => setState(() => _mode = s.first),
           ),
+          const SizedBox(height: 16),
+          ..._buildModelSelector(l10n, theme),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -305,7 +370,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
               )
             : const Icon(Icons.send),
         label: Text(_sending ? l10n.nanoLabSending : l10n.nanoLabSend),
-        onPressed: _sending ? null : _send,
+        onPressed: (_sending || !_variantReady) ? null : _send,
         style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
       ),
       const SizedBox(height: 20),
@@ -317,6 +382,11 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         Row(
           children: [
             Text(l10n.nanoLabOutput, style: theme.textTheme.labelLarge),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(_variantLabel(l10n, _outputVariant),
+                  overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall),
+            ),
             const Spacer(),
             if (_elapsed != null)
               Text('${_elapsed!.inMilliseconds} ms',
@@ -351,7 +421,8 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
                   : const Icon(Icons.text_fields),
               title: Text(attempt.prompt, maxLines: 2, overflow: TextOverflow.ellipsis),
               subtitle: Text(
-                attempt.error != null ? l10n.nanoLabHistoryError : '${attempt.elapsed.inMilliseconds} ms',
+                '${_variantLabel(l10n, attempt.variant)} · '
+                '${attempt.error != null ? l10n.nanoLabHistoryError : '${attempt.elapsed.inMilliseconds} ms'}',
               ),
               onTap: () => _reuse(attempt),
             ),
@@ -469,7 +540,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
               )
             : const Icon(Icons.play_arrow),
         label: Text(_runningPipeline ? l10n.nanoLabRunningPipeline : l10n.nanoLabRunPipeline),
-        onPressed: (_runningPipeline || _image == null) ? null : _runPipeline,
+        onPressed: (_runningPipeline || _image == null || !_variantReady) ? null : _runPipeline,
         style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
       ),
       const SizedBox(height: 20),
@@ -486,6 +557,11 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       Row(
         children: [
           Text(l10n.nanoLabFullText, style: theme.textTheme.labelLarge),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(_variantLabel(l10n, _pipelineVariant),
+                overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall),
+          ),
           const Spacer(),
           if (_pipelineElapsed != null)
             Text('${_pipelineElapsed!.inMilliseconds} ms',
@@ -500,6 +576,18 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       ),
       _outputBox(theme, r.fullText),
       const SizedBox(height: 16),
+      if (r.seg1Mode != null) ...[
+        Text(
+          '${l10n.nanoLabSegment1}: '
+          '${r.seg1Mode == 'structured' ? l10n.nanoLabSeg1Structured : l10n.nanoLabSeg1TextPath}'
+          '${r.seg1FinishReason != null ? ' · ${r.seg1FinishReason}' : ''}'
+          '${r.seg1FallbackReason != null ? ' · ${r.seg1FallbackReason}' : ''}',
+          style: theme.textTheme.labelSmall,
+        ),
+        if (r.seg1Title != null)
+          Text('${l10n.nanoLabSeg1Title}: ${r.seg1Title}', style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 12),
+      ],
       _segmentCard(l10n, theme, l10n.nanoLabSegment1, r.seg1Prompt, r.seg1Output),
       _segmentCard(l10n, theme, l10n.nanoLabSegment2, r.seg2Prompt, r.seg2Output),
       _segmentCard(l10n, theme, l10n.nanoLabSegment3, r.seg3Prompt, r.seg3Output),
@@ -529,6 +617,74 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         ],
       ),
     );
+  }
+
+  String _variantLabel(AppLocalizations l10n, NanoModelVariant? variant) =>
+      variant?.label ?? l10n.nanoLabModelDefault;
+
+  String _statusLabel(AppLocalizations l10n, NanoDeviceStatus? status) {
+    switch (status) {
+      case null:
+        return l10n.nanoLabModelChecking;
+      case NanoDeviceStatus.available:
+        return l10n.nanoLabModelAvailable;
+      case NanoDeviceStatus.downloadable:
+        return l10n.nanoLabModelDownloadable;
+      case NanoDeviceStatus.downloading:
+        return l10n.nanoLabModelDownloading;
+      case NanoDeviceStatus.unavailable:
+        return l10n.nanoLabModelUnavailable;
+      case NanoDeviceStatus.unknown:
+        return l10n.nanoLabModelUnknown;
+    }
+  }
+
+  /// #431: default model plus the 4 Stable/Preview x Fast/Full variants,
+  /// each with its own availability on this device.
+  List<Widget> _buildModelSelector(AppLocalizations l10n, ThemeData theme) {
+    final selectedStatus = _statuses[_variant];
+    return [
+      Text(l10n.nanoLabModel, style: theme.textTheme.labelLarge),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final v in <NanoModelVariant?>[null, ...NanoModelVariant.all])
+            ChoiceChip(
+              label: Text('${_variantLabel(l10n, v)} · ${_statusLabel(l10n, _statuses[v])}'),
+              selected: _variant == v,
+              onSelected: (_) => setState(() {
+                _variant = v;
+                _downloadError = null;
+              }),
+            ),
+        ],
+      ),
+      if (_variant != null && selectedStatus != NanoDeviceStatus.available) ...[
+        const SizedBox(height: 8),
+        Text(
+          selectedStatus == NanoDeviceStatus.unavailable
+              ? l10n.nanoLabModelUnavailableHint
+              : l10n.nanoLabModelNotReadyHint,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+        ),
+        if (selectedStatus == NanoDeviceStatus.downloadable || _downloading) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: _downloading
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.download, size: 18),
+            label: Text(l10n.nanoLabModelDownload),
+            onPressed: _downloading ? null : _downloadVariant,
+          ),
+        ],
+      ],
+      if (_downloadError != null) ...[
+        const SizedBox(height: 8),
+        _errorBox(theme, _downloadError!),
+      ],
+    ];
   }
 
   Widget _buildKnobsRow(AppLocalizations l10n) {

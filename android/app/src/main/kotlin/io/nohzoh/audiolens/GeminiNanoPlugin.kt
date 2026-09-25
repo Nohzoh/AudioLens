@@ -2,12 +2,22 @@ package io.nohzoh.audiolens
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import com.google.mlkit.genai.common.DownloadStatus
+import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
+import com.google.mlkit.genai.prompt.GenerationConfig
 import com.google.mlkit.genai.prompt.GenerativeModel
 import com.google.mlkit.genai.prompt.ImagePart
+import com.google.mlkit.genai.prompt.ModelPreference
+import com.google.mlkit.genai.prompt.ModelReleaseStage
 import com.google.mlkit.genai.prompt.TextPart
+import com.google.mlkit.genai.prompt.TypedCandidate
 import com.google.mlkit.genai.prompt.generateContentRequest
+import com.google.mlkit.genai.prompt.generateTypedContentRequest
+import com.google.mlkit.genai.prompt.generationConfig
+import com.google.mlkit.genai.prompt.modelConfig
+import io.nohzoh.audiolens.nano.NanoSeg1
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -91,7 +101,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             else -> "un ton chaleureux et vivant"
         }
 
-        fun buildSeg1Prompt(locationContext: String?, style: String? = null, language: String? = null): String {
+        fun buildSeg1Prompt(
+            locationContext: String?,
+            style: String? = null,
+            language: String? = null,
+            structured: Boolean = false,
+        ): String {
             // #171: locationContext already arrives pre-truncated for
             // Nano's budget (see GeminiNanoService._maxLocationContextChars
             // on the Dart side) — this only adds the same grounding-
@@ -115,7 +130,35 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // field — GeminiNanoService._extractTitleAndBody parses it out
             // on the Dart side (falling back to the old first-sentence
             // heuristic if the model doesn't follow the format).
-            return "Tu es un guide audio culturel. Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Puis, sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
+            //
+            // #434: with structured output the title is its own typed
+            // field (NanoSeg1), so the bracket convention is dropped from
+            // the prompt rather than asked for twice.
+            val titleDirective = if (structured) {
+                "Donne un titre court (3 a 6 mots, ex: Le Colisee de Rome) et un texte. Dans le texte,"
+            } else {
+                "Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Puis,"
+            }
+            return "Tu es un guide audio culturel. $titleDirective sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
+        }
+
+        // #434: typed finish reasons, named for the Dart-side logs.
+        // Anything else (a reason a later SDK adds) is logged by value.
+        private fun typedFinishReasonName(reason: Int?): String? = when (reason) {
+            null -> null
+            TypedCandidate.TypedFinishReason.STOP -> "STOP"
+            TypedCandidate.TypedFinishReason.MAX_TOKENS -> "MAX_TOKENS"
+            TypedCandidate.TypedFinishReason.PARSE_CLASS_ERROR -> "PARSE_CLASS_ERROR"
+            TypedCandidate.TypedFinishReason.STRUCTURE_VALUES_INVALID -> "STRUCTURE_VALUES_INVALID"
+            else -> "UNKNOWN($reason)"
+        }
+
+        private fun statusName(status: Int): String = when (status) {
+            FeatureStatus.UNAVAILABLE -> "unavailable"
+            FeatureStatus.DOWNLOADABLE -> "downloadable"
+            FeatureStatus.DOWNLOADING -> "downloading"
+            FeatureStatus.AVAILABLE -> "available"
+            else -> "unknown"
         }
 
         // #247: without locationContext here, segments 2/3 have nothing to
@@ -168,6 +211,92 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         generativeModel?.close()
     }
 
+    // #431: the Nano Prompt Lab can target one model variant
+    // (Stable/Preview x Fast/Full, ML Kit >= 1.0.0-beta2). No
+    // releaseStage/preference argument = null = the default client
+    // (Stable/Full), i.e. exactly what production has always used.
+    private fun variantConfig(call: MethodCall): GenerationConfig? {
+        val stageArg = call.argument<String>("releaseStage")
+        val preferenceArg = call.argument<String>("preference")
+        if (stageArg == null && preferenceArg == null) return null
+        return generationConfig {
+            modelConfig = modelConfig {
+                releaseStage = if (stageArg == "preview") ModelReleaseStage.PREVIEW else ModelReleaseStage.STABLE
+                preference = if (preferenceArg == "fast") ModelPreference.FAST else ModelPreference.FULL
+            }
+        }
+    }
+
+    private fun newClient(config: GenerationConfig?): GenerativeModel =
+        if (config == null) Generation.getClient() else Generation.getClient(config)
+
+    // #434: typed title/text for segment 1 when the device supports
+    // structured output, else (or if the typed call fails in any way
+    // other than a timeout) today's bracket-title text path — the
+    // result must stay usable either way.
+    private data class Seg1Result(
+        val prompt: String,
+        val title: String?,
+        val text: String,
+        val mode: String,
+        val finishReason: String?,
+        val fallbackReason: String?,
+    )
+
+    private suspend fun runSeg1(
+        model: GenerativeModel,
+        bitmap: Bitmap,
+        locationContext: String?,
+        style: String?,
+        language: String?,
+        maxTokens: Int,
+        temperature: Float?,
+    ): Seg1Result {
+        var fallbackReason: String? = null
+        var finishReason: String? = null
+        val structuredAvailable = try {
+            model.isStructuredOutputFeatureAvailable()
+        } catch (e: Exception) {
+            fallbackReason = "availability check failed: ${e.javaClass.simpleName}"
+            false
+        }
+        if (structuredAvailable) {
+            val prompt = buildSeg1Prompt(locationContext, style, language, structured = true)
+            try {
+                val base = generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
+                    this.maxOutputTokens = maxTokens
+                    temperature?.let { this.temperature = it }
+                }
+                val typedRequest = generateTypedContentRequest(base, NanoSeg1::class)
+                val candidate = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(typedRequest) }
+                    .candidates.firstOrNull()
+                finishReason = typedFinishReasonName(candidate?.finishReason)
+                val parsed = candidate?.response
+                if (parsed != null && parsed.title.isNotBlank() && parsed.text.isNotBlank()) {
+                    return Seg1Result(prompt, parsed.title.trim(), parsed.text.trim(), "structured", finishReason, null)
+                }
+                fallbackReason = "no usable typed response"
+            } catch (e: TimeoutCancellationException) {
+                // A hung call stays a timeout (#173), not a second 30s try.
+                throw e
+            } catch (e: Exception) {
+                // Class name only: the message could echo model output.
+                fallbackReason = "typed call failed: ${e.javaClass.simpleName}"
+            }
+        } else if (fallbackReason == null) {
+            fallbackReason = "structured output unavailable"
+        }
+
+        val prompt = buildSeg1Prompt(locationContext, style, language)
+        val req = generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
+            this.maxOutputTokens = maxTokens
+            temperature?.let { this.temperature = it }
+        }
+        val text = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req) }
+            .candidates.firstOrNull()?.text?.trim() ?: ""
+        return Seg1Result(prompt, null, text, "text", finishReason, fallbackReason)
+    }
+
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
 
@@ -198,22 +327,47 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // "isAvailable" rather than changing its return type, since
             // that method implements the shared AIService.isAvailable()
             // bool contract used polymorphically for both providers.
+            //
+            // #431: optional releaseStage/preference arguments check one
+            // model variant instead of the default client — status is per
+            // variant (one can be available while another is unavailable).
             "checkNanoStatus" -> {
+                val config = variantConfig(call)
                 scope.launch {
                     try {
-                        val model = Generation.getClient()
+                        val model = newClient(config)
                         val status = model.checkStatus()
                         model.close()
-                        val statusName = when (status) {
-                            com.google.mlkit.genai.common.FeatureStatus.UNAVAILABLE -> "unavailable"
-                            com.google.mlkit.genai.common.FeatureStatus.DOWNLOADABLE -> "downloadable"
-                            com.google.mlkit.genai.common.FeatureStatus.DOWNLOADING -> "downloading"
-                            com.google.mlkit.genai.common.FeatureStatus.AVAILABLE -> "available"
-                            else -> "unknown"
-                        }
-                        withContext(Dispatchers.Main) { result.success(statusName) }
+                        withContext(Dispatchers.Main) { result.success(statusName(status)) }
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) { result.success("unknown") }
+                    }
+                }
+            }
+
+            // #431: Nano Prompt Lab only — downloads one model variant
+            // reported DOWNLOADABLE. Separate from "initialize", which
+            // keeps owning the default client production uses.
+            "downloadVariant" -> {
+                val config = variantConfig(call)
+                scope.launch {
+                    val model = newClient(config)
+                    try {
+                        var failed = false
+                        model.download().collect { status ->
+                            if (status is DownloadStatus.DownloadFailed) failed = true
+                        }
+                        val downloadFailed = failed
+                        withContext(Dispatchers.Main) {
+                            if (downloadFailed) result.error("DOWNLOAD_ERROR", "Model download failed", null)
+                            else result.success(true)
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            result.error("DOWNLOAD_ERROR", e.message, null)
+                        }
+                    } finally {
+                        model.close()
                     }
                 }
             }
@@ -287,16 +441,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             ?: throw Exception("Cannot decode image")
 
                         // Segment 1: Visual description with image
+                        // (#434: typed title/text when available).
                         currentSegment = 1
-                        val req1 = generateContentRequest(
-                            ImagePart(bitmap),
-                            TextPart(buildSeg1Prompt(locationContext, style, language))
-                        ) {
-                            this.maxOutputTokens = nanoMaxOutputTokens
-                            nanoTemperature?.let { this.temperature = it }
-                        }
-                        val seg1 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req1) }
-                            .candidates.firstOrNull()?.text?.trim() ?: ""
+                        val seg1Result = runSeg1(
+                            model, bitmap, locationContext, style, language,
+                            nanoMaxOutputTokens, nanoTemperature
+                        )
+                        val seg1 = seg1Result.text
 
                         bitmap.recycle()
 
@@ -330,7 +481,19 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val cleanedSeg3 = dropOverlapWithAccumulated(fullText, seg3)
                         fullText = listOf(fullText, cleanedSeg3).filter { it.isNotBlank() }.joinToString(" ")
 
-                        withContext(Dispatchers.Main) { result.success(fullText) }
+                        // #434: a map instead of the bare text, so a typed
+                        // title reaches Dart without the "[Title]" parsing,
+                        // plus what the Dart side logs about segment 1.
+                        // "title" is null on the text path, where fullText
+                        // still starts with the bracket title as before.
+                        val payload = mapOf(
+                            "fullText" to fullText,
+                            "title" to seg1Result.title,
+                            "seg1Mode" to seg1Result.mode,
+                            "seg1FinishReason" to seg1Result.finishReason,
+                            "seg1FallbackReason" to seg1Result.fallbackReason
+                        )
+                        withContext(Dispatchers.Main) { result.success(payload) }
                     } catch (e: TimeoutCancellationException) {
                         // #173: without this, a hung AICore call (e.g. the
                         // model stuck loading/inferring) left the coroutine
@@ -368,13 +531,15 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val language = call.argument<String>("language")
                 val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
+                // #431: optional model variant (Nano Prompt Lab selector).
+                val config = variantConfig(call)
 
                 if (imagePath == null) {
                     result.error("INVALID_ARGS", "imagePath required", null)
                     return
                 }
-                val model = generativeModel
-                if (model == null) {
+                val sharedModel = generativeModel
+                if (config == null && sharedModel == null) {
                     result.error("NOT_INITIALIZED", "Call initialize first", null)
                     return
                 }
@@ -382,19 +547,19 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 var currentSegment = 0
 
                 scope.launch {
+                    val model = if (config != null) newClient(config) else sharedModel!!
                     try {
                         val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
                         val bitmap = BitmapFactory.decodeFile(imagePath, opts)
                             ?: throw Exception("Cannot decode image")
 
                         currentSegment = 1
-                        val seg1Prompt = buildSeg1Prompt(locationContext, style, language)
-                        val req1 = generateContentRequest(ImagePart(bitmap), TextPart(seg1Prompt)) {
-                            this.maxOutputTokens = nanoMaxOutputTokens
-                            nanoTemperature?.let { this.temperature = it }
-                        }
-                        val seg1 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req1) }
-                            .candidates.firstOrNull()?.text?.trim() ?: ""
+                        val seg1Result = runSeg1(
+                            model, bitmap, locationContext, style, language,
+                            nanoMaxOutputTokens, nanoTemperature
+                        )
+                        val seg1Prompt = seg1Result.prompt
+                        val seg1 = seg1Result.text
 
                         bitmap.recycle()
 
@@ -423,6 +588,10 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val payload = mapOf(
                             "seg1Prompt" to seg1Prompt,
                             "seg1Output" to seg1,
+                            "seg1Title" to seg1Result.title,
+                            "seg1Mode" to seg1Result.mode,
+                            "seg1FinishReason" to seg1Result.finishReason,
+                            "seg1FallbackReason" to seg1Result.fallbackReason,
                             "seg2Prompt" to seg2Prompt,
                             "seg2Output" to seg2,
                             "seg3Prompt" to seg3Prompt,
@@ -442,6 +611,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         withContext(Dispatchers.Main) {
                             result.error("INFERENCE_ERROR", e.message, null)
                         }
+                    } finally {
+                        if (config != null) model.close()
                     }
                 }
             }
@@ -458,8 +629,10 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     result.error("INVALID_ARGS", "prompt required", null)
                     return
                 }
-                val model = generativeModel
-                if (model == null) {
+                // #431: optional model variant (Nano Prompt Lab selector).
+                val config = variantConfig(call)
+                val sharedModel = generativeModel
+                if (config == null && sharedModel == null) {
                     result.error("NOT_INITIALIZED", "Call initialize first", null)
                     return
                 }
@@ -468,6 +641,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val rawTemperature = call.argument<Double>("temperature")?.toFloat()
 
                 scope.launch {
+                    val model = if (config != null) newClient(config) else sharedModel!!
                     try {
                         var bitmap: android.graphics.Bitmap? = null
                         val req = if (imagePath != null) {
@@ -496,6 +670,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         withContext(Dispatchers.Main) {
                             result.error("INFERENCE_ERROR", e.message, null)
                         }
+                    } finally {
+                        if (config != null) model.close()
                     }
                 }
             }

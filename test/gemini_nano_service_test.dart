@@ -186,6 +186,123 @@ void main() {
     expect(result.script, isNot(contains('[')));
   });
 
+  // #434 — the plugin now returns a map; segment 1's typed title (from
+  // ML Kit structured output) is used as-is, no bracket parsing needed.
+  group('analyzeImage() with the map response (#434)', () {
+    test('uses the typed title and keeps the text as the script', () async {
+      handler = (call) async {
+        calls.add(call);
+        if (call.method == 'describeImage') {
+          return {
+            'fullText': 'Un amphitheatre antique impressionnant.',
+            'title': 'Le Colisee de Rome',
+            'seg1Mode': 'structured',
+            'seg1FinishReason': 'STOP',
+            'seg1FallbackReason': null,
+          };
+        }
+        return true;
+      };
+      final service = GeminiNanoService();
+
+      final result = await service.analyzeImage(tempImage());
+
+      expect(result.title, 'Le Colisee de Rome');
+      expect(result.script, 'Un amphitheatre antique impressionnant.');
+    });
+
+    test('falls back to the bracket title on the text path', () async {
+      handler = (call) async {
+        calls.add(call);
+        if (call.method == 'describeImage') {
+          return {
+            'fullText': '[La Tour Eiffel]\nUne dame de fer.',
+            'title': null,
+            'seg1Mode': 'text',
+            'seg1FinishReason': 'PARSE_CLASS_ERROR',
+            'seg1FallbackReason': 'no usable typed response',
+          };
+        }
+        return true;
+      };
+      final service = GeminiNanoService();
+
+      final result = await service.analyzeImage(tempImage());
+
+      expect(result.title, 'La Tour Eiffel');
+      expect(result.script, 'Une dame de fer.');
+    });
+
+    test('ignores a blank typed title and parses the text instead', () async {
+      handler = (call) async {
+        calls.add(call);
+        if (call.method == 'describeImage') {
+          return {'fullText': 'Premiere phrase. Seconde phrase.', 'title': '  ', 'seg1Mode': 'structured'};
+        }
+        return true;
+      };
+      final service = GeminiNanoService();
+
+      final result = await service.analyzeImage(tempImage());
+
+      expect(result.title, 'Premiere phrase');
+    });
+  });
+
+  // #431 — production never sends a model variant; the lab can.
+  group('model variant (#431)', () {
+    test('analyzeImage() and checkDeviceStatus() send no variant by default', () async {
+      final service = GeminiNanoService();
+
+      await service.analyzeImage(tempImage());
+      await service.checkDeviceStatus();
+
+      final describeArgs = calls.firstWhere((c) => c.method == 'describeImage').arguments as Map;
+      expect(describeArgs.containsKey('releaseStage'), isFalse);
+      expect(describeArgs.containsKey('preference'), isFalse);
+      expect(calls.firstWhere((c) => c.method == 'checkNanoStatus').arguments, isNull);
+    });
+
+    test('rawPrompt() and checkDeviceStatus() forward the selected variant', () async {
+      final service = GeminiNanoService();
+      const variant = NanoModelVariant(NanoReleaseStage.preview, NanoModelPreference.fast);
+
+      await service.rawPrompt(prompt: 'x', variant: variant);
+      await service.checkDeviceStatus(variant: variant);
+
+      final rawArgs = calls.firstWhere((c) => c.method == 'rawPrompt').arguments as Map;
+      expect(rawArgs['releaseStage'], 'preview');
+      expect(rawArgs['preference'], 'fast');
+      final statusArgs = calls.firstWhere((c) => c.method == 'checkNanoStatus').arguments as Map;
+      expect(statusArgs, {'releaseStage': 'preview', 'preference': 'fast'});
+    });
+
+    test('downloadVariant() surfaces a platform failure', () async {
+      handler = (call) async {
+        calls.add(call);
+        if (call.method == 'downloadVariant') {
+          throw PlatformException(code: 'DOWNLOAD_ERROR', message: 'Model download failed');
+        }
+        return true;
+      };
+      final service = GeminiNanoService();
+
+      await expectLater(
+        service.downloadVariant(NanoModelVariant.all.last),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('lists the 4 Stable/Preview x Fast/Full variants with readable labels', () {
+      expect(NanoModelVariant.all.map((v) => v.label), [
+        'Stable · Fast',
+        'Stable · Full',
+        'Preview · Fast',
+        'Preview · Full',
+      ]);
+    });
+  });
+
   test('analyzeImage() falls back to the first-sentence heuristic when the '
       'model does not follow the bracket-title format', () async {
     handler = (call) async {

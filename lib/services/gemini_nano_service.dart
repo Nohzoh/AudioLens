@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 import '../utils/script_cleanup.dart';
 import '../utils/script_validation.dart';
@@ -22,6 +23,47 @@ class GeminiNanoBackgroundRestrictedException implements Exception {
   String toString() => 'Gemini Nano ne peut pas être utilisé en arrière-plan.';
 }
 
+/// #431: ML Kit's model release stage — [stable] is the model shipped on
+/// consumer devices, [preview] needs the AICore Developer Preview.
+enum NanoReleaseStage { stable, preview }
+
+/// #431: ML Kit's model preference — latency ([fast]) vs. accuracy
+/// ([full]).
+enum NanoModelPreference { fast, full }
+
+/// #431: one on-device model variant the Nano Prompt Lab can target.
+/// Only ever passed from the lab: production calls send no variant, so
+/// the native side keeps using ML Kit's default client (Stable/Full).
+class NanoModelVariant {
+  final NanoReleaseStage stage;
+  final NanoModelPreference preference;
+
+  const NanoModelVariant(this.stage, this.preference);
+
+  static const all = [
+    NanoModelVariant(NanoReleaseStage.stable, NanoModelPreference.fast),
+    NanoModelVariant(NanoReleaseStage.stable, NanoModelPreference.full),
+    NanoModelVariant(NanoReleaseStage.preview, NanoModelPreference.fast),
+    NanoModelVariant(NanoReleaseStage.preview, NanoModelPreference.full),
+  ];
+
+  String get label =>
+      '${stage == NanoReleaseStage.stable ? 'Stable' : 'Preview'} · '
+      '${preference == NanoModelPreference.fast ? 'Fast' : 'Full'}';
+
+  Map<String, String> toArgs() => {
+        'releaseStage': stage.name,
+        'preference': preference.name,
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is NanoModelVariant && other.stage == stage && other.preference == preference;
+
+  @override
+  int get hashCode => Object.hash(stage, preference);
+}
+
 /// One full 3-segment `describeImage` cascade run (#276), with each
 /// segment's own prompt text and raw output exposed individually instead
 /// of only the final concatenated string — lets the Nano Prompt Lab debug
@@ -35,9 +77,22 @@ class NanoDebugCascadeResult {
   final String seg3Output;
   final String fullText;
 
+  /// #434: the typed title when segment 1 used structured output, else
+  /// null (the title is then in [seg1Output], between brackets).
+  final String? seg1Title;
+
+  /// #434: `structured` or `text`.
+  final String? seg1Mode;
+  final String? seg1FinishReason;
+  final String? seg1FallbackReason;
+
   const NanoDebugCascadeResult({
     required this.seg1Prompt,
     required this.seg1Output,
+    this.seg1Title,
+    this.seg1Mode,
+    this.seg1FinishReason,
+    this.seg1FallbackReason,
     required this.seg2Prompt,
     required this.seg2Output,
     required this.seg3Prompt,
@@ -75,9 +130,12 @@ class GeminiNanoService implements AIService {
   /// #283: for UI that needs to explain *why* Nano is or isn't usable
   /// (Settings' provider card) rather than just a bool — see
   /// [NanoDeviceStatus].
-  Future<NanoDeviceStatus> checkDeviceStatus() async {
+  ///
+  /// #431: [variant] checks one specific model variant instead of the
+  /// default model (Nano Prompt Lab only).
+  Future<NanoDeviceStatus> checkDeviceStatus({NanoModelVariant? variant}) async {
     try {
-      final result = await _channel.invokeMethod<String>('checkNanoStatus');
+      final result = await _channel.invokeMethod<String>('checkNanoStatus', variant?.toArgs());
       switch (result) {
         case 'unavailable':
           return NanoDeviceStatus.unavailable;
@@ -92,6 +150,20 @@ class GeminiNanoService implements AIService {
       }
     } catch (_) {
       return NanoDeviceStatus.unknown;
+    }
+  }
+
+  /// #431: downloads one model variant reported
+  /// [NanoDeviceStatus.downloadable] (Nano Prompt Lab only). Throws on
+  /// failure so the lab can show why.
+  Future<void> downloadVariant(NanoModelVariant variant) async {
+    AppLogger.ai('Nano Lab: downloading ${variant.label}');
+    try {
+      await _channel.invokeMethod('downloadVariant', variant.toArgs());
+      AppLogger.ai('Nano Lab: ${variant.label} downloaded');
+    } on PlatformException catch (e) {
+      AppLogger.ai('Nano Lab: ${variant.label} download failed');
+      throw Exception('Gemini Nano: ${e.message}');
     }
   }
 
@@ -146,13 +218,33 @@ class GeminiNanoService implements AIService {
       // cancellation silently doing nothing until the whole call
       // eventually finishes on its own (#169).
       final describeFuture =
-          _channel.invokeMethod<String>('describeImage', args);
-      final description = cancelToken == null
+          _channel.invokeMethod<Object>('describeImage', args);
+      final response = cancelToken == null
           ? await describeFuture
           : await _raceWithCancellation(describeFuture, cancelToken);
 
-      final cleaned = cleanMarkdown(description ?? '');
-      final (title, text) = _extractTitleAndBody(cleaned);
+      // #434: the plugin returns a map carrying segment 1's typed title
+      // when structured output worked. A bare string (older plugin shape)
+      // is still accepted.
+      String description;
+      String? typedTitle;
+      if (response is Map) {
+        description = response['fullText'] as String? ?? '';
+        typedTitle = (response['title'] as String?)?.trim();
+        _logSeg1(response);
+      } else {
+        description = response as String? ?? '';
+      }
+
+      final cleaned = cleanMarkdown(description);
+      final String title;
+      final String text;
+      if (typedTitle != null && typedTitle.isNotEmpty && cleaned.isNotEmpty) {
+        title = _capTitle(cleanMarkdown(typedTitle));
+        text = cleaned;
+      } else {
+        (title, text) = _extractTitleAndBody(cleaned);
+      }
 
       return AudioGuideResult(
         title: title,
@@ -177,17 +269,23 @@ class GeminiNanoService implements AIService {
   /// optional. Returns the model's raw text, unparsed/uncleaned — the
   /// caller sees exactly what the model produced, not what
   /// [analyzeImage] would extract a title/script out of it.
+  ///
+  /// #431: [variant] runs the call on that model variant instead of the
+  /// default one.
   Future<String> rawPrompt({
     required String prompt,
     File? imageFile,
     int? maxOutputTokens,
     double? temperature,
+    NanoModelVariant? variant,
   }) async {
     if (!_initialized) await initialize();
+    AppLogger.ai('Nano Lab: raw prompt on ${variant?.label ?? 'default model'}');
     try {
       final args = <String, dynamic>{
         'prompt': prompt,
         'maxOutputTokens': maxOutputTokens ?? 256,
+        ...?variant?.toArgs(),
       };
       if (imageFile != null) args['imagePath'] = imageFile.path;
       if (temperature != null) args['temperature'] = temperature;
@@ -212,13 +310,16 @@ class GeminiNanoService implements AIService {
     String? language,
     int? maxOutputTokens,
     double? temperature,
+    NanoModelVariant? variant,
   }) async {
     if (!_initialized) await initialize();
+    AppLogger.ai('Nano Lab: full pipeline on ${variant?.label ?? 'default model'}');
     try {
       final config = RemoteConfigService.current;
       final args = <String, dynamic>{
         'imagePath': imageFile.path,
         'maxOutputTokens': maxOutputTokens ?? config.geminiNanoMaxTokens,
+        ...?variant?.toArgs(),
       };
       if (locationContext != null) {
         args['locationContext'] = _truncateLocationContext(locationContext);
@@ -230,10 +331,15 @@ class GeminiNanoService implements AIService {
       final result =
           await _channel.invokeMapMethod<String, dynamic>('describeImageDebug', args);
       if (result == null) throw Exception('Gemini Nano: empty debug response');
+      _logSeg1(result);
 
       return NanoDebugCascadeResult(
         seg1Prompt: result['seg1Prompt'] as String? ?? '',
         seg1Output: result['seg1Output'] as String? ?? '',
+        seg1Title: result['seg1Title'] as String?,
+        seg1Mode: result['seg1Mode'] as String?,
+        seg1FinishReason: result['seg1FinishReason'] as String?,
+        seg1FallbackReason: result['seg1FallbackReason'] as String?,
         seg2Prompt: result['seg2Prompt'] as String? ?? '',
         seg2Output: result['seg2Output'] as String? ?? '',
         seg3Prompt: result['seg3Prompt'] as String? ?? '',
@@ -246,6 +352,25 @@ class GeminiNanoService implements AIService {
       }
       throw Exception('Gemini Nano: ${e.message}');
     }
+  }
+
+  /// #434: segment 1's structured-output outcome, for the in-app logs —
+  /// always logged on the text path (with why), and on the structured
+  /// path only when the finish reason isn't STOP.
+  static void _logSeg1(Map<dynamic, dynamic> response) {
+    final mode = response['seg1Mode'] as String?;
+    if (mode == null) return;
+    final finish = response['seg1FinishReason'] as String?;
+    if (mode == 'structured') {
+      if (finish != null && finish != 'STOP') {
+        AppLogger.ai('Nano seg1: structured, finish=$finish');
+      }
+      return;
+    }
+    final reason = response['seg1FallbackReason'] as String?;
+    AppLogger.ai('Nano seg1: text path'
+        '${reason != null ? ' ($reason)' : ''}'
+        '${finish != null ? ', finish=$finish' : ''}');
   }
 
   /// Completes with [future]'s result, or with [CancelledException] the
