@@ -1,3 +1,3 @@
-Fixes: the tip that occasionally appears when you open the app is readable again in dark mode (it was showing dark text on a dark background).
+New: a map of the places where you made your analyses; rate each guide from 1 to 5 stars; a "For kids" guide style (ages 6 to 10); select several history entries at once to add them to a collection; a single "Actions" menu under each analysis (save, share text or audio, send as feedback, report).
 
-Also: updated dependencies and project documentation.
+Fixes: fewer broken guides with the Gemini API; "About this analysis" now says when no audio was generated.
