@@ -1,3 +1,3 @@
-Corrections : l'astuce qui apparaît de temps en temps à l'ouverture de l'app est de nouveau lisible en mode sombre (elle s'affichait en texte sombre sur fond sombre).
+Nouveautés : une carte des lieux de vos analyses ; notez chaque guide de 1 à 5 étoiles ; un style de guide « Pour enfants » (6-10 ans) ; sélectionnez plusieurs analyses de l'historique pour les ajouter à une collection ; un menu « Actions » unique sous chaque analyse (enregistrer, partager texte ou audio, envoyer en retour, signaler).
 
-Aussi : dépendances et documentation du projet mises à jour.
+Corrections : moins de guides ratés avec l'API Gemini ; « À propos de cette analyse » indique quand aucun audio n'a été généré.
