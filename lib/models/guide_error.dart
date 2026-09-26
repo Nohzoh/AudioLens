@@ -61,6 +61,9 @@ enum GuideErrorKind {
   /// Saving a script rating failed (#421).
   storageRatingFailed,
 
+  /// Adding/removing entries to/from a collection failed (#428).
+  storageCollectionFailed,
+
   /// Any other, truly unexpected exception — [GuideError.detail] carries a
   /// sanitized diagnostic.
   unknown,

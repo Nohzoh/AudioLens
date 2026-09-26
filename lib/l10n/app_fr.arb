@@ -149,6 +149,13 @@
   "historyMapTooltip": "Carte des analyses",
   "analysesMapTitle": "Carte des analyses",
   "analysesMapEmpty": "Aucune analyse ici n'a encore de position. Les analyses faites avec le GPS activé, ou depuis une photo géolocalisée, apparaîtront sur la carte.",
+  "historySelectedCount": "{count, plural, =1{1 sélectionnée} other{{count} sélectionnées}}",
+  "@historySelectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "historySelectAll": "Tout sélectionner",
 
   "settingsNoVoiceProduced": "Aucun son produit — le TTS système ne semble pas disponible sur cet appareil",
   "settingsSaved": "Paramètres sauvegardés",
@@ -441,6 +448,7 @@
   },
   "guideErrorStorageRotationFailed": "Impossible d'enregistrer la rotation de la photo.",
   "guideErrorStorageRatingFailed": "Impossible d'enregistrer la note.",
+  "guideErrorStorageCollectionFailed": "Impossible de mettre à jour la collection.",
   "ratingStarLabel": "{stars} sur 5",
   "@ratingStarLabel": {"placeholders": {"stars": {"type": "int"}}},
   "ratingLowPromptTitle": "Pas satisfait de ce script ?",

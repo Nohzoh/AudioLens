@@ -1,5 +1,6 @@
 import 'dart:io';
 import '../utils/app_logger.dart';
+import '../utils/error_sanitizer.dart';
 import '../utils/analysis_runner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -295,18 +296,71 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _favoritesOnly = false;
   int? _selectedCollectionId;
 
+  /// #428: ids of the cards picked in selection mode. Selection mode is
+  /// simply "this is non-empty": long-press starts it, deselecting the
+  /// last card (or ✕ / back) ends it. Changing the filter clears it, so
+  /// nothing stays selected out of sight.
+  final Set<int> _selectedIds = {};
+  bool get _selecting => _selectedIds.isNotEmpty;
+
   void _selectAll() => setState(() {
         _favoritesOnly = false;
         _selectedCollectionId = null;
+        _selectedIds.clear();
       });
   void _selectFavorites() => setState(() {
         _favoritesOnly = true;
         _selectedCollectionId = null;
+        _selectedIds.clear();
       });
   void _selectCollection(int id) => setState(() {
         _favoritesOnly = false;
         _selectedCollectionId = id;
+        _selectedIds.clear();
       });
+
+  void _toggleSelected(int id) => setState(() {
+        if (!_selectedIds.remove(id)) _selectedIds.add(id);
+      });
+  void _clearSelection() => setState(_selectedIds.clear);
+
+  void _selectAllVisible(HistoryService history) => setState(() {
+        _selectedIds.addAll(_filteredEntries(history)
+            .where((e) => e.id != null)
+            .map((e) => e.id!));
+      });
+
+  /// Leaves selection mode once the sheet applied a change (the job is
+  /// done); a sheet dismissed untouched keeps the selection, so a large
+  /// one isn't lost to a stray swipe.
+  Future<void> _addSelectionToCollection(BuildContext context) async {
+    final changed = await _openCollectionsSheet(context, {..._selectedIds});
+    if (changed && mounted) _clearSelection();
+  }
+
+  PreferredSizeWidget _buildSelectionAppBar(
+      BuildContext context, AppLocalizations l10n) {
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+        onPressed: _clearSelection,
+      ),
+      title: Text(l10n.historySelectedCount(_selectedIds.length)),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.select_all),
+          tooltip: l10n.historySelectAll,
+          onPressed: () => _selectAllVisible(context.read<HistoryService>()),
+        ),
+        IconButton(
+          icon: const Icon(Icons.playlist_add),
+          tooltip: l10n.historyAddToCollection,
+          onPressed: () => _addSelectionToCollection(context),
+        ),
+      ],
+    );
+  }
 
   List<HistoryEntry> _filteredEntries(HistoryService history) =>
       filterHistoryEntries(history,
@@ -437,110 +491,131 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.historyTitle),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.map_outlined),
-            tooltip: l10n.historyMapTooltip,
-            onPressed: () => _openMap(context),
-          ),
-          Consumer<SettingsService>(
-            builder: (context, settings, _) => KofiButton(
-              show: settings.showKofiButton,
-            ),
-          ),
-        ],
-      ),
-      body: Consumer<HistoryService>(
-        builder: (context, history, _) {
-          if (history.entries.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.history,
-                      size: 64,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.12)),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.historyEmptyTitle,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.38),
-                    ),
+    return PopScope(
+      // #428: back leaves selection mode before it leaves the screen.
+      canPop: !_selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _clearSelection();
+      },
+      child: Scaffold(
+        appBar: _selecting
+            ? _buildSelectionAppBar(context, l10n)
+            : AppBar(
+                title: Text(l10n.historyTitle),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.map_outlined),
+                    tooltip: l10n.historyMapTooltip,
+                    onPressed: () => _openMap(context),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.historyEmptySubtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.24),
+                  Consumer<SettingsService>(
+                    builder: (context, settings, _) => KofiButton(
+                      show: settings.showKofiButton,
                     ),
                   ),
                 ],
               ),
-            );
-          }
-
-          final filtered = _filteredEntries(history);
-
-          return Column(
-            children: [
-              _buildFilterRow(context, history),
-              const SizedBox(height: 8),
-              Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: Text(
-                          l10n.historyNoFilterResults,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.38),
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final entry = filtered[index];
-                          return _HistoryCard(
-                                  key: ValueKey(entry.id), entry: entry)
-                              .animate(delay: (index * 50).ms)
-                              .fadeIn()
-                              .slideY(begin: 0.1);
-                        },
+        body: Consumer<HistoryService>(
+          builder: (context, history, _) {
+            if (history.entries.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.history,
+                        size: 64,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.12)),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.historyEmptyTitle,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.38),
                       ),
-              ),
-            ],
-          );
-        },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.historyEmptySubtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.24),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final filtered = _filteredEntries(history);
+
+            return Column(
+              children: [
+                _buildFilterRow(context, history),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? Center(
+                          child: Text(
+                            l10n.historyNoFilterResults,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.38),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final entry = filtered[index];
+                            return _HistoryCard(
+                              key: ValueKey(entry.id),
+                              entry: entry,
+                              selectionMode: _selecting,
+                              selected: _selectedIds.contains(entry.id),
+                              onToggleSelected: entry.id == null
+                                  ? null
+                                  : () => _toggleSelected(entry.id!),
+                            )
+                                .animate(delay: (index * 50).ms)
+                                .fadeIn()
+                                .slideY(begin: 0.1);
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-/// T51: bottom sheet to add/remove [entry] from any number of collections,
-/// with inline creation of a new one. Shared by the history card's
-/// long-press and the detail screen's collections button.
-Future<void> _openCollectionsSheet(
-    BuildContext context, HistoryEntry entry) async {
-  if (entry.id == null) return;
+/// T51/#428: bottom sheet to add/remove [entryIds] from any number of
+/// collections, with inline creation of a new one. Shared by the history
+/// list's selection mode and the detail screen's menu (a single id).
+/// Returns whether any membership changed.
+Future<bool> _openCollectionsSheet(
+    BuildContext context, Set<int> entryIds) async {
+  if (entryIds.isEmpty) return false;
+  var changed = false;
   await showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    builder: (_) => _CollectionsSheet(entryId: entry.id!),
+    builder: (_) =>
+        _CollectionsSheet(entryIds: entryIds, onChanged: () => changed = true),
   );
+  return changed;
 }
 
 class _CollectionsSheet extends StatefulWidget {
-  final int entryId;
-  const _CollectionsSheet({required this.entryId});
+  final Set<int> entryIds;
+  final VoidCallback onChanged;
+  const _CollectionsSheet({required this.entryIds, required this.onChanged});
 
   @override
   State<_CollectionsSheet> createState() => _CollectionsSheetState();
@@ -549,18 +624,57 @@ class _CollectionsSheet extends StatefulWidget {
 class _CollectionsSheetState extends State<_CollectionsSheet> {
   final _controller = TextEditingController();
 
+  /// Shown inline rather than as a SnackBar: this sheet's modal route
+  /// sits above the Scaffold a SnackBar would appear in.
+  String? _error;
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
+  Future<void> _apply(
+      HistoryService history, int collectionId, bool inCollection) async {
+    try {
+      await history.setEntriesInCollection(
+          widget.entryIds, collectionId, inCollection);
+      widget.onChanged();
+      if (mounted && _error != null) setState(() => _error = null);
+    } on HistoryStorageException catch (e) {
+      if (!mounted) return;
+      setState(() => _error =
+          localizeHistoryStorageException(AppLocalizations.of(context)!, e));
+    }
+  }
+
   Future<void> _create(HistoryService history) async {
     final name = _controller.text.trim();
     if (name.isEmpty) return;
-    final collection = await history.createCollection(name);
-    await history.setEntryInCollection(widget.entryId, collection.id!, true);
+    final Collection collection;
+    try {
+      collection = await history.createCollection(name);
+    } catch (e) {
+      AppLogger.db(
+          'Collection creation failed: ${sanitizeError(e.toString())}');
+      if (!mounted) return;
+      setState(() => _error = AppLocalizations.of(context)!
+          .guideErrorStorageCollectionFailed);
+      return;
+    }
     _controller.clear();
+    await _apply(history, collection.id!, true);
+  }
+
+  /// true = every selected entry is in [collectionId], false = none,
+  /// null = only some (the checkbox's mixed state).
+  bool? _membership(HistoryService history, int collectionId) {
+    final inIt = widget.entryIds
+        .where((id) => history.collectionIdsForEntry(id).contains(collectionId))
+        .length;
+    if (inIt == 0) return false;
+    if (inIt == widget.entryIds.length) return true;
+    return null;
   }
 
   @override
@@ -569,7 +683,6 @@ class _CollectionsSheetState extends State<_CollectionsSheet> {
     return SafeArea(
       child: Consumer<HistoryService>(
         builder: (context, history, _) {
-          final memberIds = history.collectionIdsForEntry(widget.entryId);
           return Padding(
             padding: EdgeInsets.only(
               left: 16,
@@ -600,16 +713,29 @@ class _CollectionsSheetState extends State<_CollectionsSheet> {
                       shrinkWrap: true,
                       children: [
                         for (final c in history.collections)
-                          CheckboxListTile(
-                            value: memberIds.contains(c.id),
-                            title: Text(c.name),
-                            contentPadding: EdgeInsets.zero,
-                            onChanged: (checked) =>
-                                history.setEntryInCollection(
-                                    widget.entryId, c.id!, checked ?? false),
-                          ),
+                          Builder(builder: (context) {
+                            final membership = _membership(history, c.id!);
+                            return CheckboxListTile(
+                              value: membership,
+                              tristate: true,
+                              title: Text(c.name),
+                              contentPadding: EdgeInsets.zero,
+                              // Mixed or unticked -> add everyone; ticked ->
+                              // remove everyone (not the checkbox's own
+                              // false/true/null cycle).
+                              onChanged: (_) =>
+                                  _apply(history, c.id!, membership != true),
+                            );
+                          }),
                       ],
                     ),
+                  ),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(_error!,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error)),
                   ),
                 const SizedBox(height: 8),
                 Row(
@@ -640,7 +766,20 @@ class _CollectionsSheetState extends State<_CollectionsSheet> {
 
 class _HistoryCard extends StatelessWidget {
   final HistoryEntry entry;
-  const _HistoryCard({super.key, required this.entry});
+
+  /// #428: in selection mode a tap toggles [selected] instead of opening
+  /// the entry; outside it, a long-press starts it with this card.
+  final bool selectionMode;
+  final bool selected;
+  final VoidCallback? onToggleSelected;
+
+  const _HistoryCard({
+    super.key,
+    required this.entry,
+    this.selectionMode = false,
+    this.selected = false,
+    this.onToggleSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -654,12 +793,16 @@ class _HistoryCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
-        color: theme.colorScheme.surfaceContainerHigh,
+        color: selected
+            ? theme.colorScheme.primaryContainer
+            : theme.colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-            if (entry.isPending || isFailed) {
+            if (selectionMode) {
+              onToggleSelected?.call();
+            } else if (entry.isPending || isFailed) {
               _retryAnalysis(context, entry);
             } else if (entry.isCaptured) {
               _launchAnalysis(context, entry);
@@ -672,10 +815,10 @@ class _HistoryCard extends StatelessWidget {
               );
             }
           },
-          // T51: long-press anywhere on the card to assign it to collections.
-          onLongPress: entry.id == null
-              ? null
-              : () => _openCollectionsSheet(context, entry),
+          // #428: long-press enters selection mode with this card (it
+          // used to open the collections sheet directly, T51 — that is
+          // now long-press -> "Add to collection" in the contextual bar).
+          onLongPress: onToggleSelected,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -711,7 +854,19 @@ class _HistoryCard extends StatelessWidget {
                               ),
                       ),
                     ),
-                    if (entry.id != null)
+                    if (selected)
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          // #145-style fixed scrim over the photo.
+                          child: Container(
+                            color: Colors.black45,
+                            child: const Icon(Icons.check_circle,
+                                color: Colors.white, size: 32),
+                          ),
+                        ),
+                      ),
+                    if (entry.id != null && !selectionMode)
                       Positioned(
                         top: 2,
                         left: 2,
@@ -841,8 +996,15 @@ class _HistoryCard extends StatelessWidget {
                   ),
                 ),
 
-                Icon(Icons.chevron_right,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.24)),
+                Icon(
+                    selectionMode
+                        ? (selected
+                            ? Icons.check_box
+                            : Icons.check_box_outline_blank)
+                        : Icons.chevron_right,
+                    color: selectionMode && selected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.24)),
               ],
             ),
           ),
@@ -1298,8 +1460,11 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           Consumer<AudioGuideService>(
                             builder: (context, guide, _) => _DetailOverflowMenu(
                               regenerateEnabled: !_isPlaying && !guide.isBusy,
-                              onAddToCollection: () =>
-                                  _openCollectionsSheet(context, live),
+                              onAddToCollection: () {
+                                if (live.id != null) {
+                                  _openCollectionsSheet(context, {live.id!});
+                                }
+                              },
                               onRotate: () async {
                                 try {
                                   await context

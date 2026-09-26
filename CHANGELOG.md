@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ ⭐ - **History: multi-select entries to add them to a collection** (issue #428)
+  - **Verified**: 2026-09-25 (PR #443)
+  - **What was done**: long-press on a history card enters selection mode (taps then toggle; check overlay and highlighted card). The contextual bar shows the count, ✕, "Select all" (current filter) and "Add to collection"; back or ✕ exits, changing the filter clears the selection. The collections sheet now works on a set of entries with tri-state checkboxes (all / none / some); ticking adds every selected entry, unticking removes them, and a collection created from the sheet receives all of them. Single-entry assignment stays in the detail ⋮ menu. New `HistoryService.setEntriesInCollection` does one transaction and one `notifyListeners()`, logs under `DB`, and failures show inline in the sheet (new `storageCollectionFailed` error kind).
+  - **Final validation**: service test (batch add/remove, already-member entries, single notify, reload, empty set), widget tests (enter/toggle/select all/✕, back exits selection, mixed state add/remove, new collection gets every entry); full suite and `flutter analyze` green. On-device check still to do.
+
 - [x] ✨ ⭐ - **Map of the places where analyses were made** (issue #423)
   - **Verified**: 2026-09-25 (PR #442)
   - **What was done**: a map icon in the history app bar opens `AnalysesMapScreen`: one marker per place where a complete analysis has coordinates, with analyses within ~11 m grouped under one marker and a count badge (no clustering dependency). The camera fits every marker on open (zoom 15 for a single place). Tapping a marker lists its analyses (thumbnail, title, date) and opens the chosen one's detail. The history's favorites/collection filter carries over (shared `filterHistoryEntries()`), and the map is titled after it. Empty state when nothing in the filter has a location; OSM attribution as in `MiniMap`; `NAV` logs.
