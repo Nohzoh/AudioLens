@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ ⭐ - **Map of the places where analyses were made** (issue #423)
+  - **Verified**: 2026-09-25 (PR #442)
+  - **What was done**: a map icon in the history app bar opens `AnalysesMapScreen`: one marker per place where a complete analysis has coordinates, with analyses within ~11 m grouped under one marker and a count badge (no clustering dependency). The camera fits every marker on open (zoom 15 for a single place). Tapping a marker lists its analyses (thumbnail, title, date) and opens the chosen one's detail. The history's favorites/collection filter carries over (shared `filterHistoryEntries()`), and the map is titled after it. Empty state when nothing in the filter has a location; OSM attribution as in `MiniMap`; `NAV` logs.
+  - **Final validation**: widget/unit tests for marker selection (no GPS, partial GPS, non-complete statuses), grouping, empty state, fit-to-bounds, collection filter, marker -> preview -> detail, and the history button; full suite and `flutter analyze` green. On-device check with real tiles still to do.
+
 - [x] ✨ ⭐ - **Gemini Nano: model picker in the Nano Prompt Lab, typed segment-1 title, preview-models guide** (issues #431, #434, #432)
   - **Verified**: 2026-09-25 (PR #441)
   - **What was done**: `genai-prompt` bumped 1.0.0-beta1 -> 1.0.0-beta4. The Nano Prompt Lab can target the default model or a Stable/Preview x Fast/Full variant, shows each one's availability, downloads a downloadable one, blocks runs on a variant that isn't ready, and tags every result (history, pipeline, `AI` logs) with its variant. Production calls send no variant, so they keep ML Kit's default Stable/Full model. Segment 1 uses ML Kit structured output (`NanoSeg1` title/text, KSP 2.3.6 + `genai-schema-compiler`) when `isStructuredOutputFeatureAvailable()` is true, and falls back to the bracket-title text path on any other failure; the text path and non-STOP finish reasons are logged. New `nano-preview.html` pages (EN/FR) explain how to enable the AICore Developer Preview, linked from both home pages and the README
