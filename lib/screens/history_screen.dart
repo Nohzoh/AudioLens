@@ -23,6 +23,7 @@ import '../utils/guide_error_localizer.dart';
 import '../utils/user_message_utils.dart';
 import '../utils/script_style_label.dart';
 import 'about_analysis_screen.dart';
+import 'analyses_map_screen.dart';
 
 /// Launches the analysis for a captured entry (T78), using the raw GPS
 /// saved at capture time rather than the device's current location.
@@ -262,6 +263,27 @@ class _RegenerateSheetState extends State<_RegenerateSheet> {
   }
 }
 
+/// T51/#423: the entries matching the history's favorites/collection
+/// filter (both off = every entry). Shared by the list and the map, so
+/// the two always show the same set.
+List<HistoryEntry> filterHistoryEntries(
+  HistoryService history, {
+  bool favoritesOnly = false,
+  int? collectionId,
+}) {
+  if (favoritesOnly) {
+    return history.entries.where((e) => e.isFavorite).toList();
+  }
+  if (collectionId != null) {
+    return history.entries
+        .where((e) =>
+            e.id != null &&
+            history.collectionIdsForEntry(e.id!).contains(collectionId))
+        .toList();
+  }
+  return history.entries;
+}
+
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -340,18 +362,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  List<HistoryEntry> _filteredEntries(HistoryService history) {
-    if (_favoritesOnly) {
-      return history.entries.where((e) => e.isFavorite).toList();
-    }
-    if (_selectedCollectionId != null) {
-      final id = _selectedCollectionId!;
-      return history.entries
-          .where((e) =>
-              e.id != null && history.collectionIdsForEntry(e.id!).contains(id))
-          .toList();
-    }
-    return history.entries;
+  List<HistoryEntry> _filteredEntries(HistoryService history) =>
+      filterHistoryEntries(history,
+          favoritesOnly: _favoritesOnly, collectionId: _selectedCollectionId);
+
+  /// #423: opens the map with the same filter as the list, so a
+  /// collection's map ("Rome trip") is one tap away.
+  void _openMap(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AnalysesMapScreen(
+          favoritesOnly: _favoritesOnly,
+          collectionId: _selectedCollectionId,
+        ),
+      ),
+    );
   }
 
   Future<void> _createCollection(BuildContext context) async {
@@ -479,6 +505,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 actions: [
+                  IconButton(
+                    icon: const Icon(Icons.map_outlined),
+                    tooltip: l10n.historyMapTooltip,
+                    onPressed: () => _openMap(context),
+                  ),
                   Consumer<SettingsService>(
                     builder: (context, settings, _) => KofiButton(
                       show: settings.showKofiButton,
