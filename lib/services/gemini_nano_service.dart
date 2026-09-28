@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
+import '../utils/error_sanitizer.dart';
 import '../utils/script_cleanup.dart';
 import '../utils/script_validation.dart';
 import 'ai_service.dart';
 import 'remote_config_service.dart';
+import 'wikipedia_service.dart';
 
 const _channel = MethodChannel('audio_guide/gemini_nano');
 
@@ -87,6 +90,10 @@ class NanoDebugCascadeResult {
   final String seg3Output;
   final String fullText;
 
+  /// #466: the Wikipedia extract injected into segments 2-3, or null
+  /// when segment 1's title matched no article (or lookup is off).
+  final String? titleFacts;
+
   /// #434: the typed title when segment 1 used structured output, else
   /// null (the title is then in [seg1Output], between brackets).
   final String? seg1Title;
@@ -108,6 +115,7 @@ class NanoDebugCascadeResult {
     required this.seg3Prompt,
     required this.seg3Output,
     required this.fullText,
+    this.titleFacts,
   });
 }
 
@@ -189,8 +197,89 @@ class GeminiNanoService implements AIService {
   @override
   Future<void> initialize() async {
     if (_initialized) return;
+    // #466: the native cascade calls back for segment 1's title facts.
+    _channel.setMethodCallHandler(handlePlatformCall);
     await _channel.invokeMethod('initialize');
     _initialized = true;
+  }
+
+  /// #466: facts about a title segment 1 named, or null. Replaceable in
+  /// tests; defaults to [lookupWikipediaFacts].
+  @visibleForTesting
+  static Future<String?> Function(String title) titleFactsLookup = lookupWikipediaFacts;
+
+  /// #466: calls from the native side into Dart (only `lookupTitleFacts`,
+  /// between segments 1 and 2). Never throws: no facts is a normal
+  /// outcome and the cascade goes on without them.
+  @visibleForTesting
+  static Future<Object?> handlePlatformCall(MethodCall call) async {
+    if (call.method != 'lookupTitleFacts') {
+      throw MissingPluginException('No handler for ${call.method}');
+    }
+    final title = (call.arguments as Map?)?['title'] as String?;
+    if (title == null || title.trim().isEmpty) return null;
+    try {
+      final facts = await titleFactsLookup(title);
+      AppLogger.ai('Nano: title facts ${facts != null ? 'found' : 'not found'}');
+      return facts;
+    } catch (e) {
+      AppLogger.ai('Nano: title facts lookup failed: ${sanitizeError(e.toString())}');
+      return null;
+    }
+  }
+
+  /// #466: kept short, the whole prompt has to fit Nano's small budget
+  /// alongside the location context.
+  static const int _maxTitleFactsChars = 600;
+
+  /// #466: the intro of the Wikipedia article whose title matches
+  /// [title], or null. A search hit on a different article is dropped:
+  /// a generic segment-1 title ("Une scene de marche") must never pull
+  /// in facts about something else.
+  static Future<String?> lookupWikipediaFacts(String title) async {
+    final results = await WikipediaService.searchByName(
+      query: title,
+      limit: 1,
+      extractChars: _maxTitleFactsChars,
+    ).timeout(const Duration(seconds: 8), onTimeout: () => const []);
+    for (final r in results) {
+      if (titlesMatch(title, r.title)) return r.extract;
+    }
+    return null;
+  }
+
+  static const _stopwords = {
+    'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'sa', 'son', 'ses',
+    'au', 'aux', 'en', 'the', 'of', 'and', 'a', 'an', 'in', 'his', 'her',
+  };
+
+  static Set<String> _titleWords(String s) {
+    const accents = {
+      'à': 'a', 'â': 'a', 'ä': 'a', 'á': 'a', 'ç': 'c', 'é': 'e', 'è': 'e',
+      'ê': 'e', 'ë': 'e', 'î': 'i', 'ï': 'i', 'í': 'i', 'ô': 'o', 'ö': 'o',
+      'ó': 'o', 'ù': 'u', 'û': 'u', 'ü': 'u', 'ú': 'u', 'ÿ': 'y', 'œ': 'oe',
+    };
+    final lower = s.toLowerCase().split('').map((c) => accents[c] ?? c).join();
+    return lower
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((w) => w.isNotEmpty && !_stopwords.contains(w))
+        .toSet();
+  }
+
+  /// #466: true when every meaningful word of the shorter title (at
+  /// least two) is in the other one, accents, case, articles and a
+  /// disambiguation suffix like "(Metsys)" aside.
+  @visibleForTesting
+  static bool titlesMatch(String nanoTitle, String articleTitle) {
+    final a = _titleWords(nanoTitle);
+    final b = _titleWords(articleTitle.replaceAll(RegExp(r'\s*\(.*\)\s*$'), ''));
+    if (a.isEmpty || b.isEmpty) return false;
+    // A single word ("Tableau", "Marche") is too generic to trust as a
+    // subset match: only an exact match counts.
+    if (a.length < 2 || b.length < 2) return a.length == b.length && a.containsAll(b);
+    final shorter = a.length <= b.length ? a : b;
+    final longer = identical(shorter, a) ? b : a;
+    return shorter.every(longer.contains);
   }
 
   @override
@@ -224,6 +313,7 @@ class GeminiNanoService implements AIService {
         // release, same as #158 was for the cloud side.
         'maxOutputTokens': config.geminiNanoMaxTokens,
         'temperature': config.geminiNanoTemperature,
+        'titleLookup': config.geminiNanoTitleLookup,
       };
       if (locationContext != null) {
         args['locationContext'] = _truncateLocationContext(locationContext);
@@ -362,6 +452,7 @@ class GeminiNanoService implements AIService {
       if (style != null) args['style'] = style;
       if (language != null) args['language'] = language;
       args['temperature'] = temperature ?? config.geminiNanoTemperature;
+      args['titleLookup'] = config.geminiNanoTitleLookup;
 
       final result =
           await _channel.invokeMapMethod<String, dynamic>('describeImageDebug', args);
@@ -380,6 +471,7 @@ class GeminiNanoService implements AIService {
         seg3Prompt: result['seg3Prompt'] as String? ?? '',
         seg3Output: result['seg3Output'] as String? ?? '',
         fullText: result['fullText'] as String? ?? '',
+        titleFacts: result['titleFacts'] as String?,
       );
     } on PlatformException catch (e) {
       if (e.message?.contains('Background usage is blocked') ?? false) {
