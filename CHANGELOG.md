@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **History: loader while generating audio instead of an early Stop button** (issue #464)
+  - **Verified**: 2026-09-28 (PR #465)
+  - **What was done**: on a script-only entry, "Générer l'audio" no longer turns into "Arrêter" while TTS is still synthesizing. The button now shows a disabled "Génération de l'audio..." label with a spinner while `AudioGuideService` is in the `synthesizing` state, then switches to Stop (and the ±10s buttons) once playback actually starts.
+  - **Final validation**: new widget test (loader and disabled button during synthesis, Stop once speaking; fails without the fix); full suite and `flutter analyze` green. On-device check still to do.
+
 - [x] ✨ - **Settings: choose the Gemini Nano model used for analyses** (issue #462)
   - **Verified**: 2026-09-28 (PR #463)
   - **What was done**: when local AI is active, Settings shows a "Local model" picker (default + Stable/Preview x Fast/Full), each option with its availability and a download button when downloadable. Analyses (and a Nano fallback after a cloud failure) run on the chosen variant; the native `describeImage` creates a client for it like `describeImageDebug` already did. A variant that isn't ready falls back to the default model with an `AI` log. The history's model label names the variant, e.g. "Gemini Nano (Preview · Full)".
