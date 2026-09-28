@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Settings: choose the Gemini Nano model used for analyses** (issue #462)
+  - **Verified**: 2026-09-28 (PR #463)
+  - **What was done**: when local AI is active, Settings shows a "Local model" picker (default + Stable/Preview x Fast/Full), each option with its availability and a download button when downloadable. Analyses (and a Nano fallback after a cloud failure) run on the chosen variant; the native `describeImage` creates a client for it like `describeImageDebug` already did. A variant that isn't ready falls back to the default model with an `AI` log. The history's model label names the variant, e.g. "Gemini Nano (Preview · Full)".
+  - **Final validation**: tests for variant forwarding, not-ready fallback, key round-trip and settings persistence; full suite, `flutter analyze` and log hygiene green. On-device check still to do.
+
 - [x] ✨ ⭐ - **History: multi-select entries to add them to a collection** (issue #428)
   - **Verified**: 2026-09-25 (PR #443)
   - **What was done**: long-press on a history card enters selection mode (taps then toggle; check overlay and highlighted card). The contextual bar shows the count, ✕, "Select all" (current filter) and "Add to collection"; back or ✕ exits, changing the filter clears the selection. The collections sheet now works on a set of entries with tri-state checkboxes (all / none / some); ticking adds every selected entry, unticking removes them, and a collection created from the sheet receives all of them. Single-entry assignment stays in the detail ⋮ menu. New `HistoryService.setEntriesInCollection` does one transaction and one `notifyListeners()`, logs under `DB`, and failures show inline in the sheet (new `storageCollectionFailed` error kind).
