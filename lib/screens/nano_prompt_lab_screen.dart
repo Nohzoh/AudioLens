@@ -613,6 +613,19 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         const SizedBox(height: 12),
       ],
       _segmentCard(l10n, theme, l10n.nanoLabSegment1, r.seg1Prompt, r.seg1Output),
+      // #466: what the Wikipedia lookup on segment 1's title injected.
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.nanoLabTitleFacts, style: theme.textTheme.labelLarge),
+            const SizedBox(height: 4),
+            SelectableText(r.titleFacts ?? l10n.nanoLabTitleFactsNone,
+                style: theme.textTheme.bodySmall),
+          ],
+        ),
+      ),
       _segmentCard(l10n, theme, l10n.nanoLabSegment2, r.seg2Prompt, r.seg2Output),
       _segmentCard(l10n, theme, l10n.nanoLabSegment3, r.seg3Prompt, r.seg3Output),
     ];

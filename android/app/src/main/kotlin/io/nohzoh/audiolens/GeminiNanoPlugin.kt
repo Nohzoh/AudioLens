@@ -25,8 +25,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlin.coroutines.resume
 
 class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
@@ -50,6 +52,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         // cost). 15s wasn't a reliability margin, it was regularly too
         // tight for real-world multimodal inference.
         private const val SEGMENT_TIMEOUT_MS = 30_000L
+        // #466: the Wikipedia lookup between segments 1 and 2 (two HTTP
+        // calls of up to 6s each on the Dart side).
+        private const val TITLE_LOOKUP_TIMEOUT_MS = 10_000L
 
         // #286: minimum exact-overlap length (chars) required before
         // dropOverlapWithAccumulated treats a match as the model echoing
@@ -135,9 +140,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // field (NanoSeg1), so the bracket convention is dropped from
             // the prompt rather than asked for twice.
             val titleDirective = if (structured) {
-                "Donne un titre court (3 a 6 mots, ex: Le Colisee de Rome) et un texte. Dans le texte,"
+                "Donne un titre court (3 a 6 mots, ex: Le Colisee de Rome) et un texte. Si tu reconnais une oeuvre, un monument ou un lieu precis, le titre est son nom exact. Dans le texte,"
             } else {
-                "Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Puis,"
+                "Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Si tu reconnais une oeuvre, un monument ou un lieu precis, le titre est son nom exact. Puis,"
             }
             return "Tu es un guide audio culturel. $titleDirective sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
         }
@@ -173,7 +178,26 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         private fun locationHint(locationContext: String?): String =
             if (!locationContext.isNullOrBlank()) " Contexte du lieu : $locationContext." else ""
 
-        fun buildSeg2Prompt(previousText: String, style: String? = null, locationContext: String? = null): String {
+        // #466: a Wikipedia extract matching segment 1's title (looked up
+        // on the Dart side, see GeminiNanoService), placed before the
+        // location so the subject's own facts come first.
+        private fun factsHint(facts: String?): String =
+            if (!facts.isNullOrBlank()) " Faits verifies sur le sujet : $facts." else ""
+
+        private val bracketTitle = Regex("""^\s*\[([^\]]{1,80})\]""")
+
+        // #466: the title to look up — the typed one, else the text
+        // path's leading "[Title]".
+        fun seg1Title(typedTitle: String?, text: String): String? =
+            typedTitle?.takeIf { it.isNotBlank() }
+                ?: bracketTitle.find(text)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+
+        fun buildSeg2Prompt(
+            previousText: String,
+            style: String? = null,
+            locationContext: String? = null,
+            facts: String? = null,
+        ): String {
             val excerpt = previousText.takeLast(200)
             val focus = when (style) {
                 "academic" -> "le contexte historique precis (dates, faits averes, contexte culturel)"
@@ -183,10 +207,15 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 else -> "le contexte historique et culturel"
             }
             val sentences = if (style == "concise") "1 phrase" else "2-3 phrases qui s'enchainent naturellement"
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${locationHint(locationContext)} Continue avec $focus en $sentences, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${locationHint(locationContext)} Continue avec $focus en $sentences, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
         }
 
-        fun buildSeg3Prompt(previousText: String, style: String? = null, locationContext: String? = null): String {
+        fun buildSeg3Prompt(
+            previousText: String,
+            style: String? = null,
+            locationContext: String? = null,
+            facts: String? = null,
+        ): String {
             val excerpt = previousText.takeLast(200)
             val sentences = if (style == "concise") "1 phrase" else "2 phrases"
             // #425: a kids' guide ends on a question inviting the child to look.
@@ -195,7 +224,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             } else {
                 "sur ce qui rend ce lieu unique et l'emotion qu'il inspire"
             }
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${locationHint(locationContext)} Conclus en $sentences $ending, sans repeter ce qui a deja ete dit."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${locationHint(locationContext)} Conclus en $sentences $ending, sans repeter ce qui a deja ete dit."
         }
     }
 
@@ -294,6 +323,41 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         val text = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req) }
             .candidates.firstOrNull()?.text?.trim() ?: ""
         return Seg1Result(prompt, null, text, "text", finishReason, fallbackReason)
+    }
+
+    // #466: asks the Dart side for verified facts about segment 1's
+    // title (a Wikipedia lookup there), between segments 1 and 2. Any
+    // failure, a missing Dart handler or a slow network just means no
+    // facts: the cascade then runs exactly as before.
+    private suspend fun lookupTitleFacts(title: String?): String? {
+        if (title.isNullOrBlank()) return null
+        return try {
+            withTimeout(TITLE_LOOKUP_TIMEOUT_MS) {
+                withContext(Dispatchers.Main) {
+                    suspendCancellableCoroutine<String?> { cont ->
+                        channel.invokeMethod(
+                            "lookupTitleFacts",
+                            mapOf("title" to title),
+                            object : MethodChannel.Result {
+                                override fun success(value: Any?) {
+                                    if (cont.isActive) cont.resume(value as? String)
+                                }
+
+                                override fun error(code: String, message: String?, details: Any?) {
+                                    if (cont.isActive) cont.resume(null)
+                                }
+
+                                override fun notImplemented() {
+                                    if (cont.isActive) cont.resume(null)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        } catch (e: TimeoutCancellationException) {
+            null
+        }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -416,6 +480,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // of being read.
                 val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
+                val titleLookup = call.argument<Boolean>("titleLookup") ?: false
                 // #462: optional model variant picked in Settings; none =
                 // the shared default client, as before.
                 val config = variantConfig(call)
@@ -454,10 +519,15 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                         bitmap.recycle()
 
+                        // #466: facts about what segment 1 named, if any.
+                        val facts = if (titleLookup) {
+                            lookupTitleFacts(seg1Title(seg1Result.title, seg1))
+                        } else null
+
                         // Segment 2: Historical context (text only, faster)
                         currentSegment = 2
                         val req2 = generateContentRequest(
-                            TextPart(buildSeg2Prompt(seg1, style, locationContext))
+                            TextPart(buildSeg2Prompt(seg1, style, locationContext, facts))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -468,7 +538,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 3: Conclusion
                         currentSegment = 3
                         val req3 = generateContentRequest(
-                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext))
+                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext, facts))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -494,7 +564,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             "title" to seg1Result.title,
                             "seg1Mode" to seg1Result.mode,
                             "seg1FinishReason" to seg1Result.finishReason,
-                            "seg1FallbackReason" to seg1Result.fallbackReason
+                            "seg1FallbackReason" to seg1Result.fallbackReason,
+                            "titleFacts" to facts
                         )
                         withContext(Dispatchers.Main) { result.success(payload) }
                     } catch (e: TimeoutCancellationException) {
@@ -536,6 +607,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val language = call.argument<String>("language")
                 val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
+                val titleLookup = call.argument<Boolean>("titleLookup") ?: false
                 // #431: optional model variant (Nano Prompt Lab selector).
                 val config = variantConfig(call)
 
@@ -568,8 +640,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                         bitmap.recycle()
 
+                        val facts = if (titleLookup) {
+                            lookupTitleFacts(seg1Title(seg1Result.title, seg1))
+                        } else null
+
                         currentSegment = 2
-                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext)
+                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext, facts)
                         val req2 = generateContentRequest(TextPart(seg2Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -578,7 +654,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         currentSegment = 3
-                        val seg3Prompt = buildSeg3Prompt("$seg1 $seg2", style, locationContext)
+                        val seg3Prompt = buildSeg3Prompt("$seg1 $seg2", style, locationContext, facts)
                         val req3 = generateContentRequest(TextPart(seg3Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -601,6 +677,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             "seg2Output" to seg2,
                             "seg3Prompt" to seg3Prompt,
                             "seg3Output" to seg3,
+                            "titleFacts" to facts,
                             "fullText" to fullText
                         )
                         withContext(Dispatchers.Main) { result.success(payload) }

@@ -375,6 +375,8 @@
   "nanoLabModelUnavailableHint": "Ce modèle n'est pas disponible sur cet appareil. Les modèles Preview demandent l'AICore Developer Preview sur un appareil compatible.",
   "nanoLabModelNotReadyHint": "Ce modèle n'est pas encore prêt : téléchargez-le d'abord, ou attendez la fin du téléchargement.",
   "nanoLabSeg1Title": "Titre",
+  "nanoLabTitleFacts": "Faits Wikipédia sur le titre",
+  "nanoLabTitleFactsNone": "Aucun article correspondant au titre : segments 2 et 3 sans faits ajoutés.",
   "nanoLabSeg1Structured": "sortie structurée",
   "nanoLabSeg1TextPath": "chemin texte",
 
