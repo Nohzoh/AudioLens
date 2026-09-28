@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **History: loader while generating audio instead of an early Stop button** (issue #464)
+  - **Verified**: 2026-09-28 (PR #465)
+  - **What was done**: on a script-only entry, "Générer l'audio" no longer turns into "Arrêter" while TTS is still synthesizing. The button now shows a disabled "Génération de l'audio..." label with a spinner while `AudioGuideService` is in the `synthesizing` state, then switches to Stop (and the ±10s buttons) once playback actually starts.
+  - **Final validation**: new widget test (loader and disabled button during synthesis, Stop once speaking; fails without the fix); full suite and `flutter analyze` green. On-device check still to do.
+
 - [x] ✨ ⭐ - **History: multi-select entries to add them to a collection** (issue #428)
   - **Verified**: 2026-09-25 (PR #443)
   - **What was done**: long-press on a history card enters selection mode (taps then toggle; check overlay and highlighted card). The contextual bar shows the count, ✕, "Select all" (current filter) and "Add to collection"; back or ✕ exits, changing the filter clears the selection. The collections sheet now works on a set of entries with tri-state checkboxes (all / none / some); ticking adds every selected entry, unticking removes them, and a collection created from the sheet receives all of them. Single-entry assignment stays in the detail ⋮ menu. New `HistoryService.setEntriesInCollection` does one transaction and one `notifyListeners()`, logs under `DB`, and failures show inline in the sheet (new `storageCollectionFailed` error kind).
