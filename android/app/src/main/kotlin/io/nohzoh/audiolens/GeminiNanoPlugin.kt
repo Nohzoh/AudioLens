@@ -344,8 +344,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 }
             }
 
-            // #431: Nano Prompt Lab only — downloads one model variant
-            // reported DOWNLOADABLE. Separate from "initialize", which
+            // #431: Nano Prompt Lab (and Settings since #462) — downloads
+            // one model variant reported DOWNLOADABLE. Separate from "initialize", which
             // keeps owning the default client production uses.
             "downloadVariant" -> {
                 val config = variantConfig(call)
@@ -416,13 +416,16 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // of being read.
                 val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
+                // #462: optional model variant picked in Settings; none =
+                // the shared default client, as before.
+                val config = variantConfig(call)
 
                 if (imagePath == null) {
                     result.error("INVALID_ARGS", "imagePath required", null)
                     return
                 }
-                val model = generativeModel
-                if (model == null) {
+                val sharedModel = generativeModel
+                if (config == null && sharedModel == null) {
                     result.error("NOT_INITIALIZED", "Call initialize first", null)
                     return
                 }
@@ -434,6 +437,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 var currentSegment = 0
 
                 scope.launch {
+                    val model = if (config != null) newClient(config) else sharedModel!!
                     try {
                         val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
                         val bitmap = BitmapFactory.decodeFile(imagePath, opts)
@@ -511,6 +515,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         withContext(Dispatchers.Main) {
                             result.error("INFERENCE_ERROR", e.message, null)
                         }
+                    } finally {
+                        if (config != null) model.close()
                     }
                 }
             }

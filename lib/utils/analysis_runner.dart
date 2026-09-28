@@ -76,6 +76,7 @@ Future<void> runAnalysisAndNavigate({
     knownCoordinates: knownCoordinates,
     style: settings.scriptStyle,
     language: settings.outputLanguage,
+    nanoVariant: settings.nanoModelVariant,
     entryId: entryId,
   );
 
