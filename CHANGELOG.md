@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Nano: segments 2-3 grounded with Wikipedia facts on segment 1's title** (issue #466)
+  - **Verified**: 2026-09-28 (PR #471)
+  - **What was done**: between segments 1 and 2 the native cascade calls back into Dart (`lookupTitleFacts`) with segment 1's title; Dart searches Wikipedia and returns the article intro (≤600 chars) only when the article title matches, and the extract is added to the segment 2/3 prompts. Segment 1 is asked to use the exact name of a recognized work or place as its title. Remote kill switch `gemini_nano_title_lookup` (default on). The Nano Prompt Lab shows the injected facts; the `AI` log says whether facts were found.
+  - **Final validation**: tests for the callback, its failure paths and title matching; full suite, `flutter analyze` and log hygiene green. On-device check and real Wikipedia results still to verify.
+
 - [x] ✨ - **Settings: choose the Gemini Nano model used for analyses** (issue #462)
   - **Verified**: 2026-09-28 (PR #463)
   - **What was done**: when local AI is active, Settings shows a "Local model" picker (default + Stable/Preview x Fast/Full), each option with its availability and a download button when downloadable. Analyses (and a Nano fallback after a cloud failure) run on the chosen variant; the native `describeImage` creates a client for it like `describeImageDebug` already did. A variant that isn't ready falls back to the default model with an `AI` log. The history's model label names the variant, e.g. "Gemini Nano (Preview · Full)".
