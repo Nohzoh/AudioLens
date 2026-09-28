@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audiolens/services/gemini_nano_service.dart' show NanoModelVariant;
 import 'package:audiolens/services/settings_service.dart';
 
 const _secureChannel =
@@ -239,6 +240,23 @@ void main() {
     final reloaded = SettingsService();
     await reloaded.init();
     expect(reloaded.scriptStyle, 'anecdotal');
+  });
+
+  // #462
+  test('setNanoModelVariant persists across a reload, null = default', () async {
+    final settings = SettingsService();
+    await settings.init();
+    expect(settings.nanoModelVariant, isNull);
+
+    await settings.setNanoModelVariant(NanoModelVariant.all.last);
+    final reloaded = SettingsService();
+    await reloaded.init();
+    expect(reloaded.nanoModelVariant, NanoModelVariant.all.last);
+
+    await reloaded.setNanoModelVariant(null);
+    final cleared = SettingsService();
+    await cleared.init();
+    expect(cleared.nanoModelVariant, isNull);
   });
 
   // #130

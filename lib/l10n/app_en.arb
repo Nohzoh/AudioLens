@@ -296,6 +296,9 @@
 
   "settingsViewSourceCode": "View source code",
   "settingsNanoPromptLab": "Nano Prompt Lab",
+  "settingsNanoModelTitle": "Local model",
+  "settingsNanoModelSubtitle": "Gemini Nano model used for analyses. Preview models are experimental.",
+  "settingsNanoModelNotReadyHint": "This model isn't ready yet: analyses use the default model until it is.",
   "nanoLabTitle": "Nano Prompt Lab",
   "nanoLabPickImage": "Pick an image",
   "nanoLabChangeImage": "Change image",
