@@ -119,6 +119,7 @@
   "historyStop": "Arrêter",
   "historyListen": "Écouter le commentaire",
   "historyGenerateAudio": "Générer l'audio",
+  "historyGeneratingAudio": "Génération de l'audio...",
   "commonSkipBack10": "Reculer de 10 secondes",
   "commonSkipForward10": "Avancer de 10 secondes",
   "historyAllFilter": "Tout",

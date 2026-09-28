@@ -104,6 +104,7 @@
   "historyStop": "Stop",
   "historyListen": "Listen to the commentary",
   "historyGenerateAudio": "Generate audio",
+  "historyGeneratingAudio": "Generating audio...",
   "commonSkipBack10": "Skip back 10 seconds",
   "commonSkipForward10": "Skip forward 10 seconds",
   "historyAllFilter": "All",
