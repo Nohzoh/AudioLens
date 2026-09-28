@@ -13,6 +13,7 @@ import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
 import '../widgets/feedback_dialog.dart';
 import '../widgets/kofi_button.dart';
+import '../widgets/nano_model_setting.dart';
 import '../widgets/section_header.dart';
 
 const _ttsPreviewSample =
@@ -276,6 +277,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 : null,
             unavailableReason: _nanoUnavailableReason(l10n),
           ),
+          // #462: which on-device model analyses run on, only when Nano
+          // is the active engine (the choice changes nothing otherwise).
+          if (guide.nanoAvailable && guide.activeProvider == AIProvider.geminiNano) ...[
+            const SizedBox(height: 12),
+            NanoModelSetting(nano: guide.nanoService),
+          ],
           const SizedBox(height: 8),
           _ProviderCard(
             icon: Icons.cloud_outlined,

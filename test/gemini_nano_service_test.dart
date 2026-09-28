@@ -293,6 +293,46 @@ void main() {
       );
     });
 
+    // #462
+    test('analyzeImage() runs on preferredVariant when it is available', () async {
+      final service = GeminiNanoService()..preferredVariant = NanoModelVariant.all.last;
+
+      await service.analyzeImage(tempImage());
+
+      final args = calls.firstWhere((c) => c.method == 'describeImage').arguments as Map;
+      expect(args['releaseStage'], 'preview');
+      expect(args['preference'], 'full');
+      expect(service.lastUsedVariant, NanoModelVariant.all.last);
+    });
+
+    test('analyzeImage() falls back to the default model when preferredVariant '
+        'is not ready', () async {
+      final base = handler;
+      handler = (call) async {
+        if (call.method == 'checkNanoStatus') {
+          calls.add(call);
+          return 'downloadable';
+        }
+        return base(call);
+      };
+      final service = GeminiNanoService()..preferredVariant = NanoModelVariant.all.last;
+
+      final result = await service.analyzeImage(tempImage());
+
+      final args = calls.firstWhere((c) => c.method == 'describeImage').arguments as Map;
+      expect(args.containsKey('releaseStage'), isFalse);
+      expect(service.lastUsedVariant, isNull);
+      expect(result.script, isNotEmpty);
+    });
+
+    test('key round-trips through fromKey', () {
+      for (final v in NanoModelVariant.all) {
+        expect(NanoModelVariant.fromKey(v.key), v);
+      }
+      expect(NanoModelVariant.fromKey(null), isNull);
+      expect(NanoModelVariant.fromKey('bogus'), isNull);
+    });
+
     test('lists the 4 Stable/Preview x Fast/Full variants with readable labels', () {
       expect(NanoModelVariant.all.map((v) => v.label), [
         'Stable · Fast',

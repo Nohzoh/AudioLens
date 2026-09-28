@@ -32,8 +32,8 @@ enum NanoReleaseStage { stable, preview }
 enum NanoModelPreference { fast, full }
 
 /// #431: one on-device model variant the Nano Prompt Lab can target.
-/// Only ever passed from the lab: production calls send no variant, so
-/// the native side keeps using ML Kit's default client (Stable/Full).
+/// #462: analyses can use one too, when picked in Settings; no variant
+/// means ML Kit's default client (Stable/Full).
 class NanoModelVariant {
   final NanoReleaseStage stage;
   final NanoModelPreference preference;
@@ -50,6 +50,16 @@ class NanoModelVariant {
   String get label =>
       '${stage == NanoReleaseStage.stable ? 'Stable' : 'Preview'} · '
       '${preference == NanoModelPreference.fast ? 'Fast' : 'Full'}';
+
+  /// #462: stable identifier persisted by SettingsService.
+  String get key => '${stage.name}_${preference.name}';
+
+  static NanoModelVariant? fromKey(String? key) {
+    for (final v in all) {
+      if (v.key == key) return v;
+    }
+    return null;
+  }
 
   Map<String, String> toArgs() => {
         'releaseStage': stage.name,
@@ -113,6 +123,15 @@ enum NanoDeviceStatus { unavailable, downloadable, downloading, available, unkno
 
 class GeminiNanoService implements AIService {
   bool _initialized = false;
+
+  /// #462: the variant picked in Settings for analyses (null = default
+  /// model). Set by AudioGuideService before each analysis.
+  NanoModelVariant? preferredVariant;
+
+  /// #462: the variant the last [analyzeImage] actually ran on — null
+  /// when it used the default model, including a fallback because
+  /// [preferredVariant] wasn't available on this device.
+  NanoModelVariant? lastUsedVariant;
 
   @override
   String get displayName => 'Gemini Nano (on-device)';
@@ -190,10 +209,14 @@ class GeminiNanoService implements AIService {
       throw const CancelledException();
     }
 
+    final variant = await _usableVariant();
+    lastUsedVariant = variant;
+
     try {
       final config = RemoteConfigService.current;
       final args = <String, dynamic>{
         'imagePath': imageFile.path,
+        ...?variant?.toArgs(),
         // #170: previously hardcoded in GeminiNanoPlugin.kt — now
         // remote-configurable like the cloud pipeline's own
         // geminiMaxTokens/geminiTemperature, so a stuck value (e.g. a
@@ -261,6 +284,18 @@ class GeminiNanoService implements AIService {
       }
       throw Exception('Gemini Nano: ${e.message}');
     }
+  }
+
+  /// #462: [preferredVariant] if it's ready on this device, else null
+  /// (the default model) — a variant that isn't downloaded, or that the
+  /// device doesn't support, must not fail the analysis.
+  Future<NanoModelVariant?> _usableVariant() async {
+    final variant = preferredVariant;
+    if (variant == null) return null;
+    final status = await checkDeviceStatus(variant: variant);
+    if (status == NanoDeviceStatus.available) return variant;
+    AppLogger.ai('Nano: ${variant.label} is ${status.name}, using the default model');
+    return null;
   }
 
   /// Debug/prompt-iteration tool (Settings > Nano Prompt Lab) — a single

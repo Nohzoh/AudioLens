@@ -21,6 +21,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **What was done**: on a script-only entry, "Générer l'audio" no longer turns into "Arrêter" while TTS is still synthesizing. The button now shows a disabled "Génération de l'audio..." label with a spinner while `AudioGuideService` is in the `synthesizing` state, then switches to Stop (and the ±10s buttons) once playback actually starts.
   - **Final validation**: new widget test (loader and disabled button during synthesis, Stop once speaking; fails without the fix); full suite and `flutter analyze` green. On-device check still to do.
 
+- [x] ✨ - **Settings: choose the Gemini Nano model used for analyses** (issue #462)
+  - **Verified**: 2026-09-28 (PR #463)
+  - **What was done**: when local AI is active, Settings shows a "Local model" picker (default + Stable/Preview x Fast/Full), each option with its availability and a download button when downloadable. Analyses (and a Nano fallback after a cloud failure) run on the chosen variant; the native `describeImage` creates a client for it like `describeImageDebug` already did. A variant that isn't ready falls back to the default model with an `AI` log. The history's model label names the variant, e.g. "Gemini Nano (Preview · Full)".
+  - **Final validation**: tests for variant forwarding, not-ready fallback, key round-trip and settings persistence; full suite, `flutter analyze` and log hygiene green. On-device check still to do.
+
 - [x] 🐛 - **Nano Prompt Lab full pipeline now matches a real analysis** (issue #460)
   - **Verified**: 2026-09-28 (PR #461)
   - **What was done**: the lab's full-pipeline mode passes the user's script style and output language, as `analysis_runner.dart` does in production (before, the prompts always used the default tone and no language directive). Latitude/longitude typed in the lab are resolved automatically before a run when they haven't been resolved yet or were edited since (before, they were silently ignored unless "Resolve location" had been pressed, so the run had no location at all). The native cascade was already identical to `describeImage`.
