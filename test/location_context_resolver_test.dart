@@ -453,6 +453,10 @@ void main() {
         startsWith('Lieu identifié à cet emplacement (OpenStreetMap) : Église Saint-Joseph'),
       );
       expect(searches.toSet(), {'Église Saint-Joseph Alès'});
+      // #481
+      expect(ctx.trace.placeLine,
+          'Église Saint-Joseph (geocode, amenity=place_of_worship)');
+      expect(ctx.trace.wikipediaTitles, isEmpty);
     });
 
     test('a POI from Overpass takes precedence over the geocoded name', () async {
@@ -469,6 +473,9 @@ void main() {
       expect(ctx.geocodedPlaceName, isNull);
       expect(ctx.promptContext, isNot(contains('OpenStreetMap')));
       expect(searches.toSet(), {'Monument aux morts Alès'});
+      // #481
+      expect(ctx.trace.placeName, 'Monument aux morts');
+      expect(ctx.trace.placeSource, 'poi');
     });
   });
 }

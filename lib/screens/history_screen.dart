@@ -580,7 +580,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   ? null
                                   : () => _toggleSelected(entry.id!),
                             )
-                                .animate(delay: (index * 50).ms)
+                                // #489: stagger only the first
+                                // screenful. The builder is lazy, so a
+                                // delay growing with the index made a
+                                // card far down the list wait seconds
+                                // before appearing while scrolling.
+                                .animate(delay: historyCardEntranceDelay(index))
                                 .fadeIn()
                                 .slideY(begin: 0.1);
                           },
@@ -594,6 +599,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 }
+
+/// #489: entrance delay of the history card at [index] — a short
+/// stagger for the cards visible when the list opens, none afterwards.
+@visibleForTesting
+Duration historyCardEntranceDelay(int index) =>
+    Duration(milliseconds: index < 8 ? index * 50 : 0);
 
 /// T51/#428: bottom sheet to add/remove [entryIds] from any number of
 /// collections, with inline creation of a new one. Shared by the history
@@ -843,6 +854,14 @@ class _HistoryCard extends StatelessWidget {
                                 child: Image.file(
                                   File(entry.imagePath),
                                   fit: BoxFit.cover,
+                                  // #489: decode at thumbnail size, not
+                                  // the full 1280 px photo. x2 leaves
+                                  // room for BoxFit.cover on a 4:3
+                                  // image, whichever way it is turned.
+                                  cacheWidth: (72 *
+                                          2 *
+                                          MediaQuery.devicePixelRatioOf(context))
+                                      .round(),
                                 ),
                               )
                             : Container(

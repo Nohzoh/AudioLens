@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'exif_location_service.dart';
@@ -9,6 +10,75 @@ import 'wikipedia_service.dart';
 
 /// Result of resolving where a photo was taken and enriching it with
 /// nearby Wikipedia context.
+/// #481: what the location context actually contained for one analysis
+/// — which place was named and where the name came from, and which
+/// Wikipedia articles were injected. Kept with the history entry so a
+/// misidentification can be diagnosed afterwards; the debug info used
+/// to say only *that* Wikipedia was used.
+class LocationTrace {
+  /// Name given to the model as the identified place, if any.
+  final String? placeName;
+
+  /// `poi` (Overpass) or `geocode` (Nominatim reverse geocoding, #482).
+  final String? placeSource;
+
+  /// OSM category of the place, e.g. `historic=memorial`.
+  final String? placeCategory;
+
+  /// Wikidata label and description, when the POI had a Wikidata link.
+  final String? wikidata;
+
+  /// Titles of the Wikipedia articles whose extracts were injected, in
+  /// the order the model received them.
+  final List<String> wikipediaTitles;
+
+  const LocationTrace({
+    this.placeName,
+    this.placeSource,
+    this.placeCategory,
+    this.wikidata,
+    this.wikipediaTitles = const [],
+  });
+
+  bool get isEmpty =>
+      placeName == null && wikidata == null && wikipediaTitles.isEmpty;
+
+  /// The identified place with its origin, e.g.
+  /// `Église Saint-Joseph (geocode, amenity=place_of_worship)`.
+  String? get placeLine {
+    if (placeName == null) return null;
+    final details = [placeSource, placeCategory].whereType<String>().join(', ');
+    return details.isEmpty ? placeName : '$placeName ($details)';
+  }
+
+  String encode() => jsonEncode({
+        if (placeName != null) 'place': placeName,
+        if (placeSource != null) 'placeSource': placeSource,
+        if (placeCategory != null) 'placeCategory': placeCategory,
+        if (wikidata != null) 'wikidata': wikidata,
+        if (wikipediaTitles.isNotEmpty) 'wikipedia': wikipediaTitles,
+      });
+
+  /// Null for a missing or unreadable value (entries older than #481).
+  static LocationTrace? decode(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final map = jsonDecode(raw);
+      if (map is! Map) return null;
+      final titles = map['wikipedia'];
+      return LocationTrace(
+        placeName: map['place'] as String?,
+        placeSource: map['placeSource'] as String?,
+        placeCategory: map['placeCategory'] as String?,
+        wikidata: map['wikidata'] as String?,
+        wikipediaTitles: titles is List ? titles.whereType<String>().toList() : const [],
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
 class LocationContext {
   const LocationContext({
     required this.source,
@@ -19,6 +89,7 @@ class LocationContext {
     this.city,
     this.poi,
     this.geocodedPlaceName,
+    this.geocodedPlaceCategory,
     this.wikidataInfo,
     this.wikipediaResults = const [],
     this.wikipediaUsed = false,
@@ -43,6 +114,9 @@ class LocationContext {
   /// null (see [LocationInfo.placeName]).
   final String? geocodedPlaceName;
 
+  /// OSM class and type of [geocodedPlaceName].
+  final String? geocodedPlaceCategory;
+
   /// Name of the closest tagged POI, if one was found — convenience for
   /// callers that only need the name, not the full [PoiInfo].
   String? get poiName => poi?.name;
@@ -61,6 +135,15 @@ class LocationContext {
 
   /// Combined location + Wikipedia text to feed the AI prompt, or null.
   final String? promptContext;
+
+  /// #481: summary of what [promptContext] was built from.
+  LocationTrace get trace => LocationTrace(
+        placeName: poi?.name ?? geocodedPlaceName,
+        placeSource: poi != null ? 'poi' : (geocodedPlaceName != null ? 'geocode' : null),
+        placeCategory: poi != null ? poi!.category : geocodedPlaceCategory,
+        wikidata: wikidataInfo?.summary,
+        wikipediaTitles: [for (final w in wikipediaResults) w.title],
+      );
 }
 
 /// Resolves a location context — either from a photo (EXIF GPS first, then
@@ -253,6 +336,8 @@ class LocationContextResolver {
       city: locationResult.info?.city,
       poi: poi,
       geocodedPlaceName: geocodedPlace,
+      geocodedPlaceCategory:
+          geocodedPlace != null ? locationResult.info?.placeCategory : null,
       wikidataInfo: wikidataInfo,
       wikipediaResults: wikiResults,
       wikipediaUsed: wikipediaUsed,

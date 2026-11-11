@@ -87,6 +87,9 @@ Future<void> runAnalysisAndNavigate({
   // the coordinate itself — see T102/T124.
   AppLogger.info('gpsResolved: ${guide.lastGpsLatitude != null}');
   AppLogger.info('wikipedia: ${guide.lastWikipediaUsed}');
+  // log-hygiene-ok: only whether a place was named and where the name
+  // came from (poi/geocode), never the name itself.
+  AppLogger.info('place: ${guide.lastLocationTrace?.placeSource ?? 'none'}');
   AppLogger.info('duration: ${guide.lastAnalysisDurationMs}');
 
   if (result != null) {
@@ -99,6 +102,7 @@ Future<void> runAnalysisAndNavigate({
       analysisSource: source,
       gpsSource: guide.lastGpsSource,
       wikipediaUsed: guide.lastWikipediaUsed,
+      locationTrace: guide.lastLocationTrace,
       analysisDurationMs: guide.lastAnalysisDurationMs,
       gpsLatitude: guide.lastGpsLatitude,
       gpsLongitude: guide.lastGpsLongitude,
