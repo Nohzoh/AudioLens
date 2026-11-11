@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Location context: use the place name returned by reverse geocoding** (issue #482)
+  - **Verified**: 2026-11-11 (PR #483)
+  - **What was done**: when Nominatim's reverse geocoding lands on a named place a guide could be about (place of worship, museum, monument, named building...), its name is kept instead of only the road and city. With no POI from Overpass, the prompt context starts with « Lieu identifié à cet emplacement (OpenStreetMap) : ... » and the Wikipedia name search uses that name; an Overpass POI still takes precedence. Roads, shops and everyday amenities are ignored. Found on a field case in Alès: the Saint-Joseph church was described as the town's cathedral although Nominatim named it.
+  - **Final validation**: tests with the recorded Nominatim response (name kept, jsonv2 class, ignored feature types, failed lookup, POI precedence, Wikipedia query); full suite and `flutter analyze` green. On-device check still to do.
+
 - [x] 🔧 - **Flutter 3.47.9 and refreshed Dart dependencies** (issue #479)
   - **Verified**: 2026-11-11 (PR #480)
   - **What was done**: CI Flutter pin moved from 3.44.9 to 3.47.9 (Dart 3.13.7) and every package upgraded to its latest compatible version (about 65, including `flutter_local_notifications` 22 -> 23). `google_fonts` stays on 8.x: version 9 moves to the `material_ui` package and would need the app's Material imports migrated.
