@@ -1,3 +1,3 @@
-New: a map of the places where you made your analyses; rate each guide from 1 to 5 stars; a "For kids" guide style (ages 6 to 10); select several history entries at once to add them to a collection; a single "Actions" menu under each analysis (save, share text or audio, send as feedback, report).
+New: with local AI enabled, pick in Settings which Gemini Nano model runs your analyses (including preview models, when your phone offers them).
 
-Fixes: fewer broken guides with the Gemini API; "About this analysis" now says when no audio was generated.
+Fixes: in the history, "Generate audio" now shows a waiting state while the audio is prepared instead of an early "Stop" button; internal components updated.
