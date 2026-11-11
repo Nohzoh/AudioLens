@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Location context trace kept with each analysis** (issue #481)
+  - **Verified**: 2026-11-11 (PR #487)
+  - **What was done**: each analysis now stores which place was named to the model (from Overpass or from reverse geocoding, with its OSM category), the Wikidata summary and the titles of the Wikipedia articles injected. Shown in "About this analysis", in the copied debug info and in feedback reports; older entries say the context was not recorded. New nullable `locationTrace` column, DB schema v13.
+  - **Final validation**: migration tests (all older schemas to v13), storage round-trip across reopen, empty/unreadable trace, resolver trace for the POI and geocode cases; full suite and `flutter analyze` green. On-device check still to do.
+
 - [x] ✨ - **Location context: use the place name returned by reverse geocoding** (issue #482)
   - **Verified**: 2026-11-11 (PR #483)
   - **What was done**: when Nominatim's reverse geocoding lands on a named place a guide could be about (place of worship, museum, monument, named building...), its name is kept instead of only the road and city. With no POI from Overpass, the prompt context starts with « Lieu identifié à cet emplacement (OpenStreetMap) : ... » and the Wikipedia name search uses that name; an Overpass POI still takes precedence. Roads, shops and everyday amenities are ignored. Found on a field case in Alès: the Saint-Joseph church was described as the town's cathedral although Nominatim named it.
@@ -24,7 +29,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 - [x] 🔧 - **Flutter 3.47.9 and refreshed Dart dependencies** (issue #479)
   - **Verified**: 2026-11-11 (PR #480)
   - **What was done**: CI Flutter pin moved from 3.44.9 to 3.47.9 (Dart 3.13.7) and every package upgraded to its latest compatible version (about 65, including `flutter_local_notifications` 22 -> 23). `google_fonts` stays on 8.x: version 9 moves to the `material_ui` package and would need the app's Material imports migrated.
-  - **Final validation**: `flutter analyze` clean and full suite green on 3.47.9; Android release build compiled by CI. On-device visual check of the release build still to do (a past Flutter pin caused a rendering bug only visible in CI-built APKs).
+  - **Final validation**: `flutter analyze` clean and full suite green on 3.47.9; Android release build compiled by CI. On-device visual check done on the 0.15.1 alpha build (Pixel 10, 2026-11-11): no rendering defect.
 
 - [x] 🐛 - **History: loader while generating audio instead of an early Stop button** (issue #464)
   - **Verified**: 2026-09-28 (PR #465)
