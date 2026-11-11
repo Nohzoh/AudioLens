@@ -1,3 +1,3 @@
-Nouveauté : avec l'IA locale activée, choisissez dans les Réglages le modèle Gemini Nano utilisé pour vos analyses (y compris les modèles en préversion, s'ils sont disponibles sur votre téléphone).
+Nouveautés : AudioLens reconnaît mieux le lieu où vous êtes (église, musée, monument) grâce au nom fourni par la carte ; avec l'IA locale, choisissez dans les Réglages le modèle Gemini Nano utilisé.
 
-Corrections : dans l'historique, « Générer l'audio » affiche une attente pendant la préparation au lieu d'un bouton « Arrêter » trop tôt ; mise à jour des composants internes de l'application.
+Corrections : dans l'historique, « Générer l'audio » affiche une attente pendant la préparation ; mise à jour des composants internes.
