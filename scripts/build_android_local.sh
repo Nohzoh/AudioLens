@@ -81,6 +81,7 @@ if ! grep -q 'genai-prompt' "$FILE"; then
 
 dependencies {
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
+    implementation("com.google.mlkit:genai-text-to-speech:1.0.0-alpha1")
     implementation("com.google.guava:guava:32.1.3-android")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
