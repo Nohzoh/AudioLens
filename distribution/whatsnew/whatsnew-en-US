@@ -1,3 +1,3 @@
-New: AudioLens identifies the place you are at (church, museum, monument) more reliably, using the name given by the map; with local AI, pick in Settings which Gemini Nano model is used.
+New: "About this analysis" shows the place given to the AI and the Wikipedia articles used; the Nano Prompt Lab exports its runs (timings, model, memory) to compare on-device models.
 
-Fixes: in the history, "Generate audio" shows a waiting state while the audio is prepared; internal components updated.
+Fixes: in the history, analyses show up without delay as you scroll down the list; the place you are at (church, museum, monument) is identified more reliably.
