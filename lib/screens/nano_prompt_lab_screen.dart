@@ -371,7 +371,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       AppLogger.ai('Nano Lab: exported ${_pipelineRuns.length} run(s)');
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
     } catch (e) {
-      AppLogger.error('Nano Lab export failed: ${sanitizeError(e)}');
+      AppLogger.error('Nano Lab export failed: ${sanitizeError(e.toString())}');
       messenger.showSnackBar(SnackBar(content: Text(l10n.nanoLabExportFailed)));
     } finally {
       if (mounted) setState(() => _exporting = false);

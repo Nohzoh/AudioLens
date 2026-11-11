@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Nano Prompt Lab: export pipeline runs as benchmark JSON** (issue #477)
+  - **Verified**: 2026-11-11 (PR #488)
+  - **What was done**: in full-pipeline mode, each run is kept for the session (optional benchmark case id, variant, settings, GPS, resolved location context) and "Export runs" shares a JSON file in the `benchmark/results/nano_template.json` format. The native cascade now reports per-segment timings, the name of the model actually loaded and the available system memory before and at its lowest during the run; the export adds device, Android, AICore, app, Git commit and ML Kit versions. Memory is a proxy (AICore runs in its own process). `PROTOCOL.md` describes the new Nano procedure.
+  - **Final validation**: export shape, title split, failed run and ML Kit version sync tests; full suite and `flutter analyze` green; Kotlin compiled by CI. On-device check still to do.
+
 - [x] ✨ - **Location context: use the place name returned by reverse geocoding** (issue #482)
   - **Verified**: 2026-11-11 (PR #483)
   - **What was done**: when Nominatim's reverse geocoding lands on a named place a guide could be about (place of worship, museum, monument, named building...), its name is kept instead of only the road and city. With no POI from Overpass, the prompt context starts with « Lieu identifié à cet emplacement (OpenStreetMap) : ... » and the Wikipedia name search uses that name; an Overpass POI still takes precedence. Roads, shops and everyday amenities are ignored. Found on a field case in Alès: the Saint-Joseph church was described as the town's cathedral although Nominatim named it.
