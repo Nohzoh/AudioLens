@@ -16,6 +16,16 @@ class LocationInfo {
   final String? neighbourhood;
   final String? country;
 
+  /// #482: name of the feature the reverse geocoder landed on, when it
+  /// is a named place a visitor could be looking at (a church, a museum,
+  /// a monument) rather than a street or a house number. Nominatim
+  /// already returns it with the address; it used to be dropped, leaving
+  /// the model with a street name only.
+  final String? placeName;
+
+  /// OSM class and type of [placeName], e.g. `amenity=place_of_worship`.
+  final String? placeCategory;
+
   const LocationInfo({
     required this.latitude,
     required this.longitude,
@@ -23,7 +33,35 @@ class LocationInfo {
     this.road,
     this.neighbourhood,
     this.country,
+    this.placeName,
+    this.placeCategory,
   });
+
+  /// Builds a [LocationInfo] from coordinates and a Nominatim reverse
+  /// geocoding response ([geo] is null when the lookup failed).
+  factory LocationInfo.fromGeocode(
+    double latitude,
+    double longitude,
+    Map<String, dynamic>? geo,
+  ) {
+    final address = geo?['address'];
+    final addr = address is Map ? address : null;
+    final place = GeocodedPlace.fromGeocode(geo);
+    return LocationInfo(
+      latitude: latitude,
+      longitude: longitude,
+      city: addr?['city'] as String? ??
+          addr?['town'] as String? ??
+          addr?['village'] as String? ??
+          addr?['municipality'] as String?,
+      road: addr?['road'] as String?,
+      neighbourhood:
+          addr?['neighbourhood'] as String? ?? addr?['suburb'] as String?,
+      country: addr?['country'] as String?,
+      placeName: place?.name,
+      placeCategory: place?.category,
+    );
+  }
 
   String get contextForPrompt {
     final parts = <String>[];
@@ -34,6 +72,45 @@ class LocationInfo {
     final loc = parts.isNotEmpty ? parts.join(', ') : '';
     return 'Localisation GPS : $latitude, $longitude'
         '${loc.isNotEmpty ? ' ($loc)' : ''}';
+  }
+}
+
+/// #482: the named place a reverse geocoding response points at, if any.
+class GeocodedPlace {
+  final String name;
+  final String category;
+  const GeocodedPlace(this.name, this.category);
+
+  /// OSM classes whose named features are places worth telling the model
+  /// about, whatever their type.
+  static const _placeClasses = {'tourism', 'historic', 'leisure', 'natural', 'man_made'};
+
+  /// `amenity` covers shops' neighbours too (banks, restaurants,
+  /// pharmacies): only the types a guide could be about are kept.
+  static const _amenityTypes = {
+    'place_of_worship', 'monastery', 'theatre', 'cinema', 'arts_centre',
+    'library', 'townhall', 'courthouse', 'community_centre', 'fountain',
+    'university', 'college', 'marketplace', 'planetarium', 'clock',
+    'grave_yard', 'public_bath', 'exhibition_centre',
+  };
+
+  static GeocodedPlace? fromGeocode(Map<String, dynamic>? geo) {
+    if (geo == null) return null;
+    final name = (geo['name'] as String?)?.trim();
+    if (name == null || name.isEmpty) return null;
+    // `class` in Nominatim's `json` format, `category` in `jsonv2`.
+    final osmClass = geo['class'] as String? ?? geo['category'] as String?;
+    final type = geo['type'] as String?;
+    if (osmClass == null || type == null) return null;
+    final relevant = _placeClasses.contains(osmClass) ||
+        (osmClass == 'amenity' && _amenityTypes.contains(type)) ||
+        // A building with its own name (a château, a hall); an unnamed
+        // one never gets here.
+        osmClass == 'building';
+    if (!relevant) return null;
+    final address = geo['address'];
+    if (address is Map && address['road'] == name) return null;
+    return GeocodedPlace(name, '$osmClass=$type');
   }
 }
 
@@ -90,15 +167,7 @@ class LocationService {
     final geo = await _reverseGeocode(lat, lon, client: client);
     return LocationResult(
       status: LocationPermissionStatus.granted,
-      info: LocationInfo(
-        latitude: lat,
-        longitude: lon,
-        city: _extractCity(geo?['address']),
-        road: geo?['address']?['road'] as String?,
-        neighbourhood: geo?['address']?['neighbourhood'] as String?
-            ?? geo?['address']?['suburb'] as String?,
-        country: geo?['address']?['country'] as String?,
-      ),
+      info: LocationInfo.fromGeocode(lat, lon, geo),
     );
   }
 
@@ -137,15 +206,7 @@ class LocationService {
       final geo = await _reverseGeocode(lat, lon, client: client);
       return LocationResult(
         status: LocationPermissionStatus.granted,
-        info: LocationInfo(
-          latitude: lat,
-          longitude: lon,
-          city: _extractCity(geo?['address']),
-          road: geo?['address']?['road'] as String?,
-          neighbourhood: geo?['address']?['neighbourhood'] as String?
-              ?? geo?['address']?['suburb'] as String?,
-          country: geo?['address']?['country'] as String?,
-        ),
+        info: LocationInfo.fromGeocode(lat, lon, geo),
       );
     } catch (_) {
       return const LocationResult(status: LocationPermissionStatus.denied);
@@ -262,13 +323,5 @@ class LocationService {
       }
     } catch (_) {}
     return null;
-  }
-
-  static String? _extractCity(Map<String, dynamic>? address) {
-    if (address == null) return null;
-    return address['city'] as String?
-        ?? address['town'] as String?
-        ?? address['village'] as String?
-        ?? address['municipality'] as String?;
   }
 }

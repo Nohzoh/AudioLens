@@ -18,6 +18,7 @@ class LocationContext {
     this.address,
     this.city,
     this.poi,
+    this.geocodedPlaceName,
     this.wikidataInfo,
     this.wikipediaResults = const [],
     this.wikipediaUsed = false,
@@ -37,6 +38,10 @@ class LocationContext {
   /// memorial...) found nearby (T74), with whatever structured metadata
   /// OSM carries for it (#276) — not just a name.
   final PoiInfo? poi;
+
+  /// #482: place name from reverse geocoding, set only when [poi] is
+  /// null (see [LocationInfo.placeName]).
+  final String? geocodedPlaceName;
 
   /// Name of the closest tagged POI, if one was found — convenience for
   /// callers that only need the name, not the full [PoiInfo].
@@ -178,8 +183,12 @@ class LocationContextResolver {
         final wikidataFuture = resolvedPoi?.wikidataId != null
             ? WikidataService.fetchInfo(resolvedPoi!.wikidataId!, client: _httpClient)
             : Future<WikidataInfo?>.value(null);
-        final nameQuery = resolvedPoi != null
-            ? [resolvedPoi.name, locationResult.info!.city].where((s) => s != null && s.isNotEmpty).join(' ')
+        // #482: without a POI (Overpass is the slowest, least reliable
+        // call here), fall back on the place name the reverse geocoder
+        // already returned, so the name-matched search still runs.
+        final searchName = resolvedPoi?.name ?? locationResult.info!.placeName;
+        final nameQuery = searchName != null
+            ? [searchName, locationResult.info!.city].where((s) => s != null && s.isNotEmpty).join(' ')
             : null;
         final wikiNameFuture = nameQuery != null
             ? WikipediaService.searchByName(
@@ -194,7 +203,7 @@ class LocationContextResolver {
         wikidataInfo = await wikidataFuture;
         final nameResults = await wikiNameFuture;
 
-        if (poi != null) {
+        if (nameQuery != null) {
           // #247: name-matched results first, not appended after the
           // generic-proximity ones — searchNearby's geosearch ranks purely
           // by distance, which can put a broader article (e.g. the
@@ -221,8 +230,15 @@ class LocationContextResolver {
       }
     }
 
+    // #482: only when no POI was found — a POI carries richer data
+    // (subtype, inscription) and was matched on a tighter radius.
+    final geocodedPlace = poi == null ? locationResult.info?.placeName : null;
+
     final promptContext = [
       poi != null ? 'Lieu identifié à proximité : ${_poiLine(poi)}' : null,
+      geocodedPlace != null
+          ? 'Lieu identifié à cet emplacement (OpenStreetMap) : $geocodedPlace'
+          : null,
       wikidataInfo != null ? 'Selon Wikidata : ${wikidataInfo.summary}' : null,
       locationResult.info?.contextForPrompt,
       wikiContext,
@@ -236,6 +252,7 @@ class LocationContextResolver {
       address: address,
       city: locationResult.info?.city,
       poi: poi,
+      geocodedPlaceName: geocodedPlace,
       wikidataInfo: wikidataInfo,
       wikipediaResults: wikiResults,
       wikipediaUsed: wikipediaUsed,
