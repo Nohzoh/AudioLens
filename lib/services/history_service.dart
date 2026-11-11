@@ -9,6 +9,7 @@ import '../models/guide_error.dart';
 import '../models/quiz_question.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_sanitizer.dart';
+import 'location_context_resolver.dart';
 
 /// Thrown when copying a photo or audio file to permanent storage fails
 /// (T116) — most commonly because the device is out of storage. Callers
@@ -94,6 +95,10 @@ class HistoryEntry {
   /// #421: the user's 1-5 star rating of the script, null until rated.
   final int? rating;
 
+  /// #481: what the location context contained for this analysis (place
+  /// named, Wikipedia articles injected). Null for older entries.
+  final LocationTrace? locationTrace;
+
   const HistoryEntry({
     this.id,
     required this.imagePath,
@@ -122,6 +127,7 @@ class HistoryEntry {
     this.outputLanguage,
     this.promptVersion,
     this.rating,
+    this.locationTrace,
   });
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
@@ -167,6 +173,7 @@ class HistoryEntry {
     'isFavorite': isFavorite ? 1 : 0,
     'rotationQuarters': rotationQuarters,
     'rating': rating,
+    'locationTrace': locationTrace?.encode(),
     'scriptStyle': scriptStyle,
     'outputLanguage': outputLanguage,
     'promptVersion': promptVersion,
@@ -196,6 +203,7 @@ class HistoryEntry {
     isFavorite: (map['isFavorite'] as int? ?? 0) == 1,
     rotationQuarters: map['rotationQuarters'] as int? ?? 0,
     rating: map['rating'] as int?,
+    locationTrace: LocationTrace.decode(map['locationTrace'] as String?),
     scriptStyle: map['scriptStyle'] as String?,
     outputLanguage: map['outputLanguage'] as String?,
     promptVersion: map['promptVersion'] as String?,
@@ -227,6 +235,7 @@ class HistoryEntry {
     bool? isFavorite,
     int? rotationQuarters,
     int? rating,
+    LocationTrace? locationTrace,
     String? scriptStyle,
     String? outputLanguage,
     String? promptVersion,
@@ -255,6 +264,7 @@ class HistoryEntry {
     isFavorite: isFavorite ?? this.isFavorite,
     rotationQuarters: rotationQuarters ?? this.rotationQuarters,
     rating: rating ?? this.rating,
+    locationTrace: locationTrace ?? this.locationTrace,
     scriptStyle: scriptStyle ?? this.scriptStyle,
     outputLanguage: outputLanguage ?? this.outputLanguage,
     promptVersion: promptVersion ?? this.promptVersion,
@@ -301,7 +311,7 @@ class HistoryService extends ChangeNotifier {
     final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE history(
@@ -331,6 +341,7 @@ class HistoryService extends ChangeNotifier {
             outputLanguage TEXT,
             promptVersion TEXT,
             rating INTEGER,
+            locationTrace TEXT,
             createdAt TEXT NOT NULL
           )
         ''');
@@ -426,6 +437,10 @@ class HistoryService extends ChangeNotifier {
         if (oldVersion < 12) {
           // #421: null = not rated yet, for every pre-existing entry.
           await db.execute('ALTER TABLE history ADD COLUMN rating INTEGER');
+        }
+        if (oldVersion < 13) {
+          // #481: null for every pre-existing entry (not recorded then).
+          await db.execute('ALTER TABLE history ADD COLUMN locationTrace TEXT');
         }
       },
     );
@@ -560,6 +575,7 @@ class HistoryService extends ChangeNotifier {
     String? analysisSource,
     String? gpsSource,
     bool wikipediaUsed = false,
+    LocationTrace? locationTrace,
     int? analysisDurationMs,
     double? gpsLatitude,
     double? gpsLongitude,
@@ -599,6 +615,8 @@ class HistoryService extends ChangeNotifier {
         'analysisSource': analysisSource,
         'gpsSource': gpsSource,
         'wikipediaUsed': wikipediaUsed ? 1 : 0,
+        'locationTrace':
+            locationTrace == null || locationTrace.isEmpty ? null : locationTrace.encode(),
         'wordCount': script.trim().split(RegExp(r'\s+')).length,
         'analysisDurationMs': analysisDurationMs,
         'gpsLatitude': gpsLatitude,
@@ -629,6 +647,8 @@ class HistoryService extends ChangeNotifier {
         analysisSource: analysisSource,
         gpsSource: gpsSource,
         wikipediaUsed: wikipediaUsed,
+        locationTrace:
+            locationTrace == null || locationTrace.isEmpty ? null : locationTrace,
         wordCount: script.trim().split(RegExp(r'\s+')).length,
         analysisDurationMs: analysisDurationMs,
         gpsLatitude: gpsLatitude,

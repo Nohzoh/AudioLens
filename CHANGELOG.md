@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Location context trace kept with each analysis** (issue #481)
+  - **Verified**: 2026-11-11 (PR #487)
+  - **What was done**: each analysis now stores which place was named to the model (from Overpass or from reverse geocoding, with its OSM category), the Wikidata summary and the titles of the Wikipedia articles injected. Shown in "About this analysis", in the copied debug info and in feedback reports; older entries say the context was not recorded. New nullable `locationTrace` column, DB schema v13.
+  - **Final validation**: migration tests (all older schemas to v13), storage round-trip across reopen, empty/unreadable trace, resolver trace for the POI and geocode cases; full suite and `flutter analyze` green. On-device check still to do.
 - [x] 🐛 - **History: cards no longer appear later and later while scrolling** (issue #489)
   - **Verified**: 2026-11-11 (PR #490)
   - **What was done**: the cards' entrance animation had a delay of 50 ms times the card's index; since the list builds cards lazily, a card far down waited seconds before fading in. Only the first 8 cards are staggered now. Thumbnails are decoded at thumbnail size instead of the full 1280 px photo.
@@ -29,7 +33,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 - [x] 🔧 - **Flutter 3.47.9 and refreshed Dart dependencies** (issue #479)
   - **Verified**: 2026-11-11 (PR #480)
   - **What was done**: CI Flutter pin moved from 3.44.9 to 3.47.9 (Dart 3.13.7) and every package upgraded to its latest compatible version (about 65, including `flutter_local_notifications` 22 -> 23). `google_fonts` stays on 8.x: version 9 moves to the `material_ui` package and would need the app's Material imports migrated.
-  - **Final validation**: `flutter analyze` clean and full suite green on 3.47.9; Android release build compiled by CI. On-device visual check of the release build still to do (a past Flutter pin caused a rendering bug only visible in CI-built APKs).
+  - **Final validation**: `flutter analyze` clean and full suite green on 3.47.9; Android release build compiled by CI. On-device visual check done on the 0.15.1 alpha build (Pixel 10, 2026-11-11): no rendering defect.
 
 - [x] 🐛 - **History: loader while generating audio instead of an early Stop button** (issue #464)
   - **Verified**: 2026-09-28 (PR #465)
