@@ -515,7 +515,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
                       ? '${ctx.poi!.name}'
                           '${ctx.poi!.category != null ? ' (${ctx.poi!.category})' : ''}'
                           '${ctx.poi!.subtype != null ? ' — ${ctx.poi!.subtype}' : ''}'
-                      : l10n.nanoLabPoiNone,
+                      : ctx.geocodedPlaceName ?? l10n.nanoLabPoiNone,
                   style: theme.textTheme.bodyMedium,
                 ),
                 if (ctx.poi?.inscription != null) ...[
