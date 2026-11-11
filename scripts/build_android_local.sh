@@ -137,6 +137,11 @@ fi
 if ! grep -q 'TextToSpeechService' "$MANIFEST"; then
   $SED -i 's|</manifest>|<queries><intent><action android:name="android.speech.tts.engine.TextToSpeechService" /></intent></queries>\n</manifest>|' "$MANIFEST"
 fi
+# #477: same package-visibility rule for AICore — the Nano Prompt Lab's
+# benchmark export records its installed version.
+if ! grep -q 'com.google.android.aicore' "$MANIFEST"; then
+  $SED -i 's|</manifest>|<queries><package android:name="com.google.android.aicore" /></queries>\n</manifest>|' "$MANIFEST"
+fi
 # T85: a foreground service protects the app process's priority while an
 # analysis is in flight — without it, Android can kill the process while
 # backgrounded, silently dropping the analysis.
@@ -185,7 +190,8 @@ flutter pub get
 
 echo "==> Build APK (debug)"
 BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-flutter build apk --debug --dart-define=BUILD_DATE="$BUILD_DATE"
+flutter build apk --debug --dart-define=BUILD_DATE="$BUILD_DATE" \
+  --dart-define=GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unavailable)"
 
 APK="build/app/outputs/flutter-apk/app-debug.apk"
 echo ""

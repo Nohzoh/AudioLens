@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Nano Prompt Lab: export pipeline runs as benchmark JSON** (issue #477)
+  - **Verified**: 2026-11-11 (PR #488)
+  - **What was done**: in full-pipeline mode, each run is kept for the session (optional benchmark case id, variant, settings, GPS, resolved location context) and "Export runs" shares a JSON file in the `benchmark/results/nano_template.json` format. The native cascade now reports per-segment timings, the name of the model actually loaded and the available system memory before and at its lowest during the run; the export adds device, Android, AICore, app, Git commit and ML Kit versions. Memory is a proxy (AICore runs in its own process). `PROTOCOL.md` describes the new Nano procedure.
+  - **Final validation**: export shape, title split, failed run and ML Kit version sync tests; full suite and `flutter analyze` green; Kotlin compiled by CI. On-device check still to do.
 - [x] ✨ - **Location context trace kept with each analysis** (issue #481)
   - **Verified**: 2026-11-11 (PR #487)
   - **What was done**: each analysis now stores which place was named to the model (from Overpass or from reverse geocoding, with its OSM category), the Wikidata summary and the titles of the Wikipedia articles injected. Shown in "About this analysis", in the copied debug info and in feedback reports; older entries say the context was not recorded. New nullable `locationTrace` column, DB schema v13.

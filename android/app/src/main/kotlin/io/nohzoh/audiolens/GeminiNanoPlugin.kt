@@ -1,6 +1,8 @@
 package io.nohzoh.audiolens
 
+import android.app.ActivityManager
 import android.content.Context
+import android.os.Build
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
 import com.google.mlkit.genai.common.DownloadStatus
@@ -23,7 +25,10 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -228,6 +233,34 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private fun newClient(config: GenerationConfig?): GenerativeModel =
         if (config == null) Generation.getClient() else Generation.getClient(config)
+
+    // #477: system-wide available memory, in MB. The model runs in
+    // AICore's own process, whose memory this app cannot read, so the
+    // drop in available system memory during a run is the closest
+    // measurable proxy for what inference costs.
+    private fun availMemMb(): Long {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        return info.availMem / (1024 * 1024)
+    }
+
+    private fun totalMemMb(): Long {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        return info.totalMem / (1024 * 1024)
+    }
+
+    // #477: AICore's installed version, null when the package is absent
+    // or not visible (needs the <queries> entry patched into the manifest).
+    private fun aicoreVersion(): String? = try {
+        val info = context.packageManager.getPackageInfo("com.google.android.aicore", 0)
+        val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else 0L
+        "${info.versionName} ($code)"
+    } catch (e: Exception) {
+        null
+    }
 
     // #434: typed title/text for segment 1 when the device supports
     // structured output, else (or if the typed call fails in any way
@@ -529,6 +562,20 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // étapes intermédiaires" for a full end-to-end run (real
             // location context in, real 3-call cascade out), not just a
             // single free-form call like "rawPrompt" below.
+            // #477: device and AICore details for benchmark exports.
+            "environmentInfo" -> {
+                result.success(
+                    mapOf(
+                        "deviceManufacturer" to Build.MANUFACTURER,
+                        "deviceModel" to Build.MODEL,
+                        "androidVersion" to Build.VERSION.RELEASE,
+                        "sdkInt" to Build.VERSION.SDK_INT,
+                        "aicoreVersion" to aicoreVersion(),
+                        "totalMemMb" to totalMemMb()
+                    )
+                )
+            }
+
             "describeImageDebug" -> {
                 val imagePath = call.argument<String>("imagePath")
                 val locationContext = call.argument<String>("locationContext")
@@ -553,16 +600,30 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                 scope.launch {
                     val model = if (config != null) newClient(config) else sharedModel!!
+                    // #477: sample available system memory while the
+                    // cascade runs; the lowest reading gives the peak cost.
+                    val availMemBefore = availMemMb()
+                    var minAvailMem = availMemBefore
+                    var memSampler: Job? = null
                     try {
+                        memSampler = launch {
+                            while (isActive) {
+                                val now = availMemMb()
+                                if (now < minAvailMem) minAvailMem = now
+                                delay(100)
+                            }
+                        }
                         val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
                         val bitmap = BitmapFactory.decodeFile(imagePath, opts)
                             ?: throw Exception("Cannot decode image")
 
                         currentSegment = 1
+                        val seg1Start = System.nanoTime()
                         val seg1Result = runSeg1(
                             model, bitmap, locationContext, style, language,
                             nanoMaxOutputTokens, nanoTemperature
                         )
+                        val seg1Ms = (System.nanoTime() - seg1Start) / 1_000_000
                         val seg1Prompt = seg1Result.prompt
                         val seg1 = seg1Result.text
 
@@ -574,8 +635,10 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
                         }
+                        val seg2Start = System.nanoTime()
                         val seg2 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
+                        val seg2Ms = (System.nanoTime() - seg2Start) / 1_000_000
 
                         currentSegment = 3
                         val seg3Prompt = buildSeg3Prompt("$seg1 $seg2", style, locationContext)
@@ -583,8 +646,19 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
                         }
+                        val seg3Start = System.nanoTime()
                         val seg3 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
+                        val seg3Ms = (System.nanoTime() - seg3Start) / 1_000_000
+
+                        memSampler?.cancel()
+                        // Name of the model actually loaded (it can change
+                        // with an AICore update, without any app update).
+                        val baseModelName = try {
+                            model.getBaseModelName()
+                        } catch (e: Exception) {
+                            null
+                        }
 
                         val fullText = listOf(seg1, seg2, seg3)
                             .filter { it.isNotBlank() }
@@ -601,7 +675,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             "seg2Output" to seg2,
                             "seg3Prompt" to seg3Prompt,
                             "seg3Output" to seg3,
-                            "fullText" to fullText
+                            "fullText" to fullText,
+                            "seg1Ms" to seg1Ms,
+                            "seg2Ms" to seg2Ms,
+                            "seg3Ms" to seg3Ms,
+                            "baseModelName" to baseModelName,
+                            "availMemBeforeMb" to availMemBefore,
+                            "minAvailMemMb" to minAvailMem
                         )
                         withContext(Dispatchers.Main) { result.success(payload) }
                     } catch (e: TimeoutCancellationException) {
@@ -617,6 +697,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             result.error("INFERENCE_ERROR", e.message, null)
                         }
                     } finally {
+                        memSampler?.cancel()
                         if (config != null) model.close()
                     }
                 }
