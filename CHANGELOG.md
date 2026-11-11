@@ -20,6 +20,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **Verified**: 2026-11-11 (PR #487)
   - **What was done**: each analysis now stores which place was named to the model (from Overpass or from reverse geocoding, with its OSM category), the Wikidata summary and the titles of the Wikipedia articles injected. Shown in "About this analysis", in the copied debug info and in feedback reports; older entries say the context was not recorded. New nullable `locationTrace` column, DB schema v13.
   - **Final validation**: migration tests (all older schemas to v13), storage round-trip across reopen, empty/unreadable trace, resolver trace for the POI and geocode cases; full suite and `flutter analyze` green. On-device check still to do.
+- [x] 🐛 - **History: cards no longer appear later and later while scrolling** (issue #489)
+  - **Verified**: 2026-11-11 (PR #490)
+  - **What was done**: the cards' entrance animation had a delay of 50 ms times the card's index; since the list builds cards lazily, a card far down waited seconds before fading in. Only the first 8 cards are staggered now. Thumbnails are decoded at thumbnail size instead of the full 1280 px photo.
+  - **Final validation**: test on the entrance delay; full suite and `flutter analyze` green. On-device check still to do.
 
 - [x] ✨ - **Location context: use the place name returned by reverse geocoding** (issue #482)
   - **Verified**: 2026-11-11 (PR #483)
