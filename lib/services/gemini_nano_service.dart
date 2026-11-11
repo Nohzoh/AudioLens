@@ -96,6 +96,25 @@ class NanoDebugCascadeResult {
   final String? seg1FinishReason;
   final String? seg1FallbackReason;
 
+  /// #477: time spent in each segment's inference, measured natively.
+  final int? seg1Ms;
+  final int? seg2Ms;
+  final int? seg3Ms;
+
+  /// #477: name of the model AICore actually loaded for this run.
+  final String? baseModelName;
+
+  /// #477: available system memory before the run and its lowest value
+  /// during it, in MB. The model runs in AICore's process, which the app
+  /// cannot inspect, so their difference is the measurable proxy for
+  /// the peak memory cost of inference.
+  final int? availMemBeforeMb;
+  final int? minAvailMemMb;
+
+  int? get peakMemoryDropMb => availMemBeforeMb != null && minAvailMemMb != null
+      ? availMemBeforeMb! - minAvailMemMb!
+      : null;
+
   const NanoDebugCascadeResult({
     required this.seg1Prompt,
     required this.seg1Output,
@@ -108,6 +127,12 @@ class NanoDebugCascadeResult {
     required this.seg3Prompt,
     required this.seg3Output,
     required this.fullText,
+    this.seg1Ms,
+    this.seg2Ms,
+    this.seg3Ms,
+    this.baseModelName,
+    this.availMemBeforeMb,
+    this.minAvailMemMb,
   });
 }
 
@@ -331,6 +356,18 @@ class GeminiNanoService implements AIService {
     }
   }
 
+  /// #477: device model, Android version, AICore version and total RAM,
+  /// for benchmark exports. Empty when the platform call fails.
+  Future<Map<String, dynamic>> environmentInfo() async {
+    try {
+      return await _channel.invokeMapMethod<String, dynamic>('environmentInfo') ?? {};
+    } on PlatformException {
+      return {};
+    } on MissingPluginException {
+      return {};
+    }
+  }
+
   /// #276: Nano Prompt Lab's "full pipeline" mode — runs the exact same
   /// 3-segment cascade as [analyzeImage] (same prompt scaffolding,
   /// truncation, timeout handling on the native side), but returns each
@@ -380,6 +417,12 @@ class GeminiNanoService implements AIService {
         seg3Prompt: result['seg3Prompt'] as String? ?? '',
         seg3Output: result['seg3Output'] as String? ?? '',
         fullText: result['fullText'] as String? ?? '',
+        seg1Ms: (result['seg1Ms'] as num?)?.toInt(),
+        seg2Ms: (result['seg2Ms'] as num?)?.toInt(),
+        seg3Ms: (result['seg3Ms'] as num?)?.toInt(),
+        baseModelName: result['baseModelName'] as String?,
+        availMemBeforeMb: (result['availMemBeforeMb'] as num?)?.toInt(),
+        minAvailMemMb: (result['minAvailMemMb'] as num?)?.toInt(),
       );
     } on PlatformException catch (e) {
       if (e.message?.contains('Background usage is blocked') ?? false) {

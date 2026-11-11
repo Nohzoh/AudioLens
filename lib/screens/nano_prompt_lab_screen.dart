@@ -1,13 +1,19 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../l10n/app_localizations.dart';
 import '../services/gemini_nano_service.dart';
 import '../services/location_context_resolver.dart';
 import '../services/settings_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/error_sanitizer.dart';
+import '../utils/nano_lab_export.dart';
 
 /// One past call, kept in memory only (session-scoped) so recent attempts
 /// can be reloaded into the form for quick side-by-side comparison without
@@ -104,6 +110,10 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   NanoModelVariant? _pipelineVariant;
   String? _pipelineError;
   Duration? _pipelineElapsed;
+  // #477: every pipeline run of the session, for the benchmark export.
+  final _caseIdController = TextEditingController();
+  final List<NanoLabRun> _pipelineRuns = [];
+  bool _exporting = false;
 
   @override
   void initState() {
@@ -152,6 +162,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
     _temperatureController.dispose();
     _latController.dispose();
     _lonController.dispose();
+    _caseIdController.dispose();
     _nano.dispose();
     super.dispose();
   }
@@ -287,6 +298,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       _pipelineError = null;
     });
 
+    final startedAt = DateTime.now();
     final stopwatch = Stopwatch()..start();
     NanoDebugCascadeResult? result;
     String? error;
@@ -311,7 +323,59 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       _debugResult = result;
       _pipelineError = error;
       _pipelineElapsed = stopwatch.elapsed;
+      final caseId = _caseIdController.text.trim();
+      _pipelineRuns.add(NanoLabRun(
+        startedAt: startedAt,
+        caseId: caseId.isEmpty ? null : caseId,
+        variant: variant,
+        priorRunsForVariant: _pipelineRuns.where((r) => r.variant == variant).length,
+        style: settings.scriptStyle,
+        language: settings.outputLanguage,
+        maxOutputTokens: maxTokens,
+        temperature: temperature,
+        latitude: _locationContext?.latitude,
+        longitude: _locationContext?.longitude,
+        locationContext: _locationContext?.promptContext,
+        result: result,
+        error: error,
+        elapsed: stopwatch.elapsed,
+      ));
     });
+  }
+
+  /// #477: writes the session's pipeline runs to a JSON file in the
+  /// benchmark result format and opens the share sheet.
+  Future<void> _exportRuns() async {
+    if (_pipelineRuns.isEmpty || _exporting) return;
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _exporting = true);
+    try {
+      final environment = await _nano.environmentInfo();
+      final package = await PackageInfo.fromPlatform();
+      final export = buildNanoLabExport(
+        runs: _pipelineRuns,
+        environment: environment,
+        appVersion: package.version,
+        appBuildNumber: package.buildNumber,
+      );
+      final stamp = DateTime.now()
+          .toUtc()
+          .toIso8601String()
+          .replaceAll(RegExp(r'[-:]'), '')
+          .split('.')
+          .first;
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/nano_$stamp.json');
+      await file.writeAsString(const JsonEncoder.withIndent('  ').convert(export));
+      AppLogger.ai('Nano Lab: exported ${_pipelineRuns.length} run(s)');
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+    } catch (e) {
+      AppLogger.error('Nano Lab export failed: ${sanitizeError(e)}');
+      messenger.showSnackBar(SnackBar(content: Text(l10n.nanoLabExportFailed)));
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
   }
 
   @override
@@ -550,6 +614,16 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       const SizedBox(height: 16),
       _buildKnobsRow(l10n),
       const SizedBox(height: 12),
+      // #477
+      TextField(
+        controller: _caseIdController,
+        decoration: InputDecoration(
+          labelText: l10n.nanoLabCaseId,
+          helperText: l10n.nanoLabCaseIdHint,
+          border: const OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 12),
       if (_image == null) ...[
         Text(l10n.nanoLabImageRequired,
             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
@@ -567,6 +641,15 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         onPressed: (_runningPipeline || _image == null || !_variantReady) ? null : _runPipeline,
         style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
       ),
+      if (_pipelineRuns.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.ios_share, size: 18),
+          label: Text(l10n.nanoLabExportRuns(_pipelineRuns.length)),
+          onPressed: _exporting ? null : _exportRuns,
+          style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 44)),
+        ),
+      ],
       const SizedBox(height: 20),
       if (_pipelineError != null) ...[
         _errorBox(theme, _pipelineError!),
@@ -599,6 +682,18 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         ],
       ),
       _outputBox(theme, r.fullText),
+      // #477: per-segment timings, model actually loaded, memory cost.
+      if (r.seg1Ms != null) ...[
+        const SizedBox(height: 8),
+        Text(
+          [
+            '${r.seg1Ms} + ${r.seg2Ms} + ${r.seg3Ms} ms',
+            if (r.baseModelName != null) r.baseModelName!,
+            if (r.peakMemoryDropMb != null) l10n.nanoLabMemoryDrop(r.peakMemoryDropMb!),
+          ].join(' · '),
+          style: theme.textTheme.labelSmall,
+        ),
+      ],
       const SizedBox(height: 16),
       if (r.seg1Mode != null) ...[
         Text(
