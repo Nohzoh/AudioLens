@@ -14,7 +14,7 @@ Les coordonnées ci-dessous sont celles à saisir dans le Prompt Lab.
 | `bce_francfort` | architecture moderne, hors de France | sur le Main, face à la tour (à relever) | manuelle | Siège de la Banque centrale européenne, Francfort (Ostend), vu depuis le Main ; grue portuaire au premier plan |
 | `wehrlose_buerger_aschaffenburg` | sculpture en extérieur, inscription lisible (allemand) | 49.9774116, 9.1460606 | appareil | Mémorial « Wehrlose Bürger », Friedrichstraße, Aschaffenburg (expulsés de Graslitz). Titre correct de l'app le 2026-11-11. Visage flouté |
 | `heidelberg_panorama` | panorama, plusieurs sujets | ≈ 49.4160, 8.7098 | manuelle, approximative | Vue sur la vieille ville de Heidelberg depuis le Philosophenweg : château, Vieux Pont, église du Saint-Esprit, Neckar |
-| `tramway_tours_paris13` | sujet ambigu (pas de sujet unique), architecture moderne | boulevard du Général-d'Armée-Jean-Simon, Paris 13e, plateforme du tramway T3a (à relever) | manuelle | Tours Duo (Jean Nouvel) au fond, tour M6B2 dite de la Biodiversité (Édouard François) à gauche, voies engazonnées du T3a au premier plan. L'app a produit un bon script sur ce cas (tours identifiées, lieu correct) : cas de référence « réussite » malgré l'absence de sujet unique |
+| `tramway_tours_paris13` | sujet ambigu (pas de sujet unique), architecture moderne | 48.8242535, 2.377508 (boulevard du Général-d'Armée-Jean-Simon, Paris 13e) | appareil | Tours Duo (Jean Nouvel) au fond, tour M6B2 dite de la Biodiversité (Édouard François) à gauche, voies engazonnées du T3a au premier plan. L'app a produit un bon script sur ce cas le 2026-09-08 (`gemini-3.5-flash` en repli, prompt v1 ; tours identifiées, lieu correct) : cas de référence « réussite » malgré l'absence de sujet unique |
 
 ## Notes
 
