@@ -1,3 +1,3 @@
-New: with local AI enabled, pick in Settings which Gemini Nano model runs your analyses (including preview models, when your phone offers them).
+New: AudioLens identifies the place you are at (church, museum, monument) more reliably, using the name given by the map; with local AI, pick in Settings which Gemini Nano model is used.
 
-Fixes: in the history, "Generate audio" now shows a waiting state while the audio is prepared instead of an early "Stop" button; internal components updated.
+Fixes: in the history, "Generate audio" shows a waiting state while the audio is prepared; internal components updated.
