@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Scripts: stage directions stripped; Nano Prompt Lab export matches production** (issues #492, #493)
+  - **Verified**: 2026-11-11 (PR #494)
+  - **What was done**: `cleanMarkdown` removes a narrator note such as "(Voix douce et chaleureuse)" (seen in a real Nano run, and read aloud by the TTS) and a paragraph-opening ellipsis, for both pipelines. The lab export's `script` is now the production-assembled text, `temperature` the value actually sent, and memory is read from the kernel's `MemAvailable` (Android's `availMem` read 0 during a run) with the `lowMemory` flag alongside.
+  - **Final validation**: cleanup tests (stage direction removed, in-sentence parentheticals kept), export tests; full suite and `flutter analyze` green; Kotlin compiled by CI. First device export (Pixel 10) confirmed timings, AICore version, base model name, commit and location context; the new memory reading still to check on device.
+
 - [x] ✨ - **Nano Prompt Lab: export pipeline runs as benchmark JSON** (issue #477)
   - **Verified**: 2026-11-11 (PR #488)
   - **What was done**: in full-pipeline mode, each run is kept for the session (optional benchmark case id, variant, settings, GPS, resolved location context) and "Export runs" shares a JSON file in the `benchmark/results/nano_template.json` format. The native cascade now reports per-segment timings, the name of the model actually loaded and the available system memory before and at its lowest during the run; the export adds device, Android, AICore, app, Git commit and ML Kit versions. Memory is a proxy (AICore runs in its own process). `PROTOCOL.md` describes the new Nano procedure.
