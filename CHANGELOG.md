@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔧 - **Flutter 3.47.9 and refreshed Dart dependencies** (issue #479)
+  - **Verified**: 2026-11-11 (PR #480)
+  - **What was done**: CI Flutter pin moved from 3.44.9 to 3.47.9 (Dart 3.13.7) and every package upgraded to its latest compatible version (about 65, including `flutter_local_notifications` 22 -> 23). `google_fonts` stays on 8.x: version 9 moves to the `material_ui` package and would need the app's Material imports migrated.
+  - **Final validation**: `flutter analyze` clean and full suite green on 3.47.9; Android release build compiled by CI. On-device visual check of the release build still to do (a past Flutter pin caused a rendering bug only visible in CI-built APKs).
+
 - [x] 🐛 - **History: loader while generating audio instead of an early Stop button** (issue #464)
   - **Verified**: 2026-09-28 (PR #465)
   - **What was done**: on a script-only entry, "Générer l'audio" no longer turns into "Arrêter" while TTS is still synthesizing. The button now shows a disabled "Génération de l'audio..." label with a spinner while `AudioGuideService` is in the `synthesizing` state, then switches to Stop (and the ±10s buttons) once playback actually starts.
