@@ -142,7 +142,7 @@ via les services Google Play, sans mise à jour de l'app.
 
 **Mémoire** : le modèle tourne dans le processus d'AICore, que l'app ne
 peut pas inspecter. L'export donne donc la mémoire système disponible
-avant le run et son minimum pendant le run ; leur différence
+(`MemAvailable` du noyau) avant le run et son minimum pendant le run ; leur différence
 (`peak_memory_drop_mb`) est une approximation du coût mémoire de
 l'inférence, sensible à ce que le reste du système fait au même moment.
 À comparer entre variantes sur le même appareil, pas en valeur absolue.

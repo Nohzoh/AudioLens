@@ -238,11 +238,37 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     // AICore's own process, whose memory this app cannot read, so the
     // drop in available system memory during a run is the closest
     // measurable proxy for what inference costs.
+    //
+    // #493: read from the kernel's MemAvailable rather than
+    // ActivityManager.MemoryInfo.availMem — the latter is clamped at the
+    // low-memory threshold (a first device export read 0), so it
+    // saturates exactly when a model is loaded. Falls back to availMem
+    // if /proc/meminfo cannot be read.
     private fun availMemMb(): Long {
+        try {
+            java.io.File("/proc/meminfo").useLines { lines ->
+                for (line in lines) {
+                    if (line.startsWith("MemAvailable:")) {
+                        val kb = line.filter { it.isDigit() }.toLongOrNull()
+                        if (kb != null) return kb / 1024
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // fall through
+        }
         val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val info = ActivityManager.MemoryInfo()
         am.getMemoryInfo(info)
         return info.availMem / (1024 * 1024)
+    }
+
+    // #493: whether Android considers the system low on memory right now.
+    private fun isLowMemory(): Boolean {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        return info.lowMemory
     }
 
     private fun totalMemMb(): Long {
@@ -664,6 +690,16 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             .filter { it.isNotBlank() }
                             .joinToString(" ")
 
+                        // #493: the script as describeImage would have
+                        // assembled it (same ellipsis/echo cleanup), so a
+                        // benchmark export scores what a user would hear.
+                        var productionText = seg1
+                        productionText = listOf(productionText, dropOverlapWithAccumulated(productionText, seg2))
+                            .filter { it.isNotBlank() }.joinToString(" ")
+                        productionText = listOf(productionText, dropOverlapWithAccumulated(productionText, seg3))
+                            .filter { it.isNotBlank() }.joinToString(" ")
+                        val lowMemoryAfter = isLowMemory()
+
                         val payload = mapOf(
                             "seg1Prompt" to seg1Prompt,
                             "seg1Output" to seg1,
@@ -681,7 +717,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             "seg3Ms" to seg3Ms,
                             "baseModelName" to baseModelName,
                             "availMemBeforeMb" to availMemBefore,
-                            "minAvailMemMb" to minAvailMem
+                            "minAvailMemMb" to minAvailMem,
+                            "lowMemoryAfter" to lowMemoryAfter,
+                            "productionText" to productionText
                         )
                         withContext(Dispatchers.Main) { result.success(payload) }
                     } catch (e: TimeoutCancellationException) {
