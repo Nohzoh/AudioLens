@@ -2,9 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/gemini_nano_service.dart';
 import '../services/location_context_resolver.dart';
+import '../services/settings_service.dart';
+import '../utils/app_logger.dart';
 
 /// One past call, kept in memory only (session-scoped) so recent attempts
 /// can be reloaded into the form for quick side-by-side comparison without
@@ -91,6 +94,10 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   final _lonController = TextEditingController();
   bool _resolvingLocation = false;
   LocationContext? _locationContext;
+  // #460: the coordinates [_locationContext] was resolved from, so a run
+  // with coordinates typed but never resolved (or edited since) resolves
+  // them first instead of silently running without any location.
+  ({double lat, double lon})? _resolvedFor;
   String? _locationError;
   bool _runningPipeline = false;
   NanoDebugCascadeResult? _debugResult;
@@ -231,6 +238,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
     setState(() {
       _resolvingLocation = true;
       _locationContext = null;
+      _resolvedFor = null;
       _locationError = null;
     });
 
@@ -246,17 +254,31 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
     setState(() {
       _resolvingLocation = false;
       _locationContext = ctx;
+      _resolvedFor = ctx != null ? (lat: lat, lon: lon) : null;
       _locationError = error;
     });
   }
 
   Future<void> _runPipeline() async {
     final image = _image;
-    if (image == null || _runningPipeline) return;
+    if (image == null || _runningPipeline || _resolvingLocation) return;
+
+    // #460: coordinates typed but not (or no longer) resolved used to be
+    // silently ignored — the run went out with no location at all.
+    final lat = double.tryParse(_latController.text.trim());
+    final lon = double.tryParse(_lonController.text.trim());
+    if (lat != null && lon != null && _resolvedFor != (lat: lat, lon: lon)) {
+      AppLogger.ai('Nano Lab: resolving location before pipeline run');
+      await _resolveLocation();
+      if (!mounted) return;
+    }
 
     final maxTokens = int.tryParse(_maxTokensController.text) ?? 256;
     final temperature = double.tryParse(_temperatureController.text);
     final variant = _variant;
+    // #460: same style/language production passes (analysis_runner.dart),
+    // so the lab runs the prompts a real analysis would.
+    final settings = context.read<SettingsService>();
 
     setState(() {
       _runningPipeline = true;
@@ -272,6 +294,8 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       result = await _nano.describeImageDebug(
         imageFile: image,
         locationContext: _locationContext?.promptContext,
+        style: settings.scriptStyle,
+        language: settings.outputLanguage,
         maxOutputTokens: maxTokens,
         temperature: temperature,
         variant: variant,

@@ -131,6 +131,13 @@ class AudioGuideService extends ChangeNotifier {
     if (svc is GeminiApiService) return svc.lastUsedModel;
     return _lastAiModel;
   }
+  /// #462: 'Gemini Nano', plus the variant when the analysis ran on a
+  /// non-default one, so the history shows which model wrote the script.
+  String _nanoModelLabel() {
+    final variant = _providerManager.nanoService.lastUsedVariant;
+    return variant == null ? 'Gemini Nano' : 'Gemini Nano (${variant.label})';
+  }
+
   bool get ttsWasFallback =>
       _lastTtsModel == 'native-tts' && _providerManager.geminiTtsService != null;
   bool get ttsFallbackWasRateLimit => _ttsOrchestrator.wasRateLimited;
@@ -305,6 +312,7 @@ class AudioGuideService extends ChangeNotifier {
     ({double lat, double lon, String source})? knownCoordinates,
     String? style,
     String? language,
+    NanoModelVariant? nanoVariant,
     int? entryId,
   }) async {
     if (_analysisInProgress || _state == GuideState.cancelling) {
@@ -335,6 +343,9 @@ class AudioGuideService extends ChangeNotifier {
     try {
       _lastResult = null;
       _lastProviderFallbackToNano = false;
+      // #462: the Settings choice, for this analysis and any Nano
+      // fallback it triggers.
+      _providerManager.nanoService.preferredVariant = nanoVariant;
       _state = GuideState.locating;
       _currentStep = 0;
       _progressEstimator.stepProgress = 0.0;
@@ -430,7 +441,7 @@ class AudioGuideService extends ChangeNotifier {
               language: language,
             );
             _lastProviderFallbackToNano = true;
-            _lastAiModel = 'Gemini Nano';
+            _lastAiModel = _nanoModelLabel();
           } on GeminiNanoBackgroundRestrictedException {
             throw const GuideError(GuideErrorKind.aiFallbackBackgroundRestricted);
           }
@@ -444,6 +455,7 @@ class AudioGuideService extends ChangeNotifier {
               : GuideError(GuideErrorKind.aiGeneric, message);
         }
       }
+      if (service is GeminiNanoService) _lastAiModel = _nanoModelLabel();
       final analysisDuration = DateTime.now().difference(analyzeStart).inMilliseconds;
       _lastAnalysisDurationMs = analysisDuration;
       _progressEstimator.recordAnalyzeDuration(analysisDuration / 1000.0);

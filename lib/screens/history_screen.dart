@@ -1722,6 +1722,13 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                       child: Consumer<AudioGuideService>(
                         builder: (context, guide, _) {
                           final showSkip = _canSkip(live, guide);
+                          // TTS for a script-only entry is still being
+                          // synthesized — playback hasn't started yet, so
+                          // show a disabled loader instead of a Stop button
+                          // that implied audio was already playing.
+                          final generating = _isPlaying &&
+                              guide.isBusy &&
+                              guide.state == GuideState.synthesizing;
                           return Row(
                             children: [
                               // Skip only when the current playback is
@@ -1736,14 +1743,22 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                               ],
                               Expanded(
                                 child: FilledButton.icon(
-                                  onPressed: _toggleAudio,
-                                  icon: Icon(_isPlaying
+                                  onPressed: generating ? null : _toggleAudio,
+                                  icon: generating
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2))
+                                      : Icon(_isPlaying
                                       ? Icons.stop
                                       : ((live.hasAudio ||
                                               live.hasLowQualityTts)
                                           ? Icons.play_arrow
                                           : Icons.auto_awesome)),
-                                  label: Text(_isPlaying
+                                  label: Text(generating
+                                      ? l10n.historyGeneratingAudio
+                                      : _isPlaying
                                       ? l10n.historyStop
                                       : ((live.hasAudio ||
                                               live.hasLowQualityTts)

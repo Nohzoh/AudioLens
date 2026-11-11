@@ -9,9 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audiolens/screens/about_analysis_screen.dart';
 import 'package:audiolens/screens/history_screen.dart';
+import 'package:audiolens/services/analysis_foreground_service.dart';
 import 'package:audiolens/services/audio_guide_service.dart';
+import 'package:audiolens/services/audio_ready_notifier.dart';
 import 'package:audiolens/services/history_service.dart';
 import 'package:audiolens/services/settings_service.dart';
+import 'package:audiolens/utils/cancel_token.dart';
 import 'package:audiolens/widgets/background_photo.dart';
 import '../support/service_fakes.dart';
 
@@ -320,6 +323,53 @@ void main() {
 
       expect(find.byIcon(Icons.replay_10), findsNothing);
       expect(find.byIcon(Icons.forward_10), findsNothing);
+    });
+  });
+
+  // Script-only entry (audio generation was off at analysis time): while
+  // TTS is still synthesizing, the button used to already read "Stop" as
+  // if playback had started. It now shows a disabled loader until the
+  // service reports playback actually started.
+  group('generate audio button', () {
+    testWidgets('shows a disabled loader while TTS is synthesizing, then Stop',
+        (tester) async {
+      final speakGate = Completer<void>();
+      guide = AudioGuideService(
+        nativeTtsService: _GatedNativeTts(speakGate),
+        foregroundService: _NoopForegroundService(),
+        audioReadyNotifier: _NoopAudioReadyNotifier(),
+      );
+      await tester.runAsync(() => history.addEntry(
+            imagePath: imagePath,
+            title: 'La Joconde',
+            script: 'Bienvenue.',
+          ));
+
+      await tester.pumpWidget(wrapScreen());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('La Joconde'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Générer l\'audio'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(guide.state, GuideState.synthesizing);
+      expect(find.text('Génération de l\'audio...'), findsOneWidget);
+      expect(find.text('Arrêter'), findsNothing);
+      final button = tester.widget<ButtonStyleButton>(find.ancestor(
+          of: find.text('Génération de l\'audio...'),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton)));
+      expect(button.onPressed, isNull);
+
+      speakGate.complete();
+      await tester.pump();
+      await tester.pump();
+
+      expect(guide.state, GuideState.speaking);
+      expect(find.text('Génération de l\'audio...'), findsNothing);
+      expect(find.text('Arrêter'), findsOneWidget);
     });
   });
 
@@ -806,4 +856,34 @@ void main() {
       expect(find.text('3 sélectionnées'), findsNothing);
     });
   });
+}
+
+/// Native TTS whose speak() only returns once [gate] completes — i.e.
+/// synthesis is "in progress" until the test releases it. Never fires
+/// onComplete, so playback then stays "active" for the assertions.
+class _GatedNativeTts extends FakeNativeTts {
+  final Completer<void> gate;
+  _GatedNativeTts(this.gate);
+
+  @override
+  Future<void> speak(String text,
+      {CancelToken? cancelToken, double speed = 1.0}) => gate.future;
+}
+
+/// The real plugins (foreground task, local notifications) are unavailable
+/// here and their calls never resolve under the widget test zone.
+class _NoopForegroundService extends AnalysisForegroundService {
+  @override
+  Future<void> start() async {}
+  @override
+  Future<void> stop() async {}
+}
+
+class _NoopAudioReadyNotifier extends AudioReadyNotifier {
+  @override
+  Future<void> requestPermissionIfNeeded() async {}
+  @override
+  Future<void> notifyReady({String? payload}) async {}
+  @override
+  Future<void> notifyFailed() async {}
 }

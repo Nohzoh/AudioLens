@@ -2,6 +2,7 @@ import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/output_languages.dart';
+import 'gemini_nano_service.dart' show NanoModelVariant;
 import 'secure_key_storage.dart';
 
 class SettingsService extends ChangeNotifier {
@@ -11,6 +12,7 @@ class SettingsService extends ChangeNotifier {
   bool _showKofiButton = true;
   bool _autoGenerateAudio = true;
   String _scriptStyle = 'immersive';
+  NanoModelVariant? _nanoModelVariant;
   bool _autoPurgeEnabled = false;
   int _autoPurgeDays = 30;
   ThemeMode _themeMode = ThemeMode.system;
@@ -42,6 +44,10 @@ class SettingsService extends ChangeNotifier {
   /// passed to the AI prompt (both cloud and on-device) to steer the
   /// script's tone and length (T75/T48).
   String get scriptStyle => _scriptStyle;
+
+  /// #462: the Gemini Nano model variant analyses run on — null (the
+  /// default) means ML Kit's default model (Stable/Full).
+  NanoModelVariant? get nanoModelVariant => _nanoModelVariant;
 
   /// #130 — the narration's language, independent of the app's own
   /// interface language. Defaults to French (the narration's de-facto
@@ -147,6 +153,7 @@ class SettingsService extends ChangeNotifier {
     _showKofiButton = _prefs.getBool('show_kofi_button') ?? true;
     _autoGenerateAudio = _prefs.getBool('auto_generate_audio') ?? true;
     _scriptStyle = _prefs.getString('script_style') ?? 'immersive';
+    _nanoModelVariant = NanoModelVariant.fromKey(_prefs.getString('nano_model_variant'));
     _autoPurgeEnabled = _prefs.getBool('auto_purge_enabled') ?? false;
     _autoPurgeDays = _prefs.getInt('auto_purge_days') ?? 30;
     _themeMode = ThemeMode.values.byName(_prefs.getString('theme_mode') ?? 'system');
@@ -243,6 +250,16 @@ class SettingsService extends ChangeNotifier {
   Future<void> setScriptStyle(String value) async {
     _scriptStyle = value;
     await _prefs.setString('script_style', value);
+    notifyListeners();
+  }
+
+  Future<void> setNanoModelVariant(NanoModelVariant? value) async {
+    _nanoModelVariant = value;
+    if (value == null) {
+      await _prefs.remove('nano_model_variant');
+    } else {
+      await _prefs.setString('nano_model_variant', value.key);
+    }
     notifyListeners();
   }
 

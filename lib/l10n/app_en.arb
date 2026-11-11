@@ -104,6 +104,7 @@
   "historyStop": "Stop",
   "historyListen": "Listen to the commentary",
   "historyGenerateAudio": "Generate audio",
+  "historyGeneratingAudio": "Generating audio...",
   "commonSkipBack10": "Skip back 10 seconds",
   "commonSkipForward10": "Skip forward 10 seconds",
   "historyAllFilter": "All",
@@ -296,6 +297,9 @@
 
   "settingsViewSourceCode": "View source code",
   "settingsNanoPromptLab": "Nano Prompt Lab",
+  "settingsNanoModelTitle": "Local model",
+  "settingsNanoModelSubtitle": "Gemini Nano model used for analyses. Preview models are experimental.",
+  "settingsNanoModelNotReadyHint": "This model isn't ready yet: analyses use the default model until it is.",
   "nanoLabTitle": "Nano Prompt Lab",
   "nanoLabPickImage": "Pick an image",
   "nanoLabChangeImage": "Change image",
