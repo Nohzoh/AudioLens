@@ -80,10 +80,10 @@ jobs:
       - name: Install Android SDK 37 + NDK 27
         run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "ndk;28.2.13676358"
 
-      - name: Setup Flutter 3.44.9
+      - name: Setup Flutter 3.47.9
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.9'
+          flutter-version: '3.47.9'
           channel: 'stable'
           cache: true
 
