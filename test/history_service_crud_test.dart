@@ -105,7 +105,7 @@ void main() {
     }
   });
 
-  test('an empty location trace is stored as null, and unreadable JSON decodes to null',
+  test('an empty location trace is kept (#512), and unreadable JSON decodes to null',
       () async {
     final service = HistoryService();
     await service.init(dbPath: dbPath);
@@ -114,7 +114,12 @@ void main() {
     await service.completeEntry(
         entryId: pending.id!, title: 't', script: 's', locationTrace: const LocationTrace());
 
-    expect(service.entries.firstWhere((e) => e.id == pending.id).locationTrace, isNull);
+    for (final s in [service, HistoryService()]) {
+      if (s != service) await s.init(dbPath: dbPath);
+      final trace = s.entries.firstWhere((e) => e.id == pending.id).locationTrace;
+      expect(trace, isNotNull);
+      expect(trace!.isEmpty, isTrue);
+    }
     expect(LocationTrace.decode('not json'), isNull);
     expect(LocationTrace.decode('[]'), isNull);
     expect(LocationTrace.decode(null), isNull);

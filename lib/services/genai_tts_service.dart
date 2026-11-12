@@ -119,11 +119,91 @@ class GenAiTtsProbe {
   }
 }
 
-/// #485: probe of ML Kit's on-device generative Text to Speech
-/// (`GenAiTtsPlugin.kt`). Used by the Voice Lab only; the guide's voice
-/// chain does not use it yet.
+/// #485: how a [GenAiTtsService.speak] call ended.
+class GenAiSpeakResult {
+  /// Audio started playing.
+  final bool started;
+
+  /// Playback reached the end of the text.
+  final bool completed;
+
+  /// Playback was stopped (stopSpeaking, or replaced by another speak).
+  final bool stopped;
+
+  /// Milliseconds of audio received — about how far playback got.
+  final int playedMs;
+  final String? error;
+
+  const GenAiSpeakResult({
+    required this.started,
+    required this.completed,
+    required this.stopped,
+    required this.playedMs,
+    this.error,
+  });
+
+  factory GenAiSpeakResult.fromMap(Map<dynamic, dynamic> map) => GenAiSpeakResult(
+        started: map['started'] as bool? ?? false,
+        completed: map['completed'] as bool? ?? false,
+        stopped: map['stopped'] as bool? ?? false,
+        playedMs: (map['playedMs'] as num?)?.toInt() ?? 0,
+        error: map['error'] as String?,
+      );
+}
+
+/// #485: ML Kit's on-device generative Text to Speech (`GenAiTtsPlugin.kt`):
+/// the Voice Lab's probe, and guide playback with a generative voice
+/// through [speak] — Android's speech engine does not list these voices
+/// to other apps' TextToSpeech clients, so they can only be reached
+/// through ML Kit.
 class GenAiTtsService {
   static const _channel = MethodChannel('audio_guide/genai_tts');
+
+  /// Receives the milliseconds of audio played so far, during [speak].
+  /// Static: the platform side reports on one channel, whichever
+  /// instance started the playback.
+  static void Function(int playedMs)? _onPlayedMs;
+
+  /// Speaks [text] with the generative [voice] and completes once
+  /// playback is over. [onPlayedMs] is called about twice a second.
+  Future<GenAiSpeakResult> speak({
+    required String locale,
+    required String voice,
+    required String text,
+    void Function(int playedMs)? onPlayedMs,
+  }) async {
+    _onPlayedMs = onPlayedMs;
+    // Set here rather than in a constructor: the service is created in
+    // places that run before the Flutter binding exists (unit tests).
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onProgress') {
+        _onPlayedMs?.call((call.arguments as num).toInt());
+      }
+    });
+    try {
+      final raw = await _channel.invokeMapMethod<dynamic, dynamic>(
+          'speak', {'locale': locale, 'voice': voice, 'text': text});
+      return GenAiSpeakResult.fromMap(raw ?? const {});
+    } on PlatformException catch (e) {
+      return GenAiSpeakResult(
+          started: false, completed: false, stopped: false, playedMs: 0, error: e.message);
+    } on MissingPluginException {
+      return const GenAiSpeakResult(
+          started: false, completed: false, stopped: false, playedMs: 0, error: 'no plugin');
+    } finally {
+      if (_onPlayedMs == onPlayedMs) _onPlayedMs = null;
+    }
+  }
+
+  Future<void> stopSpeaking() async {
+    try {
+      await _channel.invokeMethod('stopSpeaking');
+    } on PlatformException {
+      // Nothing to stop.
+    } on MissingPluginException {
+      // Nothing to stop.
+    }
+  }
 
   /// Voices offered for [locale] (a BCP 47 tag such as `fr-FR`). Throws
   /// if the platform call fails — typically an unsupported device.

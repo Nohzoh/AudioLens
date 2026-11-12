@@ -16,6 +16,16 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Generative fallback voice played through ML Kit** (issue #511)
+  - **Verified**: 2026-11-12 (PR #513)
+  - **What was done**: on a Pixel 10, guides kept the old local voice after the Gemini TTS quota ran out: Android's speech engine does not list the generative voices to flutter_tts. The native voice now plays them through ML Kit (`GenAiTtsPlugin.speak`/`stopSpeaking`, one client kept warm), with progress from the audio received, stop, and resume at the sentence playback had reached (ML Kit has no pause). No rate control: the speed setting does not apply to this voice. Falls back to the usual voice for the session if the generative one fails before any audio.
+  - **Final validation**: tests for routing, fallback, no-voice cases, stop and resume point; full suite and `flutter analyze` green; Kotlin compiled by CI. Playback in a real guide still to check on device.
+
+- [x] 🐛 - **Debug info: empty location context no longer reads « not recorded »** (issue #512)
+  - **Verified**: 2026-11-12 (PR #513)
+  - **What was done**: an analysis that found neither a place nor an article stored no trace and looked like one made before #481. The empty trace is now stored; the debug info says « Place: none ».
+  - **Final validation**: storage round-trip test; full suite green.
+
 - [x] 🐛 - **History detail: unanalyzed entries reached by swiping can be analyzed** (issue #508)
   - **Verified**: 2026-11-12 (PR #509)
   - **What was done**: swiping in the detail screen to a captured entry showed « Générer l'audio », useless without a script. A captured entry now shows « Lancer l'analyse » and a pending or failed one « Relancer l'analyse », running the same functions as a tap on the card in the list.

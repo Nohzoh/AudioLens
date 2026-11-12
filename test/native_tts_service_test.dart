@@ -1,6 +1,45 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:async';
+import 'package:audiolens/services/genai_tts_service.dart';
 import 'package:audiolens/services/native_tts_service.dart';
+
+/// #485: stands in for ML Kit's generative voice.
+class _FakeSpeaker extends GenAiTtsService {
+  _FakeSpeaker({this.result, this.waitForStop = false});
+
+  final GenAiSpeakResult? result;
+  final bool waitForStop;
+  final spoken = <String>[];
+  final usedVoices = <String>[];
+  int stopCalls = 0;
+  Completer<GenAiSpeakResult>? _pending;
+
+  @override
+  Future<GenAiSpeakResult> speak({
+    required String locale,
+    required String voice,
+    required String text,
+    void Function(int playedMs)? onPlayedMs,
+  }) async {
+    spoken.add(text);
+    usedVoices.add(voice);
+    if (waitForStop) {
+      _pending = Completer();
+      return _pending!.future;
+    }
+    onPlayedMs?.call(500);
+    return result ??
+        const GenAiSpeakResult(started: true, completed: true, stopped: false, playedMs: 1000);
+  }
+
+  @override
+  Future<void> stopSpeaking() async {
+    stopCalls++;
+    _pending?.complete(
+        const GenAiSpeakResult(started: true, completed: false, stopped: true, playedMs: 300));
+  }
+}
 
 /// T68 — NativeTtsService had zero real coverage before this: every other
 /// test that touches it fakes it via a subclass overriding speak()
@@ -81,73 +120,107 @@ void main() {
 
   // #485
   group('generative voice', () {
-    test('is selected over the network voice when the engine lists it', () async {
-      installHandler([
-        ..._defaultVoices(),
-        {'name': 'fr-fr-x-star02', 'locale': 'fr-FR'},
-      ]);
+    test('a narration goes through ML Kit when the phone has the voice', () async {
+      final speaker = _FakeSpeaker();
+      var completed = 0;
+      final progress = <double>[];
       final asked = <String>[];
       final service = NativeTtsService()
+        ..generativeSpeaker = speaker
         ..generativeVoiceFinder = (locale, gender) async {
           asked.add('$locale|$gender');
           return 'fr-fr-x-star02';
-        };
+        }
+        ..onComplete = () {
+          completed++;
+        }
+        ..onProgress = progress.add;
 
-      await service.applyPreferredVoice();
-      await service.applyPreferredVoice();
+      await service.speak('Bonjour. Voici le monument.');
+      await pumpEventQueue();
+      await service.speak('Une autre phrase.');
+      await pumpEventQueue();
 
-      final setVoice = calls.where((c) => c.method == 'setVoice').toList();
-      expect(setVoice.map((c) => c.arguments),
-          everyElement({'name': 'fr-fr-x-star02', 'locale': 'fr-FR'}));
+      expect(speaker.spoken, ['Bonjour. Voici le monument.', 'Une autre phrase.']);
+      expect(speaker.usedVoices, everyElement('fr-fr-x-star02'));
+      expect(calls.where((c) => c.method == 'speak'), isEmpty,
+          reason: 'flutter_tts must not speak the same text');
+      expect(completed, 2);
+      expect(progress.last, 1.0);
       expect(service.activeVoiceName, 'fr-fr-x-star02');
-      // The lookup is cached once it has found a voice.
-      expect(asked, ['fr-FR|female']);
+      expect(asked, ['fr-FR|female'], reason: 'the lookup is cached once found');
     });
 
-    test('falls back to the network voice when the engine does not list it',
+    test('the usual voice takes over when the generative one fails before any audio',
         () async {
+      final speaker = _FakeSpeaker(
+          result: const GenAiSpeakResult(
+              started: false, completed: false, stopped: false, playedMs: 0, error: 'boom'));
       final service = NativeTtsService()
-        ..generativeVoiceFinder = (_, __) async => 'fr-fr-x-star02';
+        ..generativeSpeaker = speaker
+        ..generativeVoiceFinder = ((_, __) async => 'fr-fr-x-star02');
 
-      await service.applyPreferredVoice();
+      await service.speak('Premier guide.');
+      await pumpEventQueue();
+      await service.speak('Second guide.');
+      await pumpEventQueue();
 
+      final spoken = calls.where((c) => c.method == 'speak').map((c) => c.arguments).toList();
+      expect(spoken, ['Premier guide.', 'Second guide.']);
+      expect(speaker.spoken, ['Premier guide.'],
+          reason: 'after a failure the session sticks to the usual voice');
       final setVoice = calls.firstWhere((c) => c.method == 'setVoice');
       expect(setVoice.arguments, {'name': 'fr-fr-x-frc-network', 'locale': 'fr-FR'});
-      expect(service.activeVoiceName, 'fr-fr-x-frc-network');
     });
 
-    test('falls back when the phone has none, or the lookup fails', () async {
+    test('the usual voice is used when the phone has none, or the lookup fails',
+        () async {
       for (final finder in <Future<String?> Function(String, String)>[
         (_, __) async => null,
         (_, __) async => throw StateError('no such feature'),
       ]) {
         calls.clear();
-        final service = NativeTtsService()..generativeVoiceFinder = finder;
+        final speaker = _FakeSpeaker();
+        final service = NativeTtsService()
+          ..generativeSpeaker = speaker
+          ..generativeVoiceFinder = finder;
 
-        await service.applyPreferredVoice();
+        await service.speak('Bonjour.');
 
-        final setVoice = calls.firstWhere((c) => c.method == 'setVoice');
-        expect(setVoice.arguments, {'name': 'fr-fr-x-frc-network', 'locale': 'fr-FR'});
+        expect(speaker.spoken, isEmpty);
+        expect(calls.where((c) => c.method == 'speak').single.arguments, 'Bonjour.');
       }
     });
 
-    test('also applies outside French, where no network voice is hand-picked',
-        () async {
-      installHandler([
-        ..._defaultVoices(),
-        {'name': 'en-us-x-star05', 'locale': 'en-US'},
-      ]);
+    test('stop() stops ML Kit playback without a completion callback', () async {
+      final speaker = _FakeSpeaker(waitForStop: true);
+      var completed = 0;
       final service = NativeTtsService()
-        ..preferredLanguageLocale = 'en-US'
-        ..preferredGender = 'male'
-        ..generativeVoiceFinder = (locale, gender) async =>
-            locale == 'en-US' && gender == 'male' ? 'en-us-x-star05' : null;
+        ..generativeSpeaker = speaker
+        ..generativeVoiceFinder = ((_, __) async => 'fr-fr-x-star02')
+        ..onComplete = (() => completed++);
 
-      await service.applyPreferredVoice();
+      await service.speak('Un long guide.');
+      await pumpEventQueue();
+      expect(service.isPlaying, isTrue);
 
-      final setVoice = calls.firstWhere((c) => c.method == 'setVoice');
-      expect(setVoice.arguments, {'name': 'en-us-x-star05', 'locale': 'en-US'});
+      await service.stop();
+      await pumpEventQueue();
+
+      expect(speaker.stopCalls, 1);
+      expect(service.isPlaying, isFalse);
+      expect(completed, 0);
     });
+  });
+
+  test('generativeResumeText restarts at the sentence playback had reached', () {
+    const text = 'Première phrase ici. Deuxième phrase un peu plus longue. Troisième.';
+
+    expect(generativeResumeText(text, 0), text);
+    // 1.5 s at 18 characters per second = 27 characters, inside sentence 2.
+    expect(generativeResumeText(text, 1500),
+        'Deuxième phrase un peu plus longue. Troisième.');
+    expect(generativeResumeText(text, 600000), text);
   });
 
   test('speak() applies the speed multiplier on top of the tuned baseline rate',
