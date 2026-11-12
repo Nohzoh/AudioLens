@@ -116,22 +116,43 @@ appareil Android réel (ou un émulateur compatible) avec le modèle
 téléchargé, l'app au premier plan (cf. le commentaire sur
 `GeminiNanoBackgroundRestrictedException`).
 
-Procédure :
+Procédure (depuis #477, via le Nano Prompt Lab) :
 
-1. Sur l'appareil de test, utiliser AudioLens normalement avec les
-   mêmes photos que `benchmark/dataset/photos/` (les transférer sur
-   l'appareil, ou les reprendre avec la même localisation GPS si la
-   photo d'origine ne peut pas être réimportée avec ses coordonnées).
-2. Forcer le moteur Nano dans les réglages de l'app pour l'analyse.
-3. Copier le titre + script obtenus dans `results/nano_<date>.json`
-   (même schéma que la sortie du script cloud — un gabarit vide est
-   fourni dans `results/nano_template.json`).
-4. Noter la version d'Android / du module AICore sur l'appareil utilisé
-   (Réglages → À propos du téléphone → version des services Google
-   Play, ou `adb shell pm list packages --show-versioncode | grep aicore`)
-   — c'est un facteur de confusion à part entière : le modèle Nano peut
-   se mettre à jour silencieusement via Play Services sans mise à jour
-   de l'app.
+1. Transférer les photos de `benchmark/dataset/photos/` sur l'appareil.
+2. Ouvrir Réglages → Outils → Nano Prompt Lab, mode « pipeline
+   complet ». Choisir la variante de modèle à mesurer.
+3. Pour chaque cas : choisir la photo, saisir les coordonnées du
+   manifeste et l'identifiant du cas (`id` de `manifest.json`), lancer.
+   Faire deux runs par cas et par variante : le premier après
+   changement de variante est « à froid » (`prior_runs_for_variant` à
+   0), les suivants « à chaud ».
+4. « Exporter les runs » produit un fichier JSON au format de
+   `results/nano_template.json` : l'enregistrer sous
+   `results/nano_<date>.json`.
+
+L'export contient, sans saisie manuelle : le modèle et la version
+d'Android, la version d'AICore, la version et le commit de l'app, la
+version de ML Kit GenAI, la variante demandée et le nom du modèle
+réellement chargé, la latence totale et par segment, et le contexte de
+localisation résolu sur l'appareil.
+
+Le nom du modèle et la version d'AICore sont des facteurs de confusion
+à part entière : le modèle Nano peut se mettre à jour silencieusement
+via les services Google Play, sans mise à jour de l'app.
+
+**Variantes de prompt** : trois options du labo modifient les prompts
+pour un run, sans toucher à la production — faits Wikipedia sur le titre
+(#466), lieu en tête du prompt du segment 1 (#470), segment 1 complet
+transmis aux segments 2 et 3 (#468). Chaque run exporté porte ses
+options (`prompt_options`) : pour évaluer une option, lancer le même cas
+avec et sans, sur le même modèle, et comparer les scripts.
+
+**Mémoire** : le modèle tourne dans le processus d'AICore, que l'app ne
+peut pas inspecter. L'export donne donc la mémoire système disponible
+(`MemAvailable` du noyau) avant le run et son minimum pendant le run ; leur différence
+(`peak_memory_drop_mb`) est une approximation du coût mémoire de
+l'inférence, sensible à ce que le reste du système fait au même moment.
+À comparer entre variantes sur le même appareil, pas en valeur absolue.
 
 ## Grille de notation
 

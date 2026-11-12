@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'advanced_settings_screen.dart';
 import 'nano_prompt_lab_screen.dart';
+import 'voice_lab_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../constants/output_languages.dart';
@@ -12,6 +13,7 @@ import '../services/history_service.dart';
 import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
 import '../widgets/feedback_dialog.dart';
+import '../widgets/generative_voice_setting.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/nano_model_setting.dart';
 import '../widgets/section_header.dart';
@@ -420,6 +422,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   MaterialPageRoute(builder: (_) => const NanoPromptLabScreen())),
             ),
           ],
+          // #485: probe of the on-device generative voice. Always shown:
+          // finding out that a phone has no such voice is a result too.
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.record_voice_over_outlined, size: 16),
+            label: Text(l10n.settingsVoiceLab),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+            ),
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const VoiceLabScreen())),
+          ),
           const SizedBox(height: 16),
           Consumer<SettingsService>(
             builder: (context, settings, _) => SwitchListTile(
@@ -498,6 +512,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   guide.setTtsVoiceGender(selection.first),
             ),
           ),
+          // #522
+          const GenerativeVoiceSetting(),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.play_arrow, size: 16),

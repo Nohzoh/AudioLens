@@ -1,6 +1,8 @@
 package io.nohzoh.audiolens
 
+import android.app.ActivityManager
 import android.content.Context
+import android.os.Build
 import android.graphics.BitmapFactory
 import android.graphics.Bitmap
 import com.google.mlkit.genai.common.DownloadStatus
@@ -23,10 +25,15 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlin.coroutines.resume
 
 class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
@@ -50,6 +57,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         // cost). 15s wasn't a reliability margin, it was regularly too
         // tight for real-world multimodal inference.
         private const val SEGMENT_TIMEOUT_MS = 30_000L
+        // #466: the Wikipedia lookup between segments 1 and 2 (two HTTP
+        // calls of up to 6s each on the Dart side).
+        private const val TITLE_LOOKUP_TIMEOUT_MS = 10_000L
 
         // #286: minimum exact-overlap length (chars) required before
         // dropOverlapWithAccumulated treats a match as the model echoing
@@ -106,6 +116,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             style: String? = null,
             language: String? = null,
             structured: Boolean = false,
+            // #470 (lab-only for now): state the place as its own leading
+            // sentence instead of a parenthetical inside the instruction.
+            locationFirst: Boolean = false,
         ): String {
             // #171: locationContext already arrives pre-truncated for
             // Nano's budget (see GeminiNanoService._maxLocationContextChars
@@ -114,8 +127,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // Nano's shorter phrasing style, so a specific place named in
             // the context isn't left un-leaned-on the way a bare
             // parenthetical mention risks.
-            val loc = if (!locationContext.isNullOrBlank()) {
+            val hasLocation = !locationContext.isNullOrBlank()
+            val loc = if (hasLocation && !locationFirst) {
                 " (prise a : $locationContext — utilise ce lieu en priorite s'il est precis, plutot que de rester generique)"
+            } else ""
+            val leadingLocation = if (hasLocation && locationFirst) {
+                "Lieu de la photo : $locationContext. Utilise ce lieu en priorite s'il est precis, plutot que de rester generique. "
             } else ""
             val sentences = if (style == "concise") "1-2 phrases maximum" else "2-3 phrases maximum"
             // #130: only seg1 needs the language directive — seg2/seg3 are
@@ -135,11 +152,11 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // field (NanoSeg1), so the bracket convention is dropped from
             // the prompt rather than asked for twice.
             val titleDirective = if (structured) {
-                "Donne un titre court (3 a 6 mots, ex: Le Colisee de Rome) et un texte. Dans le texte,"
+                "Donne un titre court (3 a 6 mots, ex: Le Colisee de Rome) et un texte. Si tu reconnais une oeuvre, un monument ou un lieu precis, le titre est son nom exact. Dans le texte,"
             } else {
-                "Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Puis,"
+                "Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Si tu reconnais une oeuvre, un monument ou un lieu precis, le titre est son nom exact. Puis,"
             }
-            return "Tu es un guide audio culturel. $titleDirective sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
+            return "${leadingLocation}Tu es un guide audio culturel. $titleDirective sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
         }
 
         // #434: typed finish reasons, named for the Dart-side logs.
@@ -173,8 +190,30 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         private fun locationHint(locationContext: String?): String =
             if (!locationContext.isNullOrBlank()) " Contexte du lieu : $locationContext." else ""
 
-        fun buildSeg2Prompt(previousText: String, style: String? = null, locationContext: String? = null): String {
-            val excerpt = previousText.takeLast(200)
+        // #466: a Wikipedia extract matching segment 1's title (looked up
+        // on the Dart side, see GeminiNanoService), placed before the
+        // location so the subject's own facts come first.
+        private fun factsHint(facts: String?): String =
+            if (!facts.isNullOrBlank()) " Faits verifies sur le sujet : $facts." else ""
+
+        private val bracketTitle = Regex("""^\s*\[([^\]]{1,80})\]""")
+
+        // #466: the title to look up — the typed one, else the text
+        // path's leading "[Title]".
+        fun seg1Title(typedTitle: String?, text: String): String? =
+            typedTitle?.takeIf { it.isNotBlank() }
+                ?: bracketTitle.find(text)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+
+        fun buildSeg2Prompt(
+            previousText: String,
+            style: String? = null,
+            locationContext: String? = null,
+            facts: String? = null,
+            // #468 (lab-only for now): pass [previousText] whole instead
+            // of its last 200 characters; the caller decides what it holds.
+            fullPrevious: Boolean = false,
+        ): String {
+            val excerpt = if (fullPrevious) previousText else previousText.takeLast(200)
             val focus = when (style) {
                 "academic" -> "le contexte historique precis (dates, faits averes, contexte culturel)"
                 "anecdotal" -> "une anecdote ou curiosite peu connue liee a ce lieu"
@@ -183,11 +222,19 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 else -> "le contexte historique et culturel"
             }
             val sentences = if (style == "concise") "1 phrase" else "2-3 phrases qui s'enchainent naturellement"
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${locationHint(locationContext)} Continue avec $focus en $sentences, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${locationHint(locationContext)} Continue avec $focus en $sentences, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
         }
 
-        fun buildSeg3Prompt(previousText: String, style: String? = null, locationContext: String? = null): String {
-            val excerpt = previousText.takeLast(200)
+        fun buildSeg3Prompt(
+            previousText: String,
+            style: String? = null,
+            locationContext: String? = null,
+            facts: String? = null,
+            // #468 (lab-only for now): pass [previousText] whole instead
+            // of its last 200 characters; the caller decides what it holds.
+            fullPrevious: Boolean = false,
+        ): String {
+            val excerpt = if (fullPrevious) previousText else previousText.takeLast(200)
             val sentences = if (style == "concise") "1 phrase" else "2 phrases"
             // #425: a kids' guide ends on a question inviting the child to look.
             val ending = if (style == "kids") {
@@ -195,7 +242,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             } else {
                 "sur ce qui rend ce lieu unique et l'emotion qu'il inspire"
             }
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${locationHint(locationContext)} Conclus en $sentences $ending, sans repeter ce qui a deja ete dit."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${locationHint(locationContext)} Conclus en $sentences $ending, sans repeter ce qui a deja ete dit."
         }
     }
 
@@ -229,6 +276,60 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private fun newClient(config: GenerationConfig?): GenerativeModel =
         if (config == null) Generation.getClient() else Generation.getClient(config)
 
+    // #477: system-wide available memory, in MB. The model runs in
+    // AICore's own process, whose memory this app cannot read, so the
+    // drop in available system memory during a run is the closest
+    // measurable proxy for what inference costs.
+    //
+    // #493: read from the kernel's MemAvailable rather than
+    // ActivityManager.MemoryInfo.availMem — the latter is clamped at the
+    // low-memory threshold (a first device export read 0), so it
+    // saturates exactly when a model is loaded. Falls back to availMem
+    // if /proc/meminfo cannot be read.
+    private fun availMemMb(): Long {
+        try {
+            java.io.File("/proc/meminfo").useLines { lines ->
+                for (line in lines) {
+                    if (line.startsWith("MemAvailable:")) {
+                        val kb = line.filter { it.isDigit() }.toLongOrNull()
+                        if (kb != null) return kb / 1024
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // fall through
+        }
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        return info.availMem / (1024 * 1024)
+    }
+
+    // #493: whether Android considers the system low on memory right now.
+    private fun isLowMemory(): Boolean {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        return info.lowMemory
+    }
+
+    private fun totalMemMb(): Long {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        return info.totalMem / (1024 * 1024)
+    }
+
+    // #477: AICore's installed version, null when the package is absent
+    // or not visible (needs the <queries> entry patched into the manifest).
+    private fun aicoreVersion(): String? = try {
+        val info = context.packageManager.getPackageInfo("com.google.android.aicore", 0)
+        val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else 0L
+        "${info.versionName} ($code)"
+    } catch (e: Exception) {
+        null
+    }
+
     // #434: typed title/text for segment 1 when the device supports
     // structured output, else (or if the typed call fails in any way
     // other than a timeout) today's bracket-title text path — the
@@ -250,6 +351,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         language: String?,
         maxTokens: Int,
         temperature: Float?,
+        locationFirst: Boolean = false,
     ): Seg1Result {
         var fallbackReason: String? = null
         var finishReason: String? = null
@@ -260,7 +362,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             false
         }
         if (structuredAvailable) {
-            val prompt = buildSeg1Prompt(locationContext, style, language, structured = true)
+            val prompt = buildSeg1Prompt(locationContext, style, language, structured = true, locationFirst = locationFirst)
             try {
                 val base = generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
                     this.maxOutputTokens = maxTokens
@@ -286,7 +388,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             fallbackReason = "structured output unavailable"
         }
 
-        val prompt = buildSeg1Prompt(locationContext, style, language)
+        val prompt = buildSeg1Prompt(locationContext, style, language, locationFirst = locationFirst)
         val req = generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
             this.maxOutputTokens = maxTokens
             temperature?.let { this.temperature = it }
@@ -294,6 +396,41 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         val text = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req) }
             .candidates.firstOrNull()?.text?.trim() ?: ""
         return Seg1Result(prompt, null, text, "text", finishReason, fallbackReason)
+    }
+
+    // #466: asks the Dart side for verified facts about segment 1's
+    // title (a Wikipedia lookup there), between segments 1 and 2. Any
+    // failure, a missing Dart handler or a slow network just means no
+    // facts: the cascade then runs exactly as before.
+    private suspend fun lookupTitleFacts(title: String?): String? {
+        if (title.isNullOrBlank()) return null
+        return try {
+            withTimeout(TITLE_LOOKUP_TIMEOUT_MS) {
+                withContext(Dispatchers.Main) {
+                    suspendCancellableCoroutine<String?> { cont ->
+                        channel.invokeMethod(
+                            "lookupTitleFacts",
+                            mapOf("title" to title),
+                            object : MethodChannel.Result {
+                                override fun success(value: Any?) {
+                                    if (cont.isActive) cont.resume(value as? String)
+                                }
+
+                                override fun error(code: String, message: String?, details: Any?) {
+                                    if (cont.isActive) cont.resume(null)
+                                }
+
+                                override fun notImplemented() {
+                                    if (cont.isActive) cont.resume(null)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        } catch (e: TimeoutCancellationException) {
+            null
+        }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -403,6 +540,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val imagePath = call.argument<String>("imagePath")
                 val locationContext = call.argument<String>("locationContext")
                 val style = call.argument<String>("style")
+                // #467: a name the user gave, looked up instead of
+                // segment 1's guessed title.
+                val lookupQuery = call.argument<String>("lookupQuery")
                 val language = call.argument<String>("language")
                 // #170: previously hardcoded (256, no temperature at all —
                 // ML Kit GenAI's own unstated default applied). Now sent
@@ -416,6 +556,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // of being read.
                 val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
+                val titleLookup = call.argument<Boolean>("titleLookup") ?: false
                 // #462: optional model variant picked in Settings; none =
                 // the shared default client, as before.
                 val config = variantConfig(call)
@@ -454,10 +595,15 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                         bitmap.recycle()
 
+                        // #466: facts about what segment 1 named, if any.
+                        val facts = if (titleLookup) {
+                            lookupTitleFacts(lookupQuery ?: seg1Title(seg1Result.title, seg1))
+                        } else null
+
                         // Segment 2: Historical context (text only, faster)
                         currentSegment = 2
                         val req2 = generateContentRequest(
-                            TextPart(buildSeg2Prompt(seg1, style, locationContext))
+                            TextPart(buildSeg2Prompt(seg1, style, locationContext, facts))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -468,7 +614,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 3: Conclusion
                         currentSegment = 3
                         val req3 = generateContentRequest(
-                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext))
+                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext, facts))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -494,7 +640,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             "title" to seg1Result.title,
                             "seg1Mode" to seg1Result.mode,
                             "seg1FinishReason" to seg1Result.finishReason,
-                            "seg1FallbackReason" to seg1Result.fallbackReason
+                            "seg1FallbackReason" to seg1Result.fallbackReason,
+                            "titleFacts" to facts
                         )
                         withContext(Dispatchers.Main) { result.success(payload) }
                     } catch (e: TimeoutCancellationException) {
@@ -529,6 +676,20 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // étapes intermédiaires" for a full end-to-end run (real
             // location context in, real 3-call cascade out), not just a
             // single free-form call like "rawPrompt" below.
+            // #477: device and AICore details for benchmark exports.
+            "environmentInfo" -> {
+                result.success(
+                    mapOf(
+                        "deviceManufacturer" to Build.MANUFACTURER,
+                        "deviceModel" to Build.MODEL,
+                        "androidVersion" to Build.VERSION.RELEASE,
+                        "sdkInt" to Build.VERSION.SDK_INT,
+                        "aicoreVersion" to aicoreVersion(),
+                        "totalMemMb" to totalMemMb()
+                    )
+                )
+            }
+
             "describeImageDebug" -> {
                 val imagePath = call.argument<String>("imagePath")
                 val locationContext = call.argument<String>("locationContext")
@@ -536,6 +697,11 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val language = call.argument<String>("language")
                 val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
+                val titleLookup = call.argument<Boolean>("titleLookup") ?: false
+                // Lab-only prompt options (#468, #470); production's
+                // describeImage never sets them.
+                val locationFirst = call.argument<Boolean>("locationFirst") ?: false
+                val fullPrevious = call.argument<Boolean>("fullPrevious") ?: false
                 // #431: optional model variant (Nano Prompt Lab selector).
                 val config = variantConfig(call)
 
@@ -553,42 +719,90 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                 scope.launch {
                     val model = if (config != null) newClient(config) else sharedModel!!
+                    // #477: sample available system memory while the
+                    // cascade runs; the lowest reading gives the peak cost.
+                    val availMemBefore = availMemMb()
+                    var minAvailMem = availMemBefore
+                    var memSampler: Job? = null
                     try {
+                        memSampler = launch {
+                            while (isActive) {
+                                val now = availMemMb()
+                                if (now < minAvailMem) minAvailMem = now
+                                delay(100)
+                            }
+                        }
                         val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
                         val bitmap = BitmapFactory.decodeFile(imagePath, opts)
                             ?: throw Exception("Cannot decode image")
 
                         currentSegment = 1
+                        val seg1Start = System.nanoTime()
                         val seg1Result = runSeg1(
                             model, bitmap, locationContext, style, language,
-                            nanoMaxOutputTokens, nanoTemperature
+                            nanoMaxOutputTokens, nanoTemperature, locationFirst
                         )
+                        val seg1Ms = (System.nanoTime() - seg1Start) / 1_000_000
                         val seg1Prompt = seg1Result.prompt
                         val seg1 = seg1Result.text
 
                         bitmap.recycle()
 
+                        // #477: timed apart from the segments — it is
+                        // network time, not inference time.
+                        val lookupStart = System.nanoTime()
+                        val facts = if (titleLookup) {
+                            lookupTitleFacts(seg1Title(seg1Result.title, seg1))
+                        } else null
+                        val titleLookupMs = (System.nanoTime() - lookupStart) / 1_000_000
+
                         currentSegment = 2
-                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext)
+                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext, facts, fullPrevious)
                         val req2 = generateContentRequest(TextPart(seg2Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
                         }
+                        val seg2Start = System.nanoTime()
                         val seg2 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
+                        val seg2Ms = (System.nanoTime() - seg2Start) / 1_000_000
 
                         currentSegment = 3
-                        val seg3Prompt = buildSeg3Prompt("$seg1 $seg2", style, locationContext)
+                        // With fullPrevious: all of segment 1 (it names the
+                        // subject) plus the tail of segment 2.
+                        val seg3Previous = if (fullPrevious) "$seg1 ${seg2.takeLast(200)}" else "$seg1 $seg2"
+                        val seg3Prompt = buildSeg3Prompt(seg3Previous, style, locationContext, facts, fullPrevious)
                         val req3 = generateContentRequest(TextPart(seg3Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
                         }
+                        val seg3Start = System.nanoTime()
                         val seg3 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
+                        val seg3Ms = (System.nanoTime() - seg3Start) / 1_000_000
+
+                        memSampler?.cancel()
+                        // Name of the model actually loaded (it can change
+                        // with an AICore update, without any app update).
+                        val baseModelName = try {
+                            model.getBaseModelName()
+                        } catch (e: Exception) {
+                            null
+                        }
 
                         val fullText = listOf(seg1, seg2, seg3)
                             .filter { it.isNotBlank() }
                             .joinToString(" ")
+
+                        // #493: the script as describeImage would have
+                        // assembled it (same ellipsis/echo cleanup), so a
+                        // benchmark export scores what a user would hear.
+                        var productionText = seg1
+                        productionText = listOf(productionText, dropOverlapWithAccumulated(productionText, seg2))
+                            .filter { it.isNotBlank() }.joinToString(" ")
+                        productionText = listOf(productionText, dropOverlapWithAccumulated(productionText, seg3))
+                            .filter { it.isNotBlank() }.joinToString(" ")
+                        val lowMemoryAfter = isLowMemory()
 
                         val payload = mapOf(
                             "seg1Prompt" to seg1Prompt,
@@ -601,7 +815,17 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             "seg2Output" to seg2,
                             "seg3Prompt" to seg3Prompt,
                             "seg3Output" to seg3,
-                            "fullText" to fullText
+                            "titleFacts" to facts,
+                            "titleLookupMs" to (if (titleLookup) titleLookupMs else null),
+                            "fullText" to fullText,
+                            "seg1Ms" to seg1Ms,
+                            "seg2Ms" to seg2Ms,
+                            "seg3Ms" to seg3Ms,
+                            "baseModelName" to baseModelName,
+                            "availMemBeforeMb" to availMemBefore,
+                            "minAvailMemMb" to minAvailMem,
+                            "lowMemoryAfter" to lowMemoryAfter,
+                            "productionText" to productionText
                         )
                         withContext(Dispatchers.Main) { result.success(payload) }
                     } catch (e: TimeoutCancellationException) {
@@ -617,6 +841,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             result.error("INFERENCE_ERROR", e.message, null)
                         }
                     } finally {
+                        memSampler?.cancel()
                         if (config != null) model.close()
                     }
                 }

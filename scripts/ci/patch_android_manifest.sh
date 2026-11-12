@@ -28,6 +28,11 @@ fi
 if ! grep -q 'TextToSpeechService' "$MANIFEST"; then
   sed -i 's|</manifest>|<queries><intent><action android:name="android.speech.tts.engine.TextToSpeechService" /></intent></queries>\n</manifest>|' "$MANIFEST"
 fi
+# #477: same package-visibility rule for AICore — the Nano Prompt Lab's
+# benchmark export records its installed version.
+if ! grep -q 'com.google.android.aicore' "$MANIFEST"; then
+  sed -i 's|</manifest>|<queries><package android:name="com.google.android.aicore" /></queries>\n</manifest>|' "$MANIFEST"
+fi
 # T85: a foreground service protects the app process's priority
 # while an analysis is in flight — without it, Android can kill
 # the process while backgrounded, silently dropping the analysis.

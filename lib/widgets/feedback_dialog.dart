@@ -160,6 +160,15 @@ class FeedbackDialogStateX extends State<FeedbackDialog> {
     }
     if (entry.wordCount != null) lines.add('Mots : ${entry.wordCount}');
     lines.add('Wikipedia : ${entry.wikipediaUsed ? 'oui' : 'non'}');
+    // #481
+    final trace = entry.locationTrace;
+    if (trace != null) {
+      if (trace.userHint != null) lines.add("Indice de l'utilisateur : ${trace.userHint}");
+      lines.add('Lieu annoncé : ${trace.placeLine ?? 'aucun'}');
+      if (trace.wikipediaTitles.isNotEmpty) {
+        lines.add('Articles Wikipedia : ${trace.wikipediaTitles.join(' | ')}');
+      }
+    }
     if (entry.scriptStyle != null) lines.add('Style : ${entry.scriptStyle}');
     if (entry.outputLanguage != null) lines.add('Langue : ${entry.outputLanguage}');
     if (entry.gpsSource != null) lines.add('GPS : ${entry.gpsSource}');

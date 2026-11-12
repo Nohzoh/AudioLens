@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:audiolens/constants/analysis_provenance.dart';
 import 'package:audiolens/models/quiz_question.dart';
 import 'package:audiolens/services/history_service.dart';
+import 'package:audiolens/services/location_context_resolver.dart';
 
 /// T68 — HistoryService's actual CRUD methods (as opposed to just
 /// HistoryEntry's toMap/fromMap serialization, already covered by
@@ -73,6 +74,60 @@ void main() {
     expect(entry.gpsLongitude, 2.33);
     expect(entry.gpsSource, 'exif');
     expect(entry.script, isEmpty);
+  });
+
+  // #481
+  test('completeEntry stores the location trace and reloads it from disk', () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final pending = await service.addPendingEntry(imagePath: sourceImagePath);
+
+    await service.completeEntry(
+      entryId: pending.id!,
+      title: 't',
+      script: 's',
+      locationTrace: const LocationTrace(
+        placeName: 'Église Saint-Joseph',
+        placeSource: 'geocode',
+        placeCategory: 'amenity=place_of_worship',
+        wikipediaTitles: ['Alès', 'Cathédrale Saint-Jean-Baptiste d\'Alès'],
+        userHint: 'Église Saint-Joseph',
+      ),
+      promptContext: 'Lieu identifié à cet emplacement : Église Saint-Joseph',
+    );
+
+    for (final s in [service, HistoryService()]) {
+      if (s != service) await s.init(dbPath: dbPath);
+      final trace = s.entries.firstWhere((e) => e.id == pending.id).locationTrace!;
+      expect(trace.placeLine,
+          'Église Saint-Joseph (geocode, amenity=place_of_worship)');
+      expect(trace.wikipediaTitles,
+          ['Alès', 'Cathédrale Saint-Jean-Baptiste d\'Alès']);
+      expect(trace.wikidata, isNull);
+      expect(trace.userHint, 'Église Saint-Joseph'); // #467
+      expect(s.entries.firstWhere((e) => e.id == pending.id).promptContext,
+          'Lieu identifié à cet emplacement : Église Saint-Joseph'); // #424
+    }
+  });
+
+  test('an empty location trace is kept (#512), and unreadable JSON decodes to null',
+      () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final pending = await service.addPendingEntry(imagePath: sourceImagePath);
+
+    await service.completeEntry(
+        entryId: pending.id!, title: 't', script: 's', locationTrace: const LocationTrace());
+
+    for (final s in [service, HistoryService()]) {
+      if (s != service) await s.init(dbPath: dbPath);
+      final trace = s.entries.firstWhere((e) => e.id == pending.id).locationTrace;
+      expect(trace, isNotNull);
+      expect(trace!.isEmpty, isTrue);
+    }
+    expect(LocationTrace.decode('not json'), isNull);
+    expect(LocationTrace.decode('[]'), isNull);
+    expect(LocationTrace.decode(null), isNull);
   });
 
   test('completeEntry transitions a pending entry to complete with the analysis result',

@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
+import '../utils/error_sanitizer.dart';
 import '../utils/script_cleanup.dart';
 import '../utils/script_validation.dart';
 import 'ai_service.dart';
 import 'remote_config_service.dart';
+import 'wikipedia_service.dart';
 
 const _channel = MethodChannel('audio_guide/gemini_nano');
 
@@ -78,6 +81,35 @@ class NanoModelVariant {
 /// segment's own prompt text and raw output exposed individually instead
 /// of only the final concatenated string — lets the Nano Prompt Lab debug
 /// screen show every intermediate step of a real production-shaped run.
+/// Prompt experiments the Nano Prompt Lab can switch on for a pipeline
+/// run, to compare against production's prompts on the same photo.
+/// Production analyses never use them.
+class NanoPromptOptions {
+  /// #470: state the place as a leading sentence of segment 1's prompt
+  /// instead of a parenthetical inside the instruction.
+  final bool locationFirst;
+
+  /// #468: give segments 2-3 all of segment 1 (which names the subject)
+  /// instead of the last 200 characters of what came before.
+  final bool fullPreviousText;
+
+  /// #466: look segment 1's title up on Wikipedia. Null = follow the
+  /// remote configuration, as production does.
+  final bool? titleLookup;
+
+  const NanoPromptOptions({
+    this.locationFirst = false,
+    this.fullPreviousText = false,
+    this.titleLookup,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'location_first': locationFirst,
+        'full_previous_text': fullPreviousText,
+        'title_lookup': titleLookup,
+      };
+}
+
 class NanoDebugCascadeResult {
   final String seg1Prompt;
   final String seg1Output;
@@ -87,6 +119,13 @@ class NanoDebugCascadeResult {
   final String seg3Output;
   final String fullText;
 
+  /// #466: the Wikipedia extract injected into segments 2-3, or null
+  /// when segment 1's title matched no article (or lookup is off).
+  final String? titleFacts;
+
+  /// #477: time the title lookup took (network), null when it is off.
+  final int? titleLookupMs;
+
   /// #434: the typed title when segment 1 used structured output, else
   /// null (the title is then in [seg1Output], between brackets).
   final String? seg1Title;
@@ -95,6 +134,37 @@ class NanoDebugCascadeResult {
   final String? seg1Mode;
   final String? seg1FinishReason;
   final String? seg1FallbackReason;
+
+  /// #477: time spent in each segment's inference, measured natively.
+  final int? seg1Ms;
+  final int? seg2Ms;
+  final int? seg3Ms;
+
+  /// #477: name of the model AICore actually loaded for this run.
+  final String? baseModelName;
+
+  /// #477: available system memory before the run and its lowest value
+  /// during it, in MB. The model runs in AICore's process, which the app
+  /// cannot inspect, so their difference is the measurable proxy for
+  /// the peak memory cost of inference.
+  final int? availMemBeforeMb;
+  final int? minAvailMemMb;
+
+  /// #493: Android's own low-memory flag right after the run.
+  final bool? lowMemoryAfter;
+
+  /// #493: the script as a real analysis would have produced it — the
+  /// segments assembled with production's ellipsis/echo cleanup, then
+  /// [cleanMarkdown]. [fullText] stays the raw concatenation.
+  final String? productionText;
+
+  /// #493: temperature actually sent (the remote-config default when
+  /// the caller passed none).
+  final double? temperatureUsed;
+
+  int? get peakMemoryDropMb => availMemBeforeMb != null && minAvailMemMb != null
+      ? availMemBeforeMb! - minAvailMemMb!
+      : null;
 
   const NanoDebugCascadeResult({
     required this.seg1Prompt,
@@ -108,6 +178,17 @@ class NanoDebugCascadeResult {
     required this.seg3Prompt,
     required this.seg3Output,
     required this.fullText,
+    this.titleFacts,
+    this.titleLookupMs,
+    this.seg1Ms,
+    this.seg2Ms,
+    this.seg3Ms,
+    this.baseModelName,
+    this.availMemBeforeMb,
+    this.minAvailMemMb,
+    this.lowMemoryAfter,
+    this.productionText,
+    this.temperatureUsed,
   });
 }
 
@@ -189,8 +270,89 @@ class GeminiNanoService implements AIService {
   @override
   Future<void> initialize() async {
     if (_initialized) return;
+    // #466: the native cascade calls back for segment 1's title facts.
+    _channel.setMethodCallHandler(handlePlatformCall);
     await _channel.invokeMethod('initialize');
     _initialized = true;
+  }
+
+  /// #466: facts about a title segment 1 named, or null. Replaceable in
+  /// tests; defaults to [lookupWikipediaFacts].
+  @visibleForTesting
+  static Future<String?> Function(String title) titleFactsLookup = lookupWikipediaFacts;
+
+  /// #466: calls from the native side into Dart (only `lookupTitleFacts`,
+  /// between segments 1 and 2). Never throws: no facts is a normal
+  /// outcome and the cascade goes on without them.
+  @visibleForTesting
+  static Future<Object?> handlePlatformCall(MethodCall call) async {
+    if (call.method != 'lookupTitleFacts') {
+      throw MissingPluginException('No handler for ${call.method}');
+    }
+    final title = (call.arguments as Map?)?['title'] as String?;
+    if (title == null || title.trim().isEmpty) return null;
+    try {
+      final facts = await titleFactsLookup(title);
+      AppLogger.ai('Nano: title facts ${facts != null ? 'found' : 'not found'}');
+      return facts;
+    } catch (e) {
+      AppLogger.ai('Nano: title facts lookup failed: ${sanitizeError(e.toString())}');
+      return null;
+    }
+  }
+
+  /// #466: kept short, the whole prompt has to fit Nano's small budget
+  /// alongside the location context.
+  static const int _maxTitleFactsChars = 600;
+
+  /// #466: the intro of the Wikipedia article whose title matches
+  /// [title], or null. A search hit on a different article is dropped:
+  /// a generic segment-1 title ("Une scene de marche") must never pull
+  /// in facts about something else.
+  static Future<String?> lookupWikipediaFacts(String title) async {
+    final results = await WikipediaService.searchByName(
+      query: title,
+      limit: 1,
+      extractChars: _maxTitleFactsChars,
+    ).timeout(const Duration(seconds: 8), onTimeout: () => const []);
+    for (final r in results) {
+      if (titlesMatch(title, r.title)) return r.extract;
+    }
+    return null;
+  }
+
+  static const _stopwords = {
+    'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'sa', 'son', 'ses',
+    'au', 'aux', 'en', 'the', 'of', 'and', 'a', 'an', 'in', 'his', 'her',
+  };
+
+  static Set<String> _titleWords(String s) {
+    const accents = {
+      'à': 'a', 'â': 'a', 'ä': 'a', 'á': 'a', 'ç': 'c', 'é': 'e', 'è': 'e',
+      'ê': 'e', 'ë': 'e', 'î': 'i', 'ï': 'i', 'í': 'i', 'ô': 'o', 'ö': 'o',
+      'ó': 'o', 'ù': 'u', 'û': 'u', 'ü': 'u', 'ú': 'u', 'ÿ': 'y', 'œ': 'oe',
+    };
+    final lower = s.toLowerCase().split('').map((c) => accents[c] ?? c).join();
+    return lower
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((w) => w.isNotEmpty && !_stopwords.contains(w))
+        .toSet();
+  }
+
+  /// #466: true when every meaningful word of the shorter title (at
+  /// least two) is in the other one, accents, case, articles and a
+  /// disambiguation suffix like "(Metsys)" aside.
+  @visibleForTesting
+  static bool titlesMatch(String nanoTitle, String articleTitle) {
+    final a = _titleWords(nanoTitle);
+    final b = _titleWords(articleTitle.replaceAll(RegExp(r'\s*\(.*\)\s*$'), ''));
+    if (a.isEmpty || b.isEmpty) return false;
+    // A single word ("Tableau", "Marche") is too generic to trust as a
+    // subset match: only an exact match counts.
+    if (a.length < 2 || b.length < 2) return a.length == b.length && a.containsAll(b);
+    final shorter = a.length <= b.length ? a : b;
+    final longer = identical(shorter, a) ? b : a;
+    return shorter.every(longer.contains);
   }
 
   @override
@@ -200,6 +362,7 @@ class GeminiNanoService implements AIService {
     CancelToken? cancelToken,
     String? style,
     String? language,
+    String? userHint,
   }) async {
     if (!_initialized) await initialize();
 
@@ -224,12 +387,15 @@ class GeminiNanoService implements AIService {
         // release, same as #158 was for the cloud side.
         'maxOutputTokens': config.geminiNanoMaxTokens,
         'temperature': config.geminiNanoTemperature,
+        'titleLookup': config.geminiNanoTitleLookup,
       };
       if (locationContext != null) {
         args['locationContext'] = _truncateLocationContext(locationContext);
       }
       if (style != null) args['style'] = style;
       if (language != null) args['language'] = language;
+      // #467: look up what the user named rather than Nano's own guess.
+      if (userHint != null && userHint.isNotEmpty) args['lookupQuery'] = userHint;
 
       // The 3 segments (visual description, historical context,
       // conclusion) run sequentially inside one native describeImage
@@ -331,6 +497,18 @@ class GeminiNanoService implements AIService {
     }
   }
 
+  /// #477: device model, Android version, AICore version and total RAM,
+  /// for benchmark exports. Empty when the platform call fails.
+  Future<Map<String, dynamic>> environmentInfo() async {
+    try {
+      return await _channel.invokeMapMethod<String, dynamic>('environmentInfo') ?? {};
+    } on PlatformException {
+      return {};
+    } on MissingPluginException {
+      return {};
+    }
+  }
+
   /// #276: Nano Prompt Lab's "full pipeline" mode — runs the exact same
   /// 3-segment cascade as [analyzeImage] (same prompt scaffolding,
   /// truncation, timeout handling on the native side), but returns each
@@ -346,6 +524,7 @@ class GeminiNanoService implements AIService {
     int? maxOutputTokens,
     double? temperature,
     NanoModelVariant? variant,
+    NanoPromptOptions options = const NanoPromptOptions(),
   }) async {
     if (!_initialized) await initialize();
     AppLogger.ai('Nano Lab: full pipeline on ${variant?.label ?? 'default model'}');
@@ -362,6 +541,9 @@ class GeminiNanoService implements AIService {
       if (style != null) args['style'] = style;
       if (language != null) args['language'] = language;
       args['temperature'] = temperature ?? config.geminiNanoTemperature;
+      args['titleLookup'] = options.titleLookup ?? config.geminiNanoTitleLookup;
+      args['locationFirst'] = options.locationFirst;
+      args['fullPrevious'] = options.fullPreviousText;
 
       final result =
           await _channel.invokeMapMethod<String, dynamic>('describeImageDebug', args);
@@ -380,6 +562,19 @@ class GeminiNanoService implements AIService {
         seg3Prompt: result['seg3Prompt'] as String? ?? '',
         seg3Output: result['seg3Output'] as String? ?? '',
         fullText: result['fullText'] as String? ?? '',
+        titleFacts: result['titleFacts'] as String?,
+        titleLookupMs: (result['titleLookupMs'] as num?)?.toInt(),
+        seg1Ms: (result['seg1Ms'] as num?)?.toInt(),
+        seg2Ms: (result['seg2Ms'] as num?)?.toInt(),
+        seg3Ms: (result['seg3Ms'] as num?)?.toInt(),
+        baseModelName: result['baseModelName'] as String?,
+        availMemBeforeMb: (result['availMemBeforeMb'] as num?)?.toInt(),
+        minAvailMemMb: (result['minAvailMemMb'] as num?)?.toInt(),
+        lowMemoryAfter: result['lowMemoryAfter'] as bool?,
+        productionText: result['productionText'] is String
+            ? cleanMarkdown(result['productionText'] as String)
+            : null,
+        temperatureUsed: (args['temperature'] as num?)?.toDouble(),
       );
     } on PlatformException catch (e) {
       if (e.message?.contains('Background usage is blocked') ?? false) {

@@ -1,3 +1,3 @@
-New: a map of the places where you made your analyses; rate each guide from 1 to 5 stars; a "For kids" guide style (ages 6 to 10); select several history entries at once to add them to a collection; a single "Actions" menu under each analysis (save, share text or audio, send as feedback, report).
+New: after listening to a guide, ask it a question (Actions menu → "Ask a question"). The answer relies on the guide and on what was found about the place, and says when it doesn't know.
 
-Fixes: fewer broken guides with the Gemini API; "About this analysis" now says when no audio was generated.
+Older analyses have less information to answer from.

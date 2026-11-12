@@ -1,21 +1,61 @@
 {
-  "_readme": "Copier ce fichier en results/nano_<date>.json et remplir manuellement après un run on-device (voir PROTOCOL.md, section 'Exécution — côté Nano').",
+  "_readme": "Format produit par l'export du Nano Prompt Lab (Réglages > Outils > Nano Prompt Lab > pipeline complet > Exporter les runs). Enregistrer le fichier exporté sous results/nano_<date>.json. Les champs à null ne sont pas mesurables sur l'appareil ou la version concernés.",
   "run_started_utc": "",
   "engine": "gemini_nano_on_device",
   "device": {
+    "manufacturer": "",
     "model": "",
     "android_version": "",
-    "aicore_version": ""
+    "sdk_int": null,
+    "aicore_version": "",
+    "total_memory_mb": null
+  },
+  "app": {
+    "version": "",
+    "build_number": "",
+    "git_commit": "",
+    "build_date": "",
+    "genai_prompt_version": ""
   },
   "results": [
     {
       "case_id": "",
-      "category": "",
+      "started_utc": "",
+      "model_variant": "default | stable_fast | stable_full | preview_fast | preview_full",
+      "base_model_name": "",
+      "prior_runs_for_variant": 0,
       "style": "",
+      "language": "",
+      "max_output_tokens": null,
+      "temperature": null,
+      "prompt_options": {"location_first": false, "full_previous_text": false, "title_lookup": null},
+      "gps": {
+        "latitude": null,
+        "longitude": null
+      },
+      "location_context": "",
       "title": "",
       "script": "",
       "word_count": null,
       "latency_ms_total": null,
+      "title_facts": null,
+      "title_lookup_ms": null,
+      "latency_ms_segments": [
+        null,
+        null,
+        null
+      ],
+      "avail_memory_before_mb": null,
+      "min_avail_memory_mb": null,
+      "peak_memory_drop_mb": null,
+      "low_memory_after": null,
+      "seg1_mode": "",
+      "seg1_finish_reason": "",
+      "segments": [
+        "",
+        "",
+        ""
+      ],
       "error": null
     }
   ]

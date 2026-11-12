@@ -16,6 +16,99 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Choice of the phone's generative voice** (issue #522)
+  - **Verified**: 2026-11-12 (PR #523)
+  - **What was done**: Settings > Voice lists the on-device generative voices installed for the output language: Automatic (by gender, as before), a specific voice, or Off (back to the usual native voice). The choice applies to the next narration; the block is hidden on phones without such voices.
+- [x] ✨ - **Ask a question after listening to a guide** (issue #424)
+  - **Verified**: 2026-11-12 (PR #520)
+  - **What was done**: « Poser une question » in a guide's actions sheet opens a short conversation (5 questions, ephemeral) answered from the script and the context the analysis had — now stored with each entry (`promptContext`, DB schema 14; older entries fall back to their address). Gemini API when a key is configured, the on-device model otherwise or on failure, with a shorter prompt. Answers in the guide's language, 2-4 sentences, saying when the information is not there.
+  - **Final validation**: tests for the prompt, model routing, the sheet, storage and migration; full suite and `flutter analyze` green. On-device check still to do.
+
+- [x] ✨ - **Generative voice narrations kept as the entry's audio** (issue #517)
+  - **Verified**: 2026-11-12 (PR #518)
+  - **What was done**: the audio ML Kit plays is written to a WAV file (24 kHz 16-bit mono, as measured) and, when the narration reaches the end, saved as the matching history entry's audio with `ttsModel: genai-tts`. Later listens are immediate, seekable and offline; the Gemini voice upgrade is still offered. A paused or stopped narration is not kept.
+  - **Final validation**: tests for the hand-over, cleanup and the entry flag; full suite and `flutter analyze` green; Kotlin compiled by CI. Replay pitch still to check on device.
+
+- [x] ✨ - **Nearby Wikipedia articles framed as places around; streets dropped** (issue #498, part 1)
+  - **Verified**: 2026-11-12 (PR #516)
+  - **What was done**: the context sent to both pipelines introduced nearby articles as « informations factuelles », and both Nano models built scripts on street articles unrelated to the photo (Paris 13e, Duo towers). The section now says these places may or may not be the subject, and articles about a street or an administrative division are dropped unless nothing else remains.
+  - **Final validation**: tests on real extracts (street, canton, church, city gate, square); full suite and `flutter analyze` green. Effect on scripts still to measure in the Prompt Lab.
+
+- [x] ✨ - **Optional user hint on what the photo shows** (issue #467)
+  - **Verified**: 2026-11-12 (PR #514)
+  - **What was done**: from the history, « Analyser avec un indice » (unanalyzed entries) and the « Relancer avec d'autres paramètres » sheet take an optional hint (one line, 120 characters). It leads the context sent to both pipelines as reliable information, is what Nano looks up on Wikipedia (#466), and is kept in the analysis trace (About screen, debug info, feedback). Not offered in the camera flow, where analysis starts at once.
+  - **Final validation**: tests for normalization, context composition, provider and trace; full suite and `flutter analyze` green; Kotlin compiled by CI. On-device check still to do.
+- [x] 🐛 - **Generative fallback voice played through ML Kit** (issue #511)
+  - **Verified**: 2026-11-12 (PR #513)
+  - **What was done**: on a Pixel 10, guides kept the old local voice after the Gemini TTS quota ran out: Android's speech engine does not list the generative voices to flutter_tts. The native voice now plays them through ML Kit (`GenAiTtsPlugin.speak`/`stopSpeaking`, one client kept warm), with progress from the audio received, stop, and resume at the sentence playback had reached (ML Kit has no pause). No rate control: the speed setting does not apply to this voice. Falls back to the usual voice for the session if the generative one fails before any audio.
+  - **Final validation**: tests for routing, fallback, no-voice cases, stop and resume point; full suite and `flutter analyze` green; Kotlin compiled by CI. Playback in a real guide still to check on device.
+
+- [x] 🐛 - **Debug info: empty location context no longer reads « not recorded »** (issue #512)
+  - **Verified**: 2026-11-12 (PR #513)
+  - **What was done**: an analysis that found neither a place nor an article stored no trace and looked like one made before #481. The empty trace is now stored; the debug info says « Place: none ».
+  - **Final validation**: storage round-trip test; full suite green.
+
+- [x] 🐛 - **History detail: unanalyzed entries reached by swiping can be analyzed** (issue #508)
+  - **Verified**: 2026-11-12 (PR #509)
+  - **What was done**: swiping in the detail screen to a captured entry showed « Générer l'audio », useless without a script. A captured entry now shows « Lancer l'analyse » and a pending or failed one « Relancer l'analyse », running the same functions as a tap on the card in the list.
+  - **Final validation**: test of the condition; full suite and `flutter analyze` green. On-device check still to do.
+
+- [x] ✨ - **Native fallback voice uses an on-device generative voice when available** (issue #485, step 2)
+  - **Verified**: 2026-11-12 (PR #506)
+  - **What was done**: the Voice Lab on a Pixel 10 showed Google's generative voice (`fr-fr-x-star02`) to be clearly more natural than the "network" voice used when the Gemini TTS quota runs out. It is a regular voice of the same Android engine, so the native voice now selects the installed generative voice matching the guide's language and the preferred gender when the engine lists it — in any language. Unchanged otherwise; remote kill switch `native_generative_voice`.
+  - **Final validation**: tests for selection, fallbacks (none installed, not listed, lookup failure), caching and a non-French locale; full suite and `flutter analyze` green; Kotlin compiled by CI. Device measurements from the lab: 1659 characters in one request, first audio at 4.6 s cold, 24 kHz 16-bit mono PCM. Selection through `flutter_tts` and the speech rate still to check on device.
+
+- [x] 🐛 - **Voice Lab: speaking failed with NoSuchMethodError** (issue #485)
+  - **Verified**: 2026-11-12 (PR #504)
+  - **What was done**: the crash trace added in #501 gave the cause of the Voice Lab failure on device: `SpeechSynthesizerRequest` was built without its `queueMode`, which the library's Kotlin metadata declares optional although its jar has no default-argument constructor. The request now passes all three arguments.
+  - **Final validation**: Kotlin compiled by CI; the fix follows from the device's stack trace and the library's bytecode (single three-argument constructor). To confirm on device.
+
+- [x] 🐛 - **Voice Lab: probe no longer takes the app down; crash traces are kept** (issue #501)
+  - **Verified**: 2026-11-12 (PR #502)
+  - **What was done**: asking a voice to speak crashed the app on a Pixel 10 (0.15.5), cause unknown. The probe now collects on the main thread as Google's sample does, catches every `Throwable` into its report, and while it runs any uncaught exception on any thread is written to a file that the Voice Lab shows on its next opening.
+  - **Final validation**: widget test for the crash card; full suite and `flutter analyze` green; Kotlin compiled by CI. Whether the crash is gone can only be seen on device.
+
+- [x] ✨ - **Nano Prompt Lab: switchable prompt experiments** (issues #468, #470)
+  - **Verified**: 2026-11-12 (PR #500)
+  - **What was done**: three chips in the lab's full-pipeline mode change the prompts of a run without touching production: Wikipedia facts on the title (#466, on/off), place stated first in segment 1's prompt (#470), and all of segment 1 passed to segments 2-3 instead of the last 200 characters (#468). Each exported run records its `prompt_options`, so an option can be judged by running the same case with and without it. Production prompts are unchanged until the benchmark says otherwise.
+  - **Final validation**: export test; full suite and `flutter analyze` green; Kotlin compiled by CI. Effect of each option still to measure on device.
+
+- [x] ✨ - **Nano: segments 2-3 grounded with Wikipedia facts on segment 1's title** (issue #466)
+  - **Verified**: 2026-09-28 (PR #471)
+  - **What was done**: between segments 1 and 2 the native cascade calls back into Dart (`lookupTitleFacts`) with segment 1's title; Dart searches Wikipedia and returns the article intro (≤600 chars) only when the article title matches, and the extract is added to the segment 2/3 prompts. Segment 1 is asked to use the exact name of a recognized work or place as its title. Remote kill switch `gemini_nano_title_lookup` (default on). The Nano Prompt Lab shows the injected facts; the `AI` log says whether facts were found.
+  - **Final validation**: tests for the callback, its failure paths and title matching; full suite, `flutter analyze` and log hygiene green. On-device check and real Wikipedia results still to verify.
+- [x] ✨ - **Voice Lab: probe of the on-device generative voice** (issue #485, step 1)
+  - **Verified**: 2026-11-12 (PR #495)
+  - **What was done**: new debug screen (Settings > Voice Lab) for ML Kit's GenAI Text to Speech (alpha): lists the voices of a locale with their model status, downloads a model, speaks a text and reports status updates with timings, time to first audio chunk, chunk sizes and first bytes; the report and raw audio can be shared. The guide's voice chain is unchanged. The library ships Kotlin 2.4.0 metadata, so the Android build now compiles with Kotlin 2.4.0 (was 2.2.20).
+  - **Final validation**: widget tests with a fake engine; full suite and `flutter analyze` green; Android build compiled by CI. Behaviour on a device unknown until the first probe.
+- [x] 🐛 - **Scripts: stage directions stripped; Nano Prompt Lab export matches production** (issues #492, #493)
+  - **Verified**: 2026-11-11 (PR #494)
+  - **What was done**: `cleanMarkdown` removes a narrator note such as "(Voix douce et chaleureuse)" (seen in a real Nano run, and read aloud by the TTS) and a paragraph-opening ellipsis, for both pipelines. The lab export's `script` is now the production-assembled text, `temperature` the value actually sent, and memory is read from the kernel's `MemAvailable` (Android's `availMem` read 0 during a run) with the `lowMemory` flag alongside.
+  - **Final validation**: cleanup tests (stage direction removed, in-sentence parentheticals kept), export tests; full suite and `flutter analyze` green; Kotlin compiled by CI. First device export (Pixel 10) confirmed timings, AICore version, base model name, commit and location context; the new memory reading still to check on device.
+
+- [x] ✨ - **Nano Prompt Lab: export pipeline runs as benchmark JSON** (issue #477)
+  - **Verified**: 2026-11-11 (PR #488)
+  - **What was done**: in full-pipeline mode, each run is kept for the session (optional benchmark case id, variant, settings, GPS, resolved location context) and "Export runs" shares a JSON file in the `benchmark/results/nano_template.json` format. The native cascade now reports per-segment timings, the name of the model actually loaded and the available system memory before and at its lowest during the run; the export adds device, Android, AICore, app, Git commit and ML Kit versions. Memory is a proxy (AICore runs in its own process). `PROTOCOL.md` describes the new Nano procedure.
+  - **Final validation**: export shape, title split, failed run and ML Kit version sync tests; full suite and `flutter analyze` green; Kotlin compiled by CI. On-device check still to do.
+- [x] ✨ - **Location context trace kept with each analysis** (issue #481)
+  - **Verified**: 2026-11-11 (PR #487)
+  - **What was done**: each analysis now stores which place was named to the model (from Overpass or from reverse geocoding, with its OSM category), the Wikidata summary and the titles of the Wikipedia articles injected. Shown in "About this analysis", in the copied debug info and in feedback reports; older entries say the context was not recorded. New nullable `locationTrace` column, DB schema v13.
+  - **Final validation**: migration tests (all older schemas to v13), storage round-trip across reopen, empty/unreadable trace, resolver trace for the POI and geocode cases; full suite and `flutter analyze` green. On-device check still to do.
+- [x] 🐛 - **History: cards no longer appear later and later while scrolling** (issue #489)
+  - **Verified**: 2026-11-11 (PR #490)
+  - **What was done**: the cards' entrance animation had a delay of 50 ms times the card's index; since the list builds cards lazily, a card far down waited seconds before fading in. Only the first 8 cards are staggered now. Thumbnails are decoded at thumbnail size instead of the full 1280 px photo.
+  - **Final validation**: test on the entrance delay; full suite and `flutter analyze` green. On-device check still to do.
+
+- [x] ✨ - **Location context: use the place name returned by reverse geocoding** (issue #482)
+  - **Verified**: 2026-11-11 (PR #483)
+  - **What was done**: when Nominatim's reverse geocoding lands on a named place a guide could be about (place of worship, museum, monument, named building...), its name is kept instead of only the road and city. With no POI from Overpass, the prompt context starts with « Lieu identifié à cet emplacement (OpenStreetMap) : ... » and the Wikipedia name search uses that name; an Overpass POI still takes precedence. Roads, shops and everyday amenities are ignored. Found on a field case in Alès: the Saint-Joseph church was described as the town's cathedral although Nominatim named it.
+  - **Final validation**: tests with the recorded Nominatim response (name kept, jsonv2 class, ignored feature types, failed lookup, POI precedence, Wikipedia query); full suite and `flutter analyze` green. On-device check still to do.
+
+- [x] 🔧 - **Flutter 3.47.9 and refreshed Dart dependencies** (issue #479)
+  - **Verified**: 2026-11-11 (PR #480)
+  - **What was done**: CI Flutter pin moved from 3.44.9 to 3.47.9 (Dart 3.13.7) and every package upgraded to its latest compatible version (about 65, including `flutter_local_notifications` 22 -> 23). `google_fonts` stays on 8.x: version 9 moves to the `material_ui` package and would need the app's Material imports migrated.
+  - **Final validation**: `flutter analyze` clean and full suite green on 3.47.9; Android release build compiled by CI. On-device visual check done on the 0.15.1 alpha build (Pixel 10, 2026-11-11): no rendering defect.
+
 - [x] 🐛 - **History: loader while generating audio instead of an early Stop button** (issue #464)
   - **Verified**: 2026-09-28 (PR #465)
   - **What was done**: on a script-only entry, "Générer l'audio" no longer turns into "Arrêter" while TTS is still synthesizing. The button now shows a disabled "Génération de l'audio..." label with a spinner while `AudioGuideService` is in the `synthesizing` state, then switches to Stop (and the ±10s buttons) once playback actually starts.

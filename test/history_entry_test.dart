@@ -90,4 +90,25 @@ void main() {
     expect(restored.outputLanguage, 'English'); // #138
     expect(restored.promptVersion, 'v1'); // #138
   });
+
+  // #517
+  test('a cached recording of the on-device generative voice can still be upgraded',
+      () {
+    final tempDir = Directory.systemTemp.createTempSync('genai-entry');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+    final audio = File('${tempDir.path}/audio.wav')..writeAsStringSync('audio');
+
+    final entry = HistoryEntry(
+      imagePath: '/tmp/photo.jpg',
+      title: 'Titre',
+      script: 'script',
+      createdAt: DateTime.utc(2026, 11, 12),
+      status: AnalysisStatus.complete,
+      audioPath: audio.path,
+      ttsModel: 'genai-tts',
+    );
+
+    expect(entry.hasAudio, isTrue);
+    expect(entry.hasLowQualityTts, isTrue);
+  });
 }

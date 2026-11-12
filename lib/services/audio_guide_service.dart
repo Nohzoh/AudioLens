@@ -14,6 +14,7 @@ import 'gemini_api_service.dart';
 import 'gemini_nano_service.dart';
 import 'native_tts_service.dart';
 import 'gemini_tts_service.dart';
+import 'genai_tts_service.dart';
 import 'location_service.dart';
 import 'remote_config_service.dart';
 import 'guide_preferences_store.dart';
@@ -55,6 +56,19 @@ class AudioGuideService extends ChangeNotifier {
         _foregroundService = foregroundService ?? AnalysisForegroundService(),
         _audioReadyNotifier = audioReadyNotifier ?? AudioReadyNotifier() {
     _ttsOrchestrator = TtsOrchestrator(nativeTts: _nativeTtsService);
+    // #485: let the native voice use an on-device generative voice when
+    // the phone has one (remote kill switch). An injected service that
+    // already has a finder keeps it.
+    final genAiTts = GenAiTtsService();
+    _nativeTtsService.generativeSpeaker ??= genAiTts;
+    _nativeTtsService.generativeVoiceFinder ??= (locale, gender) async {
+      if (!RemoteConfigService.current.nativeGenerativeVoice) return null;
+      // #522: the user's choice in Settings.
+      final choice = _generativeVoice;
+      if (choice == generativeVoiceOff) return null;
+      return genAiTts.availableVoiceName(locale, gender,
+          preferred: choice == generativeVoiceAuto ? null : choice);
+    };
     _providerManager = AiProviderManager(
       preferencesStore: _preferencesStore,
       nanoService: nanoService,
@@ -99,6 +113,14 @@ class AudioGuideService extends ChangeNotifier {
   String? get lastGpsSource => _lastGpsSource;
   bool _lastWikipediaUsed = false;
   bool get lastWikipediaUsed => _lastWikipediaUsed;
+  LocationTrace? _lastLocationTrace;
+
+  /// #481: what the last analysis' location context contained.
+  LocationTrace? get lastLocationTrace => _lastLocationTrace;
+
+  /// #424: the context the last analysis sent to the model.
+  String? _lastPromptContext;
+  String? get lastPromptContext => _lastPromptContext;
   int? _lastAnalysisDurationMs;
   int? get lastAnalysisDurationMs => _lastAnalysisDurationMs;
   double? _lastGpsLatitude;
@@ -251,6 +273,7 @@ class AudioGuideService extends ChangeNotifier {
     // applied lazily on first real use of the native engine, matching
     // its existing lazy-initialization pattern.
     _ttsVoiceGender = await _preferencesStore.loadTtsVoiceGender();
+    _generativeVoice = await _preferencesStore.loadGenerativeVoice();
     _nativeTtsService.preferredGender = _ttsVoiceGender;
     _playbackSpeed = await _preferencesStore.loadPlaybackSpeed();
   }
@@ -264,6 +287,30 @@ class AudioGuideService extends ChangeNotifier {
     await _preferencesStore.saveTtsVoiceGender(gender);
     await _nativeTtsService.applyPreferredVoice();
     notifyListeners();
+  }
+
+  /// #522: the on-device generative voice preference — [generativeVoiceAuto],
+  /// [generativeVoiceOff] or a voice name.
+  String _generativeVoice = generativeVoiceAuto;
+  String get generativeVoice => _generativeVoice;
+
+  Future<void> setGenerativeVoice(String choice) async {
+    _generativeVoice = choice;
+    await _preferencesStore.saveGenerativeVoice(choice);
+    _nativeTtsService.resetGenerativeVoice();
+    AppLogger.tts('Generative voice preference: '
+        '${choice == generativeVoiceAuto || choice == generativeVoiceOff ? choice : 'a named voice'}');
+    notifyListeners();
+  }
+
+  /// #522: the generative voices of [locale] on this phone (empty when it
+  /// has none, or the feature is missing).
+  Future<List<GenAiVoice>> generativeVoices(String locale) async {
+    try {
+      return await (_nativeTtsService.generativeSpeaker ?? GenAiTtsService()).voices(locale);
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// Changes the narration playback speed multiplier (T15, 1.0 = normal).
@@ -314,7 +361,9 @@ class AudioGuideService extends ChangeNotifier {
     String? language,
     NanoModelVariant? nanoVariant,
     int? entryId,
+    String? userHint,
   }) async {
+    final hint = normalizeUserHint(userHint);
     if (_analysisInProgress || _state == GuideState.cancelling) {
       _lastGuideError = const GuideError(GuideErrorKind.busyAnalysis);
       _state = GuideState.error;
@@ -375,6 +424,9 @@ class AudioGuideService extends ChangeNotifier {
       _lastGpsAddress = locationContext.address;
       _lastLocationStatus = locationContext.status;
       _lastWikipediaUsed = locationContext.wikipediaUsed;
+      _lastLocationTrace = locationContext.trace.withUserHint(hint);
+      final promptContext = composePromptContext(locationContext.promptContext, hint);
+      _lastPromptContext = promptContext;
       _progressEstimator.recordGpsDuration(
           DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
 
@@ -401,10 +453,11 @@ class AudioGuideService extends ChangeNotifier {
       try {
         _lastResult = await service.analyzeImage(
           imageFile,
-          locationContext: locationContext.promptContext,
+          locationContext: promptContext,
           cancelToken: cancelToken,
           style: style,
           language: language,
+          userHint: hint,
         );
       } catch (analysisError) {
         // A cancellation must abort outright, not trigger the local-model
@@ -435,10 +488,11 @@ class AudioGuideService extends ChangeNotifier {
           try {
             _lastResult = await _providerManager.nanoService.analyzeImage(
               imageFile,
-              locationContext: locationContext.promptContext,
+              locationContext: promptContext,
               cancelToken: cancelToken,
               style: style,
               language: language,
+              userHint: hint,
             );
             _lastProviderFallbackToNano = true;
             _lastAiModel = _nanoModelLabel();
@@ -800,3 +854,29 @@ class AudioGuideService extends ChangeNotifier {
     super.dispose();
   }
 }
+
+/// #467: longest hint kept — a name or a short description, not a text.
+const maxUserHintChars = 120;
+
+/// #467: the hint as it will be used — trimmed, on one line, capped at
+/// [maxUserHintChars]; null when empty.
+String? normalizeUserHint(String? hint) {
+  if (hint == null) return null;
+  final oneLine = hint.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (oneLine.isEmpty) return null;
+  return oneLine.length <= maxUserHintChars
+      ? oneLine
+      : oneLine.substring(0, maxUserHintChars).trimRight();
+}
+
+/// #467: the context sent to the model, with the user's hint first so it
+/// survives Nano's truncation of long contexts and is read as the
+/// subject before the nearby places.
+String? composePromptContext(String? locationContext, String? hint) {
+  if (hint == null) return locationContext;
+  final hintLine = "Indication de l'utilisateur sur ce que montre la photo : « $hint ». "
+      'Elle est fiable et prime sur la localisation et les lieux à proximité.';
+  if (locationContext == null || locationContext.isEmpty) return hintLine;
+  return '$hintLine\n\n$locationContext';
+}
+

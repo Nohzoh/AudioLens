@@ -157,12 +157,38 @@ class WikipediaService {
     ];
   }
 
+  /// #498: an article about a street or an administrative division —
+  /// rarely what a photo shows, and the kind a small model latches onto
+  /// when the real subject is further away (field case: Paris 13e, three
+  /// street articles while the photo showed the Duo towers). French
+  /// Wikipedia opens such articles with a stable phrase.
+  static bool isStreetOrAdministrative(WikipediaResult r) {
+    final head = r.extract.length > 200 ? r.extract.substring(0, 200) : r.extract;
+    return RegExp(
+      r'\best une (voie|impasse|circonscription|division administrative|subdivision)\b',
+      caseSensitive: false,
+    ).hasMatch(head);
+  }
+
+  /// #498: [results] without street and administrative articles — unless
+  /// that would leave nothing, in which case they are kept: some context
+  /// is better than none.
+  static List<WikipediaResult> withoutStreets(List<WikipediaResult> results) {
+    final kept = results.where((r) => !isStreetOrAdministrative(r)).toList();
+    return kept.isEmpty ? results : kept;
+  }
+
   /// Build context string for AI prompt
   static String buildContext(List<WikipediaResult> results) {
     if (results.isEmpty) return '';
 
     final buffer = StringBuffer();
-    buffer.writeln('Informations factuelles sur les lieux à proximité (source Wikipedia) :');
+    // #498: framed as places around, not as facts about the subject — both
+    // Nano models built a whole script on nearby articles that had
+    // nothing to do with the photo.
+    buffer.writeln(
+        "Lieux proches d'après Wikipedia (la photo peut montrer l'un d'eux, ou tout autre chose : "
+        "ne t'en sers que s'ils correspondent à ce que montre l'image) :");
     for (final r in results) {
       buffer.writeln('- ${r.title} : ${r.extract}');
     }

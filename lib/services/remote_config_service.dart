@@ -22,6 +22,14 @@ class RemoteConfig {
   /// so both pipelines aim for the same tone by default.
   final double geminiNanoTemperature;
 
+  /// #466: whether Nano's cascade looks up segment 1's title on
+  /// Wikipedia to ground segments 2-3 — a remote kill switch.
+  final bool geminiNanoTitleLookup;
+
+  /// #485: whether the native voice may pick one of Google's on-device
+  /// generative voices when the phone has one — a remote kill switch.
+  final bool nativeGenerativeVoice;
+
   // Wikipedia
   final int wikipediaRadiusMeters;
   final int wikipediaMaxResults;
@@ -80,6 +88,8 @@ class RemoteConfig {
     this.geminiNanoMaxTokens = 256,
     this.geminiNanoCascadeSegments = 3,
     this.geminiNanoTemperature = 0.7,
+    this.geminiNanoTitleLookup = true,
+    this.nativeGenerativeVoice = true,
     this.wikipediaRadiusMeters = 500,
     this.wikipediaMaxResults = 3,
     this.wikipediaExtractChars = 1500,
@@ -111,6 +121,8 @@ class RemoteConfig {
       geminiNanoMaxTokens: json['gemini_nano_max_tokens'] as int? ?? 256,
       geminiNanoCascadeSegments: json['gemini_nano_cascade_segments'] as int? ?? 3,
       geminiNanoTemperature: (json['gemini_nano_temperature'] as num?)?.toDouble() ?? 0.7,
+      geminiNanoTitleLookup: json['gemini_nano_title_lookup'] as bool? ?? true,
+      nativeGenerativeVoice: json['native_generative_voice'] as bool? ?? true,
       wikipediaRadiusMeters: json['wikipedia_radius_meters'] as int? ?? 500,
       wikipediaMaxResults: json['wikipedia_max_results'] as int? ?? 3,
       wikipediaExtractChars: json['wikipedia_extract_chars'] as int? ?? 1500,
@@ -142,6 +154,8 @@ class RemoteConfig {
     'gemini_nano_max_tokens': geminiNanoMaxTokens,
     'gemini_nano_cascade_segments': geminiNanoCascadeSegments,
     'gemini_nano_temperature': geminiNanoTemperature,
+    'gemini_nano_title_lookup': geminiNanoTitleLookup,
+    'native_generative_voice': nativeGenerativeVoice,
     'wikipedia_radius_meters': wikipediaRadiusMeters,
     'wikipedia_max_results': wikipediaMaxResults,
     'wikipedia_extract_chars': wikipediaExtractChars,

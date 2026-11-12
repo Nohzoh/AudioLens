@@ -9,6 +9,7 @@ import '../models/guide_error.dart';
 import '../models/quiz_question.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_sanitizer.dart';
+import 'location_context_resolver.dart';
 
 /// Thrown when copying a photo or audio file to permanent storage fails
 /// (T116) — most commonly because the device is out of storage. Callers
@@ -94,6 +95,15 @@ class HistoryEntry {
   /// #421: the user's 1-5 star rating of the script, null until rated.
   final int? rating;
 
+  /// #481: what the location context contained for this analysis (place
+  /// named, Wikipedia articles injected). Null for older entries.
+  final LocationTrace? locationTrace;
+
+  /// #424: the full context the model received with the photo (user
+  /// hint, place, Wikipedia extracts) — what a follow-up question is
+  /// answered from. Null for entries analyzed before #424.
+  final String? promptContext;
+
   const HistoryEntry({
     this.id,
     required this.imagePath,
@@ -122,6 +132,8 @@ class HistoryEntry {
     this.outputLanguage,
     this.promptVersion,
     this.rating,
+    this.locationTrace,
+    this.promptContext,
   });
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
@@ -132,8 +144,11 @@ class HistoryEntry {
   // current native-TTS fallback (Gemini TTS failed at analysis time,
   // ttsFallback records that; native TTS never caches a file, so
   // audioPath is always null for this case).
+  /// #517: a recording of Google's on-device generative voice is cached
+  /// like Gemini TTS audio but, like Piper's, still worth upgrading.
   bool get hasLowQualityTts =>
       (ttsModel == "piper" && audioPath != null) ||
+      (ttsModel == "genai-tts" && audioPath != null) ||
       (ttsModel == "native-tts" && ttsFallback);
   String get audioDurationEstimate {
     if (wordCount == null) return '';
@@ -167,6 +182,8 @@ class HistoryEntry {
     'isFavorite': isFavorite ? 1 : 0,
     'rotationQuarters': rotationQuarters,
     'rating': rating,
+    'locationTrace': locationTrace?.encode(),
+    'promptContext': promptContext,
     'scriptStyle': scriptStyle,
     'outputLanguage': outputLanguage,
     'promptVersion': promptVersion,
@@ -196,6 +213,8 @@ class HistoryEntry {
     isFavorite: (map['isFavorite'] as int? ?? 0) == 1,
     rotationQuarters: map['rotationQuarters'] as int? ?? 0,
     rating: map['rating'] as int?,
+    locationTrace: LocationTrace.decode(map['locationTrace'] as String?),
+    promptContext: map['promptContext'] as String?,
     scriptStyle: map['scriptStyle'] as String?,
     outputLanguage: map['outputLanguage'] as String?,
     promptVersion: map['promptVersion'] as String?,
@@ -227,6 +246,8 @@ class HistoryEntry {
     bool? isFavorite,
     int? rotationQuarters,
     int? rating,
+    LocationTrace? locationTrace,
+    String? promptContext,
     String? scriptStyle,
     String? outputLanguage,
     String? promptVersion,
@@ -255,6 +276,8 @@ class HistoryEntry {
     isFavorite: isFavorite ?? this.isFavorite,
     rotationQuarters: rotationQuarters ?? this.rotationQuarters,
     rating: rating ?? this.rating,
+    locationTrace: locationTrace ?? this.locationTrace,
+    promptContext: promptContext ?? this.promptContext,
     scriptStyle: scriptStyle ?? this.scriptStyle,
     outputLanguage: outputLanguage ?? this.outputLanguage,
     promptVersion: promptVersion ?? this.promptVersion,
@@ -301,7 +324,7 @@ class HistoryService extends ChangeNotifier {
     final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
       path,
-      version: 12,
+      version: 14,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE history(
@@ -331,6 +354,8 @@ class HistoryService extends ChangeNotifier {
             outputLanguage TEXT,
             promptVersion TEXT,
             rating INTEGER,
+            locationTrace TEXT,
+            promptContext TEXT,
             createdAt TEXT NOT NULL
           )
         ''');
@@ -426,6 +451,14 @@ class HistoryService extends ChangeNotifier {
         if (oldVersion < 12) {
           // #421: null = not rated yet, for every pre-existing entry.
           await db.execute('ALTER TABLE history ADD COLUMN rating INTEGER');
+        }
+        if (oldVersion < 13) {
+          // #481: null for every pre-existing entry (not recorded then).
+          await db.execute('ALTER TABLE history ADD COLUMN locationTrace TEXT');
+        }
+        if (oldVersion < 14) {
+          // #424: null for every pre-existing entry (not recorded then).
+          await db.execute('ALTER TABLE history ADD COLUMN promptContext TEXT');
         }
       },
     );
@@ -560,6 +593,8 @@ class HistoryService extends ChangeNotifier {
     String? analysisSource,
     String? gpsSource,
     bool wikipediaUsed = false,
+    LocationTrace? locationTrace,
+    String? promptContext,
     int? analysisDurationMs,
     double? gpsLatitude,
     double? gpsLongitude,
@@ -599,6 +634,11 @@ class HistoryService extends ChangeNotifier {
         'analysisSource': analysisSource,
         'gpsSource': gpsSource,
         'wikipediaUsed': wikipediaUsed ? 1 : 0,
+        'locationTrace':
+            // #512: kept even when empty — « no place, no article » is a
+            // result; null means an entry analyzed before #481.
+            locationTrace?.encode(),
+        'promptContext': promptContext,
         'wordCount': script.trim().split(RegExp(r'\s+')).length,
         'analysisDurationMs': analysisDurationMs,
         'gpsLatitude': gpsLatitude,
@@ -629,6 +669,9 @@ class HistoryService extends ChangeNotifier {
         analysisSource: analysisSource,
         gpsSource: gpsSource,
         wikipediaUsed: wikipediaUsed,
+        locationTrace:
+            locationTrace,
+        promptContext: promptContext,
         wordCount: script.trim().split(RegExp(r'\s+')).length,
         analysisDurationMs: analysisDurationMs,
         gpsLatitude: gpsLatitude,

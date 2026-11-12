@@ -249,6 +249,78 @@ void main() {
     });
   });
 
+  // #466
+  group('title facts lookup', () {
+    late Future<String?> Function(String) originalLookup;
+    setUp(() => originalLookup = GeminiNanoService.titleFactsLookup);
+    tearDown(() => GeminiNanoService.titleFactsLookup = originalLookup);
+
+    test('analyzeImage() asks the cascade for the lookup per RemoteConfig', () async {
+      await GeminiNanoService().analyzeImage(tempImage());
+
+      final args = calls.firstWhere((c) => c.method == 'describeImage').arguments as Map;
+      expect(args['titleLookup'], RemoteConfigService.current.geminiNanoTitleLookup);
+    });
+
+    test('lookupTitleFacts callback returns the lookup result', () async {
+      String? asked;
+      GeminiNanoService.titleFactsLookup = (title) async {
+        asked = title;
+        return 'Tableau de Quentin Metsys, 1514.';
+      };
+
+      final facts = await GeminiNanoService.handlePlatformCall(
+          const MethodCall('lookupTitleFacts', {'title': 'Le Prêteur et sa femme'}));
+
+      expect(asked, 'Le Prêteur et sa femme');
+      expect(facts, 'Tableau de Quentin Metsys, 1514.');
+    });
+
+    test('lookupTitleFacts callback swallows a lookup failure', () async {
+      GeminiNanoService.titleFactsLookup = (_) async => throw Exception('offline');
+
+      final facts = await GeminiNanoService.handlePlatformCall(
+          const MethodCall('lookupTitleFacts', {'title': 'Le Colisee'}));
+
+      expect(facts, isNull);
+    });
+
+    test('lookupTitleFacts callback skips a blank title', () async {
+      var called = false;
+      GeminiNanoService.titleFactsLookup = (_) async {
+        called = true;
+        return 'x';
+      };
+
+      final facts = await GeminiNanoService.handlePlatformCall(
+          const MethodCall('lookupTitleFacts', {'title': '  '}));
+
+      expect(facts, isNull);
+      expect(called, isFalse);
+    });
+
+    group('titlesMatch()', () {
+      test('ignores case, accents, articles and a disambiguation suffix', () {
+        expect(GeminiNanoService.titlesMatch('le preteur et sa femme', 'Le Prêteur et sa femme'), isTrue);
+        expect(GeminiNanoService.titlesMatch('Le Prêteur et sa femme', 'Le Prêteur et sa femme (Metsys)'), isTrue);
+      });
+
+      test('accepts a shorter title contained in the article title', () {
+        expect(GeminiNanoService.titlesMatch('Colisée de Rome', 'Colisée de Rome antique'), isTrue);
+      });
+
+      test('rejects a different subject', () {
+        expect(GeminiNanoService.titlesMatch('Le Changeur et sa femme', 'Le Prêteur et sa femme'), isFalse);
+        expect(GeminiNanoService.titlesMatch('Une scène de marché animée', 'Marché'), isFalse);
+      });
+
+      test('only accepts a single generic word on an exact match', () {
+        expect(GeminiNanoService.titlesMatch('Tableau', 'Tableau vivant'), isFalse);
+        expect(GeminiNanoService.titlesMatch('Joconde', 'La Joconde'), isTrue);
+      });
+    });
+  });
+
   // #431 — production never sends a model variant; the lab can.
   group('model variant (#431)', () {
     test('analyzeImage() and checkDeviceStatus() send no variant by default', () async {

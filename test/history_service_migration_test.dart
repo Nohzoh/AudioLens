@@ -156,7 +156,7 @@ void main() {
   });
 
   for (final oldVersion in [1, 2, 3, 4, 5, 6]) {
-    test('migrates cleanly from schema v$oldVersion to v12, keeping data (T09)', () async {
+    test('migrates cleanly from schema v$oldVersion to v14, keeping data (T09)', () async {
       final path = await _createOldSchemaDb(tempDir, oldVersion);
 
       final service = HistoryService();
@@ -179,6 +179,8 @@ void main() {
       expect(entry.outputLanguage, isNull); // #138
       expect(entry.promptVersion, isNull); // #138
       expect(entry.rating, isNull); // #421
+      expect(entry.locationTrace, isNull); // #481
+      expect(entry.promptContext, isNull); // #424
       expect(service.collections, isEmpty); // T51
 
       final version = await databaseFactoryFfi.openDatabase(path).then((db) async {
@@ -186,11 +188,11 @@ void main() {
         await db.close();
         return v;
       });
-      expect(version, 12);
+      expect(version, 14);
     });
   }
 
-  test('a fresh install (no prior db) creates schema v12 directly', () async {
+  test('a fresh install (no prior db) creates schema v14 directly', () async {
     final path = join(tempDir.path, 'fresh.db');
     final service = HistoryService();
     await service.init(dbPath: path);
@@ -202,7 +204,7 @@ void main() {
       await db.close();
       return v;
     });
-    expect(version, 12);
+    expect(version, 14);
   });
 
   // #288

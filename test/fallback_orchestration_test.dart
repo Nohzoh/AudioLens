@@ -44,6 +44,8 @@ class _FakeNano extends GeminiNanoService {
   final bool available;
   final bool throwBackgroundRestricted;
   bool analyzeCalled = false;
+  String? lastLocationContext;
+  String? lastUserHint;
 
   @override
   Future<bool> isAvailable() async => available;
@@ -58,8 +60,11 @@ class _FakeNano extends GeminiNanoService {
     CancelToken? cancelToken,
     String? style,
     String? language,
+    String? userHint,
   }) async {
     analyzeCalled = true;
+    lastLocationContext = locationContext;
+    lastUserHint = userHint;
     if (throwBackgroundRestricted) {
       throw const GeminiNanoBackgroundRestrictedException();
     }
@@ -177,6 +182,53 @@ void main() {
     expect(service.activeProvider, AIProvider.geminiApi);
     expect(service.aiModelWasFallback, isTrue);
     expect(service.actualAiModel, 'Gemini Nano');
+  });
+
+  // #467
+  test('a user hint leads the context, reaches the provider and is traced',
+      () async {
+    final nano = _FakeNano(available: true);
+    final service = AudioGuideService(
+      geminiTtsService: _FakeGeminiTts(fail: false),
+      geminiApiService: _failingApi(),
+      nanoService: nano,
+    );
+    await service.init();
+    await service.setActiveProvider(AIProvider.geminiApi);
+
+    await service.analyzeAndPlay(tempImage(), userHint: '  Église   Saint-Joseph\n ');
+
+    expect(nano.lastUserHint, 'Église Saint-Joseph');
+    expect(nano.lastLocationContext,
+        startsWith("Indication de l'utilisateur sur ce que montre la photo : « Église Saint-Joseph »"));
+    expect(service.lastLocationTrace?.userHint, 'Église Saint-Joseph');
+  });
+
+  test('without a hint the context and trace are unchanged', () async {
+    final nano = _FakeNano(available: true);
+    final service = AudioGuideService(
+      geminiTtsService: _FakeGeminiTts(fail: false),
+      geminiApiService: _failingApi(),
+      nanoService: nano,
+    );
+    await service.init();
+    await service.setActiveProvider(AIProvider.geminiApi);
+
+    await service.analyzeAndPlay(tempImage(), userHint: '   ');
+
+    expect(nano.lastUserHint, isNull);
+    expect(nano.lastLocationContext ?? '', isNot(contains("Indication de l'utilisateur")));
+    expect(service.lastLocationTrace?.userHint, isNull);
+  });
+
+  test('normalizeUserHint and composePromptContext', () {
+    expect(normalizeUserHint(null), isNull);
+    expect(normalizeUserHint(' \n '), isNull);
+    expect(normalizeUserHint('a' * 200)!.length, maxUserHintChars);
+    expect(composePromptContext('Lieu', null), 'Lieu');
+    expect(composePromptContext(null, 'Tour Eiffel'),
+        startsWith("Indication de l'utilisateur sur ce que montre la photo : « Tour Eiffel »"));
+    expect(composePromptContext('Lieu', 'Tour Eiffel'), endsWith('\n\nLieu'));
   });
 
   test('Cloud AI failure -> Nano fallback, then a later analysis retries the '
