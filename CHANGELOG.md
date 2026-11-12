@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ✨ - **Gemini Nano models named after what the phone loads** (issue #499)
-  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **Verified**: 2026-11-12 (PR #526)
   - **What was done**: Settings asks AICore which model each choice loads and shows it (« Gemini Nano 3 », « Gemini Nano 4 Full (préversion) »); choices loading the same model are offered once (the selected one always stays). Not-installed choices keep their technical name; the Prompt Lab keeps the technical variants.
 
 - [x] ✨ - **Ask a question after listening to a guide** (issue #424)
