@@ -48,6 +48,13 @@ Future<void> _launchAnalysis(BuildContext context, HistoryEntry entry) async {
   );
 }
 
+/// #508: whether a history entry still has to be analyzed before it has
+/// anything to play — the same states the list sends to (re)analysis on
+/// tap instead of opening the detail screen.
+@visibleForTesting
+bool historyDetailNeedsAnalysis(HistoryEntry entry) =>
+    entry.isCaptured || entry.isPending || entry.status == AnalysisStatus.failed;
+
 /// Retries a failed analysis, reusing whatever location was resolved for
 /// the original attempt (live GPS, EXIF, or a manually picked map point)
 /// instead of re-resolving the device's current position from scratch —
@@ -1748,6 +1755,29 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           final generating = _isPlaying &&
                               guide.isBusy &&
                               guide.state == GuideState.synthesizing;
+                          // #508: an entry reached by swiping may not be
+                          // analyzed yet (captured, failed, or stuck
+                          // pending). It has no script, so « Générer
+                          // l'audio » did nothing; offer what tapping its
+                          // card in the list does instead.
+                          if (historyDetailNeedsAnalysis(live)) {
+                            return FilledButton.icon(
+                              onPressed: () => live.isCaptured
+                                  ? _launchAnalysis(context, live)
+                                  : _retryAnalysis(context, live),
+                              icon: Icon(live.isCaptured
+                                  ? Icons.auto_awesome
+                                  : Icons.refresh),
+                              label: Text(live.isCaptured
+                                  ? l10n.historyLaunchAnalysis
+                                  : l10n.historyRetryAnalysis),
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 52),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            );
+                          }
                           return Row(
                             children: [
                               // Skip only when the current playback is
