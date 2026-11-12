@@ -81,6 +81,7 @@ if ! grep -q 'genai-prompt' "$FILE"; then
 
 dependencies {
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
+    implementation("com.google.mlkit:genai-text-to-speech:1.0.0-alpha1")
     implementation("com.google.guava:guava:32.1.3-android")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
@@ -113,10 +114,10 @@ dependencies {
 DEPS
 fi
 
-echo "==> Patch version Kotlin (2.2.20)"
+echo "==> Patch version Kotlin (2.4.0)"
 for f in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-  [ -f "$f" ] && $SED -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.20"/' "$f"
-  [ -f "$f" ] && $SED -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.20"/' "$f"
+  [ -f "$f" ] && $SED -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.4.0"/' "$f"
+  [ -f "$f" ] && $SED -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.4.0"/' "$f"
 done
 
 echo "==> Patch AndroidManifest.xml (permissions + label + FileProvider)"
