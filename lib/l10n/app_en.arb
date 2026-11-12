@@ -104,6 +104,8 @@
   "historyStop": "Stop",
   "historyListen": "Listen to the commentary",
   "historyGenerateAudio": "Generate audio",
+  "historyLaunchAnalysis": "Run the analysis",
+  "historyRetryAnalysis": "Retry the analysis",
   "historyGeneratingAudio": "Generating audio...",
   "commonSkipBack10": "Skip back 10 seconds",
   "commonSkipForward10": "Skip forward 10 seconds",
