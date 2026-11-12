@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Optional user hint on what the photo shows** (issue #467)
+  - **Verified**: 2026-11-12 (PR #514)
+  - **What was done**: from the history, « Analyser avec un indice » (unanalyzed entries) and the « Relancer avec d'autres paramètres » sheet take an optional hint (one line, 120 characters). It leads the context sent to both pipelines as reliable information, is what Nano looks up on Wikipedia (#466), and is kept in the analysis trace (About screen, debug info, feedback). Not offered in the camera flow, where analysis starts at once.
+  - **Final validation**: tests for normalization, context composition, provider and trace; full suite and `flutter analyze` green; Kotlin compiled by CI. On-device check still to do.
+
 - [x] 🐛 - **History detail: unanalyzed entries reached by swiping can be analyzed** (issue #508)
   - **Verified**: 2026-11-12 (PR #509)
   - **What was done**: swiping in the detail screen to a captured entry showed « Générer l'audio », useless without a script. A captured entry now shows « Lancer l'analyse » and a pending or failed one « Relancer l'analyse », running the same functions as a tap on the card in the list.
