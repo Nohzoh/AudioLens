@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🧪 - **Benchmark dataset: 8 new field photos** (issue #476, part 1)
+  - **Verified**: 2026-11-12 (PR #530)
+  - **What was done**: photos added under `benchmark/dataset/photos/` (two museum works in Alès, Saint-Joseph church, École militaire with faces blurred, ECB Frankfurt, Wehrlose Bürger memorial with face blurred, Heidelberg panorama, Paris 13e towers) with their ground truth and coordinates in `PENDING.md`. They enter `manifest.json` once their location context has been resolved on the device and frozen.
 - [x] ✨ - **Tall landmarks seen from afar in the location context** (issue #498, part 2)
   - **Verified**: 2026-11-12 (PR #529)
   - **What was done**: an extra Overpass query (1.5 km, one attempt, 6 s) finds named structures at least 60 m tall or 20 levels high (towers count from 30 m) and adds up to three of them, closest first, as « Grands édifices visibles de loin (peut-être sur la photo, peut-être pas) ». Radius in remote config (`landmark_radius_meters`, 0 turns it off); cached with the rest of the enrichment.
