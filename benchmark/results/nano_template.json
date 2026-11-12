@@ -37,6 +37,8 @@
       "script": "",
       "word_count": null,
       "latency_ms_total": null,
+      "title_facts": null,
+      "title_lookup_ms": null,
       "latency_ms_segments": [
         null,
         null,

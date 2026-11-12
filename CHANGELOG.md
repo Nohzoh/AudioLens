@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Nano: segments 2-3 grounded with Wikipedia facts on segment 1's title** (issue #466)
+  - **Verified**: 2026-09-28 (PR #471)
+  - **What was done**: between segments 1 and 2 the native cascade calls back into Dart (`lookupTitleFacts`) with segment 1's title; Dart searches Wikipedia and returns the article intro (≤600 chars) only when the article title matches, and the extract is added to the segment 2/3 prompts. Segment 1 is asked to use the exact name of a recognized work or place as its title. Remote kill switch `gemini_nano_title_lookup` (default on). The Nano Prompt Lab shows the injected facts; the `AI` log says whether facts were found.
+  - **Final validation**: tests for the callback, its failure paths and title matching; full suite, `flutter analyze` and log hygiene green. On-device check and real Wikipedia results still to verify.
 - [x] ✨ - **Voice Lab: probe of the on-device generative voice** (issue #485, step 1)
   - **Verified**: 2026-11-12 (PR #495)
   - **What was done**: new debug screen (Settings > Voice Lab) for ML Kit's GenAI Text to Speech (alpha): lists the voices of a locale with their model status, downloads a model, speaks a text and reports status updates with timings, time to first audio chunk, chunk sizes and first bytes; the report and raw audio can be shared. The guide's voice chain is unchanged. The library ships Kotlin 2.4.0 metadata, so the Android build now compiles with Kotlin 2.4.0 (was 2.2.20).

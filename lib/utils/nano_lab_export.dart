@@ -131,6 +131,10 @@ Map<String, dynamic> _runToJson(NanoLabRun run) {
         : script.trim().split(RegExp(r'\s+')).length,
     'latency_ms_total': run.elapsed.inMilliseconds,
     'latency_ms_segments': r == null ? null : [r.seg1Ms, r.seg2Ms, r.seg3Ms],
+    // #466: facts looked up on segment 1's title and injected into
+    // segments 2-3 (null: lookup off, no match, or offline).
+    'title_facts': r?.titleFacts,
+    'title_lookup_ms': r?.titleLookupMs,
     'avail_memory_before_mb': r?.availMemBeforeMb,
     'min_avail_memory_mb': r?.minAvailMemMb,
     'peak_memory_drop_mb': r?.peakMemoryDropMb,
