@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Gemini Nano models named after what the phone loads** (issue #499)
+  - **Verified**: 2026-11-12 (PR #526)
+  - **What was done**: Settings asks AICore which model each choice loads and shows it (« Gemini Nano 3 », « Gemini Nano 4 Full (préversion) »); choices loading the same model are offered once (the selected one always stays). Not-installed choices keep their technical name; the Prompt Lab keeps the technical variants.
+
 - [x] ✨ - **Follow-up answers read aloud** (issue #524)
   - **Verified**: 2026-11-12 (PR #525)
   - **What was done**: each answer in the question sheet has a listen button (stop while it plays), read with the phone's voice — the generative one when installed — in the guide's language. A narration playing is paused first; closing the sheet stops the reading.

@@ -481,6 +481,28 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 }
             }
 
+            // #499: name of the model a variant loads (e.g. "nano-v4-full"),
+            // asked from AICore so Settings stays right when models change
+            // without an app update. Null unless the variant is AVAILABLE.
+            "nanoModelName" -> {
+                val config = variantConfig(call)
+                scope.launch {
+                    val name = try {
+                        val model = newClient(config)
+                        try {
+                            if (model.checkStatus() == com.google.mlkit.genai.common.FeatureStatus.AVAILABLE) {
+                                model.getBaseModelName()
+                            } else null
+                        } finally {
+                            model.close()
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+                    withContext(Dispatchers.Main) { result.success(name) }
+                }
+            }
+
             // #431: Nano Prompt Lab (and Settings since #462) — downloads
             // one model variant reported DOWNLOADABLE. Separate from "initialize", which
             // keeps owning the default client production uses.

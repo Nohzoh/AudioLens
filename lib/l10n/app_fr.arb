@@ -363,6 +363,8 @@
   "@voiceLabNativeNotListed": {"placeholders": {"name": {"type": "String"}, "count": {"type": "int"}}},
   "settingsNanoModelTitle": "Modèle local",
   "settingsNanoModelSubtitle": "Modèle Gemini Nano utilisé pour les analyses. Les modèles Preview sont expérimentaux.",
+  "settingsNanoModelPreview": "{model} (préversion)",
+  "@settingsNanoModelPreview": {"placeholders": {"model": {"type": "String"}}},
   "settingsNanoModelNotReadyHint": "Ce modèle n'est pas encore prêt : les analyses utilisent le modèle par défaut en attendant.",
   "nanoLabTitle": "Nano Prompt Lab",
   "nanoLabPickImage": "Choisir une image",
