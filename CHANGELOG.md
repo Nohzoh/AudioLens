@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Voice Lab: probe no longer takes the app down; crash traces are kept** (issue #501)
+  - **Verified**: 2026-11-12 (PR #502)
+  - **What was done**: asking a voice to speak crashed the app on a Pixel 10 (0.15.5), cause unknown. The probe now collects on the main thread as Google's sample does, catches every `Throwable` into its report, and while it runs any uncaught exception on any thread is written to a file that the Voice Lab shows on its next opening.
+  - **Final validation**: widget test for the crash card; full suite and `flutter analyze` green; Kotlin compiled by CI. Whether the crash is gone can only be seen on device.
+
 - [x] ✨ - **Nano Prompt Lab: switchable prompt experiments** (issues #468, #470)
   - **Verified**: 2026-11-12 (PR #500)
   - **What was done**: three chips in the lab's full-pipeline mode change the prompts of a run without touching production: Wikipedia facts on the title (#466, on/off), place stated first in segment 1's prompt (#470), and all of segment 1 passed to segments 2-3 instead of the last 200 characters (#468). Each exported run records its `prompt_options`, so an option can be judged by running the same case with and without it. Production prompts are unchanged until the benchmark says otherwise.
