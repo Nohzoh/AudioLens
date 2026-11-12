@@ -936,7 +936,14 @@ class _HistoryCard extends StatelessWidget {
                       Positioned(
                         top: 2,
                         left: 2,
-                        child: GestureDetector(
+                        child: Semantics(
+                          // #232
+                          button: true,
+                          toggled: entry.isFavorite,
+                          label: entry.isFavorite
+                              ? AppLocalizations.of(context)!.historyRemoveFromFavorites
+                              : AppLocalizations.of(context)!.historyAddToFavorites,
+                          child: GestureDetector(
                           onTap: () => context
                               .read<HistoryService>()
                               .toggleFavorite(entry.id!),
@@ -956,7 +963,7 @@ class _HistoryCard extends StatelessWidget {
                                   : Colors.white70,
                             ),
                           ),
-                        ),
+                        )),
                       ),
                   ],
                 ),

@@ -195,7 +195,12 @@ class _GroupMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(
+      // #232
+      button: true,
+      label: AppLocalizations.of(context)!.a11yMapMarker(count),
+      excludeSemantics: true,
+      child: GestureDetector(
       onTap: onTap,
       child: Stack(
         clipBehavior: Clip.none,
@@ -224,7 +229,7 @@ class _GroupMarker extends StatelessWidget {
             ),
         ],
       ),
-    );
+    ));
   }
 }
 

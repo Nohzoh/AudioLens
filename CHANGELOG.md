@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ♿ - **Screen-reader labels, first pass** (issue #232)
+  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **What was done**: home grid thumbnails announce their title and, when not finished, what a tap does (retry, analyze); the favorite star says « Ajouter/Retirer des favoris » and its state; the GPS badges and « Voir tout » are announced as buttons; map markers say how many analyses they hold. A TalkBack pass on a device and high-contrast mode remain.
+
 - [x] ✨ - **Ask a question after listening to a guide** (issue #424)
   - **Verified**: 2026-11-12 (PR #520)
   - **What was done**: « Poser une question » in a guide's actions sheet opens a short conversation (5 questions, ephemeral) answered from the script and the context the analysis had — now stored with each entry (`promptContext`, DB schema 14; older entries fall back to their address). Gemini API when a key is configured, the on-device model otherwise or on failure, with a shorter prompt. Answers in the guide's language, 2-4 sentences, saying when the information is not there.
