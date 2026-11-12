@@ -59,9 +59,11 @@ class AudioGuideService extends ChangeNotifier {
     // #485: let the native voice use an on-device generative voice when
     // the phone has one (remote kill switch). An injected service that
     // already has a finder keeps it.
+    final genAiTts = GenAiTtsService();
+    _nativeTtsService.generativeSpeaker ??= genAiTts;
     _nativeTtsService.generativeVoiceFinder ??= (locale, gender) async {
       if (!RemoteConfigService.current.nativeGenerativeVoice) return null;
-      return GenAiTtsService().availableVoiceName(locale, gender);
+      return genAiTts.availableVoiceName(locale, gender);
     };
     _providerManager = AiProviderManager(
       preferencesStore: _preferencesStore,
