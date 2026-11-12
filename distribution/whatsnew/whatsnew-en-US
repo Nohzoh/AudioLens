@@ -1,3 +1,3 @@
-New: a "Voice Lab" in Settings lets you try Google's new on-device speech voices (a test tool; guides don't use them yet).
+Fixes: the Voice Lab no longer crashes the app when a voice is asked to speak; if something goes wrong, it is shown on screen.
 
-Recent fixes: tone notes in parentheses are no longer read aloud; the history scrolls without delay.
+New: with local AI, when the artwork or monument is recognized, the rest of the guide draws on verified information from Wikipedia; the Nano Prompt Lab offers prompt variants to compare.
