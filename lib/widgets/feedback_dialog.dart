@@ -168,6 +168,9 @@ class FeedbackDialogStateX extends State<FeedbackDialog> {
       if (trace.wikipediaTitles.isNotEmpty) {
         lines.add('Articles Wikipedia : ${trace.wikipediaTitles.join(' | ')}');
       }
+      if (trace.landmarks.isNotEmpty) {
+        lines.add('Grands édifices : ${trace.landmarks.join(' | ')}');
+      }
     }
     if (entry.scriptStyle != null) lines.add('Style : ${entry.scriptStyle}');
     if (entry.outputLanguage != null) lines.add('Langue : ${entry.outputLanguage}');

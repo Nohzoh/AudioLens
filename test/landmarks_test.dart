@@ -58,4 +58,13 @@ void main() {
     expect(landmarksContext([duo], exclude: 'tour duo 1'), isNull);
     expect(landmarksContext(const []), isNull);
   });
+
+  test('the trace keeps the landmarks, old traces read as none', () {
+    const trace = LocationTrace(placeName: 'Gare', landmarks: ['Tour Duo 1 (310 m)']);
+    final back = LocationTrace.decode(trace.encode())!;
+    expect(back.landmarks, ['Tour Duo 1 (310 m)']);
+    expect(back.withUserHint('tours').landmarks, ['Tour Duo 1 (310 m)']);
+    expect(LocationTrace.decode('{"place":"Gare"}')!.landmarks, isEmpty);
+    expect(const LocationTrace(landmarks: ['x']).isEmpty, isFalse);
+  });
 }
