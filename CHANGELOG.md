@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ✨ - **Nano Prompt Lab: switchable prompt experiments** (issues #468, #470)
-  - **Verified**: 2026-11-12
+  - **Verified**: 2026-11-12 (PR #500)
   - **What was done**: three chips in the lab's full-pipeline mode change the prompts of a run without touching production: Wikipedia facts on the title (#466, on/off), place stated first in segment 1's prompt (#470), and all of segment 1 passed to segments 2-3 instead of the last 200 characters (#468). Each exported run records its `prompt_options`, so an option can be judged by running the same case with and without it. Production prompts are unchanged until the benchmark says otherwise.
   - **Final validation**: export test; full suite and `flutter analyze` green; Kotlin compiled by CI. Effect of each option still to measure on device.
 
