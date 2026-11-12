@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Voice Lab: probe of the on-device generative voice** (issue #485, step 1)
+  - **Verified**: 2026-11-12 (PR #495)
+  - **What was done**: new debug screen (Settings > Voice Lab) for ML Kit's GenAI Text to Speech (alpha): lists the voices of a locale with their model status, downloads a model, speaks a text and reports status updates with timings, time to first audio chunk, chunk sizes and first bytes; the report and raw audio can be shared. The guide's voice chain is unchanged. The library ships Kotlin 2.4.0 metadata, so the Android build now compiles with Kotlin 2.4.0 (was 2.2.20).
+  - **Final validation**: widget tests with a fake engine; full suite and `flutter analyze` green; Android build compiled by CI. Behaviour on a device unknown until the first probe.
+
 - [x] ✨ - **Nano Prompt Lab: export pipeline runs as benchmark JSON** (issue #477)
   - **Verified**: 2026-11-11 (PR #488)
   - **What was done**: in full-pipeline mode, each run is kept for the session (optional benchmark case id, variant, settings, GPS, resolved location context) and "Export runs" shares a JSON file in the `benchmark/results/nano_template.json` format. The native cascade now reports per-segment timings, the name of the model actually loaded and the available system memory before and at its lowest during the run; the export adds device, Android, AICore, app, Git commit and ML Kit versions. Memory is a proxy (AICore runs in its own process). `PROTOCOL.md` describes the new Nano procedure.
