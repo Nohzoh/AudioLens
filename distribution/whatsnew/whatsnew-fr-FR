@@ -1,3 +1,3 @@
-Nouveauté : un « Labo des voix » dans les Réglages permet d'essayer les nouvelles voix de synthèse de Google exécutées sur le téléphone (outil de test, les guides ne les utilisent pas encore).
+Corrections : le Labo des voix ne fait plus planter l'application quand on lance la lecture ; si un problème survient, il est affiché à l'écran.
 
-Corrections récentes : les indications de ton entre parenthèses ne sont plus lues à voix haute ; l'historique défile sans attente.
+Nouveautés : avec l'IA locale, quand l'œuvre ou le monument est reconnu, la suite du guide s'appuie sur des informations vérifiées de Wikipedia ; le Nano Prompt Lab propose des variantes de prompt à comparer.
