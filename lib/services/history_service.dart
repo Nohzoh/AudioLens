@@ -138,8 +138,11 @@ class HistoryEntry {
   // current native-TTS fallback (Gemini TTS failed at analysis time,
   // ttsFallback records that; native TTS never caches a file, so
   // audioPath is always null for this case).
+  /// #517: a recording of Google's on-device generative voice is cached
+  /// like Gemini TTS audio but, like Piper's, still worth upgrading.
   bool get hasLowQualityTts =>
       (ttsModel == "piper" && audioPath != null) ||
+      (ttsModel == "genai-tts" && audioPath != null) ||
       (ttsModel == "native-tts" && ttsFallback);
   String get audioDurationEstimate {
     if (wordCount == null) return '';

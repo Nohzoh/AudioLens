@@ -38,6 +38,20 @@ void main() async {
   final history = HistoryService();
   await history.init();
 
+  // #517: a narration by the on-device generative voice that played to
+  // the end is kept as the entry's audio, matched by its script — so the
+  // next listen is immediate, seekable and offline. An entry that already
+  // has audio (Gemini TTS) is left alone.
+  guide.nativeTtsService.onGenerativeRecording = (text, wavPath) async {
+    for (final entry in history.entries) {
+      if (entry.id != null && entry.script == text && !entry.hasAudio) {
+        await history.saveAudioPath(entry.id!, wavPath, ttsModel: 'genai-tts');
+        AppLogger.tts('Generative voice recording kept for entry ${entry.id}');
+        return;
+      }
+    }
+  };
+
   // T120: any entry still "pending" at this point is guaranteed orphaned
   // (no analysis can be in flight this early in the process) — flip it to
   // "failed" so it surfaces with the existing tap-to-retry UI instead of
