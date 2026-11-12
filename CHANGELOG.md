@@ -20,6 +20,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **Verified**: 2026-11-12 (PR #495)
   - **What was done**: new debug screen (Settings > Voice Lab) for ML Kit's GenAI Text to Speech (alpha): lists the voices of a locale with their model status, downloads a model, speaks a text and reports status updates with timings, time to first audio chunk, chunk sizes and first bytes; the report and raw audio can be shared. The guide's voice chain is unchanged. The library ships Kotlin 2.4.0 metadata, so the Android build now compiles with Kotlin 2.4.0 (was 2.2.20).
   - **Final validation**: widget tests with a fake engine; full suite and `flutter analyze` green; Android build compiled by CI. Behaviour on a device unknown until the first probe.
+- [x] 🐛 - **Scripts: stage directions stripped; Nano Prompt Lab export matches production** (issues #492, #493)
+  - **Verified**: 2026-11-11 (PR #494)
+  - **What was done**: `cleanMarkdown` removes a narrator note such as "(Voix douce et chaleureuse)" (seen in a real Nano run, and read aloud by the TTS) and a paragraph-opening ellipsis, for both pipelines. The lab export's `script` is now the production-assembled text, `temperature` the value actually sent, and memory is read from the kernel's `MemAvailable` (Android's `availMem` read 0 during a run) with the `lowMemory` flag alongside.
+  - **Final validation**: cleanup tests (stage direction removed, in-sentence parentheticals kept), export tests; full suite and `flutter analyze` green; Kotlin compiled by CI. First device export (Pixel 10) confirmed timings, AICore version, base model name, commit and location context; the new memory reading still to check on device.
 
 - [x] ✨ - **Nano Prompt Lab: export pipeline runs as benchmark JSON** (issue #477)
   - **Verified**: 2026-11-11 (PR #488)

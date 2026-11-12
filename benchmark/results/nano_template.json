@@ -45,6 +45,7 @@
       "avail_memory_before_mb": null,
       "min_avail_memory_mb": null,
       "peak_memory_drop_mb": null,
+      "low_memory_after": null,
       "seg1_mode": "",
       "seg1_finish_reason": "",
       "segments": [

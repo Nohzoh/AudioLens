@@ -53,17 +53,22 @@ final _bracketTitle = RegExp(r'^\s*\[([^\]]{1,80})\]\s*');
 /// Title and script of a run, as production would split them: the typed
 /// title when segment 1 used structured output, else the bracketed title
 /// at the start of the text.
+///
+/// #493: built from the production-assembled text when the platform
+/// returned it, so the script is what a user would hear rather than the
+/// raw concatenation of the segments.
 ({String? title, String script}) splitNanoLabTitle(NanoDebugCascadeResult r) {
+  final text = r.productionText ?? r.fullText;
   final typed = r.seg1Title?.trim();
-  if (typed != null && typed.isNotEmpty) return (title: typed, script: r.fullText);
-  final match = _bracketTitle.firstMatch(r.fullText);
+  if (typed != null && typed.isNotEmpty) return (title: typed, script: text);
+  final match = _bracketTitle.firstMatch(text);
   if (match != null) {
     return (
       title: match.group(1)!.trim(),
-      script: r.fullText.substring(match.end).trim(),
+      script: text.substring(match.end).trim(),
     );
   }
-  return (title: null, script: r.fullText);
+  return (title: null, script: text);
 }
 
 /// Builds the benchmark export for [runs], in the shape of
@@ -114,7 +119,7 @@ Map<String, dynamic> _runToJson(NanoLabRun run) {
     'style': run.style,
     'language': run.language,
     'max_output_tokens': run.maxOutputTokens,
-    'temperature': run.temperature,
+    'temperature': r?.temperatureUsed ?? run.temperature,
     'gps': run.latitude != null && run.longitude != null
         ? {'latitude': run.latitude, 'longitude': run.longitude}
         : null,
@@ -129,6 +134,7 @@ Map<String, dynamic> _runToJson(NanoLabRun run) {
     'avail_memory_before_mb': r?.availMemBeforeMb,
     'min_avail_memory_mb': r?.minAvailMemMb,
     'peak_memory_drop_mb': r?.peakMemoryDropMb,
+    'low_memory_after': r?.lowMemoryAfter,
     'seg1_mode': r?.seg1Mode,
     'seg1_finish_reason': r?.seg1FinishReason,
     'segments': r == null ? null : [r.seg1Output, r.seg2Output, r.seg3Output],

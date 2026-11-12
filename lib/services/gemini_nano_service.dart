@@ -111,6 +111,18 @@ class NanoDebugCascadeResult {
   final int? availMemBeforeMb;
   final int? minAvailMemMb;
 
+  /// #493: Android's own low-memory flag right after the run.
+  final bool? lowMemoryAfter;
+
+  /// #493: the script as a real analysis would have produced it — the
+  /// segments assembled with production's ellipsis/echo cleanup, then
+  /// [cleanMarkdown]. [fullText] stays the raw concatenation.
+  final String? productionText;
+
+  /// #493: temperature actually sent (the remote-config default when
+  /// the caller passed none).
+  final double? temperatureUsed;
+
   int? get peakMemoryDropMb => availMemBeforeMb != null && minAvailMemMb != null
       ? availMemBeforeMb! - minAvailMemMb!
       : null;
@@ -133,6 +145,9 @@ class NanoDebugCascadeResult {
     this.baseModelName,
     this.availMemBeforeMb,
     this.minAvailMemMb,
+    this.lowMemoryAfter,
+    this.productionText,
+    this.temperatureUsed,
   });
 }
 
@@ -423,6 +438,11 @@ class GeminiNanoService implements AIService {
         baseModelName: result['baseModelName'] as String?,
         availMemBeforeMb: (result['availMemBeforeMb'] as num?)?.toInt(),
         minAvailMemMb: (result['minAvailMemMb'] as num?)?.toInt(),
+        lowMemoryAfter: result['lowMemoryAfter'] as bool?,
+        productionText: result['productionText'] is String
+            ? cleanMarkdown(result['productionText'] as String)
+            : null,
+        temperatureUsed: (args['temperature'] as num?)?.toDouble(),
       );
     } on PlatformException catch (e) {
       if (e.message?.contains('Background usage is blocked') ?? false) {
