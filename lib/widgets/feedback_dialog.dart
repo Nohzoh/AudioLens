@@ -163,6 +163,7 @@ class FeedbackDialogStateX extends State<FeedbackDialog> {
     // #481
     final trace = entry.locationTrace;
     if (trace != null) {
+      if (trace.userHint != null) lines.add("Indice de l'utilisateur : ${trace.userHint}");
       lines.add('Lieu annoncé : ${trace.placeLine ?? 'aucun'}');
       if (trace.wikipediaTitles.isNotEmpty) {
         lines.add('Articles Wikipedia : ${trace.wikipediaTitles.join(' | ')}');

@@ -27,7 +27,8 @@ import 'analyses_map_screen.dart';
 
 /// Launches the analysis for a captured entry (T78), using the raw GPS
 /// saved at capture time rather than the device's current location.
-Future<void> _launchAnalysis(BuildContext context, HistoryEntry entry) async {
+Future<void> _launchAnalysis(BuildContext context, HistoryEntry entry,
+    {String? userHint}) async {
   final imageFile = File(entry.imagePath);
   if (!imageFile.existsSync()) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -45,6 +46,7 @@ Future<void> _launchAnalysis(BuildContext context, HistoryEntry entry) async {
     entryId: entry.id!,
     source: 'captured',
     knownCoordinates: knownCoordinates,
+    userHint: userHint,
   );
 }
 
@@ -59,7 +61,8 @@ bool historyDetailNeedsAnalysis(HistoryEntry entry) =>
 /// the original attempt (live GPS, EXIF, or a manually picked map point)
 /// instead of re-resolving the device's current position from scratch —
 /// see HistoryService.failEntry's doc.
-Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
+Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry,
+    {String? userHint}) async {
   final imageFile = File(entry.imagePath);
   if (!imageFile.existsSync()) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -77,6 +80,7 @@ Future<void> _retryAnalysis(BuildContext context, HistoryEntry entry) async {
     entryId: entry.id!,
     source: 'retry',
     knownCoordinates: knownCoordinates,
+    userHint: userHint,
   );
 }
 
@@ -85,10 +89,14 @@ class _RegenerateChoice {
   final String style;
   final String language;
   final AIProvider provider;
+
+  /// #467: what the user says the photo shows, or null.
+  final String? hint;
   const _RegenerateChoice({
     required this.style,
     required this.language,
     required this.provider,
+    this.hint,
   });
 }
 
@@ -140,7 +148,13 @@ Future<void> _openRegenerateSheet(
     );
   }
   if (!context.mounted) return;
-  await _retryAnalysis(context, entry);
+  // #467: a captured entry is launched as such (same location handling
+  // as a tap on its card); anything else is re-analyzed.
+  if (entry.isCaptured) {
+    await _launchAnalysis(context, entry, userHint: choice.hint);
+  } else {
+    await _retryAnalysis(context, entry, userHint: choice.hint);
+  }
 }
 
 class _RegenerateSheet extends StatefulWidget {
@@ -166,6 +180,13 @@ class _RegenerateSheetState extends State<_RegenerateSheet> {
   late String _style = widget.initialStyle;
   late String _language = widget.initialLanguage;
   late AIProvider _provider = widget.initialProvider;
+  final _hintController = TextEditingController();
+
+  @override
+  void dispose() {
+    _hintController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -178,13 +199,30 @@ class _RegenerateSheetState extends State<_RegenerateSheet> {
           top: 20,
           bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Column(
+        // #467: the hint field made the sheet taller than small screens
+        // (and the keyboard) leave room for.
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(l10n.historyRegenerateTitle,
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
+            // #467: optional — empty, the analysis runs as before.
+            TextField(
+              key: const ValueKey('regenerate-hint'),
+              controller: _hintController,
+              maxLength: maxUserHintChars,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: l10n.historyHintLabel,
+                helperText: l10n.historyHintHelper,
+                helperMaxLines: 2,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(l10n.settingsScriptStyleSection,
                 style: Theme.of(context).textTheme.labelSmall),
             const SizedBox(height: 8),
@@ -257,13 +295,15 @@ class _RegenerateSheetState extends State<_RegenerateSheet> {
                     _RegenerateChoice(
                         style: _style,
                         language: _language,
-                        provider: _provider),
+                        provider: _provider,
+                        hint: normalizeUserHint(_hintController.text)),
                   ),
                   child: Text(l10n.historyRegenerateConfirm),
                 ),
               ],
             ),
           ],
+        ),
         ),
       ),
     );
@@ -1761,21 +1801,33 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                           // l'audio » did nothing; offer what tapping its
                           // card in the list does instead.
                           if (historyDetailNeedsAnalysis(live)) {
-                            return FilledButton.icon(
-                              onPressed: () => live.isCaptured
-                                  ? _launchAnalysis(context, live)
-                                  : _retryAnalysis(context, live),
-                              icon: Icon(live.isCaptured
-                                  ? Icons.auto_awesome
-                                  : Icons.refresh),
-                              label: Text(live.isCaptured
-                                  ? l10n.historyLaunchAnalysis
-                                  : l10n.historyRetryAnalysis),
-                              style: FilledButton.styleFrom(
-                                minimumSize: const Size(double.infinity, 52),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14)),
-                              ),
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                FilledButton.icon(
+                                  onPressed: () => live.isCaptured
+                                      ? _launchAnalysis(context, live)
+                                      : _retryAnalysis(context, live),
+                                  icon: Icon(live.isCaptured
+                                      ? Icons.auto_awesome
+                                      : Icons.refresh),
+                                  label: Text(live.isCaptured
+                                      ? l10n.historyLaunchAnalysis
+                                      : l10n.historyRetryAnalysis),
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(double.infinity, 52),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                ),
+                                // #467: say what the photo shows first.
+                                TextButton.icon(
+                                  icon: const Icon(Icons.edit_note, size: 18),
+                                  label: Text(l10n.historyAnalyzeWithHint),
+                                  onPressed: () =>
+                                      _openRegenerateSheet(context, live),
+                                ),
+                              ],
                             );
                           }
                           return Row(

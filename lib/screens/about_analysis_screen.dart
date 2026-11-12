@@ -124,6 +124,8 @@ class AboutAnalysisScreen extends StatelessWidget {
                 live.wikipediaUsed ? l10n.aboutAnalysisYes : l10n.aboutAnalysisNo),
             // #481: what the model was actually told about the place.
             if (live.locationTrace != null) ...[
+              if (live.locationTrace!.userHint != null)
+                _Row(l10n.aboutAnalysisUserHint, live.locationTrace!.userHint!),
               _Row(l10n.aboutAnalysisPlace,
                   live.locationTrace!.placeLine ?? l10n.aboutAnalysisPlaceNone),
               if (live.locationTrace!.wikidata != null)
@@ -233,8 +235,9 @@ class AboutAnalysisScreen extends StatelessWidget {
   String _locationTraceDebug(HistoryEntry live) {
     final trace = live.locationTrace;
     if (trace == null) return 'Location context: not recorded\n';
-    final buffer = StringBuffer()
-      ..writeln('Place: ${trace.placeLine ?? 'none'}');
+    final buffer = StringBuffer();
+    if (trace.userHint != null) buffer.writeln('User hint: ${trace.userHint}');
+    buffer.writeln('Place: ${trace.placeLine ?? 'none'}');
     if (trace.wikidata != null) buffer.writeln('Wikidata: ${trace.wikidata}');
     buffer.writeln('Wikipedia articles: '
         '${trace.wikipediaTitles.isEmpty ? 'none' : trace.wikipediaTitles.join(' | ')}');

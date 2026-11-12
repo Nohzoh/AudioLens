@@ -326,7 +326,9 @@ class AudioGuideService extends ChangeNotifier {
     String? language,
     NanoModelVariant? nanoVariant,
     int? entryId,
+    String? userHint,
   }) async {
+    final hint = normalizeUserHint(userHint);
     if (_analysisInProgress || _state == GuideState.cancelling) {
       _lastGuideError = const GuideError(GuideErrorKind.busyAnalysis);
       _state = GuideState.error;
@@ -387,7 +389,8 @@ class AudioGuideService extends ChangeNotifier {
       _lastGpsAddress = locationContext.address;
       _lastLocationStatus = locationContext.status;
       _lastWikipediaUsed = locationContext.wikipediaUsed;
-      _lastLocationTrace = locationContext.trace;
+      _lastLocationTrace = locationContext.trace.withUserHint(hint);
+      final promptContext = composePromptContext(locationContext.promptContext, hint);
       _progressEstimator.recordGpsDuration(
           DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
 
@@ -414,10 +417,11 @@ class AudioGuideService extends ChangeNotifier {
       try {
         _lastResult = await service.analyzeImage(
           imageFile,
-          locationContext: locationContext.promptContext,
+          locationContext: promptContext,
           cancelToken: cancelToken,
           style: style,
           language: language,
+          userHint: hint,
         );
       } catch (analysisError) {
         // A cancellation must abort outright, not trigger the local-model
@@ -448,10 +452,11 @@ class AudioGuideService extends ChangeNotifier {
           try {
             _lastResult = await _providerManager.nanoService.analyzeImage(
               imageFile,
-              locationContext: locationContext.promptContext,
+              locationContext: promptContext,
               cancelToken: cancelToken,
               style: style,
               language: language,
+              userHint: hint,
             );
             _lastProviderFallbackToNano = true;
             _lastAiModel = _nanoModelLabel();
@@ -813,3 +818,29 @@ class AudioGuideService extends ChangeNotifier {
     super.dispose();
   }
 }
+
+/// #467: longest hint kept — a name or a short description, not a text.
+const maxUserHintChars = 120;
+
+/// #467: the hint as it will be used — trimmed, on one line, capped at
+/// [maxUserHintChars]; null when empty.
+String? normalizeUserHint(String? hint) {
+  if (hint == null) return null;
+  final oneLine = hint.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (oneLine.isEmpty) return null;
+  return oneLine.length <= maxUserHintChars
+      ? oneLine
+      : oneLine.substring(0, maxUserHintChars).trimRight();
+}
+
+/// #467: the context sent to the model, with the user's hint first so it
+/// survives Nano's truncation of long contexts and is read as the
+/// subject before the nearby places.
+String? composePromptContext(String? locationContext, String? hint) {
+  if (hint == null) return locationContext;
+  final hintLine = "Indication de l'utilisateur sur ce que montre la photo : « $hint ». "
+      'Elle est fiable et prime sur la localisation et les lieux à proximité.';
+  if (locationContext == null || locationContext.isEmpty) return hintLine;
+  return '$hintLine\n\n$locationContext';
+}
+

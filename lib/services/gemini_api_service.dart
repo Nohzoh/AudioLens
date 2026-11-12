@@ -49,6 +49,8 @@ class GeminiApiService implements AIService {
     CancelToken? cancelToken,
     String? style,
     String? language,
+    // #467: already at the top of [locationContext], nothing more to do.
+    String? userHint,
   }) async {
     final cfg = RemoteConfigService.current;
     // T113: downscale before upload — a full-res phone photo (10-20MB) is
