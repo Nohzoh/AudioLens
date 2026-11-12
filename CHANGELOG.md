@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ♿ - **Screen-reader labels, first pass** (issue #232)
-  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **Verified**: 2026-11-12 (PR #528)
   - **What was done**: home grid thumbnails announce their title and, when not finished, what a tap does (retry, analyze); the favorite star says « Ajouter/Retirer des favoris » and its state; the GPS badges and « Voir tout » are announced as buttons; map markers say how many analyses they hold. A TalkBack pass on a device and high-contrast mode remain.
 
 - [x] ✨ - **Ask a question after listening to a guide** (issue #424)
