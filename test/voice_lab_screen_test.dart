@@ -45,12 +45,16 @@ class _FakeTts extends GenAiTtsService {
   Future<void> stop() async {}
 }
 
-Future<void> _pump(WidgetTester tester, GenAiTtsService service) async {
+Future<void> _pump(
+  WidgetTester tester,
+  GenAiTtsService service, {
+  List<String> nativeNames = const [],
+}) async {
   await tester.pumpWidget(MaterialApp(
     locale: const Locale('fr'),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: VoiceLabScreen(service: service),
+    home: VoiceLabScreen(service: service, nativeVoiceNames: (_) async => nativeNames),
   ));
   await tester.pumpAndSettle();
 }
@@ -87,6 +91,41 @@ void main() {
         ]));
 
     expect(find.text('Télécharger cette voix'), findsOneWidget);
+  });
+
+  testWidgets('says whether the app\'s native voice can see the selected voice',
+      (tester) async {
+    const voices = [
+      GenAiVoice(
+          name: 'star02', status: 'available', details: 'fr-FR, female', engineName: 'fr-fr-x-gen-a'),
+    ];
+    await _pump(tester, _FakeTts(voiceList: voices), nativeNames: ['fr-fr-x-gen-a', 'fr-fr-x-vlf']);
+    expect(find.textContaining('fr-fr-x-gen-a — visible par la voix native'), findsOneWidget);
+  });
+
+  testWidgets('says when the native voice does not list the selected voice',
+      (tester) async {
+    await _pump(
+      tester,
+      _FakeTts(voiceList: const [
+        GenAiVoice(
+            name: 'star02', status: 'available', details: 'fr-FR, female', engineName: 'fr-fr-x-gen-a'),
+      ]),
+      nativeNames: ['fr-fr-x-vlf'],
+    );
+
+    expect(find.textContaining('fr-fr-x-gen-a — absent des 1 voix'), findsOneWidget);
+  });
+
+  test('derives the audio rate from the playback window', () {
+    final probe = GenAiTtsProbe.fromMap(const {
+      'totalBytes': 96000,
+      'startMs': 500,
+      'doneMs': 2500,
+    });
+
+    expect(probe.bytesPerSecond, 48000);
+    expect(GenAiTtsProbe.fromMap(const {'totalBytes': 96000}).bytesPerSecond, isNull);
   });
 
   testWidgets('says so when the device offers no voice', (tester) async {

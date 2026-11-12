@@ -9,10 +9,19 @@ class GenAiVoice {
   /// error label.
   final String status;
 
-  /// The platform object's own description (gender, locale...), as-is.
+  /// Locale and gender, e.g. `fr-FR, female`.
   final String details;
 
-  const GenAiVoice({required this.name, required this.status, required this.details});
+  /// The voice's name inside Google's TTS engine, when it could be read
+  /// — what the app's native voice would have to select to use it.
+  final String? engineName;
+
+  const GenAiVoice({
+    required this.name,
+    required this.status,
+    required this.details,
+    this.engineName,
+  });
 }
 
 /// #485: what one synthesis attempt produced, as observed on the device.
@@ -26,6 +35,20 @@ class GenAiTtsProbe {
   final List<int> chunkSizes;
   final int totalBytes;
   final int? firstChunkMs;
+
+  /// When the engine reported the start and the end of playback.
+  final int? startMs;
+  final int? doneMs;
+
+  /// Audio bytes per second of playback. The library does not say what
+  /// format its audio is in; for 16-bit mono PCM this is twice the sample
+  /// rate (48000 for 24 kHz).
+  int? get bytesPerSecond {
+    if (startMs == null || doneMs == null || doneMs! <= startMs! || totalBytes == 0) {
+      return null;
+    }
+    return (totalBytes * 1000 / (doneMs! - startMs!)).round();
+  }
 
   /// First 16 bytes of the audio, in hex — enough to tell a WAV header
   /// from raw PCM.
@@ -44,6 +67,8 @@ class GenAiTtsProbe {
     required this.chunkSizes,
     required this.totalBytes,
     required this.firstChunkMs,
+    this.startMs,
+    this.doneMs,
     required this.firstBytesHex,
     required this.totalMs,
     required this.audioFile,
@@ -60,6 +85,8 @@ class GenAiTtsProbe {
             .toList(),
         totalBytes: (map['totalBytes'] as num?)?.toInt() ?? 0,
         firstChunkMs: (map['firstChunkMs'] as num?)?.toInt(),
+        startMs: (map['startMs'] as num?)?.toInt(),
+        doneMs: (map['doneMs'] as num?)?.toInt(),
         firstBytesHex: map['firstBytesHex'] as String?,
         totalMs: (map['totalMs'] as num?)?.toInt() ?? 0,
         audioFile: map['audioFile'] as String?,
@@ -77,6 +104,8 @@ class GenAiTtsProbe {
       ..writeln('Chunks: $chunkCount, $totalBytes bytes')
       ..writeln('Chunk sizes: ${chunkSizes.join(', ')}')
       ..writeln('First bytes: ${firstBytesHex ?? 'none'}')
+      ..writeln('Playback: ${startMs == null || doneMs == null ? 'unknown' : '$startMs to $doneMs ms'}')
+      ..writeln('Bytes per second of playback: ${bytesPerSecond ?? 'unknown'}')
       ..writeln('Error: ${error ?? 'none'}')
       ..writeln('Events:');
     for (final event in events) {
@@ -102,6 +131,7 @@ class GenAiTtsService {
           name: v['name'] as String? ?? '',
           status: v['status'] as String? ?? 'unknown',
           details: v['details'] as String? ?? '',
+          engineName: v['engineName'] as String?,
         ),
     ];
   }

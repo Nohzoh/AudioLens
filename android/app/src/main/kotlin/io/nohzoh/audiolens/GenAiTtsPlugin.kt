@@ -25,11 +25,20 @@ import kotlinx.coroutines.withTimeout
 
 /**
  * #485: probe for ML Kit's on-device generative Text to Speech
- * (genai-text-to-speech, alpha). Not wired into the guide's voice chain
- * yet: the documentation leaves open whether the synthesizer plays the
- * audio itself, what format its audio chunks are in, and how long a text
- * it accepts. This plugin answers those on a real device (Settings >
- * Voice Lab) before any production integration.
+ * (genai-text-to-speech, alpha). Not wired into the guide's voice chain.
+ *
+ * Reading the library (1.0.0-alpha1) shows it is a wrapper around
+ * Android's own TextToSpeech bound to Google's engine
+ * (com.google.android.tts): it picks a Voice by name with setVoice() and
+ * calls speak(), so the engine plays the audio itself; AudioAvailable
+ * relays UtteranceProgressListener.onAudioAvailable (raw audio, whose
+ * sample rate the library does not pass on). What it adds is the list of
+ * generative voices and the download of their models.
+ *
+ * So the open question for production is whether the app's existing
+ * native voice (flutter_tts, same Android API) can simply select these
+ * voices by name. This probe reports, on a real device, each voice's
+ * engine-side name and what one synthesis does.
  */
 class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
@@ -66,6 +75,16 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         else -> "unknown($status)"
     }
 
+    // Name of the voice inside Google's TTS engine — the one a plain
+    // TextToSpeech.setVoice() would need. Not part of the public API
+    // (obfuscated accessor of alpha1), hence reflection and null on any
+    // failure.
+    private fun engineVoiceName(voice: VoiceInfo): String? = try {
+        voice.javaClass.getMethod("zza").invoke(voice) as? String
+    } catch (e: Exception) {
+        null
+    }
+
     private suspend fun findVoice(
         client: SpeechSynthesizer,
         locale: Locale,
@@ -93,7 +112,8 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             mapOf(
                                 "name" to voice.name,
                                 "status" to status,
-                                "details" to voice.toString()
+                                "details" to "${voice.locale.toLanguageTag()}, ${voice.gender.name.lowercase()}",
+                                "engineName" to engineVoiceName(voice)
                             )
                         }
                         withContext(Dispatchers.Main) { result.success(payload) }
@@ -152,6 +172,8 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     val chunkSizes = mutableListOf<Int>()
                     var totalBytes = 0L
                     var firstChunkMs: Long? = null
+                    var startMs: Long? = null
+                    var doneMs: Long? = null
                     var firstBytesHex: String? = null
                     var error: String? = null
                     var voiceLabel: String? = null
@@ -172,8 +194,14 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             withTimeout(PROBE_TIMEOUT_MS) {
                                 client.synthesize(request).collect { response ->
                                     when (response) {
-                                        is SpeechSynthesizerResponse.StatusUpdate ->
+                                        is SpeechSynthesizerResponse.StatusUpdate -> {
                                             events.add("${ms()} ms status: ${response.status}")
+                                            when (response.status) {
+                                                SpeechSynthesizerResponse.Status.START -> startMs = ms()
+                                                SpeechSynthesizerResponse.Status.DONE -> doneMs = ms()
+                                                else -> {}
+                                            }
+                                        }
                                         is SpeechSynthesizerResponse.AudioAvailable -> {
                                             val audio = response.audio
                                             if (firstChunkMs == null) {
@@ -209,6 +237,8 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         "chunkSizes" to chunkSizes.take(40),
                         "totalBytes" to totalBytes,
                         "firstChunkMs" to firstChunkMs,
+                        "startMs" to startMs,
+                        "doneMs" to doneMs,
                         "firstBytesHex" to firstBytesHex,
                         "totalMs" to ms(),
                         "audioFile" to (if (totalBytes > 0) file.absolutePath else null),

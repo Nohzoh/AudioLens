@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../l10n/app_localizations.dart';
 import '../services/genai_tts_service.dart';
+import '../services/native_tts_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_sanitizer.dart';
 
@@ -13,9 +14,14 @@ import '../utils/error_sanitizer.dart';
 /// voice chain doesn't use this engine yet; this screen exists to find
 /// out whether and how it can.
 class VoiceLabScreen extends StatefulWidget {
-  const VoiceLabScreen({super.key, GenAiTtsService? service}) : _service = service;
+  const VoiceLabScreen({super.key, GenAiTtsService? service, this.nativeVoiceNames})
+      : _service = service;
 
   final GenAiTtsService? _service;
+
+  /// Names of the voices the device's native TTS engine reports for a
+  /// locale prefix. Injectable for tests; defaults to flutter_tts.
+  final Future<List<String>> Function(String localePrefix)? nativeVoiceNames;
 
   @override
   State<VoiceLabScreen> createState() => _VoiceLabScreenState();
@@ -35,6 +41,12 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
   bool _busy = false;
   GenAiTtsProbe? _probe;
   String? _downloadLog;
+  List<String>? _nativeNames;
+
+  Future<List<String>> _defaultNativeVoiceNames(String prefix) async {
+    final voices = await NativeTtsService().voicesForLocale(prefix);
+    return [for (final v in voices) v['name'] ?? ''];
+  }
 
   @override
   void initState() {
@@ -80,7 +92,27 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
           }
         });
         AppLogger.tts('Voice Lab: ${voices.length} voice(s) listed');
+        // What the app's existing native voice can see for the same
+        // language — to tell whether it could select these voices itself.
+        try {
+          final prefix = _locale.split('-').first;
+          final names =
+              await (widget.nativeVoiceNames ?? _defaultNativeVoiceNames)(prefix);
+          if (mounted) setState(() => _nativeNames = names);
+        } catch (_) {
+          if (mounted) setState(() => _nativeNames = null);
+        }
       });
+
+  /// One line saying whether the native engine lists [voice].
+  String _nativeVisibility(GenAiVoice voice, AppLocalizations l10n) {
+    final engineName = voice.engineName;
+    final names = _nativeNames;
+    if (engineName == null || names == null) return l10n.voiceLabNativeUnknown;
+    return names.contains(engineName)
+        ? l10n.voiceLabNativeListed(engineName)
+        : l10n.voiceLabNativeNotListed(engineName, names.length);
+  }
 
   Future<void> _download() => _run(() async {
         final statuses = await _tts.download(_locale, _voice!);
@@ -159,7 +191,10 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
             ),
             if (selected != null) ...[
               const SizedBox(height: 8),
-              SelectableText(selected.details, style: theme.textTheme.labelSmall),
+              SelectableText(
+                '${selected.details}\n${_nativeVisibility(selected, l10n)}',
+                style: theme.textTheme.labelSmall,
+              ),
             ],
             if (selected != null && selected.status == 'downloadable') ...[
               const SizedBox(height: 8),
