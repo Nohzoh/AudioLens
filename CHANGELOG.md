@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Native fallback voice uses an on-device generative voice when available** (issue #485, step 2)
+  - **Verified**: 2026-11-12 (PR #506)
+  - **What was done**: the Voice Lab on a Pixel 10 showed Google's generative voice (`fr-fr-x-star02`) to be clearly more natural than the "network" voice used when the Gemini TTS quota runs out. It is a regular voice of the same Android engine, so the native voice now selects the installed generative voice matching the guide's language and the preferred gender when the engine lists it — in any language. Unchanged otherwise; remote kill switch `native_generative_voice`.
+  - **Final validation**: tests for selection, fallbacks (none installed, not listed, lookup failure), caching and a non-French locale; full suite and `flutter analyze` green; Kotlin compiled by CI. Device measurements from the lab: 1659 characters in one request, first audio at 4.6 s cold, 24 kHz 16-bit mono PCM. Selection through `flutter_tts` and the speech rate still to check on device.
+
 - [x] 🐛 - **Voice Lab: speaking failed with NoSuchMethodError** (issue #485)
   - **Verified**: 2026-11-12 (PR #504)
   - **What was done**: the crash trace added in #501 gave the cause of the Voice Lab failure on device: `SpeechSynthesizerRequest` was built without its `queueMode`, which the library's Kotlin metadata declares optional although its jar has no default-argument constructor. The request now passes all three arguments.
