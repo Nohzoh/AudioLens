@@ -268,6 +268,37 @@ class GeminiApiService implements AIService {
   /// for, unlike a real analysis. A partially-usable response (some
   /// questions well-formed, some not) still returns the usable subset
   /// rather than discarding everything.
+  /// #424: plain text answer to [prompt] (a follow-up question about a
+  /// guide). Unlike [generateQuizQuestions], failures throw: the user is
+  /// waiting for this answer and must be told it did not come.
+  Future<String> answerQuestion(String prompt, {CancelToken? cancelToken}) async {
+    final cfg = RemoteConfigService.current;
+    final resp = await _post(
+      Uri.parse('${cfg.geminiApiUrl}/models/${cfg.geminiModel}:generateContent?key=$apiKey'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'contents': [
+          {
+            'parts': [
+              {'text': prompt}
+            ]
+          }
+        ],
+        'generationConfig': {
+          'maxOutputTokens': 512,
+          'temperature': cfg.geminiTemperature,
+        },
+      }),
+      cancelToken: cancelToken,
+    );
+    if (resp.statusCode != 200) {
+      throw Exception('Gemini API: HTTP ${resp.statusCode}');
+    }
+    final text = _extractCandidateText(resp.body).text?.trim();
+    if (text == null || text.isEmpty) throw Exception('Gemini API: empty answer');
+    return text;
+  }
+
   Future<List<QuizQuestion>> generateQuizQuestions({
     required String script,
     String? language,
