@@ -19,6 +19,25 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 - [x] 🧪 - **Benchmark dataset: 8 new field photos** (issue #476, part 1)
   - **Verified**: 2026-11-12 (PR #530)
   - **What was done**: photos added under `benchmark/dataset/photos/` (two museum works in Alès, Saint-Joseph church, École militaire with faces blurred, ECB Frankfurt, Wehrlose Bürger memorial with face blurred, Heidelberg panorama, Paris 13e towers) with their ground truth and coordinates in `PENDING.md`. They enter `manifest.json` once their location context has been resolved on the device and frozen.
+- [x] ✨ - **Tall landmarks seen from afar in the location context** (issue #498, part 2)
+  - **Verified**: 2026-11-12 (PR #529)
+  - **What was done**: an extra Overpass query (1.5 km, one attempt, 6 s) finds named structures at least 60 m tall or 20 levels high (towers count from 30 m) and adds up to three of them, closest first, as « Grands édifices visibles de loin (peut-être sur la photo, peut-être pas) ». Radius in remote config (`landmark_radius_meters`, 0 turns it off); cached with the rest of the enrichment.
+
+- [x] ♿ - **Screen-reader labels, first pass** (issue #232)
+  - **Verified**: 2026-11-12 (PR #528)
+  - **What was done**: home grid thumbnails announce their title and, when not finished, what a tap does (retry, analyze); the favorite star says « Ajouter/Retirer des favoris » and its state; the GPS badges and « Voir tout » are announced as buttons; map markers say how many analyses they hold. A TalkBack pass on a device and high-contrast mode remain.
+
+- [x] ✨ - **Long-press a sentence to jump the narration there** (issue #228, player screen)
+  - **Verified**: 2026-11-12 (PR #527)
+  - **What was done**: on the player screen, long-pressing a sentence of the script moves playback to where it starts (same text-to-time estimate as the highlight), with a light haptic tick. Only for seekable audio (Gemini voice, saved audio), like the ±10 s buttons; new native `seekToFraction`. The history detail screen is not covered yet.
+
+- [x] ✨ - **Gemini Nano models named after what the phone loads** (issue #499)
+  - **Verified**: 2026-11-12 (PR #526)
+  - **What was done**: Settings asks AICore which model each choice loads and shows it (« Gemini Nano 3 », « Gemini Nano 4 Full (préversion) »); choices loading the same model are offered once (the selected one always stays). Not-installed choices keep their technical name; the Prompt Lab keeps the technical variants.
+
+- [x] ✨ - **Follow-up answers read aloud** (issue #524)
+  - **Verified**: 2026-11-12 (PR #525)
+  - **What was done**: each answer in the question sheet has a listen button (stop while it plays), read with the phone's voice — the generative one when installed — in the guide's language. A narration playing is paused first; closing the sheet stops the reading.
 
 - [x] ✨ - **Choice of the phone's generative voice** (issue #522)
   - **Verified**: 2026-11-12 (PR #523)
