@@ -494,5 +494,10 @@
     "placeholders": {
       "minimum": {"type": "int"}
     }
-  }
+  },
+  "a11yUntitledPhoto": "Untitled photo",
+  "a11yTileFailed": "{title}, analysis failed, tap to retry",
+  "a11yTilePending": "{title}, analysis in progress",
+  "a11yTileCaptured": "{title}, not analyzed yet, tap to analyze",
+  "a11yMapMarker": "{count, plural, =1{1 analysis here} other{{count} analyses here}}"
 }

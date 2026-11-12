@@ -949,7 +949,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       // Location status badge
                       if (_permissionStatus ==
                           LocationPermissionStatus.deniedForever)
-                        GestureDetector(
+                        Semantics(button: true, child: GestureDetector(
                           onTap: _showLocationDeniedForeverDialog,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -970,10 +970,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ],
                             ),
                           ),
-                        )
+                        ))
                       else if (_permissionStatus ==
                           LocationPermissionStatus.denied)
-                        GestureDetector(
+                        Semantics(button: true, child: GestureDetector(
                           onTap: () async {
                             await _checkLocationPermission();
                           },
@@ -996,7 +996,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               ],
                             ),
                           ),
-                        )
+                        ))
                       else if (_permissionStatus ==
                           LocationPermissionStatus.granted)
                         Container(
@@ -1042,7 +1042,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   ),
                                 ),
                                 const Spacer(),
-                                GestureDetector(
+                                Semantics(button: true, child: GestureDetector(
                                   onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -1054,7 +1054,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       color: theme.colorScheme.primary,
                                     ),
                                   ),
-                                ),
+                                )),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -1077,7 +1077,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 final isCaptured = entry.isCaptured;
                                 final isDimmed =
                                     isPending || isFailed || isCaptured;
-                                return GestureDetector(
+                                return Semantics(
+                                  key: ValueKey('a11y-${entry.id}'),
+                                  // #232: the thumbnail alone says nothing
+                                  // to a screen reader.
+                                  button: true,
+                                  label: homeGridTileLabel(l10n, entry),
+                                  child: GestureDetector(
                                   key: ValueKey(entry.id),
                                   onTap: () {
                                     if (isPending || isFailed) {
@@ -1257,7 +1263,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       ],
                                     ),
                                   ),
-                                );
+                                ));
                               },
                             ),
                           ],
@@ -1320,4 +1326,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
     );
   }
+}
+
+/// #232: what a screen reader says for a home grid thumbnail — its
+/// title and, when it isn't a finished guide, what a tap will do.
+String homeGridTileLabel(AppLocalizations l10n, HistoryEntry entry) {
+  final title = entry.title.trim().isEmpty ? l10n.a11yUntitledPhoto : entry.title.trim();
+  if (entry.status == AnalysisStatus.failed) return l10n.a11yTileFailed(title);
+  if (entry.isPending) return l10n.a11yTilePending(title);
+  if (entry.isCaptured) return l10n.a11yTileCaptured(title);
+  return title;
 }

@@ -543,5 +543,14 @@
     "placeholders": {
       "minimum": {"type": "int"}
     }
-  }
+  },
+  "a11yUntitledPhoto": "Photo sans titre",
+  "a11yTileFailed": "{title}, analyse échouée, toucher pour relancer",
+  "@a11yTileFailed": {"placeholders": {"title": {"type": "String"}}},
+  "a11yTilePending": "{title}, analyse en cours",
+  "@a11yTilePending": {"placeholders": {"title": {"type": "String"}}},
+  "a11yTileCaptured": "{title}, pas encore analysée, toucher pour lancer l’analyse",
+  "@a11yTileCaptured": {"placeholders": {"title": {"type": "String"}}},
+  "a11yMapMarker": "{count, plural, =1{1 analyse ici} other{{count} analyses ici}}",
+  "@a11yMapMarker": {"placeholders": {"count": {"type": "int"}}}
 }
