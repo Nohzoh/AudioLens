@@ -1,3 +1,3 @@
-Nouveautés : quand la voix Gemini n'est pas disponible, le guide est vraiment lu avec la nouvelle voix de synthèse de Google si votre téléphone en a une (pause = reprise en début de phrase, vitesse non réglable). Vous pouvez aussi indiquer ce que montre la photo (« Analyser avec un indice » dans l'historique).
+Nouveautés : un guide lu par la voix de synthèse du téléphone est maintenant enregistré quand il va jusqu'au bout ; les écoutes suivantes démarrent tout de suite, avec avance et retour de 10 secondes, même hors connexion.
 
-Correction : informations d'analyse plus claires quand aucun lieu n'est trouvé.
+Amélioration : les lieux Wikipedia proches sont mieux triés (les rues sont écartées) pour moins dériver quand le sujet de la photo est plus loin.
