@@ -107,6 +107,38 @@ void main() {
     expect(splitNanoLabTitle(_result()).title, isNull);
   });
 
+  // #493
+  test('uses the production-assembled script and the temperature actually sent', () {
+    final export = buildNanoLabExport(
+      runs: [
+        _run(
+          result: const NanoDebugCascadeResult(
+            seg1Prompt: 'p1',
+            seg1Output: 'Un.',
+            seg1Title: 'Titre',
+            seg2Prompt: 'p2',
+            seg2Output: '...Deux.',
+            seg3Prompt: 'p3',
+            seg3Output: 'Trois.',
+            fullText: 'Un. ...Deux. Trois.',
+            productionText: 'Un. Deux. Trois.',
+            temperatureUsed: 0.7,
+            lowMemoryAfter: false,
+          ),
+        ),
+      ],
+      environment: const {},
+      appVersion: '0.15.4',
+      appBuildNumber: '901',
+    );
+
+    final r = (export['results'] as List).single as Map<String, dynamic>;
+    expect(r['script'], 'Un. Deux. Trois.');
+    expect(r['segments'], ['Un.', '...Deux.', 'Trois.']);
+    expect(r['temperature'], 0.7);
+    expect(r['low_memory_after'], isFalse);
+  });
+
   test('a failed run keeps its error and settings, with no measurements', () {
     final export = buildNanoLabExport(
       runs: [_run(error: 'Gemini Nano: timeout', caseId: null)],

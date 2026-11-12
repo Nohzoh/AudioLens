@@ -43,6 +43,31 @@ void main() {
       expect(cleanMarkdown(text), text);
     });
 
+    // #492 — real Nano output, 2026-11-11.
+    test('removes a stage direction and the ellipsis that follows it', () {
+      const text = 'Le quartier a changé. (Voix douce et chaleureuse)\n\n'
+          '…Et ce petit coin de verdure invite à la pause.';
+
+      expect(cleanMarkdown(text),
+          'Le quartier a changé.\n\nEt ce petit coin de verdure invite à la pause.');
+    });
+
+    test('removes a stage direction standing alone on its line', () {
+      expect(cleanMarkdown('(Pause)\nBienvenue devant ce monument.'),
+          'Bienvenue devant ce monument.');
+    });
+
+    test('keeps parentheticals that belong to the sentence', () {
+      for (final text in [
+        'La tour (achevée en 1889) domine le Champ-de-Mars.',
+        'Elle fut dessinée par Stephen Sauvestre (architecte).',
+        'Le pont (reconstruit après la crue de 1910)\nfut rouvert ensuite.',
+        'Son surnom (la Dame de fer)\nlui vient de sa structure.',
+      ]) {
+        expect(cleanMarkdown(text), text);
+      }
+    });
+
     test('trims leading/trailing whitespace', () {
       expect(cleanMarkdown('   Texte avec espaces.   '), 'Texte avec espaces.');
     });
