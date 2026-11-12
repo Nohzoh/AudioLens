@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:audiolens/l10n/app_localizations.dart';
@@ -42,13 +43,15 @@ HistoryEntry _entry({String? promptContext}) => HistoryEntry(
       gpsAddress: 'Boulevard du Général Jean Simon',
     );
 
-Future<void> _pump(WidgetTester tester, HistoryEntry entry, GuideQuestionService service) =>
+Future<void> _pump(WidgetTester tester, HistoryEntry entry, GuideQuestionService service,
+        {AnswerReader? reader}) =>
     tester.pumpWidget(MaterialApp(
       locale: const Locale('fr'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: GuideQuestionSheet(entry: entry, language: 'Français', service: service),
+        body: GuideQuestionSheet(
+            entry: entry, language: 'Français', service: service, reader: reader),
       ),
     ));
 
@@ -101,5 +104,44 @@ void main() {
     expect(find.textContaining('Nombre maximum de questions atteint'), findsOneWidget);
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.enabled, isFalse);
+  });
+
+  testWidgets('an answer can be listened to, and stopped (#524)', (tester) async {
+    final spoken = <String>[];
+    var stops = 0;
+    final playing = <Completer<bool>>[];
+    final AnswerReader reader = (
+      speak: (text) {
+        spoken.add(text);
+        final c = Completer<bool>();
+        playing.add(c);
+        return c.future;
+      },
+      stop: () async {
+        stops++;
+        for (final c in playing) {
+          if (!c.isCompleted) c.complete(true);
+        }
+      },
+    );
+    await _pump(tester, _entry(), _FakeQuestions(), reader: reader);
+    await _ask(tester, 'Qui les a construites ?');
+
+    await tester.tap(find.byTooltip('Écouter la réponse'));
+    await tester.pump();
+    expect(spoken, ['Réponse à « Qui les a construites ? ».']);
+    expect(find.byTooltip('Arrêter la lecture'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Arrêter la lecture'));
+    await tester.pumpAndSettle();
+    expect(stops, 1);
+    expect(spoken, hasLength(1));
+    expect(find.byTooltip('Écouter la réponse'), findsOneWidget);
+  });
+
+  testWidgets('no listen button without a voice (#524)', (tester) async {
+    await _pump(tester, _entry(), _FakeQuestions());
+    await _ask(tester, 'Qui les a construites ?');
+    expect(find.byTooltip('Écouter la réponse'), findsNothing);
   });
 }

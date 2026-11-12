@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Follow-up answers read aloud** (issue #524)
+  - **Verified**: 2026-11-12 (PR #525)
+  - **What was done**: each answer in the question sheet has a listen button (stop while it plays), read with the phone's voice — the generative one when installed — in the guide's language. A narration playing is paused first; closing the sheet stops the reading.
+
 - [x] ✨ - **Choice of the phone's generative voice** (issue #522)
   - **Verified**: 2026-11-12 (PR #523)
   - **What was done**: Settings > Voice lists the on-device generative voices installed for the output language: Automatic (by gender, as before), a specific voice, or Off (back to the usual native voice). The choice applies to the next narration; the block is hidden on phones without such voices.
