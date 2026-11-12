@@ -1,3 +1,3 @@
-New: a guide read by the phone's speech voice is now recorded when it plays to the end; later listens start at once, with 10-second skips, even offline.
+New: after listening to a guide, ask it a question (Actions menu → "Ask a question"). The answer relies on the guide and on what was found about the place, and says when it doesn't know.
 
-Improvement: nearby Wikipedia places are better filtered (streets are left out) so guides drift less when the photo's subject is further away.
+Older analyses have less information to answer from.
