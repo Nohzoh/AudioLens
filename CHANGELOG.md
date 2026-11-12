@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Gemini Nano models named after what the phone loads** (issue #499)
+  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **What was done**: Settings asks AICore which model each choice loads and shows it (« Gemini Nano 3 », « Gemini Nano 4 Full (préversion) »); choices loading the same model are offered once (the selected one always stays). Not-installed choices keep their technical name; the Prompt Lab keeps the technical variants.
+
 - [x] ✨ - **Ask a question after listening to a guide** (issue #424)
   - **Verified**: 2026-11-12 (PR #520)
   - **What was done**: « Poser une question » in a guide's actions sheet opens a short conversation (5 questions, ephemeral) answered from the script and the context the analysis had — now stored with each entry (`promptContext`, DB schema 14; older entries fall back to their address). Gemini API when a key is configured, the on-device model otherwise or on failure, with a shorter prompt. Answers in the guide's language, 2-4 sentences, saying when the information is not there.

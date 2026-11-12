@@ -325,6 +325,7 @@
   "voiceLabNativeNotListed": "Name in Android's speech engine: {name} — not among the {count} voices the app's native voice sees.",
   "settingsNanoModelTitle": "Local model",
   "settingsNanoModelSubtitle": "Gemini Nano model used for analyses. Preview models are experimental.",
+  "settingsNanoModelPreview": "{model} (preview)",
   "settingsNanoModelNotReadyHint": "This model isn't ready yet: analyses use the default model until it is.",
   "nanoLabTitle": "Nano Prompt Lab",
   "nanoLabPickImage": "Pick an image",
