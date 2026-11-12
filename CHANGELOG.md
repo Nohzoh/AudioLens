@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🔍 - **Landmarks shown in « À propos de l'analyse » and the feedback report** (issue #498)
-  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **Verified**: 2026-11-12 (PR #532)
   - **What was done**: the location trace saved with each entry now lists the tall landmarks the model was told about, with their distance, in the analysis details, the copied debug info and the feedback report.
 
 - [x] ✨ - **Tall landmarks seen from afar in the location context** (issue #498, part 2)
