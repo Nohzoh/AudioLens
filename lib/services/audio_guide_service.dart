@@ -14,6 +14,7 @@ import 'gemini_api_service.dart';
 import 'gemini_nano_service.dart';
 import 'native_tts_service.dart';
 import 'gemini_tts_service.dart';
+import 'genai_tts_service.dart';
 import 'location_service.dart';
 import 'remote_config_service.dart';
 import 'guide_preferences_store.dart';
@@ -55,6 +56,13 @@ class AudioGuideService extends ChangeNotifier {
         _foregroundService = foregroundService ?? AnalysisForegroundService(),
         _audioReadyNotifier = audioReadyNotifier ?? AudioReadyNotifier() {
     _ttsOrchestrator = TtsOrchestrator(nativeTts: _nativeTtsService);
+    // #485: let the native voice use an on-device generative voice when
+    // the phone has one (remote kill switch). An injected service that
+    // already has a finder keeps it.
+    _nativeTtsService.generativeVoiceFinder ??= (locale, gender) async {
+      if (!RemoteConfigService.current.nativeGenerativeVoice) return null;
+      return GenAiTtsService().availableVoiceName(locale, gender);
+    };
     _providerManager = AiProviderManager(
       preferencesStore: _preferencesStore,
       nanoService: nanoService,

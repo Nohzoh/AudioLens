@@ -12,6 +12,9 @@ class GenAiVoice {
   /// Locale and gender, e.g. `fr-FR, female`.
   final String details;
 
+  /// `female`, `male` or `unknown`.
+  final String gender;
+
   /// The voice's name inside Google's TTS engine, when it could be read
   /// — what the app's native voice would have to select to use it.
   final String? engineName;
@@ -20,6 +23,7 @@ class GenAiVoice {
     required this.name,
     required this.status,
     required this.details,
+    this.gender = 'unknown',
     this.engineName,
   });
 }
@@ -131,9 +135,26 @@ class GenAiTtsService {
           name: v['name'] as String? ?? '',
           status: v['status'] as String? ?? 'unknown',
           details: v['details'] as String? ?? '',
+          gender: v['gender'] as String? ?? 'unknown',
           engineName: v['engineName'] as String?,
         ),
     ];
+  }
+
+  /// #485: name of a generative voice ready to use on this device for
+  /// [locale] and [gender] (`female`/`male`), or null — no such voice,
+  /// its model not installed, or a device without this feature. The name
+  /// is the one Android's speech engine knows the voice by.
+  Future<String?> availableVoiceName(String locale, String gender) async {
+    try {
+      final all = await voices(locale);
+      for (final voice in all) {
+        if (voice.status == 'available' && voice.gender == gender) return voice.name;
+      }
+    } catch (_) {
+      // Unsupported device, or no platform side (tests): no such voice.
+    }
+    return null;
   }
 
   /// Downloads [voice]'s model; returns the download statuses seen.
