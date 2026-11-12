@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Long-press a sentence to jump the narration there** (issue #228, player screen)
+  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **What was done**: on the player screen, long-pressing a sentence of the script moves playback to where it starts (same text-to-time estimate as the highlight), with a light haptic tick. Only for seekable audio (Gemini voice, saved audio), like the ±10 s buttons; new native `seekToFraction`. The history detail screen is not covered yet.
+
 - [x] ✨ - **Ask a question after listening to a guide** (issue #424)
   - **Verified**: 2026-11-12 (PR #520)
   - **What was done**: « Poser une question » in a guide's actions sheet opens a short conversation (5 questions, ephemeral) answered from the script and the context the analysis had — now stored with each entry (`promptContext`, DB schema 14; older entries fall back to their address). Gemini API when a key is configured, the on-device model otherwise or on failure, with a shorter prompt. Answers in the guide's language, 2-4 sentences, saying when the information is not there.

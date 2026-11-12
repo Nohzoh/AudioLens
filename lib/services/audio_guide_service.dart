@@ -752,6 +752,14 @@ class AudioGuideService extends ChangeNotifier {
     await _providerManager.geminiTtsService!.skipBack();
   }
 
+  /// #228: jumps to [fraction] of the narration (a long-pressed sentence).
+  /// Same gating as the ±10 s buttons: only seekable audio.
+  Future<void> seekToFraction(double fraction) async {
+    if (!canSkip) return;
+    AppLogger.tts('Seek to ${(fraction * 100).round()}% of the narration');
+    await _providerManager.geminiTtsService!.seekToFraction(fraction);
+  }
+
   Future<void> cancelCurrentAction() async {
     _progressEstimator.stop();
     _lastGuideError = null;
