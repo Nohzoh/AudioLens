@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Tall landmarks seen from afar in the location context** (issue #498, part 2)
+  - **Verified**: 2026-11-12 (PR #529)
+  - **What was done**: an extra Overpass query (1.5 km, one attempt, 6 s) finds named structures at least 60 m tall or 20 levels high (towers count from 30 m) and adds up to three of them, closest first, as « Grands édifices visibles de loin (peut-être sur la photo, peut-être pas) ». Radius in remote config (`landmark_radius_meters`, 0 turns it off); cached with the rest of the enrichment.
+
 - [x] ♿ - **Screen-reader labels, first pass** (issue #232)
   - **Verified**: 2026-11-12 (PR #528)
   - **What was done**: home grid thumbnails announce their title and, when not finished, what a tap does (retry, analyze); the favorite star says « Ajouter/Retirer des favoris » and its state; the GPS badges and « Voir tout » are announced as buttons; map markers say how many analyses they hold. A TalkBack pass on a device and high-contrast mode remain.

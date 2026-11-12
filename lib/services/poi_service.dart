@@ -47,6 +47,42 @@ class PoiInfo {
   });
 }
 
+/// #498: a tall named structure that can be seen — and photographed —
+/// from afar.
+class Landmark {
+  const Landmark({
+    required this.name,
+    this.heightMeters,
+    this.levels,
+    this.wikidataId,
+    this.distanceMeters = 0,
+  });
+
+  final String name;
+  final int? heightMeters;
+  final int? levels;
+  final String? wikidataId;
+  final int distanceMeters;
+
+  Landmark at(int distance) => Landmark(
+        name: name,
+        heightMeters: heightMeters,
+        levels: levels,
+        wikidataId: wikidataId,
+        distanceMeters: distance,
+      );
+
+  /// « Tours Duo (180 m de haut, à 450 m) ».
+  String get promptLine {
+    final size = heightMeters != null
+        ? '$heightMeters m de haut'
+        : levels != null
+            ? '$levels étages'
+            : null;
+    return '$name (${[if (size != null) size, 'à $distanceMeters m'].join(', ')})';
+  }
+}
+
 /// Looks up the closest point of interest (POI) via the OpenStreetMap
 /// Overpass API (T74), and now (#276) as much of its structured metadata
 /// as OSM carries, not just its name.
@@ -142,6 +178,83 @@ class PoiService {
     }
 
     return closest;
+  }
+
+  /// #498: tall named structures within [radius] m — high-rises (at least
+  /// [minHeightMeters] tall or [minLevels] levels) and towers — closest
+  /// first, at most [limit]. They are what a photo often shows from afar
+  /// while the nearby Wikipedia articles are about the streets around the
+  /// photographer. One attempt, short timeout: this is a bonus, never
+  /// worth delaying the analysis for. Empty on any failure.
+  Future<List<Landmark>> findLandmarks({
+    required double lat,
+    required double lon,
+    int radius = 1500,
+    int timeoutSeconds = 6,
+    int limit = 3,
+    int minHeightMeters = 60,
+    int minLevels = 20,
+  }) async {
+    final serverTimeout = (timeoutSeconds - 1).clamp(1, timeoutSeconds);
+    final around = 'around:$radius,$lat,$lon';
+    final query = '[out:json][timeout:$serverTimeout];'
+        '('
+        'nwr($around)[name][height];'
+        'nwr($around)[name]["building:levels"~"^[0-9]{2,3}\$"];'
+        ');'
+        'out center tags;';
+    final elements = await _fetchElements(query, Duration(seconds: timeoutSeconds));
+    if (elements == null) return const [];
+    final byName = <String, Landmark>{};
+    for (final el in elements) {
+      final map = el as Map<String, dynamic>;
+      final tags = map['tags'] as Map<String, dynamic>?;
+      final landmark = landmarkFromTags(tags, minHeightMeters: minHeightMeters, minLevels: minLevels);
+      if (landmark == null) continue;
+      final elLat = (map['lat'] as num?)?.toDouble() ?? (map['center']?['lat'] as num?)?.toDouble();
+      final elLon = (map['lon'] as num?)?.toDouble() ?? (map['center']?['lon'] as num?)?.toDouble();
+      if (elLat == null || elLon == null) continue;
+      final found = landmark.at(_distanceMeters(lat, lon, elLat, elLon).round());
+      final previous = byName[found.name];
+      if (previous == null || found.distanceMeters < previous.distanceMeters) {
+        byName[found.name] = found;
+      }
+    }
+    final sorted = byName.values.toList()
+      ..sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+    return sorted.take(limit).toList();
+  }
+
+  /// #498: a [Landmark] from an element's OSM tags, or null when it is
+  /// unnamed or not tall enough (a building part of a tower counts only
+  /// through its own height).
+  static Landmark? landmarkFromTags(
+    Map<String, dynamic>? tags, {
+    int minHeightMeters = 60,
+    int minLevels = 20,
+  }) {
+    final name = (tags?['name'] as String?)?.trim();
+    if (tags == null || name == null || name.isEmpty) return null;
+    final height = _parseMeters(tags['height'] as String?);
+    final levels = int.tryParse((tags['building:levels'] as String? ?? '').trim());
+    final tower = tags['man_made'] == 'tower' || tags['building'] == 'tower';
+    final tallEnough = (height != null && height >= minHeightMeters) ||
+        (levels != null && levels >= minLevels) ||
+        (tower && height != null && height >= minHeightMeters ~/ 2);
+    if (!tallEnough) return null;
+    return Landmark(
+      name: name,
+      heightMeters: height?.round(),
+      levels: levels,
+      wikidataId: tags['wikidata'] as String?,
+    );
+  }
+
+  /// `"180"`, `"180 m"`, `"180.5"` → meters; feet and odd values → null.
+  static double? _parseMeters(String? raw) {
+    if (raw == null) return null;
+    final m = RegExp(r'^\s*([0-9]+(?:[.,][0-9]+)?)\s*(m)?\s*$').firstMatch(raw);
+    return m == null ? null : double.tryParse(m.group(1)!.replaceAll(',', '.'));
   }
 
   /// One HTTP attempt. Returns the raw `elements` list on a 200 (possibly

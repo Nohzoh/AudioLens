@@ -38,6 +38,10 @@ class RemoteConfig {
   // POI (point of interest) lookup — T74
   final int poiRadiusMeters;
 
+  /// #498: radius of the search for tall named structures (towers,
+  /// high-rises) that can be photographed from afar; 0 turns it off.
+  final int landmarkRadiusMeters;
+
   /// #248: the free public Overpass instance enforces its own concurrent
   /// request "slot" limit — live testing against `/api/status` confirmed
   /// "Rate limit: 2", with queued requests taking 10+ seconds or
@@ -94,6 +98,7 @@ class RemoteConfig {
     this.wikipediaMaxResults = 3,
     this.wikipediaExtractChars = 1500,
     this.poiRadiusMeters = 75,
+    this.landmarkRadiusMeters = 1500,
     this.poiTimeoutSeconds = 10,
     this.poiMaxAttempts = 2,
     this.ttsSpeed = 1.2,
@@ -127,6 +132,7 @@ class RemoteConfig {
       wikipediaMaxResults: json['wikipedia_max_results'] as int? ?? 3,
       wikipediaExtractChars: json['wikipedia_extract_chars'] as int? ?? 1500,
       poiRadiusMeters: json['poi_radius_meters'] as int? ?? 75,
+      landmarkRadiusMeters: json['landmark_radius_meters'] as int? ?? 1500,
       poiTimeoutSeconds: json['poi_timeout_seconds'] as int? ?? 10,
       poiMaxAttempts: json['poi_max_attempts'] as int? ?? 2,
       ttsSpeed: (json['tts_speed'] as num?)?.toDouble() ?? 1.2,
@@ -160,6 +166,7 @@ class RemoteConfig {
     'wikipedia_max_results': wikipediaMaxResults,
     'wikipedia_extract_chars': wikipediaExtractChars,
     'poi_radius_meters': poiRadiusMeters,
+    'landmark_radius_meters': landmarkRadiusMeters,
     'poi_timeout_seconds': poiTimeoutSeconds,
     'poi_max_attempts': poiMaxAttempts,
     'tts_speed': ttsSpeed,
