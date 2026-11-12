@@ -155,4 +155,9 @@ class GenAiTtsService {
   }
 
   Future<void> stop() => _channel.invokeMethod('stop');
+
+  /// #501: stack trace left by a probe that crashed the app, or null.
+  Future<String?> lastCrash() => _channel.invokeMethod<String>('lastCrash');
+
+  Future<void> clearCrash() => _channel.invokeMethod('clearCrash');
 }

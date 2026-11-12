@@ -7,7 +7,16 @@ import 'package:audiolens/services/genai_tts_service.dart';
 
 // #485
 class _FakeTts extends GenAiTtsService {
-  _FakeTts({this.voiceList = const [], this.fail = false});
+  _FakeTts({this.voiceList = const [], this.fail = false, this.crash});
+
+  final String? crash;
+  bool crashCleared = false;
+
+  @override
+  Future<String?> lastCrash() async => crash;
+
+  @override
+  Future<void> clearCrash() async => crashCleared = true;
 
   final List<GenAiVoice> voiceList;
   final bool fail;
@@ -126,6 +135,22 @@ void main() {
 
     expect(probe.bytesPerSecond, 48000);
     expect(GenAiTtsProbe.fromMap(const {'totalBytes': 96000}).bytesPerSecond, isNull);
+  });
+
+  // #501
+  testWidgets('shows the trace of a probe that crashed the app, and clears it',
+      (tester) async {
+    final tts = _FakeTts(crash: 'java.lang.NoSuchMethodError: foo\n  at Bar.baz');
+    await _pump(tester, tts);
+
+    expect(find.textContaining('a fait planter'), findsOneWidget);
+    expect(find.textContaining('NoSuchMethodError'), findsOneWidget);
+
+    await tester.tap(find.text('Effacer'));
+    await tester.pumpAndSettle();
+
+    expect(tts.crashCleared, isTrue);
+    expect(find.textContaining('NoSuchMethodError'), findsNothing);
   });
 
   testWidgets('says so when the device offers no voice', (tester) async {
