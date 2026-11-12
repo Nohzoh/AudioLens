@@ -1,3 +1,3 @@
-Fix: in the history, when swiping through entries, a photo not yet analyzed now offers "Run the analysis" instead of an audio button that did nothing.
+New: when the Gemini voice is unavailable, the guide is really read with Google's new speech voice if your phone has one (pause resumes at the start of the sentence, speed not adjustable). You can also tell what the photo shows ("Analyze with a hint" in the history).
 
-Reminder: when the Gemini voice is unavailable, the guide uses Google's new speech voice installed on the phone.
+Fix: clearer analysis details when no place is found.
