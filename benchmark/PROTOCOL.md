@@ -140,6 +140,13 @@ Le nom du modèle et la version d'AICore sont des facteurs de confusion
 à part entière : le modèle Nano peut se mettre à jour silencieusement
 via les services Google Play, sans mise à jour de l'app.
 
+**Variantes de prompt** : trois options du labo modifient les prompts
+pour un run, sans toucher à la production — faits Wikipedia sur le titre
+(#466), lieu en tête du prompt du segment 1 (#470), segment 1 complet
+transmis aux segments 2 et 3 (#468). Chaque run exporté porte ses
+options (`prompt_options`) : pour évaluer une option, lancer le même cas
+avec et sans, sur le même modèle, et comparer les scripts.
+
 **Mémoire** : le modèle tourne dans le processus d'AICore, que l'app ne
 peut pas inspecter. L'export donne donc la mémoire système disponible
 (`MemAvailable` du noyau) avant le run et son minimum pendant le run ; leur différence

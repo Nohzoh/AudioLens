@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Nano Prompt Lab: switchable prompt experiments** (issues #468, #470)
+  - **Verified**: 2026-11-12 (PR #500)
+  - **What was done**: three chips in the lab's full-pipeline mode change the prompts of a run without touching production: Wikipedia facts on the title (#466, on/off), place stated first in segment 1's prompt (#470), and all of segment 1 passed to segments 2-3 instead of the last 200 characters (#468). Each exported run records its `prompt_options`, so an option can be judged by running the same case with and without it. Production prompts are unchanged until the benchmark says otherwise.
+  - **Final validation**: export test; full suite and `flutter analyze` green; Kotlin compiled by CI. Effect of each option still to measure on device.
+
 - [x] ✨ - **Nano: segments 2-3 grounded with Wikipedia facts on segment 1's title** (issue #466)
   - **Verified**: 2026-09-28 (PR #471)
   - **What was done**: between segments 1 and 2 the native cascade calls back into Dart (`lookupTitleFacts`) with segment 1's title; Dart searches Wikipedia and returns the article intro (≤600 chars) only when the article title matches, and the extract is added to the segment 2/3 prompts. Segment 1 is asked to use the exact name of a recognized work or place as its title. Remote kill switch `gemini_nano_title_lookup` (default on). The Nano Prompt Lab shows the injected facts; the `AI` log says whether facts were found.

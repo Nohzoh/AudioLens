@@ -116,6 +116,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             style: String? = null,
             language: String? = null,
             structured: Boolean = false,
+            // #470 (lab-only for now): state the place as its own leading
+            // sentence instead of a parenthetical inside the instruction.
+            locationFirst: Boolean = false,
         ): String {
             // #171: locationContext already arrives pre-truncated for
             // Nano's budget (see GeminiNanoService._maxLocationContextChars
@@ -124,8 +127,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // Nano's shorter phrasing style, so a specific place named in
             // the context isn't left un-leaned-on the way a bare
             // parenthetical mention risks.
-            val loc = if (!locationContext.isNullOrBlank()) {
+            val hasLocation = !locationContext.isNullOrBlank()
+            val loc = if (hasLocation && !locationFirst) {
                 " (prise a : $locationContext — utilise ce lieu en priorite s'il est precis, plutot que de rester generique)"
+            } else ""
+            val leadingLocation = if (hasLocation && locationFirst) {
+                "Lieu de la photo : $locationContext. Utilise ce lieu en priorite s'il est precis, plutot que de rester generique. "
             } else ""
             val sentences = if (style == "concise") "1-2 phrases maximum" else "2-3 phrases maximum"
             // #130: only seg1 needs the language directive — seg2/seg3 are
@@ -149,7 +156,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             } else {
                 "Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Si tu reconnais une oeuvre, un monument ou un lieu precis, le titre est son nom exact. Puis,"
             }
-            return "Tu es un guide audio culturel. $titleDirective sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
+            return "${leadingLocation}Tu es un guide audio culturel. $titleDirective sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
         }
 
         // #434: typed finish reasons, named for the Dart-side logs.
@@ -202,8 +209,11 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             style: String? = null,
             locationContext: String? = null,
             facts: String? = null,
+            // #468 (lab-only for now): pass [previousText] whole instead
+            // of its last 200 characters; the caller decides what it holds.
+            fullPrevious: Boolean = false,
         ): String {
-            val excerpt = previousText.takeLast(200)
+            val excerpt = if (fullPrevious) previousText else previousText.takeLast(200)
             val focus = when (style) {
                 "academic" -> "le contexte historique precis (dates, faits averes, contexte culturel)"
                 "anecdotal" -> "une anecdote ou curiosite peu connue liee a ce lieu"
@@ -220,8 +230,11 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             style: String? = null,
             locationContext: String? = null,
             facts: String? = null,
+            // #468 (lab-only for now): pass [previousText] whole instead
+            // of its last 200 characters; the caller decides what it holds.
+            fullPrevious: Boolean = false,
         ): String {
-            val excerpt = previousText.takeLast(200)
+            val excerpt = if (fullPrevious) previousText else previousText.takeLast(200)
             val sentences = if (style == "concise") "1 phrase" else "2 phrases"
             // #425: a kids' guide ends on a question inviting the child to look.
             val ending = if (style == "kids") {
@@ -338,6 +351,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         language: String?,
         maxTokens: Int,
         temperature: Float?,
+        locationFirst: Boolean = false,
     ): Seg1Result {
         var fallbackReason: String? = null
         var finishReason: String? = null
@@ -348,7 +362,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             false
         }
         if (structuredAvailable) {
-            val prompt = buildSeg1Prompt(locationContext, style, language, structured = true)
+            val prompt = buildSeg1Prompt(locationContext, style, language, structured = true, locationFirst = locationFirst)
             try {
                 val base = generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
                     this.maxOutputTokens = maxTokens
@@ -374,7 +388,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             fallbackReason = "structured output unavailable"
         }
 
-        val prompt = buildSeg1Prompt(locationContext, style, language)
+        val prompt = buildSeg1Prompt(locationContext, style, language, locationFirst = locationFirst)
         val req = generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
             this.maxOutputTokens = maxTokens
             temperature?.let { this.temperature = it }
@@ -681,6 +695,10 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
                 val titleLookup = call.argument<Boolean>("titleLookup") ?: false
+                // Lab-only prompt options (#468, #470); production's
+                // describeImage never sets them.
+                val locationFirst = call.argument<Boolean>("locationFirst") ?: false
+                val fullPrevious = call.argument<Boolean>("fullPrevious") ?: false
                 // #431: optional model variant (Nano Prompt Lab selector).
                 val config = variantConfig(call)
 
@@ -719,7 +737,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val seg1Start = System.nanoTime()
                         val seg1Result = runSeg1(
                             model, bitmap, locationContext, style, language,
-                            nanoMaxOutputTokens, nanoTemperature
+                            nanoMaxOutputTokens, nanoTemperature, locationFirst
                         )
                         val seg1Ms = (System.nanoTime() - seg1Start) / 1_000_000
                         val seg1Prompt = seg1Result.prompt
@@ -736,7 +754,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val titleLookupMs = (System.nanoTime() - lookupStart) / 1_000_000
 
                         currentSegment = 2
-                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext, facts)
+                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext, facts, fullPrevious)
                         val req2 = generateContentRequest(TextPart(seg2Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -747,7 +765,10 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val seg2Ms = (System.nanoTime() - seg2Start) / 1_000_000
 
                         currentSegment = 3
-                        val seg3Prompt = buildSeg3Prompt("$seg1 $seg2", style, locationContext, facts)
+                        // With fullPrevious: all of segment 1 (it names the
+                        // subject) plus the tail of segment 2.
+                        val seg3Previous = if (fullPrevious) "$seg1 ${seg2.takeLast(200)}" else "$seg1 $seg2"
+                        val seg3Prompt = buildSeg3Prompt(seg3Previous, style, locationContext, facts, fullPrevious)
                         val req3 = generateContentRequest(TextPart(seg3Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }

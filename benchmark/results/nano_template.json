@@ -28,6 +28,7 @@
       "language": "",
       "max_output_tokens": null,
       "temperature": null,
+      "prompt_options": {"location_first": false, "full_previous_text": false, "title_lookup": null},
       "gps": {
         "latitude": null,
         "longitude": null
