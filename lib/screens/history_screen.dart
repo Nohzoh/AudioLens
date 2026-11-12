@@ -12,6 +12,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
+import '../widgets/seekable_script.dart';
 import '../widgets/guide_action_row.dart';
 import '../widgets/script_rating_bar.dart';
 import '../widgets/kofi_button.dart';
@@ -1176,6 +1177,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     });
   }
 
+  /// #228: jump to [fraction] of the audio playing (long-pressed sentence).
+  Future<void> _seekToFraction(double fraction) async {
+    AppLogger.tts('History detail: seek to ${(fraction * 100).round()}%');
+    await channel.invokeMethod('seekToFraction', {'fraction': fraction});
+  }
+
   /// Skip playback by [deltaMs], negative to go back.
   ///
   /// Talks to the same audio_guide/audio_player channel GeminiTtsService
@@ -1669,12 +1676,22 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                       color:
                                           Colors.white.withValues(alpha: 0.1)),
                                 ),
-                                child: Text(
-                                  live.script,
+                                // #228: long-press a sentence to jump
+                                // there while seekable audio plays.
+                                child: SeekableScript(
+                                  text: live.script,
+                                  progress: 0,
+                                  padding: EdgeInsets.zero,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: Colors.white.withValues(alpha: 0.85),
                                     height: 1.6,
                                   ),
+                                  onSeek: _canSkip(
+                                          live,
+                                          Provider.of<AudioGuideService>(context,
+                                              listen: false))
+                                      ? _seekToFraction
+                                      : null,
                                 ),
                               ),
 

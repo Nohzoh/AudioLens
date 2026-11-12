@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Long-press a sentence to jump, in the history detail too** (issue #228)
+  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **What was done**: the history detail script uses the same long-press-to-seek as the player while seekable audio plays (saved audio or Gemini voice), same look as before when idle.
+
 - [x] ✨ - **Long-press a sentence to jump the narration there** (issue #228, player screen)
   - **Verified**: 2026-11-12 (PR #527)
   - **What was done**: on the player screen, long-pressing a sentence of the script moves playback to where it starts (same text-to-time estimate as the highlight), with a light haptic tick. Only for seekable audio (Gemini voice, saved audio), like the ±10 s buttons; new native `seekToFraction`. The history detail screen is not covered yet.
