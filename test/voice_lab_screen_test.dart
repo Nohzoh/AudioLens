@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:audiolens/widgets/generative_voice_setting.dart';
 import 'package:audiolens/l10n/app_localizations.dart';
 import 'package:audiolens/screens/voice_lab_screen.dart';
 import 'package:audiolens/services/genai_tts_service.dart';
@@ -136,6 +137,29 @@ void main() {
     expect(await tts.availableVoiceName('fr-FR', 'female'), 'star02');
     expect(await tts.availableVoiceName('fr-FR', 'male'), 'star04');
     expect(await _FakeTts(fail: true).availableVoiceName('fr-FR', 'female'), isNull);
+  });
+
+  test('availableVoiceName honours a chosen voice when it is installed (#522)', () async {
+    final tts = _FakeTts(voiceList: const [
+      GenAiVoice(name: 'fr-fr-x-star01', status: 'downloadable', details: '', gender: 'female'),
+      GenAiVoice(name: 'fr-fr-x-star04', status: 'available', details: '', gender: 'male'),
+      GenAiVoice(name: 'fr-fr-x-star02', status: 'available', details: '', gender: 'female'),
+    ]);
+
+    // An installed choice wins over the gender.
+    expect(await tts.availableVoiceName('fr-FR', 'female', preferred: 'fr-fr-x-star04'),
+        'fr-fr-x-star04');
+    // A choice that is not installed (or of another language) falls back
+    // to the gender rule.
+    expect(await tts.availableVoiceName('fr-FR', 'female', preferred: 'fr-fr-x-star01'),
+        'fr-fr-x-star02');
+    expect(await tts.availableVoiceName('fr-FR', 'male', preferred: 'en-us-x-star05'),
+        'fr-fr-x-star04');
+  });
+
+  test('voice chips drop the locale prefix (#522)', () {
+    expect(GenerativeVoiceSettingNames.short('fr-fr-x-star02'), 'star02');
+    expect(GenerativeVoiceSettingNames.short('star02'), 'star02');
   });
 
   test('derives the audio rate from the playback window', () {

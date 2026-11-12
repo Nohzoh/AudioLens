@@ -77,6 +77,39 @@ class NanoModelVariant {
   int get hashCode => Object.hash(stage, preference);
 }
 
+final _nanoModelNamePattern = RegExp(r'^nano-v(\d+)(?:-([a-z]+))?$');
+
+/// #499: a readable name for an AICore model name: `nano-v3` → « Gemini
+/// Nano 3 », `nano-v4-full` → « Gemini Nano 4 Full ». Unknown shapes are
+/// shown as they are rather than guessed.
+String nanoModelDisplayName(String baseModelName) {
+  final m = _nanoModelNamePattern.firstMatch(baseModelName.trim().toLowerCase());
+  if (m == null) return baseModelName;
+  final suffix = m.group(2);
+  return [
+    'Gemini Nano ${m.group(1)}',
+    if (suffix != null) suffix[0].toUpperCase() + suffix.substring(1),
+  ].join(' ');
+}
+
+/// #499: the choices worth offering, in order: one per distinct model.
+/// A choice loading the same model as an earlier one is dropped, unless
+/// it is the [selected] one. Choices whose model is unknown (not
+/// installed) are all kept, since they may differ.
+List<NanoModelVariant?> distinctNanoChoices(
+  Map<NanoModelVariant?, String?> names,
+  NanoModelVariant? selected,
+) {
+  final seen = <String>{};
+  final out = <NanoModelVariant?>[];
+  for (final v in <NanoModelVariant?>[null, ...NanoModelVariant.all]) {
+    final name = names[v];
+    if (name != null && !seen.add(name) && v != selected) continue;
+    out.add(v);
+  }
+  return out;
+}
+
 /// One full 3-segment `describeImage` cascade run (#276), with each
 /// segment's own prompt text and raw output exposed individually instead
 /// of only the final concatenated string — lets the Nano Prompt Lab debug
@@ -250,6 +283,18 @@ class GeminiNanoService implements AIService {
       }
     } catch (_) {
       return NanoDeviceStatus.unknown;
+    }
+  }
+
+  /// #499: the name of the model [variant] loads (null = the default
+  /// model), e.g. `nano-v4-full`; null when it isn't installed or the
+  /// platform can't tell.
+  Future<String?> modelName({NanoModelVariant? variant}) async {
+    try {
+      final name = await _channel.invokeMethod<String>('nanoModelName', variant?.toArgs());
+      return name == null || name.trim().isEmpty ? null : name.trim();
+    } catch (_) {
+      return null;
     }
   }
 
