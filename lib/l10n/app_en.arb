@@ -394,6 +394,8 @@
   "guideQuestionSend": "Send",
   "guideQuestionFailed": "The answer could not be obtained. Check the connection and try again.",
   "guideQuestionLimit": "Maximum number of questions reached for this guide.",
+  "guideQuestionListen": "Listen to the answer",
+  "guideQuestionStopListening": "Stop reading",
   "guideActionSavePhoto": "Save photo to gallery",
   "guideActionSavePhotoError": "Couldn't save the photo to the gallery",
   "guideActionShareText": "Share text",

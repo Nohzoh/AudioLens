@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Follow-up answers read aloud** (issue #524)
+  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **What was done**: each answer in the question sheet has a listen button (stop while it plays), read with the phone's voice — the generative one when installed — in the guide's language. A narration playing is paused first; closing the sheet stops the reading.
+
 - [x] ✨ - **Ask a question after listening to a guide** (issue #424)
   - **Verified**: 2026-11-12 (PR #520)
   - **What was done**: « Poser une question » in a guide's actions sheet opens a short conversation (5 questions, ephemeral) answered from the script and the context the analysis had — now stored with each entry (`promptContext`, DB schema 14; older entries fall back to their address). Gemini API when a key is configured, the on-device model otherwise or on failure, with a shorter prompt. Answers in the guide's language, 2-4 sentences, saying when the information is not there.
