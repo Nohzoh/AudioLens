@@ -105,6 +105,7 @@ Future<void> runAnalysisAndNavigate({
       gpsSource: guide.lastGpsSource,
       wikipediaUsed: guide.lastWikipediaUsed,
       locationTrace: guide.lastLocationTrace,
+      promptContext: guide.lastPromptContext,
       analysisDurationMs: guide.lastAnalysisDurationMs,
       gpsLatitude: guide.lastGpsLatitude,
       gpsLongitude: guide.lastGpsLongitude,

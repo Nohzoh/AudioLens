@@ -394,6 +394,13 @@
   "nanoLabSeg1TextPath": "text path",
 
   "guideActionsButton": "Actions",
+  "guideActionAskQuestion": "Ask a question",
+  "guideQuestionTitle": "A question about this guide?",
+  "guideQuestionIntro": "Ask about a detail of what you just heard. The answer relies on the guide and on what was found about the place; if it is not there, the guide will say so.",
+  "guideQuestionHint": "For example: who built it?",
+  "guideQuestionSend": "Send",
+  "guideQuestionFailed": "The answer could not be obtained. Check the connection and try again.",
+  "guideQuestionLimit": "Maximum number of questions reached for this guide.",
   "guideActionSavePhoto": "Save photo to gallery",
   "guideActionSavePhotoError": "Couldn't save the photo to the gallery",
   "guideActionShareText": "Share text",

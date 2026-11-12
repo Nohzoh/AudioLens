@@ -93,6 +93,7 @@ void main() {
         wikipediaTitles: ['Alès', 'Cathédrale Saint-Jean-Baptiste d\'Alès'],
         userHint: 'Église Saint-Joseph',
       ),
+      promptContext: 'Lieu identifié à cet emplacement : Église Saint-Joseph',
     );
 
     for (final s in [service, HistoryService()]) {
@@ -104,6 +105,8 @@ void main() {
           ['Alès', 'Cathédrale Saint-Jean-Baptiste d\'Alès']);
       expect(trace.wikidata, isNull);
       expect(trace.userHint, 'Église Saint-Joseph'); // #467
+      expect(s.entries.firstWhere((e) => e.id == pending.id).promptContext,
+          'Lieu identifié à cet emplacement : Église Saint-Joseph'); // #424
     }
   });
 

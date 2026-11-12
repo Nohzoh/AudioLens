@@ -1,3 +1,4 @@
+import 'guide_question_sheet.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
@@ -77,6 +78,8 @@ class GuideActionRow extends StatelessWidget {
         entry.status == AnalysisStatus.complete;
     final path = audioPath;
     final hasAudioFile = path != null && File(path).existsSync();
+    // #424
+    final canAsk = canAskAboutEntry(context, entry);
 
     // Actions run on the screen's context once the sheet is closed, so
     // their snackbars/dialogs aren't tied to the sheet's own lifetime.
@@ -93,6 +96,9 @@ class GuideActionRow extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (canAsk)
+                tile(Icons.question_answer_outlined, l10n.guideActionAskQuestion,
+                    _GuideAction.askQuestion),
               tile(Icons.add_photo_alternate_outlined, l10n.guideActionSavePhoto,
                   _GuideAction.savePhoto),
               tile(Icons.notes, l10n.guideActionShareText, _GuideAction.shareText),
@@ -127,6 +133,8 @@ class GuideActionRow extends StatelessWidget {
           history: context.read<HistoryService>(),
           entry: entry!,
         );
+      case _GuideAction.askQuestion:
+        await showGuideQuestionSheet(context, entry!);
       case _GuideAction.report:
         await showReportContentDialog(context,
             title: title, script: script, date: reportDate, aiModel: aiModel);
@@ -151,4 +159,4 @@ class GuideActionRow extends StatelessWidget {
   }
 }
 
-enum _GuideAction { savePhoto, shareText, shareAudio, sendFeedback, report }
+enum _GuideAction { savePhoto, shareText, shareAudio, sendFeedback, report, askQuestion }
