@@ -28,12 +28,18 @@ abstract class AIService {
   /// [language] (#130) is a display name from `outputLanguageLocales`
   /// (e.g. 'English', 'Español') — the language the title/script must be
   /// written in, independent of the app's own interface language.
+  ///
+  /// [userHint] (#467) is what the user said the photo shows. Callers
+  /// already put it at the top of [locationContext]; it is passed apart
+  /// too for providers that can use it otherwise (Nano looks it up on
+  /// Wikipedia instead of its own guessed title).
   Future<AudioGuideResult> analyzeImage(
     File imageFile, {
     String? locationContext,
     CancelToken? cancelToken,
     String? style,
     String? language,
+    String? userHint,
   });
   void dispose();
 }

@@ -32,16 +32,29 @@ class LocationTrace {
   /// the order the model received them.
   final List<String> wikipediaTitles;
 
+  /// #467: what the user said the photo shows, when they gave a hint.
+  final String? userHint;
+
   const LocationTrace({
     this.placeName,
     this.placeSource,
     this.placeCategory,
     this.wikidata,
     this.wikipediaTitles = const [],
+    this.userHint,
   });
 
   bool get isEmpty =>
-      placeName == null && wikidata == null && wikipediaTitles.isEmpty;
+      placeName == null && wikidata == null && wikipediaTitles.isEmpty && userHint == null;
+
+  LocationTrace withUserHint(String? hint) => LocationTrace(
+        placeName: placeName,
+        placeSource: placeSource,
+        placeCategory: placeCategory,
+        wikidata: wikidata,
+        wikipediaTitles: wikipediaTitles,
+        userHint: hint,
+      );
 
   /// The identified place with its origin, e.g.
   /// `Église Saint-Joseph (geocode, amenity=place_of_worship)`.
@@ -57,6 +70,7 @@ class LocationTrace {
         if (placeCategory != null) 'placeCategory': placeCategory,
         if (wikidata != null) 'wikidata': wikidata,
         if (wikipediaTitles.isNotEmpty) 'wikipedia': wikipediaTitles,
+        if (userHint != null) 'hint': userHint,
       });
 
   /// Null for a missing or unreadable value (entries older than #481).
@@ -72,6 +86,7 @@ class LocationTrace {
         placeCategory: map['placeCategory'] as String?,
         wikidata: map['wikidata'] as String?,
         wikipediaTitles: titles is List ? titles.whereType<String>().toList() : const [],
+        userHint: map['hint'] as String?,
       );
     } catch (_) {
       return null;

@@ -362,6 +362,7 @@ class GeminiNanoService implements AIService {
     CancelToken? cancelToken,
     String? style,
     String? language,
+    String? userHint,
   }) async {
     if (!_initialized) await initialize();
 
@@ -393,6 +394,8 @@ class GeminiNanoService implements AIService {
       }
       if (style != null) args['style'] = style;
       if (language != null) args['language'] = language;
+      // #467: look up what the user named rather than Nano's own guess.
+      if (userHint != null && userHint.isNotEmpty) args['lookupQuery'] = userHint;
 
       // The 3 segments (visual description, historical context,
       // conclusion) run sequentially inside one native describeImage

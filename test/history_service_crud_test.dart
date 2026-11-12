@@ -91,6 +91,7 @@ void main() {
         placeSource: 'geocode',
         placeCategory: 'amenity=place_of_worship',
         wikipediaTitles: ['Alès', 'Cathédrale Saint-Jean-Baptiste d\'Alès'],
+        userHint: 'Église Saint-Joseph',
       ),
     );
 
@@ -102,6 +103,7 @@ void main() {
       expect(trace.wikipediaTitles,
           ['Alès', 'Cathédrale Saint-Jean-Baptiste d\'Alès']);
       expect(trace.wikidata, isNull);
+      expect(trace.userHint, 'Église Saint-Joseph'); // #467
     }
   });
 

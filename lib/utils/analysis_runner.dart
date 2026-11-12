@@ -23,6 +23,7 @@ Future<void> runAnalysisAndNavigate({
   required String source,
   ({double lat, double lon, String source})? knownCoordinates,
   bool deleteImageOnDispose = false,
+  String? userHint,
 }) async {
   final guide = context.read<AudioGuideService>();
   final history = context.read<HistoryService>();
@@ -78,6 +79,7 @@ Future<void> runAnalysisAndNavigate({
     language: settings.outputLanguage,
     nanoVariant: settings.nanoModelVariant,
     entryId: entryId,
+    userHint: userHint,
   );
 
   AppLogger.info('result: ${result?.title}');

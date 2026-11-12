@@ -31,6 +31,7 @@ class _FakeNano extends GeminiNanoService {
     CancelToken? cancelToken,
     String? style,
     String? language,
+    String? userHint,
   }) async =>
       const AudioGuideResult(title: 'Nano', script: 'Nano script');
 }

@@ -540,6 +540,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val imagePath = call.argument<String>("imagePath")
                 val locationContext = call.argument<String>("locationContext")
                 val style = call.argument<String>("style")
+                // #467: a name the user gave, looked up instead of
+                // segment 1's guessed title.
+                val lookupQuery = call.argument<String>("lookupQuery")
                 val language = call.argument<String>("language")
                 // #170: previously hardcoded (256, no temperature at all —
                 // ML Kit GenAI's own unstated default applied). Now sent
@@ -594,7 +597,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                         // #466: facts about what segment 1 named, if any.
                         val facts = if (titleLookup) {
-                            lookupTitleFacts(seg1Title(seg1Result.title, seg1))
+                            lookupTitleFacts(lookupQuery ?: seg1Title(seg1Result.title, seg1))
                         } else null
 
                         // Segment 2: Historical context (text only, faster)
