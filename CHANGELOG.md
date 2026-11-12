@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **History detail: unanalyzed entries reached by swiping can be analyzed** (issue #508)
+  - **Verified**: 2026-11-12 (PR #509)
+  - **What was done**: swiping in the detail screen to a captured entry showed « Générer l'audio », useless without a script. A captured entry now shows « Lancer l'analyse » and a pending or failed one « Relancer l'analyse », running the same functions as a tap on the card in the list.
+  - **Final validation**: test of the condition; full suite and `flutter analyze` green. On-device check still to do.
+
 - [x] ✨ - **Native fallback voice uses an on-device generative voice when available** (issue #485, step 2)
   - **Verified**: 2026-11-12 (PR #506)
   - **What was done**: the Voice Lab on a Pixel 10 showed Google's generative voice (`fr-fr-x-star02`) to be clearly more natural than the "network" voice used when the Gemini TTS quota runs out. It is a regular voice of the same Android engine, so the native voice now selects the installed generative voice matching the guide's language and the preferred gender when the engine lists it — in any language. Unchanged otherwise; remote kill switch `native_generative_voice`.
