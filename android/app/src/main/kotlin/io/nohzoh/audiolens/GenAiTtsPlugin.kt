@@ -51,6 +51,13 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var probeJob: Job? = null
 
+    // #485 step 3: guide playback through the generative voice. One
+    // client is kept between guides so the voice model stays loaded (a
+    // cold start took 4.6 s to the first audio on a Pixel 10).
+    private var speakClient: SpeechSynthesizer? = null
+    private var speakClientLocale: Locale? = null
+    private var speakJob: Job? = null
+
     companion object {
         const val CHANNEL = "audio_guide/genai_tts"
         private const val PROBE_TIMEOUT_MS = 120_000L
@@ -69,6 +76,27 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         probeJob?.cancel()
+        speakJob?.cancel()
+        try {
+            speakClient?.close()
+        } catch (e: Throwable) {
+            // Detaching anyway.
+        }
+        speakClient = null
+    }
+
+    private fun speakClientFor(locale: Locale): SpeechSynthesizer {
+        val current = speakClient
+        if (current != null && speakClientLocale == locale) return current
+        try {
+            current?.close()
+        } catch (e: Throwable) {
+            // Replaced anyway.
+        }
+        return newClient(locale).also {
+            speakClient = it
+            speakClientLocale = locale
+        }
     }
 
     private fun describe(t: Throwable): String {
@@ -341,6 +369,100 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "stop" -> {
                 probeJob?.cancel()
                 probeJob = null
+                result.success(null)
+            }
+
+            // #485 step 3: speaks a guide with the generative voice and
+            // answers once playback is over, with how it ended. The engine
+            // plays the audio itself; progress is reported on the way as
+            // "onProgress" calls carrying the milliseconds of audio
+            // received so far — chunks arrive at playback rate (measured:
+            // 24 kHz 16-bit mono, 48000 bytes per second).
+            "speak" -> {
+                val text = call.argument<String>("text")
+                val voiceName = call.argument<String>("voice")
+                if (text.isNullOrBlank()) {
+                    result.error("INVALID_ARGS", "text required", null)
+                    return
+                }
+                // A new guide replaces whatever is still being spoken.
+                try {
+                    speakClient?.stop()
+                } catch (e: Throwable) {
+                    // Nothing was playing.
+                }
+                speakJob?.cancel()
+                speakJob = scope.launch(Dispatchers.Main) {
+                    var started = false
+                    var completed = false
+                    var stopped = false
+                    var error: String? = null
+                    var bytes = 0L
+                    var lastReport = 0L
+                    try {
+                        val client = speakClientFor(locale)
+                        val voice = findVoice(client, locale, voiceName)
+                            ?: throw Exception("No voice for $locale")
+                        val request = SpeechSynthesizerRequest(
+                            SpeechSynthesizerRequest.Input.Text(text, voice),
+                            AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                                .build(),
+                            SpeechSynthesizerRequest.QueueMode.QUEUE_FLUSH
+                        )
+                        client.synthesize(request).collect { response ->
+                            when (response) {
+                                is SpeechSynthesizerResponse.StatusUpdate -> when (response.status) {
+                                    SpeechSynthesizerResponse.Status.START -> started = true
+                                    SpeechSynthesizerResponse.Status.DONE -> completed = true
+                                    SpeechSynthesizerResponse.Status.STOP -> stopped = true
+                                    else -> {}
+                                }
+                                is SpeechSynthesizerResponse.AudioAvailable -> {
+                                    started = true
+                                    bytes += response.audio.size
+                                    val playedMs = bytes * 1000 / 48000
+                                    if (playedMs - lastReport >= 500) {
+                                        lastReport = playedMs
+                                        channel.invokeMethod("onProgress", playedMs)
+                                    }
+                                }
+                                is SpeechSynthesizerResponse.Error ->
+                                    error = "engine error ${response.errorCode}"
+                                else -> {}
+                            }
+                        }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        stopped = true
+                    } catch (e: Throwable) {
+                        error = "${e.javaClass.simpleName}: ${e.message}"
+                    }
+                    val payload = mapOf(
+                        "started" to started,
+                        "completed" to completed,
+                        "stopped" to stopped,
+                        "playedMs" to bytes * 1000 / 48000,
+                        "error" to error
+                    )
+                    withContext(NonCancellable + Dispatchers.Main) {
+                        try {
+                            result.success(payload)
+                        } catch (e: Throwable) {
+                            // Engine detached.
+                        }
+                    }
+                }
+            }
+
+            "stopSpeaking" -> {
+                try {
+                    speakClient?.stop()
+                } catch (e: Throwable) {
+                    // Nothing was playing.
+                }
+                speakJob?.cancel()
+                speakJob = null
                 result.success(null)
             }
 

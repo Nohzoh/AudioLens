@@ -20,6 +20,15 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **Verified**: 2026-11-12 (PR #514)
   - **What was done**: from the history, « Analyser avec un indice » (unanalyzed entries) and the « Relancer avec d'autres paramètres » sheet take an optional hint (one line, 120 characters). It leads the context sent to both pipelines as reliable information, is what Nano looks up on Wikipedia (#466), and is kept in the analysis trace (About screen, debug info, feedback). Not offered in the camera flow, where analysis starts at once.
   - **Final validation**: tests for normalization, context composition, provider and trace; full suite and `flutter analyze` green; Kotlin compiled by CI. On-device check still to do.
+- [x] 🐛 - **Generative fallback voice played through ML Kit** (issue #511)
+  - **Verified**: 2026-11-12 (PR #513)
+  - **What was done**: on a Pixel 10, guides kept the old local voice after the Gemini TTS quota ran out: Android's speech engine does not list the generative voices to flutter_tts. The native voice now plays them through ML Kit (`GenAiTtsPlugin.speak`/`stopSpeaking`, one client kept warm), with progress from the audio received, stop, and resume at the sentence playback had reached (ML Kit has no pause). No rate control: the speed setting does not apply to this voice. Falls back to the usual voice for the session if the generative one fails before any audio.
+  - **Final validation**: tests for routing, fallback, no-voice cases, stop and resume point; full suite and `flutter analyze` green; Kotlin compiled by CI. Playback in a real guide still to check on device.
+
+- [x] 🐛 - **Debug info: empty location context no longer reads « not recorded »** (issue #512)
+  - **Verified**: 2026-11-12 (PR #513)
+  - **What was done**: an analysis that found neither a place nor an article stored no trace and looked like one made before #481. The empty trace is now stored; the debug info says « Place: none ».
+  - **Final validation**: storage round-trip test; full suite green.
 
 - [x] 🐛 - **History detail: unanalyzed entries reached by swiping can be analyzed** (issue #508)
   - **Verified**: 2026-11-12 (PR #509)
