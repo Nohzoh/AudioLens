@@ -1,3 +1,3 @@
-Nouveautés : « À propos de cette analyse » indique le lieu annoncé à l'IA et les articles Wikipedia utilisés ; le Nano Prompt Lab exporte ses essais (durées, modèle, mémoire) pour comparer les modèles locaux.
+Corrections : les indications de ton entre parenthèses (« Voix douce… ») ne sont plus lues à voix haute dans les guides ; le Nano Prompt Lab exporte le texte tel qu'il serait entendu et des mesures plus fiables.
 
-Corrections : dans l'historique, les analyses s'affichent sans attente quand on fait défiler la liste ; meilleure reconnaissance du lieu où vous êtes (église, musée, monument).
+Rappel des nouveautés récentes : « À propos de cette analyse » indique le lieu annoncé à l'IA et les articles Wikipedia utilisés ; l'historique défile sans attente.

@@ -1,3 +1,3 @@
-New: "About this analysis" shows the place given to the AI and the Wikipedia articles used; the Nano Prompt Lab exports its runs (timings, model, memory) to compare on-device models.
+Fixes: tone notes in parentheses ("Soft voice…") are no longer read aloud in guides; the Nano Prompt Lab exports the text as it would be heard, with more reliable measurements.
 
-Fixes: in the history, analyses show up without delay as you scroll down the list; the place you are at (church, museum, monument) is identified more reliably.
+Recent additions: "About this analysis" shows the place given to the AI and the Wikipedia articles used; the history scrolls without delay.
