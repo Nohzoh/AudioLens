@@ -239,12 +239,18 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             ?: throw Exception("No voice for $locale")
                         voiceLabel = voice.name
                         events.add("${ms()} ms voice status: ${statusName(client.checkStatus(voice))}")
+                        // All three arguments, positionally: the library's
+                        // Kotlin metadata declares a default for queueMode,
+                        // but its jar ships no default-argument constructor,
+                        // so omitting it compiles and then fails at run time
+                        // with NoSuchMethodError (seen on device, 0.15.6).
                         val request = SpeechSynthesizerRequest(
-                            input = SpeechSynthesizerRequest.Input.Text(text, voice),
-                            audioAttributes = AudioAttributes.Builder()
+                            SpeechSynthesizerRequest.Input.Text(text, voice),
+                            AudioAttributes.Builder()
                                 .setUsage(AudioAttributes.USAGE_MEDIA)
                                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                                .build()
+                                .build(),
+                            SpeechSynthesizerRequest.QueueMode.QUEUE_FLUSH
                         )
                         events.add("${ms()} ms synthesize called")
                         withTimeout(PROBE_TIMEOUT_MS) {
