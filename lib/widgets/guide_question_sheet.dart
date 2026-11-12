@@ -32,15 +32,44 @@ GuideQuestionService questionServiceFor(BuildContext context) {
   );
 }
 
+/// #524: reads an answer aloud and completes when it ends (false when
+/// no audio was produced), and stops it.
+typedef AnswerReader = ({
+  Future<bool> Function(String text) speak,
+  Future<void> Function() stop,
+});
+
+/// #524: answers are read with the phone's voice — the one the guide
+/// falls back to (generative when available). A narration playing is
+/// paused first so the two don't overlap.
+AnswerReader answerReaderFor(BuildContext context, String language) {
+  final guide = context.read<AudioGuideService>();
+  return (
+    speak: (text) async {
+      if (guide.state == GuideState.speaking) await guide.togglePause();
+      guide.prepareNativeTtsLanguageForReplay(language);
+      return guide.nativeTtsService.speakAndWaitForResult(text, speed: guide.playbackSpeed);
+    },
+    stop: () => guide.nativeTtsService.stop(),
+  );
+}
+
 /// #424: opens the question sheet for [entry].
 Future<void> showGuideQuestionSheet(
   BuildContext context,
   HistoryEntry entry, {
   GuideQuestionService? service,
+  AnswerReader? reader,
 }) {
   final language =
       entry.outputLanguage ?? context.read<SettingsService>().outputLanguage;
   final questions = service ?? questionServiceFor(context);
+  AnswerReader? voice = reader;
+  try {
+    voice ??= answerReaderFor(context, language);
+  } on ProviderNotFoundException {
+    // No guide (some widget tests): no listen button.
+  }
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -49,6 +78,7 @@ Future<void> showGuideQuestionSheet(
       entry: entry,
       language: language,
       service: questions,
+      reader: voice,
     ),
   );
 }
@@ -61,11 +91,15 @@ class GuideQuestionSheet extends StatefulWidget {
     required this.entry,
     required this.language,
     required this.service,
+    this.reader,
   });
 
   final HistoryEntry entry;
   final String language;
   final GuideQuestionService service;
+
+  /// Null: answers can't be listened to.
+  final AnswerReader? reader;
 
   @override
   State<GuideQuestionSheet> createState() => _GuideQuestionSheetState();
@@ -79,9 +113,13 @@ class _GuideQuestionSheetState extends State<GuideQuestionSheet> {
   String? _pendingQuestion;
   bool _failed = false;
 
+  /// Index in [_exchanges] of the answer being read aloud.
+  int? _reading;
+
   @override
   void dispose() {
     _pending?.cancel();
+    if (_reading != null) widget.reader?.stop().catchError((_) {});
     _controller.dispose();
     _scroll.dispose();
     super.dispose();
@@ -132,6 +170,32 @@ class _GuideQuestionSheetState extends State<GuideQuestionSheet> {
     }
   }
 
+  Future<void> _toggleReading(int index) async {
+    final reader = widget.reader;
+    if (reader == null) return;
+    if (_reading != null) {
+      final wasThis = _reading == index;
+      setState(() => _reading = null);
+      await reader.stop().catchError((_) {});
+      if (wasThis) return;
+    }
+    setState(() => _reading = index);
+    AppLogger.tts('Guide answer read aloud (${_exchanges[index].answer.length} chars)');
+    var played = false;
+    try {
+      played = await reader.speak(_exchanges[index].answer);
+    } catch (e) {
+      AppLogger.error('Guide answer reading failed: ${sanitizeError(e.toString())}');
+    }
+    if (!mounted || _reading != index) return;
+    setState(() => _reading = null);
+    if (!played) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.settingsNoVoiceProduced)),
+      );
+    }
+  }
+
   void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scroll.hasClients) return;
@@ -176,9 +240,23 @@ class _GuideQuestionSheetState extends State<GuideQuestionSheet> {
                   children: [
                     if (_exchanges.isEmpty && _pendingQuestion == null)
                       Text(l10n.guideQuestionIntro, style: theme.textTheme.bodyMedium),
-                    for (final e in _exchanges) ...[
+                    for (final (i, e) in _exchanges.indexed) ...[
                       _Bubble(text: e.question, mine: true),
-                      _Bubble(text: e.answer, mine: false),
+                      _Bubble(
+                        text: e.answer,
+                        mine: false,
+                        listen: widget.reader == null
+                            ? null
+                            : IconButton(
+                                visualDensity: VisualDensity.compact,
+                                tooltip: _reading == i
+                                    ? l10n.guideQuestionStopListening
+                                    : l10n.guideQuestionListen,
+                                icon: Icon(_reading == i ? Icons.stop : Icons.volume_up,
+                                    size: 20),
+                                onPressed: () => _toggleReading(i),
+                              ),
+                      ),
                     ],
                     if (_pendingQuestion != null) ...[
                       _Bubble(text: _pendingQuestion!, mine: true),
@@ -247,10 +325,13 @@ class _GuideQuestionSheetState extends State<GuideQuestionSheet> {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.text, required this.mine});
+  const _Bubble({required this.text, required this.mine, this.listen});
 
   final String text;
   final bool mine;
+
+  /// Button to hear the text, shown after it.
+  final Widget? listen;
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +346,13 @@ class _Bubble extends StatelessWidget {
           color: mine ? scheme.primaryContainer : scheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(14),
         ),
-        child: SelectableText(text),
+        child: listen == null
+            ? SelectableText(text)
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [Flexible(child: SelectableText(text)), listen!],
+              ),
       ),
     );
   }

@@ -238,6 +238,7 @@ class LocationContextResolver {
     String? wikiContext;
     var wikiResults = <WikipediaResult>[];
     var wikipediaUsed = false;
+    var landmarks = const <Landmark>[];
     if (locationResult.info != null) {
       final lat = locationResult.info!.latitude;
       final lon = locationResult.info!.longitude;
@@ -248,6 +249,7 @@ class LocationContextResolver {
         poi = cached.poi;
         wikidataInfo = cached.wikidataInfo;
         wikiResults = cached.wikiResults;
+        landmarks = cached.landmarks;
       } else {
         // #137: POI lookup and the Wikipedia geosearch only need lat/lon
         // — neither depends on the other's result — so both are kicked
@@ -278,6 +280,15 @@ class LocationContextResolver {
         // across an `await`, which the analyzer won't promote through.
         final resolvedPoi = poi;
 
+        // #498: started once the POI query has freed its Overpass slot
+        // (the public instance allows 2 at a time), alongside the
+        // Wikidata/Wikipedia calls below.
+        final landmarksFuture = cfg.landmarkRadiusMeters > 0
+            ? _poiService
+                .findLandmarks(lat: lat, lon: lon, radius: cfg.landmarkRadiusMeters)
+                .catchError((_) => const <Landmark>[])
+            : Future<List<Landmark>>.value(const []);
+
         final wikidataFuture = resolvedPoi?.wikidataId != null
             ? WikidataService.fetchInfo(resolvedPoi!.wikidataId!, client: _httpClient)
             : Future<WikidataInfo?>.value(null);
@@ -300,6 +311,7 @@ class LocationContextResolver {
         wikiResults = await wikiNearbyFuture;
         wikidataInfo = await wikidataFuture;
         final nameResults = await wikiNameFuture;
+        landmarks = await landmarksFuture;
 
         if (nameQuery != null) {
           // #247: name-matched results first, not appended after the
@@ -319,6 +331,7 @@ class LocationContextResolver {
           poi: poi,
           wikidataInfo: wikidataInfo,
           wikiResults: wikiResults,
+          landmarks: landmarks,
         );
       }
 
@@ -340,6 +353,7 @@ class LocationContextResolver {
           ? 'Lieu identifié à cet emplacement (OpenStreetMap) : $geocodedPlace'
           : null,
       wikidataInfo != null ? 'Selon Wikidata : ${wikidataInfo.summary}' : null,
+      landmarksContext(landmarks, exclude: poi?.name),
       locationResult.info?.contextForPrompt,
       wikiContext,
     ].where((s) => s != null && s.isNotEmpty).join('\n\n');
@@ -386,10 +400,26 @@ class _CachedEnrichment {
     required this.poi,
     required this.wikidataInfo,
     required this.wikiResults,
+    this.landmarks = const [],
   });
 
   final DateTime fetchedAt;
+  final List<Landmark> landmarks;
   final PoiInfo? poi;
   final WikidataInfo? wikidataInfo;
   final List<WikipediaResult> wikiResults;
+}
+
+/// #498: the prompt line for tall structures visible from where the photo
+/// was taken, framed as candidates, not as facts about the subject — a
+/// small model otherwise describes whatever the context names. [exclude]
+/// is the POI already named (no need to say it twice).
+String? landmarksContext(List<Landmark> landmarks, {String? exclude}) {
+  final kept = [
+    for (final l in landmarks)
+      if (exclude == null || l.name.toLowerCase() != exclude.toLowerCase()) l,
+  ];
+  if (kept.isEmpty) return null;
+  return 'Grands édifices visibles de loin depuis cet endroit (peut-être sur la photo, '
+      'peut-être pas) : ${kept.map((l) => l.promptLine).join(' ; ')}.';
 }
