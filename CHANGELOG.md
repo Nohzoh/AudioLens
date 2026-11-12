@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Ask a question after listening to a guide** (issue #424)
+  - **Verified**: 2026-11-12 (PR #520)
+  - **What was done**: « Poser une question » in a guide's actions sheet opens a short conversation (5 questions, ephemeral) answered from the script and the context the analysis had — now stored with each entry (`promptContext`, DB schema 14; older entries fall back to their address). Gemini API when a key is configured, the on-device model otherwise or on failure, with a shorter prompt. Answers in the guide's language, 2-4 sentences, saying when the information is not there.
+  - **Final validation**: tests for the prompt, model routing, the sheet, storage and migration; full suite and `flutter analyze` green. On-device check still to do.
+
 - [x] ✨ - **Generative voice narrations kept as the entry's audio** (issue #517)
   - **Verified**: 2026-11-12 (PR #518)
   - **What was done**: the audio ML Kit plays is written to a WAV file (24 kHz 16-bit mono, as measured) and, when the narration reaches the end, saved as the matching history entry's audio with `ttsModel: genai-tts`. Later listens are immediate, seekable and offline; the Gemini voice upgrade is still offered. A paused or stopped narration is not kept.

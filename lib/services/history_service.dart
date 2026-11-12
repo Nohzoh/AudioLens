@@ -99,6 +99,11 @@ class HistoryEntry {
   /// named, Wikipedia articles injected). Null for older entries.
   final LocationTrace? locationTrace;
 
+  /// #424: the full context the model received with the photo (user
+  /// hint, place, Wikipedia extracts) — what a follow-up question is
+  /// answered from. Null for entries analyzed before #424.
+  final String? promptContext;
+
   const HistoryEntry({
     this.id,
     required this.imagePath,
@@ -128,6 +133,7 @@ class HistoryEntry {
     this.promptVersion,
     this.rating,
     this.locationTrace,
+    this.promptContext,
   });
 
   bool get hasAudio => audioPath != null && File(audioPath!).existsSync();
@@ -177,6 +183,7 @@ class HistoryEntry {
     'rotationQuarters': rotationQuarters,
     'rating': rating,
     'locationTrace': locationTrace?.encode(),
+    'promptContext': promptContext,
     'scriptStyle': scriptStyle,
     'outputLanguage': outputLanguage,
     'promptVersion': promptVersion,
@@ -207,6 +214,7 @@ class HistoryEntry {
     rotationQuarters: map['rotationQuarters'] as int? ?? 0,
     rating: map['rating'] as int?,
     locationTrace: LocationTrace.decode(map['locationTrace'] as String?),
+    promptContext: map['promptContext'] as String?,
     scriptStyle: map['scriptStyle'] as String?,
     outputLanguage: map['outputLanguage'] as String?,
     promptVersion: map['promptVersion'] as String?,
@@ -239,6 +247,7 @@ class HistoryEntry {
     int? rotationQuarters,
     int? rating,
     LocationTrace? locationTrace,
+    String? promptContext,
     String? scriptStyle,
     String? outputLanguage,
     String? promptVersion,
@@ -268,6 +277,7 @@ class HistoryEntry {
     rotationQuarters: rotationQuarters ?? this.rotationQuarters,
     rating: rating ?? this.rating,
     locationTrace: locationTrace ?? this.locationTrace,
+    promptContext: promptContext ?? this.promptContext,
     scriptStyle: scriptStyle ?? this.scriptStyle,
     outputLanguage: outputLanguage ?? this.outputLanguage,
     promptVersion: promptVersion ?? this.promptVersion,
@@ -314,7 +324,7 @@ class HistoryService extends ChangeNotifier {
     final path = dbPath ?? join(await getDatabasesPath(), 'audio_guide_history.db');
     _db = await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE history(
@@ -345,6 +355,7 @@ class HistoryService extends ChangeNotifier {
             promptVersion TEXT,
             rating INTEGER,
             locationTrace TEXT,
+            promptContext TEXT,
             createdAt TEXT NOT NULL
           )
         ''');
@@ -444,6 +455,10 @@ class HistoryService extends ChangeNotifier {
         if (oldVersion < 13) {
           // #481: null for every pre-existing entry (not recorded then).
           await db.execute('ALTER TABLE history ADD COLUMN locationTrace TEXT');
+        }
+        if (oldVersion < 14) {
+          // #424: null for every pre-existing entry (not recorded then).
+          await db.execute('ALTER TABLE history ADD COLUMN promptContext TEXT');
         }
       },
     );
@@ -579,6 +594,7 @@ class HistoryService extends ChangeNotifier {
     String? gpsSource,
     bool wikipediaUsed = false,
     LocationTrace? locationTrace,
+    String? promptContext,
     int? analysisDurationMs,
     double? gpsLatitude,
     double? gpsLongitude,
@@ -622,6 +638,7 @@ class HistoryService extends ChangeNotifier {
             // #512: kept even when empty — « no place, no article » is a
             // result; null means an entry analyzed before #481.
             locationTrace?.encode(),
+        'promptContext': promptContext,
         'wordCount': script.trim().split(RegExp(r'\s+')).length,
         'analysisDurationMs': analysisDurationMs,
         'gpsLatitude': gpsLatitude,
@@ -654,6 +671,7 @@ class HistoryService extends ChangeNotifier {
         wikipediaUsed: wikipediaUsed,
         locationTrace:
             locationTrace,
+        promptContext: promptContext,
         wordCount: script.trim().split(RegExp(r'\s+')).length,
         analysisDurationMs: analysisDurationMs,
         gpsLatitude: gpsLatitude,

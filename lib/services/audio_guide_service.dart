@@ -113,6 +113,10 @@ class AudioGuideService extends ChangeNotifier {
 
   /// #481: what the last analysis' location context contained.
   LocationTrace? get lastLocationTrace => _lastLocationTrace;
+
+  /// #424: the context the last analysis sent to the model.
+  String? _lastPromptContext;
+  String? get lastPromptContext => _lastPromptContext;
   int? _lastAnalysisDurationMs;
   int? get lastAnalysisDurationMs => _lastAnalysisDurationMs;
   double? _lastGpsLatitude;
@@ -393,6 +397,7 @@ class AudioGuideService extends ChangeNotifier {
       _lastWikipediaUsed = locationContext.wikipediaUsed;
       _lastLocationTrace = locationContext.trace.withUserHint(hint);
       final promptContext = composePromptContext(locationContext.promptContext, hint);
+      _lastPromptContext = promptContext;
       _progressEstimator.recordGpsDuration(
           DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
 
