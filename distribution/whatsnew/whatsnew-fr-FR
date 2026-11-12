@@ -1,3 +1,3 @@
-Correction : dans l'historique, en faisant défiler les fiches, une photo pas encore analysée propose maintenant « Lancer l'analyse » au lieu d'un bouton audio qui ne fonctionnait pas.
+Nouveautés : quand la voix Gemini n'est pas disponible, le guide est vraiment lu avec la nouvelle voix de synthèse de Google si votre téléphone en a une (pause = reprise en début de phrase, vitesse non réglable). Vous pouvez aussi indiquer ce que montre la photo (« Analyser avec un indice » dans l'historique).
 
-Rappel : quand la voix Gemini n'est pas disponible, le guide utilise la nouvelle voix de synthèse de Google installée sur le téléphone.
+Correction : informations d'analyse plus claires quand aucun lieu n'est trouvé.
