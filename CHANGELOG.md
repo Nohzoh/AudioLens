@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 - **Voice Lab: speaking failed with NoSuchMethodError** (issue #485)
-  - **Verified**: 2026-11-12
+  - **Verified**: 2026-11-12 (PR #504)
   - **What was done**: the crash trace added in #501 gave the cause of the Voice Lab failure on device: `SpeechSynthesizerRequest` was built without its `queueMode`, which the library's Kotlin metadata declares optional although its jar has no default-argument constructor. The request now passes all three arguments.
   - **Final validation**: Kotlin compiled by CI; the fix follows from the device's stack trace and the library's bytecode (single three-argument constructor). To confirm on device.
 
