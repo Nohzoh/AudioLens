@@ -1,3 +1,3 @@
-Fix: in the Voice Lab, speaking failed with a technical error; it should now work.
+New: when the Gemini voice is unavailable (quota used up, offline), the guide now uses Google's new speech voice installed on the phone, more natural than the previous one, if your device offers one.
 
-Reminder: with local AI, when the artwork or monument is recognized, the rest of the guide draws on verified information from Wikipedia.
+The Voice Lab (Settings) lets you listen to these voices.
