@@ -312,6 +312,8 @@
   "voiceLabSynthesize": "Speak",
   "voiceLabCopyReport": "Copy report",
   "voiceLabShareAudio": "Share report and raw audio",
+  "voiceLabCrashTitle": "The last trial crashed the app. Technical trace:",
+  "voiceLabCrashDismiss": "Clear",
   "voiceLabNativeUnknown": "Name in Android's speech engine: unknown.",
   "voiceLabNativeListed": "Name in Android's speech engine: {name} — visible to the app's native voice.",
   "voiceLabNativeNotListed": "Name in Android's speech engine: {name} — not among the {count} voices the app's native voice sees.",

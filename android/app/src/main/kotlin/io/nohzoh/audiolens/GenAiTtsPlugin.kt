@@ -12,12 +12,16 @@ import com.google.mlkit.genai.texttospeech.VoiceInfo
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,13 +48,16 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var probeJob: Job? = null
 
     companion object {
         const val CHANNEL = "audio_guide/genai_tts"
         private const val PROBE_TIMEOUT_MS = 120_000L
         private const val PROBE_FILE = "genai_tts_probe.bin"
+        private const val CRASH_FILE = "voice_lab_crash.txt"
+        // Raw audio kept for sharing: 24 kHz 16-bit mono is ~2.9 MB/min.
+        private const val MAX_AUDIO_BYTES = 24 * 1024 * 1024
     }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -62,6 +69,34 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         probeJob?.cancel()
+    }
+
+    private fun describe(t: Throwable): String {
+        val writer = StringWriter()
+        t.printStackTrace(PrintWriter(writer))
+        return writer.toString().take(6000)
+    }
+
+    // #501: the first probe on a device crashed the whole app, with no
+    // way to see why (no logcat in the field). While a probe runs, any
+    // exception that would kill the process — on whatever thread, ours
+    // or the library's — is first written to a file the Voice Lab shows
+    // on its next opening. The previous handler still runs afterwards,
+    // so the crash itself is unchanged.
+    private fun installCrashRecorder(): Thread.UncaughtExceptionHandler? {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        val crashFile = File(context.filesDir, CRASH_FILE)
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                crashFile.writeText(
+                    "Voice Lab probe crashed on thread \"${thread.name}\"\n${describe(throwable)}"
+                )
+            } catch (e: Throwable) {
+                // Nothing more can be done here.
+            }
+            previous?.uncaughtException(thread, throwable)
+        }
+        return previous
     }
 
     private fun newClient(locale: Locale): SpeechSynthesizer =
@@ -106,7 +141,7 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val payload = voices.map { voice ->
                             val status = try {
                                 statusName(client.checkStatus(voice))
-                            } catch (e: Exception) {
+                            } catch (e: Throwable) {
                                 "error: ${e.javaClass.simpleName}"
                             }
                             mapOf(
@@ -117,7 +152,7 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             )
                         }
                         withContext(Dispatchers.Main) { result.success(payload) }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         withContext(Dispatchers.Main) {
                             result.error("VOICES_ERROR", "${e.javaClass.simpleName}: ${e.message}", null)
                         }
@@ -141,7 +176,7 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             if (seen.lastOrNull() != label) seen.add(label)
                         }
                         withContext(Dispatchers.Main) { result.success(seen) }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         withContext(Dispatchers.Main) {
                             result.error("DOWNLOAD_ERROR", "${e.javaClass.simpleName}: ${e.message}", null)
                         }
@@ -156,6 +191,17 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // chunks (count, sizes, first bytes) and any error. The raw
             // audio bytes are written to a cache file for offline
             // inspection of their format.
+            // Stack trace left by a probe that crashed the app, if any.
+            "lastCrash" -> {
+                val file = File(context.filesDir, CRASH_FILE)
+                result.success(if (file.exists()) file.readText() else null)
+            }
+
+            "clearCrash" -> {
+                File(context.filesDir, CRASH_FILE).delete()
+                result.success(null)
+            }
+
             "probe" -> {
                 val text = call.argument<String>("text")
                 val voiceName = call.argument<String>("voice")
@@ -164,8 +210,11 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     return
                 }
                 probeJob?.cancel()
-                probeJob = scope.launch {
-                    val client = newClient(locale)
+                // #501: collected on the main thread, as in Google's own
+                // sample (lifecycleScope) — the library drives Android's
+                // TextToSpeech, whose usual home is the main thread.
+                probeJob = scope.launch(Dispatchers.Main) {
+                    val previousHandler = installCrashRecorder()
                     val start = System.nanoTime()
                     fun ms(): Long = (System.nanoTime() - start) / 1_000_000
                     val events = mutableListOf<String>()
@@ -177,8 +226,15 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     var firstBytesHex: String? = null
                     var error: String? = null
                     var voiceLabel: String? = null
+                    val audio = ByteArrayOutputStream()
                     val file = File(context.cacheDir, PROBE_FILE)
+                    var client: SpeechSynthesizer? = null
+                    // Throwable, not Exception: a NoSuchMethodError or a
+                    // NoClassDefFoundError from a library mismatch must end
+                    // up in the report, not kill the app.
                     try {
+                        client = newClient(locale)
+                        events.add("${ms()} ms client created")
                         val voice = findVoice(client, locale, voiceName)
                             ?: throw Exception("No voice for $locale")
                         voiceLabel = voice.name
@@ -190,44 +246,62 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                                 .build()
                         )
-                        file.outputStream().use { out ->
-                            withTimeout(PROBE_TIMEOUT_MS) {
-                                client.synthesize(request).collect { response ->
-                                    when (response) {
-                                        is SpeechSynthesizerResponse.StatusUpdate -> {
-                                            events.add("${ms()} ms status: ${response.status}")
-                                            when (response.status) {
-                                                SpeechSynthesizerResponse.Status.START -> startMs = ms()
-                                                SpeechSynthesizerResponse.Status.DONE -> doneMs = ms()
-                                                else -> {}
-                                            }
+                        events.add("${ms()} ms synthesize called")
+                        withTimeout(PROBE_TIMEOUT_MS) {
+                            client.synthesize(request).collect { response ->
+                                when (response) {
+                                    is SpeechSynthesizerResponse.StatusUpdate -> {
+                                        events.add("${ms()} ms status: ${response.status}")
+                                        when (response.status) {
+                                            SpeechSynthesizerResponse.Status.START -> startMs = ms()
+                                            SpeechSynthesizerResponse.Status.DONE -> doneMs = ms()
+                                            else -> {}
                                         }
-                                        is SpeechSynthesizerResponse.AudioAvailable -> {
-                                            val audio = response.audio
-                                            if (firstChunkMs == null) {
-                                                firstChunkMs = ms()
-                                                firstBytesHex = audio.take(16)
-                                                    .joinToString(" ") { "%02x".format(it) }
-                                                events.add("${ms()} ms first audio chunk")
-                                            }
-                                            chunkSizes.add(audio.size)
-                                            totalBytes += audio.size
-                                            out.write(audio)
-                                        }
-                                        is SpeechSynthesizerResponse.Error ->
-                                            events.add("${ms()} ms error: ${response.errorCode}")
-                                        else -> events.add("${ms()} ms other: $response")
                                     }
+                                    is SpeechSynthesizerResponse.AudioAvailable -> {
+                                        val chunk = response.audio
+                                        if (firstChunkMs == null) {
+                                            firstChunkMs = ms()
+                                            firstBytesHex = chunk.take(16)
+                                                .joinToString(" ") { "%02x".format(it) }
+                                            events.add("${ms()} ms first audio chunk")
+                                        }
+                                        chunkSizes.add(chunk.size)
+                                        totalBytes += chunk.size
+                                        if (audio.size() + chunk.size <= MAX_AUDIO_BYTES) {
+                                            audio.write(chunk)
+                                        }
+                                    }
+                                    is SpeechSynthesizerResponse.Error ->
+                                        events.add("${ms()} ms error: ${response.errorCode}")
+                                    else -> events.add("${ms()} ms other: $response")
                                 }
                             }
                         }
                         events.add("${ms()} ms flow completed")
                     } catch (e: TimeoutCancellationException) {
                         error = "timeout after ${PROBE_TIMEOUT_MS / 1000} s"
-                    } catch (e: Exception) {
-                        error = "${e.javaClass.simpleName}: ${e.message}"
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        error = "stopped"
+                    } catch (e: Throwable) {
+                        error = describe(e)
                     } finally {
-                        client.close()
+                        try {
+                            client?.close()
+                        } catch (e: Throwable) {
+                            events.add("${ms()} ms close failed: ${e.javaClass.simpleName}")
+                        }
+                    }
+                    var audioPath: String? = null
+                    if (audio.size() > 0) {
+                        try {
+                            withContext(NonCancellable + Dispatchers.IO) {
+                                file.writeBytes(audio.toByteArray())
+                            }
+                            audioPath = file.absolutePath
+                        } catch (e: Throwable) {
+                            events.add("${ms()} ms audio file not written: ${e.javaClass.simpleName}")
+                        }
                     }
                     val payload = mapOf(
                         "voice" to voiceLabel,
@@ -241,12 +315,19 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         "doneMs" to doneMs,
                         "firstBytesHex" to firstBytesHex,
                         "totalMs" to ms(),
-                        "audioFile" to (if (totalBytes > 0) file.absolutePath else null),
+                        "audioFile" to audioPath,
                         "error" to error
                     )
+                    Thread.setDefaultUncaughtExceptionHandler(previousHandler)
                     // NonCancellable: a probe stopped by "stop" must still
                     // answer its caller, with whatever it had collected.
-                    withContext(NonCancellable + Dispatchers.Main) { result.success(payload) }
+                    withContext(NonCancellable + Dispatchers.Main) {
+                        try {
+                            result.success(payload)
+                        } catch (e: Throwable) {
+                            // Reply already sent or engine detached.
+                        }
+                    }
                 }
             }
 

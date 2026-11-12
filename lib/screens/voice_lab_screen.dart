@@ -42,6 +42,7 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
   GenAiTtsProbe? _probe;
   String? _downloadLog;
   List<String>? _nativeNames;
+  String? _lastCrash;
 
   Future<List<String>> _defaultNativeVoiceNames(String prefix) async {
     final voices = await NativeTtsService().voicesForLocale(prefix);
@@ -52,6 +53,7 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
   void initState() {
     super.initState();
     AppLogger.nav('VoiceLabScreen opened');
+    _loadLastCrash();
     _loadVoices();
   }
 
@@ -62,6 +64,19 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
     _localeController.dispose();
     _textController.dispose();
     super.dispose();
+  }
+
+  /// #501: a previous probe may have crashed the app; its stack trace
+  /// was saved for this moment.
+  Future<void> _loadLastCrash() async {
+    try {
+      final crash = await _tts.lastCrash();
+      if (!mounted || crash == null) return;
+      setState(() => _lastCrash = crash);
+      AppLogger.error('Voice Lab: a previous probe crashed the app (trace available in the lab)');
+    } catch (_) {
+      // Older platform side or no plugin: nothing to show.
+    }
   }
 
   String get _locale => _localeController.text.trim();
@@ -154,6 +169,47 @@ class _VoiceLabScreenState extends State<VoiceLabScreen> {
         children: [
           Text(l10n.voiceLabIntro, style: theme.textTheme.bodySmall),
           const SizedBox(height: 16),
+          if (_lastCrash != null) ...[
+            Card(
+              margin: EdgeInsets.zero,
+              color: theme.colorScheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.voiceLabCrashTitle, style: theme.textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      _lastCrash!,
+                      maxLines: 12,
+                      style: theme.textTheme.labelSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.copy, size: 18),
+                          label: Text(l10n.voiceLabCopyReport),
+                          onPressed: () =>
+                              Clipboard.setData(ClipboardData(text: _lastCrash!)),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () {
+                            _tts.clearCrash().catchError((_) {});
+                            setState(() => _lastCrash = null);
+                          },
+                          child: Text(l10n.voiceLabCrashDismiss),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Row(
             children: [
               Expanded(
