@@ -12,6 +12,7 @@ import '../l10n/app_localizations.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
+import '../widgets/seekable_script.dart';
 import '../widgets/guide_action_row.dart';
 import '../widgets/script_rating_bar.dart';
 import '../widgets/kofi_button.dart';
@@ -936,7 +937,14 @@ class _HistoryCard extends StatelessWidget {
                       Positioned(
                         top: 2,
                         left: 2,
-                        child: GestureDetector(
+                        child: Semantics(
+                          // #232
+                          button: true,
+                          toggled: entry.isFavorite,
+                          label: entry.isFavorite
+                              ? AppLocalizations.of(context)!.historyRemoveFromFavorites
+                              : AppLocalizations.of(context)!.historyAddToFavorites,
+                          child: GestureDetector(
                           onTap: () => context
                               .read<HistoryService>()
                               .toggleFavorite(entry.id!),
@@ -956,7 +964,7 @@ class _HistoryCard extends StatelessWidget {
                                   : Colors.white70,
                             ),
                           ),
-                        ),
+                        )),
                       ),
                   ],
                 ),
@@ -1174,6 +1182,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       if (!mounted) return;
       setState(() => _isPlaying = false);
     });
+  }
+
+  /// #228: jump to [fraction] of the audio playing (long-pressed sentence).
+  Future<void> _seekToFraction(double fraction) async {
+    AppLogger.tts('History detail: seek to ${(fraction * 100).round()}%');
+    await channel.invokeMethod('seekToFraction', {'fraction': fraction});
   }
 
   /// Skip playback by [deltaMs], negative to go back.
@@ -1669,12 +1683,22 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                       color:
                                           Colors.white.withValues(alpha: 0.1)),
                                 ),
-                                child: Text(
-                                  live.script,
+                                // #228: long-press a sentence to jump
+                                // there while seekable audio plays.
+                                child: SeekableScript(
+                                  text: live.script,
+                                  progress: 0,
+                                  padding: EdgeInsets.zero,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: Colors.white.withValues(alpha: 0.85),
                                     height: 1.6,
                                   ),
+                                  onSeek: _canSkip(
+                                          live,
+                                          Provider.of<AudioGuideService>(context,
+                                              listen: false))
+                                      ? _seekToFraction
+                                      : null,
                                 ),
                               ),
 

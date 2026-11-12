@@ -309,6 +309,13 @@
   "settingsViewSourceCode": "View source code",
   "settingsNanoPromptLab": "Nano Prompt Lab",
   "settingsVoiceLab": "Voice Lab",
+  "generativeVoiceTitle": "Phone's speech voice",
+  "generativeVoiceExplanation": "Used when the Gemini voice is unavailable (quota used up, offline). \"Automatic\" picks a voice of the gender chosen above.",
+  "generativeVoiceAuto": "Automatic",
+  "generativeVoiceOff": "Off",
+  "generativeVoiceFemale": "female",
+  "generativeVoiceMale": "male",
+  "generativeVoiceMoreInLab": "More voices can be downloaded from the Voice Lab (Tools).",
   "voiceLabTitle": "Voice Lab",
   "voiceLabIntro": "Trial of Google's generative text to speech, running on the phone. Guides don't use it yet: this screen checks what it can do on this device.",
   "voiceLabLocale": "Language (e.g. fr-FR)",
@@ -326,6 +333,7 @@
   "voiceLabNativeNotListed": "Name in Android's speech engine: {name} — not among the {count} voices the app's native voice sees.",
   "settingsNanoModelTitle": "Local model",
   "settingsNanoModelSubtitle": "Gemini Nano model used for analyses. Preview models are experimental.",
+  "settingsNanoModelPreview": "{model} (preview)",
   "settingsNanoModelNotReadyHint": "This model isn't ready yet: analyses use the default model until it is.",
   "nanoLabTitle": "Nano Prompt Lab",
   "nanoLabPickImage": "Pick an image",
@@ -395,6 +403,8 @@
   "guideQuestionSend": "Send",
   "guideQuestionFailed": "The answer could not be obtained. Check the connection and try again.",
   "guideQuestionLimit": "Maximum number of questions reached for this guide.",
+  "guideQuestionListen": "Listen to the answer",
+  "guideQuestionStopListening": "Stop reading",
   "guideActionSavePhoto": "Save photo to gallery",
   "guideActionSavePhotoError": "Couldn't save the photo to the gallery",
   "guideActionShareText": "Share text",
@@ -485,5 +495,10 @@
     "placeholders": {
       "minimum": {"type": "int"}
     }
-  }
+  },
+  "a11yUntitledPhoto": "Untitled photo",
+  "a11yTileFailed": "{title}, analysis failed, tap to retry",
+  "a11yTilePending": "{title}, analysis in progress",
+  "a11yTileCaptured": "{title}, not analyzed yet, tap to analyze",
+  "a11yMapMarker": "{count, plural, =1{1 analysis here} other{{count} analyses here}}"
 }

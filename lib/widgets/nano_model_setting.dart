@@ -21,6 +21,9 @@ class NanoModelSetting extends StatefulWidget {
 
 class _NanoModelSettingState extends State<NanoModelSetting> {
   final Map<NanoModelVariant?, NanoDeviceStatus> _statuses = {};
+
+  /// #499: model each choice really loads, when it is installed.
+  final Map<NanoModelVariant?, String?> _names = {};
   bool _downloading = false;
   String? _downloadError;
 
@@ -35,7 +38,15 @@ class _NanoModelSettingState extends State<NanoModelSetting> {
       final status = await widget.nano.checkDeviceStatus(variant: v);
       if (!mounted) return;
       setState(() => _statuses[v] = status);
+      await _refreshName(v, status);
     }
+  }
+
+  Future<void> _refreshName(NanoModelVariant? v, NanoDeviceStatus status) async {
+    final name =
+        status == NanoDeviceStatus.available ? await widget.nano.modelName(variant: v) : null;
+    if (!mounted) return;
+    setState(() => _names[v] = name);
   }
 
   Future<void> _download(NanoModelVariant variant) async {
@@ -58,6 +69,18 @@ class _NanoModelSettingState extends State<NanoModelSetting> {
       _downloadError = error;
       _statuses[variant] = status;
     });
+    await _refreshName(variant, status);
+  }
+
+  /// #499: the real model name when known (« Gemini Nano 4 Full
+  /// (préversion) »), else the technical variant name.
+  String _choiceName(AppLocalizations l10n, NanoModelVariant? v) {
+    final name = _names[v];
+    if (name == null) return v?.label ?? l10n.nanoLabModelDefault;
+    final readable = nanoModelDisplayName(name);
+    return v?.stage == NanoReleaseStage.preview
+        ? l10n.settingsNanoModelPreview(readable)
+        : readable;
   }
 
   String _statusLabel(AppLocalizations l10n, NanoDeviceStatus? status) {
@@ -98,9 +121,9 @@ class _NanoModelSettingState extends State<NanoModelSetting> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final v in <NanoModelVariant?>[null, ...NanoModelVariant.all])
+            for (final v in distinctNanoChoices(_names, selected))
               ChoiceChip(
-                label: Text('${v?.label ?? l10n.nanoLabModelDefault} · '
+                label: Text('${_choiceName(l10n, v)} · '
                     '${_statusLabel(l10n, _statuses[v])}'),
                 selected: selected == v,
                 onSelected: (_) {

@@ -157,6 +157,15 @@ class AudioPlayerPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 seekBy(-(call.argument<Int>("deltaMs") ?: 10000))
                 result.success(null)
             }
+            // #228: jump to a point of the playing audio, as a fraction of
+            // its duration (the script sentence that was long-pressed).
+            "seekToFraction" -> {
+                val fraction = (call.argument<Double>("fraction") ?: 0.0).coerceIn(0.0, 1.0)
+                mediaPlayer?.let {
+                    if (it.duration > 0) it.seekTo((it.duration * fraction).toInt())
+                }
+                result.success(null)
+            }
             "getPosition" -> {
                 // Real MediaPlayer position (T329-follow-up): reading this
                 // instead of estimating from a words-per-second heuristic

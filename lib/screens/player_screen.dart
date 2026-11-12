@@ -17,6 +17,7 @@ import '../widgets/photo_gradient_background.dart';
 import '../widgets/scrim_action_chip.dart';
 import '../widgets/scrim_icon_button.dart';
 import '../widgets/script_rating_bar.dart';
+import '../widgets/seekable_script.dart';
 import '../widgets/skip_icon_button.dart';
 
 /// #145: every `Colors.white*`/`Colors.black*` literal in this file is
@@ -490,9 +491,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                                 ],
                                               ],
                                             ),
-                                            _HighlightedScript(
+                                            // #228: long-press a sentence
+                                            // to jump there (seekable audio).
+                                            SeekableScript(
                                               text: guide.lastResult!.script,
                                               progress: _readingProgress,
+                                              onSeek: guide.canSkip
+                                                  ? guide.seekToFraction
+                                                  : null,
                                             ),
                                           ],
                                         ),
@@ -652,59 +658,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-/// Displays script text with progressive highlighting
-class _HighlightedScript extends StatelessWidget {
-  final String text;
-  final double progress; // 0.0 to 1.0
-
-  const _HighlightedScript({required this.text, required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    if (progress <= 0.0) {
-      return Padding(
-        padding: const EdgeInsets.only(left: 12),
-        child: Text(
-          text,
-          style:
-              const TextStyle(color: Colors.white70, fontSize: 15, height: 1.7),
-        ),
-      );
-    }
-
-    final splitIndex = (text.length * progress).round().clamp(0, text.length);
-    final read = text.substring(0, splitIndex);
-    final unread = text.substring(splitIndex);
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 12),
-      child: RichText(
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: read,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.7,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            TextSpan(
-              text: unread,
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 15,
-                height: 1.7,
-              ),
-            ),
-          ],
         ),
       ),
     );

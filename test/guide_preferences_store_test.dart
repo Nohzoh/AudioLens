@@ -46,6 +46,15 @@ void main() {
     expect(await store.loadTtsVoiceGender(), 'male');
   });
 
+  test('generative voice defaults to automatic and round-trips (#522)', () async {
+    final store = GuidePreferencesStore();
+    expect(await store.loadGenerativeVoice(), generativeVoiceAuto);
+    await store.saveGenerativeVoice('fr-fr-x-star04');
+    expect(await store.loadGenerativeVoice(), 'fr-fr-x-star04');
+    await store.saveGenerativeVoice(generativeVoiceOff);
+    expect(await store.loadGenerativeVoice(), generativeVoiceOff);
+  });
+
   test('loadPlaybackSpeed defaults to 1.0 when nothing saved (T15)', () async {
     final store = GuidePreferencesStore();
     expect(await store.loadPlaybackSpeed(), 1.0);
