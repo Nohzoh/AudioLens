@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Choice of the phone's generative voice** (issue #522)
+  - **Verified**: 2026-11-12 (PR #523)
+  - **What was done**: Settings > Voice lists the on-device generative voices installed for the output language: Automatic (by gender, as before), a specific voice, or Off (back to the usual native voice). The choice applies to the next narration; the block is hidden on phones without such voices.
 - [x] ✨ - **Ask a question after listening to a guide** (issue #424)
   - **Verified**: 2026-11-12 (PR #520)
   - **What was done**: « Poser une question » in a guide's actions sheet opens a short conversation (5 questions, ephemeral) answered from the script and the context the analysis had — now stored with each entry (`promptContext`, DB schema 14; older entries fall back to their address). Gemini API when a key is configured, the on-device model otherwise or on failure, with a shorter prompt. Answers in the guide's language, 2-4 sentences, saying when the information is not there.
