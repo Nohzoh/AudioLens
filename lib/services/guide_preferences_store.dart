@@ -20,6 +20,7 @@ class GuidePreferencesStore {
   static const _timingAnalyzeKey = 'timing_analyze';
   static const _ttsVoiceGenderKey = 'tts_voice_gender';
   static const _playbackSpeedKey = 'playback_speed';
+  static const _generativeVoiceKey = 'generative_voice';
 
   /// 'female' or 'male' — which native TTS voice to prefer (T89).
   Future<String> loadTtsVoiceGender() async {
@@ -30,6 +31,19 @@ class GuidePreferencesStore {
   Future<void> saveTtsVoiceGender(String gender) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_ttsVoiceGenderKey, gender);
+  }
+
+  /// #522: which on-device generative voice the native fallback uses:
+  /// [generativeVoiceAuto] (the installed one matching the gender),
+  /// [generativeVoiceOff], or a voice name.
+  Future<String> loadGenerativeVoice() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_generativeVoiceKey) ?? generativeVoiceAuto;
+  }
+
+  Future<void> saveGenerativeVoice(String choice) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_generativeVoiceKey, choice);
   }
 
   /// Multiplier applied to narration playback speed (T15), e.g. 1.0 =
@@ -68,3 +82,8 @@ class GuidePreferencesStore {
     await prefs.setStringList(_timingAnalyzeKey, analyzeDurations.map((d) => d.toString()).toList());
   }
 }
+
+/// #522: values of the generative voice preference besides a voice name.
+const generativeVoiceAuto = 'auto';
+const generativeVoiceOff = 'off';
+

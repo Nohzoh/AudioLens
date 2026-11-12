@@ -237,9 +237,18 @@ class GenAiTtsService {
   /// [locale] and [gender] (`female`/`male`), or null — no such voice,
   /// its model not installed, or a device without this feature. The name
   /// is the one Android's speech engine knows the voice by.
-  Future<String?> availableVoiceName(String locale, String gender) async {
+  ///
+  /// #522: [preferred] (a voice name the user picked) wins when it is
+  /// installed for [locale]; otherwise the first installed voice of
+  /// [gender].
+  Future<String?> availableVoiceName(String locale, String gender, {String? preferred}) async {
     try {
       final all = await voices(locale);
+      if (preferred != null) {
+        for (final voice in all) {
+          if (voice.status == 'available' && voice.name == preferred) return voice.name;
+        }
+      }
       for (final voice in all) {
         if (voice.status == 'available' && voice.gender == gender) return voice.name;
       }
