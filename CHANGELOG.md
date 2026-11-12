@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Long-press a sentence to jump, in the history detail too** (issue #228)
+  - **Verified**: 2026-11-12 (PR #531)
+  - **What was done**: the history detail script uses the same long-press-to-seek as the player while seekable audio plays (saved audio or Gemini voice), same look as before when idle.
 - [x] 🧪 - **Benchmark dataset: 8 new field photos** (issue #476, part 1)
   - **Verified**: 2026-11-12 (PR #530)
   - **What was done**: photos added under `benchmark/dataset/photos/` (two museum works in Alès, Saint-Joseph church, École militaire with faces blurred, ECB Frankfurt, Wehrlose Bürger memorial with face blurred, Heidelberg panorama, Paris 13e towers) with their ground truth and coordinates in `PENDING.md`. They enter `manifest.json` once their location context has been resolved on the device and frozen.

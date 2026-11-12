@@ -24,11 +24,23 @@ List<int> scriptSentenceStarts(String text) {
 /// the fraction of the text where that sentence starts — the same linear
 /// text-to-time approximation the highlight already uses.
 class SeekableScript extends StatefulWidget {
-  const SeekableScript({super.key, required this.text, required this.progress, this.onSeek});
+  const SeekableScript({
+    super.key,
+    required this.text,
+    required this.progress,
+    this.onSeek,
+    this.style,
+    this.padding = const EdgeInsets.only(left: 12),
+  });
 
   final String text;
   final double progress;
   final ValueChanged<double>? onSeek;
+
+  /// Style of the whole text while nothing is highlighted (progress 0);
+  /// defaults to the player's.
+  final TextStyle? style;
+  final EdgeInsetsGeometry padding;
 
   @override
   State<SeekableScript> createState() => _SeekableScriptState();
@@ -85,10 +97,11 @@ class _SeekableScriptState extends State<SeekableScript> {
     final text = widget.text;
     final progress = widget.progress;
     final split = progress <= 0 ? 0 : (text.length * progress).round().clamp(0, text.length);
+    final idle = widget.style ?? _base.copyWith(color: Colors.white70);
     final readStyle = progress <= 0
-        ? _base.copyWith(color: Colors.white70)
+        ? idle
         : _base.copyWith(color: Colors.white, fontWeight: FontWeight.w500);
-    final unreadStyle = _base.copyWith(color: progress <= 0 ? Colors.white70 : Colors.white38);
+    final unreadStyle = progress <= 0 ? idle : _base.copyWith(color: Colors.white38);
 
     final spans = <TextSpan>[];
     for (var i = 0; i < _starts.length; i++) {
@@ -116,7 +129,7 @@ class _SeekableScriptState extends State<SeekableScript> {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(left: 12),
+      padding: widget.padding,
       child: Text.rich(TextSpan(children: spans)),
     );
   }
