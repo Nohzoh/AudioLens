@@ -13,6 +13,7 @@ import '../services/history_service.dart';
 import '../services/secure_key_storage.dart';
 import '../services/settings_service.dart';
 import '../widgets/feedback_dialog.dart';
+import '../widgets/generative_voice_setting.dart';
 import '../widgets/kofi_button.dart';
 import '../widgets/nano_model_setting.dart';
 import '../widgets/section_header.dart';
@@ -511,6 +512,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   guide.setTtsVoiceGender(selection.first),
             ),
           ),
+          // #522
+          const GenerativeVoiceSetting(),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.play_arrow, size: 16),

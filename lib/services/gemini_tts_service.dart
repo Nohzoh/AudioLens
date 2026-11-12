@@ -348,4 +348,11 @@ class GeminiTtsService {
     const channel = MethodChannel('audio_guide/audio_player');
     await channel.invokeMethod('seekBack', {'deltaMs': _skipMs});
   }
+
+  /// #228: jumps to [fraction] (0-1) of the playing audio. The next poll
+  /// tick reports the new position.
+  Future<void> seekToFraction(double fraction) async {
+    const channel = MethodChannel('audio_guide/audio_player');
+    await channel.invokeMethod('seekToFraction', {'fraction': fraction.clamp(0.0, 1.0)});
+  }
 }
