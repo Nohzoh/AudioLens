@@ -110,4 +110,59 @@ void main() {
       expect(merged.map((r) => r.title), ['A', 'B']);
     });
   });
+
+  // #498 — extracts as returned for the Paris 13e field case and others.
+  group('streets and administrative divisions', () {
+    const square = WikipediaResult(
+        title: 'Square du Limousin',
+        extract: 'Le square du Limousin est une voie du 13e arrondissement de Paris, en France.');
+    const avenue = WikipediaResult(
+        title: 'Avenue de la Porte-de-Vitry',
+        extract: "L'avenue de la Porte-de-Vitry est une voie du quartier de la Gare du 13e "
+            'arrondissement de Paris, en France.');
+    const porte = WikipediaResult(
+        title: 'Porte de Vitry',
+        extract: 'La porte de Vitry est une porte de Paris, en France située dans le quartier '
+            'de la Gare au sud du 13e arrondissement.');
+    const canton = WikipediaResult(
+        title: 'Canton de Vincennes',
+        extract: 'Le canton de Vincennes est une circonscription électorale française située '
+            'dans le département du Val-de-Marne.');
+    const church = WikipediaResult(
+        title: 'Église Notre-Dame de Vincennes',
+        extract: "L'église Notre-Dame est une église catholique située rue Raymond du Temple "
+            'à Vincennes, en France.');
+    const place = WikipediaResult(
+        title: 'Place de la Concorde',
+        extract: 'La place de la Concorde est une place de Paris, la plus grande de la capitale.');
+
+    test('are recognized from the opening of the extract', () {
+      expect(WikipediaService.isStreetOrAdministrative(square), isTrue);
+      expect(WikipediaService.isStreetOrAdministrative(avenue), isTrue);
+      expect(WikipediaService.isStreetOrAdministrative(canton), isTrue);
+      // A church in a street, a city gate, a square that is a place: kept.
+      expect(WikipediaService.isStreetOrAdministrative(church), isFalse);
+      expect(WikipediaService.isStreetOrAdministrative(porte), isFalse);
+      expect(WikipediaService.isStreetOrAdministrative(place), isFalse);
+    });
+
+    test('are dropped when other articles remain', () {
+      expect(WikipediaService.withoutStreets([porte, avenue, square]).map((r) => r.title),
+          ['Porte de Vitry']);
+      expect(WikipediaService.withoutStreets([canton, church]).map((r) => r.title),
+          ['Église Notre-Dame de Vincennes']);
+    });
+
+    test('are kept when they are all there is', () {
+      expect(WikipediaService.withoutStreets([avenue, square]), [avenue, square]);
+    });
+
+    test('the context presents the articles as places around, not the subject', () {
+      final context = WikipediaService.buildContext([porte]);
+
+      expect(context, startsWith("Lieux proches d'après Wikipedia"));
+      expect(context, contains("ne t'en sers que s'ils correspondent à ce que montre l'image"));
+      expect(context, contains('- Porte de Vitry : '));
+    });
+  });
 }
