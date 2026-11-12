@@ -1,3 +1,3 @@
-Correction : dans le Labo des voix, la lecture échouait avec une erreur technique ; elle doit maintenant fonctionner.
+Nouveauté : quand la voix Gemini n'est pas disponible (quota épuisé, hors ligne), le guide utilise désormais la nouvelle voix de synthèse de Google installée sur le téléphone, plus naturelle que l'ancienne, si votre appareil en propose une.
 
-Rappel : avec l'IA locale, quand l'œuvre ou le monument est reconnu, la suite du guide s'appuie sur des informations vérifiées de Wikipedia.
+Le Labo des voix (Réglages) permet d'écouter ces voix.
