@@ -63,7 +63,11 @@ class AudioGuideService extends ChangeNotifier {
     _nativeTtsService.generativeSpeaker ??= genAiTts;
     _nativeTtsService.generativeVoiceFinder ??= (locale, gender) async {
       if (!RemoteConfigService.current.nativeGenerativeVoice) return null;
-      return genAiTts.availableVoiceName(locale, gender);
+      // #522: the user's choice in Settings.
+      final choice = _generativeVoice;
+      if (choice == generativeVoiceOff) return null;
+      return genAiTts.availableVoiceName(locale, gender,
+          preferred: choice == generativeVoiceAuto ? null : choice);
     };
     _providerManager = AiProviderManager(
       preferencesStore: _preferencesStore,
@@ -269,6 +273,7 @@ class AudioGuideService extends ChangeNotifier {
     // applied lazily on first real use of the native engine, matching
     // its existing lazy-initialization pattern.
     _ttsVoiceGender = await _preferencesStore.loadTtsVoiceGender();
+    _generativeVoice = await _preferencesStore.loadGenerativeVoice();
     _nativeTtsService.preferredGender = _ttsVoiceGender;
     _playbackSpeed = await _preferencesStore.loadPlaybackSpeed();
   }
@@ -282,6 +287,30 @@ class AudioGuideService extends ChangeNotifier {
     await _preferencesStore.saveTtsVoiceGender(gender);
     await _nativeTtsService.applyPreferredVoice();
     notifyListeners();
+  }
+
+  /// #522: the on-device generative voice preference — [generativeVoiceAuto],
+  /// [generativeVoiceOff] or a voice name.
+  String _generativeVoice = generativeVoiceAuto;
+  String get generativeVoice => _generativeVoice;
+
+  Future<void> setGenerativeVoice(String choice) async {
+    _generativeVoice = choice;
+    await _preferencesStore.saveGenerativeVoice(choice);
+    _nativeTtsService.resetGenerativeVoice();
+    AppLogger.tts('Generative voice preference: '
+        '${choice == generativeVoiceAuto || choice == generativeVoiceOff ? choice : 'a named voice'}');
+    notifyListeners();
+  }
+
+  /// #522: the generative voices of [locale] on this phone (empty when it
+  /// has none, or the feature is missing).
+  Future<List<GenAiVoice>> generativeVoices(String locale) async {
+    try {
+      return await (_nativeTtsService.generativeSpeaker ?? GenAiTtsService()).voices(locale);
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// Changes the narration playback speed multiplier (T15, 1.0 = normal).

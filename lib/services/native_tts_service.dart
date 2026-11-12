@@ -170,6 +170,15 @@ class NativeTtsService {
 
   String? _lastLoggedVoice;
 
+  /// #522: forgets the generative voice found so far (and a previous
+  /// failure), so the next narration looks again — after the user picks
+  /// another voice, or turns the generative voice back on.
+  void resetGenerativeVoice() {
+    _generativeVoiceCache.clear();
+    _generativeFailed = false;
+    _lastLoggedVoice = null;
+  }
+
   Future<void> _handOverRecording(String text, String path) async {
     try {
       await onGenerativeRecording?.call(text, path);
