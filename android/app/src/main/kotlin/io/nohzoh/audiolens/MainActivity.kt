@@ -17,6 +17,7 @@ class MainActivity : FlutterActivity() {
         flutterEngine.plugins.add(ForegroundServicePlugin())
         flutterEngine.plugins.add(SharePlugin())
         flutterEngine.plugins.add(QuickCapturePlugin())
+        flutterEngine.plugins.add(GenAiTtsPlugin())
         // Cold start (T97): the app was launched directly by a share
         // intent — extract now so getInitialSharedImage (called right
         // after the engine attaches, from Dart) already has it ready.

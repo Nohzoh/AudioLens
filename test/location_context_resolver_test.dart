@@ -379,4 +379,103 @@ void main() {
       expect(enrichmentRequestCount[0], greaterThan(countAfterFirst));
     });
   });
+
+  // #482
+  group('place name from reverse geocoding', () {
+    final searches = <String>[];
+
+    http.Client client({required bool overpassFindsPoi}) {
+      searches.clear();
+      return MockClient((request) async {
+        final uri = request.url;
+        if (uri.host == 'nominatim.openstreetmap.org') {
+          return http.Response.bytes(
+            utf8.encode(jsonEncode({
+              'class': 'amenity',
+              'type': 'place_of_worship',
+              'name': 'Église Saint-Joseph',
+              'address': {
+                'amenity': 'Église Saint-Joseph',
+                'road': 'Rue Frédéric Mistral',
+                'town': 'Alès',
+                'country': 'France',
+              },
+            })),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (uri.host == 'overpass-api.de') {
+          if (!overpassFindsPoi) return http.Response('timeout', 504);
+          return http.Response.bytes(
+            utf8.encode(jsonEncode({
+              'elements': [
+                {
+                  'type': 'node',
+                  'lat': 44.1249,
+                  'lon': 4.0805,
+                  'tags': {'historic': 'memorial', 'name': 'Monument aux morts'},
+                },
+              ],
+            })),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (uri.host.endsWith('wikipedia.org')) {
+          if (uri.queryParameters['list'] == 'geosearch') {
+            return http.Response(jsonEncode({'query': {'geosearch': []}}), 200);
+          }
+          if (uri.queryParameters['list'] == 'search') {
+            searches.add(uri.queryParameters['srsearch'] ?? '');
+            return http.Response(jsonEncode({'query': {'search': []}}), 200);
+          }
+        }
+        return http.Response('{}', 404);
+      });
+    }
+
+    test('names the geocoded place and searches Wikipedia for it when no POI is found',
+        () async {
+      final c = client(overpassFindsPoi: false);
+      final resolver = LocationContextResolver(
+        poiService: PoiService(client: c),
+        httpClient: c,
+      );
+
+      final ctx = await resolver.resolveFromCoordinates(
+          lat: 44.1248726, lon: 4.0804628, source: 'realtime');
+
+      expect(ctx.poi, isNull);
+      expect(ctx.geocodedPlaceName, 'Église Saint-Joseph');
+      expect(
+        ctx.promptContext,
+        startsWith('Lieu identifié à cet emplacement (OpenStreetMap) : Église Saint-Joseph'),
+      );
+      expect(searches.toSet(), {'Église Saint-Joseph Alès'});
+      // #481
+      expect(ctx.trace.placeLine,
+          'Église Saint-Joseph (geocode, amenity=place_of_worship)');
+      expect(ctx.trace.wikipediaTitles, isEmpty);
+    });
+
+    test('a POI from Overpass takes precedence over the geocoded name', () async {
+      final c = client(overpassFindsPoi: true);
+      final resolver = LocationContextResolver(
+        poiService: PoiService(client: c),
+        httpClient: c,
+      );
+
+      final ctx = await resolver.resolveFromCoordinates(
+          lat: 44.1248726, lon: 4.0804628, source: 'realtime');
+
+      expect(ctx.poi?.name, 'Monument aux morts');
+      expect(ctx.geocodedPlaceName, isNull);
+      expect(ctx.promptContext, isNot(contains('OpenStreetMap')));
+      expect(searches.toSet(), {'Monument aux morts Alès'});
+      // #481
+      expect(ctx.trace.placeName, 'Monument aux morts');
+      expect(ctx.trace.placeSource, 'poi');
+    });
+  });
 }

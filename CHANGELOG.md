@@ -20,6 +20,42 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **Verified**: 2026-09-28 (PR #471)
   - **What was done**: between segments 1 and 2 the native cascade calls back into Dart (`lookupTitleFacts`) with segment 1's title; Dart searches Wikipedia and returns the article intro (≤600 chars) only when the article title matches, and the extract is added to the segment 2/3 prompts. Segment 1 is asked to use the exact name of a recognized work or place as its title. Remote kill switch `gemini_nano_title_lookup` (default on). The Nano Prompt Lab shows the injected facts; the `AI` log says whether facts were found.
   - **Final validation**: tests for the callback, its failure paths and title matching; full suite, `flutter analyze` and log hygiene green. On-device check and real Wikipedia results still to verify.
+- [x] ✨ - **Voice Lab: probe of the on-device generative voice** (issue #485, step 1)
+  - **Verified**: 2026-11-12 (PR #495)
+  - **What was done**: new debug screen (Settings > Voice Lab) for ML Kit's GenAI Text to Speech (alpha): lists the voices of a locale with their model status, downloads a model, speaks a text and reports status updates with timings, time to first audio chunk, chunk sizes and first bytes; the report and raw audio can be shared. The guide's voice chain is unchanged. The library ships Kotlin 2.4.0 metadata, so the Android build now compiles with Kotlin 2.4.0 (was 2.2.20).
+  - **Final validation**: widget tests with a fake engine; full suite and `flutter analyze` green; Android build compiled by CI. Behaviour on a device unknown until the first probe.
+- [x] 🐛 - **Scripts: stage directions stripped; Nano Prompt Lab export matches production** (issues #492, #493)
+  - **Verified**: 2026-11-11 (PR #494)
+  - **What was done**: `cleanMarkdown` removes a narrator note such as "(Voix douce et chaleureuse)" (seen in a real Nano run, and read aloud by the TTS) and a paragraph-opening ellipsis, for both pipelines. The lab export's `script` is now the production-assembled text, `temperature` the value actually sent, and memory is read from the kernel's `MemAvailable` (Android's `availMem` read 0 during a run) with the `lowMemory` flag alongside.
+  - **Final validation**: cleanup tests (stage direction removed, in-sentence parentheticals kept), export tests; full suite and `flutter analyze` green; Kotlin compiled by CI. First device export (Pixel 10) confirmed timings, AICore version, base model name, commit and location context; the new memory reading still to check on device.
+
+- [x] ✨ - **Nano Prompt Lab: export pipeline runs as benchmark JSON** (issue #477)
+  - **Verified**: 2026-11-11 (PR #488)
+  - **What was done**: in full-pipeline mode, each run is kept for the session (optional benchmark case id, variant, settings, GPS, resolved location context) and "Export runs" shares a JSON file in the `benchmark/results/nano_template.json` format. The native cascade now reports per-segment timings, the name of the model actually loaded and the available system memory before and at its lowest during the run; the export adds device, Android, AICore, app, Git commit and ML Kit versions. Memory is a proxy (AICore runs in its own process). `PROTOCOL.md` describes the new Nano procedure.
+  - **Final validation**: export shape, title split, failed run and ML Kit version sync tests; full suite and `flutter analyze` green; Kotlin compiled by CI. On-device check still to do.
+- [x] ✨ - **Location context trace kept with each analysis** (issue #481)
+  - **Verified**: 2026-11-11 (PR #487)
+  - **What was done**: each analysis now stores which place was named to the model (from Overpass or from reverse geocoding, with its OSM category), the Wikidata summary and the titles of the Wikipedia articles injected. Shown in "About this analysis", in the copied debug info and in feedback reports; older entries say the context was not recorded. New nullable `locationTrace` column, DB schema v13.
+  - **Final validation**: migration tests (all older schemas to v13), storage round-trip across reopen, empty/unreadable trace, resolver trace for the POI and geocode cases; full suite and `flutter analyze` green. On-device check still to do.
+- [x] 🐛 - **History: cards no longer appear later and later while scrolling** (issue #489)
+  - **Verified**: 2026-11-11 (PR #490)
+  - **What was done**: the cards' entrance animation had a delay of 50 ms times the card's index; since the list builds cards lazily, a card far down waited seconds before fading in. Only the first 8 cards are staggered now. Thumbnails are decoded at thumbnail size instead of the full 1280 px photo.
+  - **Final validation**: test on the entrance delay; full suite and `flutter analyze` green. On-device check still to do.
+
+- [x] ✨ - **Location context: use the place name returned by reverse geocoding** (issue #482)
+  - **Verified**: 2026-11-11 (PR #483)
+  - **What was done**: when Nominatim's reverse geocoding lands on a named place a guide could be about (place of worship, museum, monument, named building...), its name is kept instead of only the road and city. With no POI from Overpass, the prompt context starts with « Lieu identifié à cet emplacement (OpenStreetMap) : ... » and the Wikipedia name search uses that name; an Overpass POI still takes precedence. Roads, shops and everyday amenities are ignored. Found on a field case in Alès: the Saint-Joseph church was described as the town's cathedral although Nominatim named it.
+  - **Final validation**: tests with the recorded Nominatim response (name kept, jsonv2 class, ignored feature types, failed lookup, POI precedence, Wikipedia query); full suite and `flutter analyze` green. On-device check still to do.
+
+- [x] 🔧 - **Flutter 3.47.9 and refreshed Dart dependencies** (issue #479)
+  - **Verified**: 2026-11-11 (PR #480)
+  - **What was done**: CI Flutter pin moved from 3.44.9 to 3.47.9 (Dart 3.13.7) and every package upgraded to its latest compatible version (about 65, including `flutter_local_notifications` 22 -> 23). `google_fonts` stays on 8.x: version 9 moves to the `material_ui` package and would need the app's Material imports migrated.
+  - **Final validation**: `flutter analyze` clean and full suite green on 3.47.9; Android release build compiled by CI. On-device visual check done on the 0.15.1 alpha build (Pixel 10, 2026-11-11): no rendering defect.
+
+- [x] 🐛 - **History: loader while generating audio instead of an early Stop button** (issue #464)
+  - **Verified**: 2026-09-28 (PR #465)
+  - **What was done**: on a script-only entry, "Générer l'audio" no longer turns into "Arrêter" while TTS is still synthesizing. The button now shows a disabled "Génération de l'audio..." label with a spinner while `AudioGuideService` is in the `synthesizing` state, then switches to Stop (and the ±10s buttons) once playback actually starts.
+  - **Final validation**: new widget test (loader and disabled button during synthesis, Stop once speaking; fails without the fix); full suite and `flutter analyze` green. On-device check still to do.
 
 - [x] ✨ - **Settings: choose the Gemini Nano model used for analyses** (issue #462)
   - **Verified**: 2026-09-28 (PR #463)

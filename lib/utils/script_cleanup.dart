@@ -15,6 +15,15 @@ String cleanMarkdown(String text) {
       .replaceAll(RegExp(r'\*{1,3}'), '')
       .replaceAll(RegExp(r'^\s*[-•]\s+', multiLine: true), '')
       .replaceAll(RegExp(r'\s*\(\d+\)'), '')
+      // #492: a capitalized parenthetical that ends a line (or stands
+      // alone on one) is a note to the narrator — "(Voix douce et
+      // chaleureuse)" — not part of the guide, and the TTS would read it
+      // aloud. One inside a sentence, or holding a date, is left alone.
+      .replaceAll(
+          RegExp(r'[ \t]*\([A-ZÀ-Ý][^()\n\d]{2,80}\)[ \t]*$', multiLine: true), '')
+      // #492: a paragraph that opens on an ellipsis (a segment "resuming"
+      // after such a note) reads as a glitch.
+      .replaceAll(RegExp(r'^[ \t]*(?:…|\.{3})[ \t]*', multiLine: true), '')
       .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
       .replaceAll(RegExp(r'\n{3,}'), '\n\n')
       .trim();

@@ -122,6 +122,16 @@ class AboutAnalysisScreen extends StatelessWidget {
                   .split('(').last.replaceAll(')', '').trim()),
             _Row(l10n.aboutAnalysisWikipediaUsed,
                 live.wikipediaUsed ? l10n.aboutAnalysisYes : l10n.aboutAnalysisNo),
+            // #481: what the model was actually told about the place.
+            if (live.locationTrace != null) ...[
+              _Row(l10n.aboutAnalysisPlace,
+                  live.locationTrace!.placeLine ?? l10n.aboutAnalysisPlaceNone),
+              if (live.locationTrace!.wikidata != null)
+                _Row(l10n.aboutAnalysisWikidata, live.locationTrace!.wikidata!),
+              if (live.locationTrace!.wikipediaTitles.isNotEmpty)
+                _Row(l10n.aboutAnalysisWikipediaArticles,
+                    live.locationTrace!.wikipediaTitles.join('\n')),
+            ],
           ]),
 
           _Section(title: l10n.aboutAnalysisSectionContent, children: [
@@ -218,6 +228,19 @@ class AboutAnalysisScreen extends StatelessWidget {
     }
   }
 
+  /// #481: one line per element of the location context, or a single
+  /// line saying it wasn't recorded (entries analyzed before #481).
+  String _locationTraceDebug(HistoryEntry live) {
+    final trace = live.locationTrace;
+    if (trace == null) return 'Location context: not recorded\n';
+    final buffer = StringBuffer()
+      ..writeln('Place: ${trace.placeLine ?? 'none'}');
+    if (trace.wikidata != null) buffer.writeln('Wikidata: ${trace.wikidata}');
+    buffer.writeln('Wikipedia articles: '
+        '${trace.wikipediaTitles.isEmpty ? 'none' : trace.wikipediaTitles.join(' | ')}');
+    return buffer.toString();
+  }
+
   Future<String> _buildDebugInfo({required HistoryEntry live}) async {
     final imageDiag = await _imageDiagnostics(live.imagePath);
     return '''AudioLens Debug Info
@@ -236,7 +259,7 @@ Analysis source: ${live.analysisSource ?? 'unknown'}
 GPS source: ${live.gpsSource ?? 'unknown'}
 GPS: ${live.gpsLatitude ?? 'null'}, ${live.gpsLongitude ?? 'null'}
 Wikipedia: ${live.wikipediaUsed}
-Word count: ${live.wordCount ?? 'unknown'}
+${_locationTraceDebug(live)}Word count: ${live.wordCount ?? 'unknown'}
 Analysis duration: ${live.analysisDurationMs ?? 'unknown'}ms
 Audio path: ${live.audioPath ?? 'none'}
 Status: ${live.status.name}

@@ -81,6 +81,7 @@ if ! grep -q 'genai-prompt' "$FILE"; then
 
 dependencies {
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
+    implementation("com.google.mlkit:genai-text-to-speech:1.0.0-alpha1")
     implementation("com.google.guava:guava:32.1.3-android")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
@@ -113,10 +114,10 @@ dependencies {
 DEPS
 fi
 
-echo "==> Patch version Kotlin (2.2.20)"
+echo "==> Patch version Kotlin (2.4.0)"
 for f in android/settings.gradle android/settings.gradle.kts android/build.gradle android/build.gradle.kts; do
-  [ -f "$f" ] && $SED -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.20"/' "$f"
-  [ -f "$f" ] && $SED -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.2.20"/' "$f"
+  [ -f "$f" ] && $SED -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.4.0"/' "$f"
+  [ -f "$f" ] && $SED -i 's/id("org.jetbrains.kotlin.android") version "[^"]*"/id("org.jetbrains.kotlin.android") version "2.4.0"/' "$f"
 done
 
 echo "==> Patch AndroidManifest.xml (permissions + label + FileProvider)"
@@ -136,6 +137,11 @@ fi
 # engine on some devices.
 if ! grep -q 'TextToSpeechService' "$MANIFEST"; then
   $SED -i 's|</manifest>|<queries><intent><action android:name="android.speech.tts.engine.TextToSpeechService" /></intent></queries>\n</manifest>|' "$MANIFEST"
+fi
+# #477: same package-visibility rule for AICore — the Nano Prompt Lab's
+# benchmark export records its installed version.
+if ! grep -q 'com.google.android.aicore' "$MANIFEST"; then
+  $SED -i 's|</manifest>|<queries><package android:name="com.google.android.aicore" /></queries>\n</manifest>|' "$MANIFEST"
 fi
 # T85: a foreground service protects the app process's priority while an
 # analysis is in flight — without it, Android can kill the process while
@@ -185,7 +191,8 @@ flutter pub get
 
 echo "==> Build APK (debug)"
 BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-flutter build apk --debug --dart-define=BUILD_DATE="$BUILD_DATE"
+flutter build apk --debug --dart-define=BUILD_DATE="$BUILD_DATE" \
+  --dart-define=GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unavailable)"
 
 APK="build/app/outputs/flutter-apk/app-debug.apk"
 echo ""

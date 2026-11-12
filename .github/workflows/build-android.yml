@@ -80,10 +80,10 @@ jobs:
       - name: Install Android SDK 37 + NDK 27
         run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "ndk;28.2.13676358"
 
-      - name: Setup Flutter 3.44.9
+      - name: Setup Flutter 3.47.9
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.9'
+          flutter-version: '3.47.9'
           channel: 'stable'
           cache: true
 
@@ -225,6 +225,7 @@ jobs:
             --target-platform android-arm,android-arm64 \
             --build-number="${{ github.run_number }}" \
             --dart-define=BUILD_DATE="$BUILD_DATE" \
+            --dart-define=GIT_COMMIT="${{ github.sha }}" \
             --dart-define=TELEGRAM_BOT_TOKEN_OBF="$TELEGRAM_BOT_TOKEN_OBF" \
             --dart-define=TELEGRAM_CHAT_ID_OBF="$TELEGRAM_CHAT_ID_OBF" \
             2>&1 | tee build_output.txt
@@ -292,6 +293,7 @@ jobs:
           flutter build appbundle --release \
             --build-number="${{ github.run_number }}" \
             --dart-define=BUILD_DATE="$BUILD_DATE" \
+            --dart-define=GIT_COMMIT="${{ github.sha }}" \
             --dart-define=TELEGRAM_BOT_TOKEN_OBF="$TELEGRAM_BOT_TOKEN_OBF" \
             --dart-define=TELEGRAM_CHAT_ID_OBF="$TELEGRAM_CHAT_ID_OBF" \
             2>&1 | tee build_output_aab.txt

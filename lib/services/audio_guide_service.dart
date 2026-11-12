@@ -99,6 +99,10 @@ class AudioGuideService extends ChangeNotifier {
   String? get lastGpsSource => _lastGpsSource;
   bool _lastWikipediaUsed = false;
   bool get lastWikipediaUsed => _lastWikipediaUsed;
+  LocationTrace? _lastLocationTrace;
+
+  /// #481: what the last analysis' location context contained.
+  LocationTrace? get lastLocationTrace => _lastLocationTrace;
   int? _lastAnalysisDurationMs;
   int? get lastAnalysisDurationMs => _lastAnalysisDurationMs;
   double? _lastGpsLatitude;
@@ -375,6 +379,7 @@ class AudioGuideService extends ChangeNotifier {
       _lastGpsAddress = locationContext.address;
       _lastLocationStatus = locationContext.status;
       _lastWikipediaUsed = locationContext.wikipediaUsed;
+      _lastLocationTrace = locationContext.trace;
       _progressEstimator.recordGpsDuration(
           DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
 

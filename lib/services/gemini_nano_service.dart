@@ -94,6 +94,9 @@ class NanoDebugCascadeResult {
   /// when segment 1's title matched no article (or lookup is off).
   final String? titleFacts;
 
+  /// #477: time the title lookup took (network), null when it is off.
+  final int? titleLookupMs;
+
   /// #434: the typed title when segment 1 used structured output, else
   /// null (the title is then in [seg1Output], between brackets).
   final String? seg1Title;
@@ -102,6 +105,37 @@ class NanoDebugCascadeResult {
   final String? seg1Mode;
   final String? seg1FinishReason;
   final String? seg1FallbackReason;
+
+  /// #477: time spent in each segment's inference, measured natively.
+  final int? seg1Ms;
+  final int? seg2Ms;
+  final int? seg3Ms;
+
+  /// #477: name of the model AICore actually loaded for this run.
+  final String? baseModelName;
+
+  /// #477: available system memory before the run and its lowest value
+  /// during it, in MB. The model runs in AICore's process, which the app
+  /// cannot inspect, so their difference is the measurable proxy for
+  /// the peak memory cost of inference.
+  final int? availMemBeforeMb;
+  final int? minAvailMemMb;
+
+  /// #493: Android's own low-memory flag right after the run.
+  final bool? lowMemoryAfter;
+
+  /// #493: the script as a real analysis would have produced it — the
+  /// segments assembled with production's ellipsis/echo cleanup, then
+  /// [cleanMarkdown]. [fullText] stays the raw concatenation.
+  final String? productionText;
+
+  /// #493: temperature actually sent (the remote-config default when
+  /// the caller passed none).
+  final double? temperatureUsed;
+
+  int? get peakMemoryDropMb => availMemBeforeMb != null && minAvailMemMb != null
+      ? availMemBeforeMb! - minAvailMemMb!
+      : null;
 
   const NanoDebugCascadeResult({
     required this.seg1Prompt,
@@ -116,6 +150,16 @@ class NanoDebugCascadeResult {
     required this.seg3Output,
     required this.fullText,
     this.titleFacts,
+    this.titleLookupMs,
+    this.seg1Ms,
+    this.seg2Ms,
+    this.seg3Ms,
+    this.baseModelName,
+    this.availMemBeforeMb,
+    this.minAvailMemMb,
+    this.lowMemoryAfter,
+    this.productionText,
+    this.temperatureUsed,
   });
 }
 
@@ -421,6 +465,18 @@ class GeminiNanoService implements AIService {
     }
   }
 
+  /// #477: device model, Android version, AICore version and total RAM,
+  /// for benchmark exports. Empty when the platform call fails.
+  Future<Map<String, dynamic>> environmentInfo() async {
+    try {
+      return await _channel.invokeMapMethod<String, dynamic>('environmentInfo') ?? {};
+    } on PlatformException {
+      return {};
+    } on MissingPluginException {
+      return {};
+    }
+  }
+
   /// #276: Nano Prompt Lab's "full pipeline" mode — runs the exact same
   /// 3-segment cascade as [analyzeImage] (same prompt scaffolding,
   /// truncation, timeout handling on the native side), but returns each
@@ -472,6 +528,18 @@ class GeminiNanoService implements AIService {
         seg3Output: result['seg3Output'] as String? ?? '',
         fullText: result['fullText'] as String? ?? '',
         titleFacts: result['titleFacts'] as String?,
+        titleLookupMs: (result['titleLookupMs'] as num?)?.toInt(),
+        seg1Ms: (result['seg1Ms'] as num?)?.toInt(),
+        seg2Ms: (result['seg2Ms'] as num?)?.toInt(),
+        seg3Ms: (result['seg3Ms'] as num?)?.toInt(),
+        baseModelName: result['baseModelName'] as String?,
+        availMemBeforeMb: (result['availMemBeforeMb'] as num?)?.toInt(),
+        minAvailMemMb: (result['minAvailMemMb'] as num?)?.toInt(),
+        lowMemoryAfter: result['lowMemoryAfter'] as bool?,
+        productionText: result['productionText'] is String
+            ? cleanMarkdown(result['productionText'] as String)
+            : null,
+        temperatureUsed: (args['temperature'] as num?)?.toDouble(),
       );
     } on PlatformException catch (e) {
       if (e.message?.contains('Background usage is blocked') ?? false) {

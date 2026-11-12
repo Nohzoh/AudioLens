@@ -1,3 +1,3 @@
-New: a map of the places where you made your analyses; rate each guide from 1 to 5 stars; a "For kids" guide style (ages 6 to 10); select several history entries at once to add them to a collection; a single "Actions" menu under each analysis (save, share text or audio, send as feedback, report).
+New: a "Voice Lab" in Settings lets you try Google's new on-device speech voices (a test tool; guides don't use them yet).
 
-Fixes: fewer broken guides with the Gemini API; "About this analysis" now says when no audio was generated.
+Recent fixes: tone notes in parentheses are no longer read aloud; the history scrolls without delay.
