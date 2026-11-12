@@ -81,6 +81,35 @@ class NanoModelVariant {
 /// segment's own prompt text and raw output exposed individually instead
 /// of only the final concatenated string — lets the Nano Prompt Lab debug
 /// screen show every intermediate step of a real production-shaped run.
+/// Prompt experiments the Nano Prompt Lab can switch on for a pipeline
+/// run, to compare against production's prompts on the same photo.
+/// Production analyses never use them.
+class NanoPromptOptions {
+  /// #470: state the place as a leading sentence of segment 1's prompt
+  /// instead of a parenthetical inside the instruction.
+  final bool locationFirst;
+
+  /// #468: give segments 2-3 all of segment 1 (which names the subject)
+  /// instead of the last 200 characters of what came before.
+  final bool fullPreviousText;
+
+  /// #466: look segment 1's title up on Wikipedia. Null = follow the
+  /// remote configuration, as production does.
+  final bool? titleLookup;
+
+  const NanoPromptOptions({
+    this.locationFirst = false,
+    this.fullPreviousText = false,
+    this.titleLookup,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'location_first': locationFirst,
+        'full_previous_text': fullPreviousText,
+        'title_lookup': titleLookup,
+      };
+}
+
 class NanoDebugCascadeResult {
   final String seg1Prompt;
   final String seg1Output;
@@ -492,6 +521,7 @@ class GeminiNanoService implements AIService {
     int? maxOutputTokens,
     double? temperature,
     NanoModelVariant? variant,
+    NanoPromptOptions options = const NanoPromptOptions(),
   }) async {
     if (!_initialized) await initialize();
     AppLogger.ai('Nano Lab: full pipeline on ${variant?.label ?? 'default model'}');
@@ -508,7 +538,9 @@ class GeminiNanoService implements AIService {
       if (style != null) args['style'] = style;
       if (language != null) args['language'] = language;
       args['temperature'] = temperature ?? config.geminiNanoTemperature;
-      args['titleLookup'] = config.geminiNanoTitleLookup;
+      args['titleLookup'] = options.titleLookup ?? config.geminiNanoTitleLookup;
+      args['locationFirst'] = options.locationFirst;
+      args['fullPrevious'] = options.fullPreviousText;
 
       final result =
           await _channel.invokeMapMethod<String, dynamic>('describeImageDebug', args);

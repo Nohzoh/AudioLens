@@ -139,6 +139,41 @@ void main() {
     expect(r['low_memory_after'], isFalse);
   });
 
+  test('records the prompt options of each run', () {
+    final export = buildNanoLabExport(
+      runs: [
+        _run(result: _result()),
+        NanoLabRun(
+          startedAt: DateTime.utc(2026, 11, 12),
+          caseId: 'c',
+          variant: null,
+          priorRunsForVariant: 1,
+          style: 'immersive',
+          language: 'Français',
+          maxOutputTokens: 256,
+          temperature: 0.4,
+          options: const NanoPromptOptions(
+              locationFirst: true, fullPreviousText: true, titleLookup: false),
+          latitude: null,
+          longitude: null,
+          locationContext: null,
+          result: _result(),
+          error: null,
+          elapsed: const Duration(seconds: 1),
+        ),
+      ],
+      environment: const {},
+      appVersion: '0.15.6',
+      appBuildNumber: '1',
+    );
+
+    final results = export['results'] as List;
+    expect(results[0]['prompt_options'],
+        {'location_first': false, 'full_previous_text': false, 'title_lookup': null});
+    expect(results[1]['prompt_options'],
+        {'location_first': true, 'full_previous_text': true, 'title_lookup': false});
+  });
+
   test('a failed run keeps its error and settings, with no measurements', () {
     final export = buildNanoLabExport(
       runs: [_run(error: 'Gemini Nano: timeout', caseId: null)],

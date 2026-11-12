@@ -20,6 +20,9 @@ class NanoLabRun {
   final String? language;
   final int maxOutputTokens;
   final double? temperature;
+
+  /// Prompt experiments switched on for this run (#466, #468, #470).
+  final NanoPromptOptions options;
   final double? latitude;
   final double? longitude;
 
@@ -39,6 +42,7 @@ class NanoLabRun {
     required this.language,
     required this.maxOutputTokens,
     required this.temperature,
+    this.options = const NanoPromptOptions(),
     required this.latitude,
     required this.longitude,
     required this.locationContext,
@@ -120,6 +124,7 @@ Map<String, dynamic> _runToJson(NanoLabRun run) {
     'language': run.language,
     'max_output_tokens': run.maxOutputTokens,
     'temperature': r?.temperatureUsed ?? run.temperature,
+    'prompt_options': run.options.toJson(),
     'gps': run.latitude != null && run.longitude != null
         ? {'latitude': run.latitude, 'longitude': run.longitude}
         : null,

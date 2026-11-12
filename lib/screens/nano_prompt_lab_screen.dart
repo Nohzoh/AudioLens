@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../l10n/app_localizations.dart';
 import '../services/gemini_nano_service.dart';
+import '../services/remote_config_service.dart';
 import '../services/location_context_resolver.dart';
 import '../services/settings_service.dart';
 import '../utils/app_logger.dart';
@@ -113,6 +114,10 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   // #477: every pipeline run of the session, for the benchmark export.
   final _caseIdController = TextEditingController();
   final List<NanoLabRun> _pipelineRuns = [];
+  // Prompt experiments for the next pipeline run (#466, #468, #470).
+  bool _optLocationFirst = false;
+  bool _optFullPrevious = false;
+  bool _optTitleLookup = RemoteConfigService.current.geminiNanoTitleLookup;
   bool _exporting = false;
 
   @override
@@ -287,6 +292,11 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
     final maxTokens = int.tryParse(_maxTokensController.text) ?? 256;
     final temperature = double.tryParse(_temperatureController.text);
     final variant = _variant;
+    final options = NanoPromptOptions(
+      locationFirst: _optLocationFirst,
+      fullPreviousText: _optFullPrevious,
+      titleLookup: _optTitleLookup,
+    );
     // #460: same style/language production passes (analysis_runner.dart),
     // so the lab runs the prompts a real analysis would.
     final settings = context.read<SettingsService>();
@@ -311,6 +321,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         maxOutputTokens: maxTokens,
         temperature: temperature,
         variant: variant,
+        options: options,
       );
     } catch (e) {
       error = e.toString();
@@ -333,6 +344,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         language: settings.outputLanguage,
         maxOutputTokens: maxTokens,
         temperature: temperature,
+        options: options,
         latitude: _locationContext?.latitude,
         longitude: _locationContext?.longitude,
         locationContext: _locationContext?.promptContext,
@@ -613,6 +625,29 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         ),
       const SizedBox(height: 16),
       _buildKnobsRow(l10n),
+      const SizedBox(height: 12),
+      // Prompt experiments, compared against production's prompts by
+      // running the same photo with and without them.
+      Wrap(
+        spacing: 8,
+        children: [
+          FilterChip(
+            label: Text(l10n.nanoLabOptTitleLookup),
+            selected: _optTitleLookup,
+            onSelected: (v) => setState(() => _optTitleLookup = v),
+          ),
+          FilterChip(
+            label: Text(l10n.nanoLabOptLocationFirst),
+            selected: _optLocationFirst,
+            onSelected: (v) => setState(() => _optLocationFirst = v),
+          ),
+          FilterChip(
+            label: Text(l10n.nanoLabOptFullPrevious),
+            selected: _optFullPrevious,
+            onSelected: (v) => setState(() => _optFullPrevious = v),
+          ),
+        ],
+      ),
       const SizedBox(height: 12),
       // #477
       TextField(
