@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_tts/flutter_tts.dart';
+import '../utils/app_logger.dart';
 import '../utils/cancel_token.dart';
 
 /// Wraps the device's system TTS engine — the app's sole local/offline TTS
@@ -32,6 +33,23 @@ class NativeTtsService {
   /// legitimately differ from one narration to the next, so it's re-applied
   /// every time rather than cached at initialization.
   String preferredLanguageLocale = 'fr-FR';
+
+  /// #485: looks up one of Google's on-device generative voices for a
+  /// locale and gender, returning the name Android's speech engine knows
+  /// it by, or null when the phone has none ready. Set by
+  /// AudioGuideService; left null, the service behaves as before.
+  ///
+  /// These voices are ordinary voices of the same engine this service
+  /// already drives — noticeably more natural than the "network" ones
+  /// (judged on a Pixel 10) — so using one is just a different voice
+  /// name, in any language that has one.
+  Future<String?> Function(String locale, String gender)? generativeVoiceFinder;
+
+  /// Name of the voice selected by the last voice application, or null
+  /// when the engine's default was left in place.
+  String? activeVoiceName;
+
+  final Map<String, String> _generativeVoiceCache = {};
 
   static const femaleVoice = {'name': 'fr-fr-x-frc-network', 'locale': 'fr-FR'};
   static const maleVoice = {'name': 'fr-fr-x-frd-network', 'locale': 'fr-FR'};
@@ -80,6 +98,15 @@ class NativeTtsService {
   /// the French behavior, but honest about what's actually verified to work.
   Future<void> _applyPreferredVoiceInternal() async {
     await _tts.setLanguage(preferredLanguageLocale);
+    activeVoiceName = null;
+    // #485: a generative voice, when the phone has one for this language
+    // and gender, takes precedence over everything below.
+    final generative = await _generativeVoice();
+    if (generative != null) {
+      await _tts.setVoice(generative);
+      activeVoiceName = generative['name'];
+      return;
+    }
     if (!preferredLanguageLocale.toLowerCase().startsWith('fr')) return;
     final target = preferredGender == 'male' ? maleVoice : femaleVoice;
     final voices = await voicesForLocale('fr');
@@ -87,10 +114,51 @@ class NativeTtsService {
         .any((v) => v['name'] == target['name'] && v['locale'] == target['locale']);
     if (isAvailable) {
       await _tts.setVoice(target);
+      activeVoiceName = target['name'];
     }
     // Else: leave the engine's own default French voice in place rather
     // than risk a silent no-op speak() call with an unavailable voice.
   }
+
+  /// The generative voice to use for the current language and gender, as
+  /// a flutter_tts voice map, or null. Only a voice the engine itself
+  /// lists is returned: a name it doesn't know would make speak() fail
+  /// silently (same safeguard as the French "network" voices).
+  Future<Map<String, String>?> _generativeVoice() async {
+    final finder = generativeVoiceFinder;
+    if (finder == null) return null;
+    final key = '$preferredLanguageLocale|$preferredGender';
+    var name = _generativeVoiceCache[key];
+    if (name == null) {
+      try {
+        name = await finder(preferredLanguageLocale, preferredGender);
+      } catch (_) {
+        name = null;
+      }
+      if (name == null) return null;
+      // Only a hit is cached: a voice may become available later (its
+      // model downloaded), and a miss must be able to turn into a hit.
+      _generativeVoiceCache[key] = name;
+    }
+    final prefix = preferredLanguageLocale.split(RegExp('[-_]')).first;
+    final voices = await voicesForLocale(prefix);
+    for (final voice in voices) {
+      if (voice['name'] == name) {
+        if (_lastLoggedVoice != name) {
+          AppLogger.tts('Native voice: generative voice $name');
+          _lastLoggedVoice = name;
+        }
+        return {'name': name, 'locale': voice['locale'] ?? preferredLanguageLocale};
+      }
+    }
+    if (_lastLoggedVoice != '!$name') {
+      AppLogger.tts('Native voice: generative voice $name not listed by the engine, keeping the usual voice');
+      _lastLoggedVoice = '!$name';
+    }
+    return null;
+  }
+
+  String? _lastLoggedVoice;
 
   /// Re-applies [preferredGender]'s voice right away — call after the user
   /// changes the preference so the next speak() reflects it immediately,

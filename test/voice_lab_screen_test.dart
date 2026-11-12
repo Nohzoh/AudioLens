@@ -126,6 +126,18 @@ void main() {
     expect(find.textContaining('fr-fr-x-gen-a — absent des 1 voix'), findsOneWidget);
   });
 
+  test('availableVoiceName picks an installed voice of the asked gender', () async {
+    final tts = _FakeTts(voiceList: const [
+      GenAiVoice(name: 'star01', status: 'downloadable', details: '', gender: 'female'),
+      GenAiVoice(name: 'star04', status: 'available', details: '', gender: 'male'),
+      GenAiVoice(name: 'star02', status: 'available', details: '', gender: 'female'),
+    ]);
+
+    expect(await tts.availableVoiceName('fr-FR', 'female'), 'star02');
+    expect(await tts.availableVoiceName('fr-FR', 'male'), 'star04');
+    expect(await _FakeTts(fail: true).availableVoiceName('fr-FR', 'female'), isNull);
+  });
+
   test('derives the audio rate from the playback window', () {
     final probe = GenAiTtsProbe.fromMap(const {
       'totalBytes': 96000,

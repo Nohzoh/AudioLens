@@ -148,6 +148,7 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                                 "name" to voice.name,
                                 "status" to status,
                                 "details" to "${voice.locale.toLanguageTag()}, ${voice.gender.name.lowercase()}",
+                                "gender" to voice.gender.name.lowercase(),
                                 "engineName" to engineVoiceName(voice)
                             )
                         }

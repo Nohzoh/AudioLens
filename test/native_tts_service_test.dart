@@ -79,6 +79,77 @@ void main() {
     expect(calls.where((c) => c.method == 'setVoice'), isEmpty);
   });
 
+  // #485
+  group('generative voice', () {
+    test('is selected over the network voice when the engine lists it', () async {
+      installHandler([
+        ..._defaultVoices(),
+        {'name': 'fr-fr-x-star02', 'locale': 'fr-FR'},
+      ]);
+      final asked = <String>[];
+      final service = NativeTtsService()
+        ..generativeVoiceFinder = (locale, gender) async {
+          asked.add('$locale|$gender');
+          return 'fr-fr-x-star02';
+        };
+
+      await service.applyPreferredVoice();
+      await service.applyPreferredVoice();
+
+      final setVoice = calls.where((c) => c.method == 'setVoice').toList();
+      expect(setVoice.map((c) => c.arguments),
+          everyElement({'name': 'fr-fr-x-star02', 'locale': 'fr-FR'}));
+      expect(service.activeVoiceName, 'fr-fr-x-star02');
+      // The lookup is cached once it has found a voice.
+      expect(asked, ['fr-FR|female']);
+    });
+
+    test('falls back to the network voice when the engine does not list it',
+        () async {
+      final service = NativeTtsService()
+        ..generativeVoiceFinder = (_, __) async => 'fr-fr-x-star02';
+
+      await service.applyPreferredVoice();
+
+      final setVoice = calls.firstWhere((c) => c.method == 'setVoice');
+      expect(setVoice.arguments, {'name': 'fr-fr-x-frc-network', 'locale': 'fr-FR'});
+      expect(service.activeVoiceName, 'fr-fr-x-frc-network');
+    });
+
+    test('falls back when the phone has none, or the lookup fails', () async {
+      for (final finder in <Future<String?> Function(String, String)>[
+        (_, __) async => null,
+        (_, __) async => throw StateError('no such feature'),
+      ]) {
+        calls.clear();
+        final service = NativeTtsService()..generativeVoiceFinder = finder;
+
+        await service.applyPreferredVoice();
+
+        final setVoice = calls.firstWhere((c) => c.method == 'setVoice');
+        expect(setVoice.arguments, {'name': 'fr-fr-x-frc-network', 'locale': 'fr-FR'});
+      }
+    });
+
+    test('also applies outside French, where no network voice is hand-picked',
+        () async {
+      installHandler([
+        ..._defaultVoices(),
+        {'name': 'en-us-x-star05', 'locale': 'en-US'},
+      ]);
+      final service = NativeTtsService()
+        ..preferredLanguageLocale = 'en-US'
+        ..preferredGender = 'male'
+        ..generativeVoiceFinder = (locale, gender) async =>
+            locale == 'en-US' && gender == 'male' ? 'en-us-x-star05' : null;
+
+      await service.applyPreferredVoice();
+
+      final setVoice = calls.firstWhere((c) => c.method == 'setVoice');
+      expect(setVoice.arguments, {'name': 'en-us-x-star05', 'locale': 'en-US'});
+    });
+  });
+
   test('speak() applies the speed multiplier on top of the tuned baseline rate',
       () async {
     final service = NativeTtsService();
