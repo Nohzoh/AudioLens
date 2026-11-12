@@ -616,7 +616,9 @@ class HistoryService extends ChangeNotifier {
         'gpsSource': gpsSource,
         'wikipediaUsed': wikipediaUsed ? 1 : 0,
         'locationTrace':
-            locationTrace == null || locationTrace.isEmpty ? null : locationTrace.encode(),
+            // #512: kept even when empty — « no place, no article » is a
+            // result; null means an entry analyzed before #481.
+            locationTrace?.encode(),
         'wordCount': script.trim().split(RegExp(r'\s+')).length,
         'analysisDurationMs': analysisDurationMs,
         'gpsLatitude': gpsLatitude,
@@ -648,7 +650,7 @@ class HistoryService extends ChangeNotifier {
         gpsSource: gpsSource,
         wikipediaUsed: wikipediaUsed,
         locationTrace:
-            locationTrace == null || locationTrace.isEmpty ? null : locationTrace,
+            locationTrace,
         wordCount: script.trim().split(RegExp(r'\s+')).length,
         analysisDurationMs: analysisDurationMs,
         gpsLatitude: gpsLatitude,
