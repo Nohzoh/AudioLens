@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ✨ - **Follow-up answers read aloud** (issue #524)
-  - **Verified**: 2026-11-12 (PR #PRNUM)
+  - **Verified**: 2026-11-12 (PR #525)
   - **What was done**: each answer in the question sheet has a listen button (stop while it plays), read with the phone's voice — the generative one when installed — in the guide's language. A narration playing is paused first; closing the sheet stops the reading.
 
 - [x] ✨ - **Ask a question after listening to a guide** (issue #424)
