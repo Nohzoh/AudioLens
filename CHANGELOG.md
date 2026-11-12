@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Generative voice narrations kept as the entry's audio** (issue #517)
+  - **Verified**: 2026-11-12 (PR #518)
+  - **What was done**: the audio ML Kit plays is written to a WAV file (24 kHz 16-bit mono, as measured) and, when the narration reaches the end, saved as the matching history entry's audio with `ttsModel: genai-tts`. Later listens are immediate, seekable and offline; the Gemini voice upgrade is still offered. A paused or stopped narration is not kept.
+  - **Final validation**: tests for the hand-over, cleanup and the entry flag; full suite and `flutter analyze` green; Kotlin compiled by CI. Replay pitch still to check on device.
+
 - [x] ✨ - **Nearby Wikipedia articles framed as places around; streets dropped** (issue #498, part 1)
   - **Verified**: 2026-11-12 (PR #516)
   - **What was done**: the context sent to both pipelines introduced nearby articles as « informations factuelles », and both Nano models built scripts on street articles unrelated to the photo (Paris 13e, Duo towers). The section now says these places may or may not be the subject, and articles about a street or an administrative division are dropped unless nothing else remains.
