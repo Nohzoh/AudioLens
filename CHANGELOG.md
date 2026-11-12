@@ -16,6 +16,11 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Nearby Wikipedia articles framed as places around; streets dropped** (issue #498, part 1)
+  - **Verified**: 2026-11-12 (PR #516)
+  - **What was done**: the context sent to both pipelines introduced nearby articles as « informations factuelles », and both Nano models built scripts on street articles unrelated to the photo (Paris 13e, Duo towers). The section now says these places may or may not be the subject, and articles about a street or an administrative division are dropped unless nothing else remains.
+  - **Final validation**: tests on real extracts (street, canton, church, city gate, square); full suite and `flutter analyze` green. Effect on scripts still to measure in the Prompt Lab.
+
 - [x] ✨ - **Optional user hint on what the photo shows** (issue #467)
   - **Verified**: 2026-11-12 (PR #514)
   - **What was done**: from the history, « Analyser avec un indice » (unanalyzed entries) and the « Relancer avec d'autres paramètres » sheet take an optional hint (one line, 120 characters). It leads the context sent to both pipelines as reliable information, is what Nano looks up on Wikipedia (#466), and is kept in the analysis trace (About screen, debug info, feedback). Not offered in the camera flow, where analysis starts at once.

@@ -322,6 +322,8 @@ class LocationContextResolver {
         );
       }
 
+      // #498: applied after the cache, so cached entries benefit too.
+      wikiResults = WikipediaService.withoutStreets(wikiResults);
       if (wikiResults.isNotEmpty) {
         wikiContext = WikipediaService.buildContext(wikiResults);
         wikipediaUsed = true;
