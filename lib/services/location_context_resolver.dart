@@ -35,6 +35,9 @@ class LocationTrace {
   /// #467: what the user said the photo shows, when they gave a hint.
   final String? userHint;
 
+  /// #498: tall landmarks mentioned as possibly visible, with distance.
+  final List<String> landmarks;
+
   const LocationTrace({
     this.placeName,
     this.placeSource,
@@ -42,10 +45,15 @@ class LocationTrace {
     this.wikidata,
     this.wikipediaTitles = const [],
     this.userHint,
+    this.landmarks = const [],
   });
 
   bool get isEmpty =>
-      placeName == null && wikidata == null && wikipediaTitles.isEmpty && userHint == null;
+      placeName == null &&
+      wikidata == null &&
+      wikipediaTitles.isEmpty &&
+      userHint == null &&
+      landmarks.isEmpty;
 
   LocationTrace withUserHint(String? hint) => LocationTrace(
         placeName: placeName,
@@ -54,6 +62,7 @@ class LocationTrace {
         wikidata: wikidata,
         wikipediaTitles: wikipediaTitles,
         userHint: hint,
+        landmarks: landmarks,
       );
 
   /// The identified place with its origin, e.g.
@@ -71,6 +80,7 @@ class LocationTrace {
         if (wikidata != null) 'wikidata': wikidata,
         if (wikipediaTitles.isNotEmpty) 'wikipedia': wikipediaTitles,
         if (userHint != null) 'hint': userHint,
+        if (landmarks.isNotEmpty) 'landmarks': landmarks,
       });
 
   /// Null for a missing or unreadable value (entries older than #481).
@@ -80,6 +90,7 @@ class LocationTrace {
       final map = jsonDecode(raw);
       if (map is! Map) return null;
       final titles = map['wikipedia'];
+      final landmarks = map['landmarks'];
       return LocationTrace(
         placeName: map['place'] as String?,
         placeSource: map['placeSource'] as String?,
@@ -87,6 +98,7 @@ class LocationTrace {
         wikidata: map['wikidata'] as String?,
         wikipediaTitles: titles is List ? titles.whereType<String>().toList() : const [],
         userHint: map['hint'] as String?,
+        landmarks: landmarks is List ? landmarks.whereType<String>().toList() : const [],
       );
     } catch (_) {
       return null;
@@ -109,7 +121,11 @@ class LocationContext {
     this.wikipediaResults = const [],
     this.wikipediaUsed = false,
     this.promptContext,
+    this.landmarks = const [],
   });
+
+  /// #498: landmarks named in [promptContext] (POI duplicate removed).
+  final List<Landmark> landmarks;
 
   /// 'exif' | 'realtime' | 'map' (T87 — picked on a map, gallery photos
   /// with no EXIF GPS) | 'none'
@@ -158,6 +174,11 @@ class LocationContext {
         placeCategory: poi != null ? poi!.category : geocodedPlaceCategory,
         wikidata: wikidataInfo?.summary,
         wikipediaTitles: [for (final w in wikipediaResults) w.title],
+        landmarks: [
+          for (final l in landmarks)
+            if (poi == null || l.name.toLowerCase() != poi!.name.toLowerCase())
+              '${l.name} (${l.distanceMeters} m)',
+        ],
       );
 }
 
@@ -373,6 +394,7 @@ class LocationContextResolver {
       wikipediaResults: wikiResults,
       wikipediaUsed: wikipediaUsed,
       promptContext: promptContext.isNotEmpty ? promptContext : null,
+      landmarks: landmarks,
     );
   }
 

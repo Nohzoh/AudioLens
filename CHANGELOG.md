@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔍 - **Landmarks shown in « À propos de l'analyse » and the feedback report** (issue #498)
+  - **Verified**: 2026-11-12 (PR #532)
+  - **What was done**: the location trace saved with each entry now lists the tall landmarks the model was told about, with their distance, in the analysis details, the copied debug info and the feedback report.
+
 - [x] ✨ - **Long-press a sentence to jump, in the history detail too** (issue #228)
   - **Verified**: 2026-11-12 (PR #531)
   - **What was done**: the history detail script uses the same long-press-to-seek as the player while seekable audio plays (saved audio or Gemini voice), same look as before when idle.

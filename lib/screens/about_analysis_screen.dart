@@ -133,6 +133,9 @@ class AboutAnalysisScreen extends StatelessWidget {
               if (live.locationTrace!.wikipediaTitles.isNotEmpty)
                 _Row(l10n.aboutAnalysisWikipediaArticles,
                     live.locationTrace!.wikipediaTitles.join('\n')),
+              // #498
+              if (live.locationTrace!.landmarks.isNotEmpty)
+                _Row(l10n.aboutAnalysisLandmarks, live.locationTrace!.landmarks.join('\n')),
             ],
           ]),
 
@@ -241,6 +244,7 @@ class AboutAnalysisScreen extends StatelessWidget {
     if (trace.wikidata != null) buffer.writeln('Wikidata: ${trace.wikidata}');
     buffer.writeln('Wikipedia articles: '
         '${trace.wikipediaTitles.isEmpty ? 'none' : trace.wikipediaTitles.join(' | ')}');
+    if (trace.landmarks.isNotEmpty) buffer.writeln('Landmarks: ${trace.landmarks.join(' | ')}');
     return buffer.toString();
   }
 
