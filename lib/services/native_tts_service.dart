@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../utils/app_logger.dart';
 import 'genai_tts_service.dart';
@@ -47,6 +48,16 @@ class NativeTtsService {
   /// 10: « not listed by the engine »); they are only reachable through
   /// ML Kit, which drives the same engine with its own client.
   GenAiTtsService? generativeSpeaker;
+
+  /// #517: receives the WAV recording of a generative narration that
+  /// played to the end, with the text it says — so the history can keep
+  /// it like a Gemini TTS file (replay without waiting, ±10 s seek,
+  /// offline). The temporary file is deleted once this returns.
+  Future<void> Function(String text, String wavPath)? onGenerativeRecording;
+
+  /// Folder for the temporary recordings; injectable for tests.
+  Future<String> Function() recordingDirectory =
+      () async => Directory.systemTemp.path;
 
   /// Name of the voice used by the last narration, or null when the
   /// engine's default was left in place.
@@ -159,6 +170,20 @@ class NativeTtsService {
 
   String? _lastLoggedVoice;
 
+  Future<void> _handOverRecording(String text, String path) async {
+    try {
+      await onGenerativeRecording?.call(text, path);
+    } catch (_) {
+      // The narration was heard; only keeping it failed.
+    } finally {
+      try {
+        await File(path).delete();
+      } catch (_) {
+        // Already gone.
+      }
+    }
+  }
+
   void _logOnce(String key, String message) {
     if (_lastLoggedVoice == key) return;
     _lastLoggedVoice = key;
@@ -182,10 +207,20 @@ class NativeTtsService {
     _generativeStopRequested = false;
     _generativePlayedMs = 0;
     final estimatedMs = text.length / _generativeCharsPerSecond * 1000;
+    String? recordPath;
+    if (onGenerativeRecording != null) {
+      try {
+        recordPath = '${await recordingDirectory()}/genai_tts_'
+            '${DateTime.now().microsecondsSinceEpoch}.wav';
+      } catch (_) {
+        recordPath = null;
+      }
+    }
     final result = await speaker.speak(
       locale: preferredLanguageLocale,
       voice: voice,
       text: text,
+      recordPath: recordPath,
       onPlayedMs: (ms) {
         _generativePlayedMs = ms;
         if (_isPlaying && estimatedMs > 0) {
@@ -200,6 +235,8 @@ class NativeTtsService {
       onProgress?.call(1.0);
       if (_pendingSpeak?.isCompleted == false) _pendingSpeak!.complete(true);
       onComplete?.call();
+      final recorded = result.recordedPath;
+      if (recorded != null) unawaited(_handOverRecording(text, recorded));
       return true;
     }
     if (result.stopped || _generativeStopRequested) {

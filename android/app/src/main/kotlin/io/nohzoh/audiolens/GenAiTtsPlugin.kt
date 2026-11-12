@@ -85,6 +85,53 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         speakClient = null
     }
 
+    // #517: closes a recording and fills in its WAV header, or deletes it
+    // when it is not to be kept. The format is the one measured on a
+    // Pixel 10 (24 kHz, 16-bit, mono — 48000 bytes per second of
+    // playback); the library does not report it.
+    private fun finishRecording(
+        out: java.io.OutputStream,
+        file: File,
+        dataBytes: Long,
+        keep: Boolean,
+    ): String? {
+        try {
+            out.close()
+        } catch (e: Throwable) {
+            file.delete()
+            return null
+        }
+        if (!keep || dataBytes == 0L) {
+            file.delete()
+            return null
+        }
+        return try {
+            val sampleRate = 24000
+            val channels = 1
+            val bitsPerSample = 16
+            val byteRate = sampleRate * channels * bitsPerSample / 8
+            val header = java.nio.ByteBuffer.allocate(44).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            header.put("RIFF".toByteArray(Charsets.US_ASCII))
+            header.putInt((36 + dataBytes).toInt())
+            header.put("WAVE".toByteArray(Charsets.US_ASCII))
+            header.put("fmt ".toByteArray(Charsets.US_ASCII))
+            header.putInt(16)
+            header.putShort(1)
+            header.putShort(channels.toShort())
+            header.putInt(sampleRate)
+            header.putInt(byteRate)
+            header.putShort((channels * bitsPerSample / 8).toShort())
+            header.putShort(bitsPerSample.toShort())
+            header.put("data".toByteArray(Charsets.US_ASCII))
+            header.putInt(dataBytes.toInt())
+            java.io.RandomAccessFile(file, "rw").use { it.write(header.array()) }
+            file.absolutePath
+        } catch (e: Throwable) {
+            file.delete()
+            null
+        }
+    }
+
     private fun speakClientFor(locale: Locale): SpeechSynthesizer {
         val current = speakClient
         if (current != null && speakClientLocale == locale) return current
@@ -381,6 +428,9 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "speak" -> {
                 val text = call.argument<String>("text")
                 val voiceName = call.argument<String>("voice")
+                // #517: when set, the audio received is also written there
+                // as a WAV file, kept only if playback reached the end.
+                val recordPath = call.argument<String>("recordPath")
                 if (text.isNullOrBlank()) {
                     result.error("INVALID_ARGS", "text required", null)
                     return
@@ -399,6 +449,13 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     var error: String? = null
                     var bytes = 0L
                     var lastReport = 0L
+                    var recordedPath: String? = null
+                    val recordFile = recordPath?.let { File(it) }
+                    val recording = try {
+                        recordFile?.outputStream()?.buffered()?.also { it.write(ByteArray(44)) }
+                    } catch (e: Throwable) {
+                        null
+                    }
                     try {
                         val client = speakClientFor(locale)
                         val voice = findVoice(client, locale, voiceName)
@@ -421,6 +478,7 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                                 }
                                 is SpeechSynthesizerResponse.AudioAvailable -> {
                                     started = true
+                                    recording?.write(response.audio)
                                     bytes += response.audio.size
                                     val playedMs = bytes * 1000 / 48000
                                     if (playedMs - lastReport >= 500) {
@@ -438,11 +496,17 @@ class GenAiTtsPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     } catch (e: Throwable) {
                         error = "${e.javaClass.simpleName}: ${e.message}"
                     }
+                    if (recording != null && recordFile != null) {
+                        recordedPath = withContext(NonCancellable + Dispatchers.IO) {
+                            finishRecording(recording, recordFile, bytes, keep = completed && error == null)
+                        }
+                    }
                     val payload = mapOf(
                         "started" to started,
                         "completed" to completed,
                         "stopped" to stopped,
                         "playedMs" to bytes * 1000 / 48000,
+                        "recordedPath" to recordedPath,
                         "error" to error
                     )
                     withContext(NonCancellable + Dispatchers.Main) {

@@ -132,6 +132,10 @@ class GenAiSpeakResult {
 
   /// Milliseconds of audio received — about how far playback got.
   final int playedMs;
+
+  /// #517: WAV file of the whole narration, when a recording was asked for
+  /// and playback reached the end.
+  final String? recordedPath;
   final String? error;
 
   const GenAiSpeakResult({
@@ -139,6 +143,7 @@ class GenAiSpeakResult {
     required this.completed,
     required this.stopped,
     required this.playedMs,
+    this.recordedPath,
     this.error,
   });
 
@@ -147,6 +152,7 @@ class GenAiSpeakResult {
         completed: map['completed'] as bool? ?? false,
         stopped: map['stopped'] as bool? ?? false,
         playedMs: (map['playedMs'] as num?)?.toInt() ?? 0,
+        recordedPath: map['recordedPath'] as String?,
         error: map['error'] as String?,
       );
 }
@@ -171,6 +177,7 @@ class GenAiTtsService {
     required String voice,
     required String text,
     void Function(int playedMs)? onPlayedMs,
+    String? recordPath,
   }) async {
     _onPlayedMs = onPlayedMs;
     // Set here rather than in a constructor: the service is created in
@@ -182,7 +189,12 @@ class GenAiTtsService {
     });
     try {
       final raw = await _channel.invokeMapMethod<dynamic, dynamic>(
-          'speak', {'locale': locale, 'voice': voice, 'text': text});
+          'speak', {
+        'locale': locale,
+        'voice': voice,
+        'text': text,
+        if (recordPath != null) 'recordPath': recordPath,
+      });
       return GenAiSpeakResult.fromMap(raw ?? const {});
     } on PlatformException catch (e) {
       return GenAiSpeakResult(

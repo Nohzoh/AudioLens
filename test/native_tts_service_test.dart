@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:async';
+import 'dart:io';
 import 'package:audiolens/services/genai_tts_service.dart';
 import 'package:audiolens/services/native_tts_service.dart';
 
@@ -13,6 +14,7 @@ class _FakeSpeaker extends GenAiTtsService {
   final spoken = <String>[];
   final usedVoices = <String>[];
   int stopCalls = 0;
+  final recordPaths = <String?>[];
   Completer<GenAiSpeakResult>? _pending;
 
   @override
@@ -21,16 +23,21 @@ class _FakeSpeaker extends GenAiTtsService {
     required String voice,
     required String text,
     void Function(int playedMs)? onPlayedMs,
+    String? recordPath,
   }) async {
     spoken.add(text);
+    recordPaths.add(recordPath);
     usedVoices.add(voice);
     if (waitForStop) {
       _pending = Completer();
       return _pending!.future;
     }
     onPlayedMs?.call(500);
-    return result ??
-        const GenAiSpeakResult(started: true, completed: true, stopped: false, playedMs: 1000);
+    if (result != null) return result!;
+    // A real recording would be a WAV; any file will do here.
+    if (recordPath != null) File(recordPath).writeAsBytesSync([1, 2, 3]);
+    return GenAiSpeakResult(
+        started: true, completed: true, stopped: false, playedMs: 1000, recordedPath: recordPath);
   }
 
   @override
@@ -211,6 +218,41 @@ void main() {
       expect(service.isPlaying, isFalse);
       expect(completed, 0);
     });
+  });
+
+  // #517
+  test('a narration played to the end is handed over as a recording, then removed',
+      () async {
+    final dir = Directory.systemTemp.createTempSync('genai-rec');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final speaker = _FakeSpeaker();
+    final received = <String, List<int>>{};
+    final service = NativeTtsService()
+      ..generativeSpeaker = speaker
+      ..generativeVoiceFinder = ((_, __) async => 'fr-fr-x-star02')
+      ..recordingDirectory = (() async => dir.path)
+      ..onGenerativeRecording = (text, path) async {
+        received[text] = File(path).readAsBytesSync();
+      };
+
+    await service.speak('Le guide complet.');
+    await pumpEventQueue();
+
+    expect(speaker.recordPaths.single, startsWith('${dir.path}/genai_tts_'));
+    expect(received, {'Le guide complet.': [1, 2, 3]});
+    expect(dir.listSync(), isEmpty, reason: 'the temporary recording is deleted');
+  });
+
+  test('no recording is asked for when nobody would keep it', () async {
+    final speaker = _FakeSpeaker();
+    final service = NativeTtsService()
+      ..generativeSpeaker = speaker
+      ..generativeVoiceFinder = ((_, __) async => 'fr-fr-x-star02');
+
+    await service.speak('Bonjour.');
+    await pumpEventQueue();
+
+    expect(speaker.recordPaths.single, isNull);
   });
 
   test('generativeResumeText restarts at the sentence playback had reached', () {
