@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **« Tout écouter » for a collection or the favorites** (issue #550)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: when the history is filtered on a collection (a finished visit, say) or the favorites, a « Tout écouter » button opens a playlist: the saved audio of each analysis plays one after the other, oldest first, with the current photo and title, previous / pause / next, and the list to jump to any entry. Analyses without saved audio are left out (a snackbar says how many).
+
 - [x] 🐛 - **Entries record the style and language used at launch** (issue #544)
   - **Verified**: 2026-11-13 (PR #568)
   - **What was done**: the style and narration language saved with an entry are captured when the analysis starts, not read again from Settings when it ends.
