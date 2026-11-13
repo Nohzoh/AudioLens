@@ -509,7 +509,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                             SeekableScript(
                                               text: guide.lastResult!.script,
                                               progress: _readingProgress,
-                                              onSeek: guide.canSkip
+                                              onSeek: guide.canSeek
                                                   ? guide.seekToFraction
                                                   : null,
                                             ),

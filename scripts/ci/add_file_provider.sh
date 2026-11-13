@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Adds the FileProvider entry + its file_paths.xml resource.
 #
+# #537: limited to cache/share/ — the app's own code shares nothing
+# through this provider (share_plus and image_picker declare their own),
+# so it must not expose external storage or the whole cache.
+#
 # Extracted from build-android.yml (was the "Add FileProvider" step) —
 # behavior unchanged, only its location.
 set -euo pipefail
@@ -13,8 +17,7 @@ mkdir -p android/app/src/main/res/xml
 cat > android/app/src/main/res/xml/file_paths.xml << 'XML'
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-path name="external_files" path="."/>
-    <cache-path name="cache" path="."/>
+    <cache-path name="shared" path="share/"/>
 </paths>
 XML
 echo "FileProvider configured"
