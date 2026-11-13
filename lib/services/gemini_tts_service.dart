@@ -128,8 +128,7 @@ class GeminiTtsService {
         'ton vivant et expressif, rythme posé] $text';
 
     final uri = Uri.parse(
-      '${cfg.geminiApiUrl}/models/${cfg.geminiTtsModel}:generateContent'
-      '?key=$apiKey',
+      '${cfg.geminiApiUrl}/models/${cfg.geminiTtsModel}:generateContent',
     );
     final body = jsonEncode({
       'contents': [
@@ -213,7 +212,8 @@ class GeminiTtsService {
             data: body,
             cancelToken: dioToken,
             options: dio.Options(
-              headers: {'Content-Type': 'application/json'},
+              // #540: key in a header, not in the URL.
+              headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
               responseType: dio.ResponseType.plain,
               validateStatus: (_) => true,
             ),

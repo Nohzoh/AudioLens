@@ -123,7 +123,7 @@ done
 echo "==> Patch AndroidManifest.xml (permissions + label + FileProvider)"
 MANIFEST="android/app/src/main/AndroidManifest.xml"
 if ! grep -q 'ACCESS_FINE_LOCATION' "$MANIFEST"; then
-  $SED -i 's|<application|<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"/>\n    <application|' "$MANIFEST"
+  $SED -i 's|<application|<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"/>\n    <application|' "$MANIFEST"
 fi
 $SED -i 's/android:label="[^"]*"/android:label="AudioLens"/' "$MANIFEST"
 # Guarded (T82 fix): re-running against an already-patched manifest (no
@@ -181,8 +181,7 @@ mkdir -p android/app/src/main/res/xml
 cat > android/app/src/main/res/xml/file_paths.xml << 'XML'
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-path name="external_files" path="."/>
-    <cache-path name="cache" path="."/>
+    <cache-path name="shared" path="share/"/>
 </paths>
 XML
 
