@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 💄 - **Settings reorganized** (issue #563)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: Settings now read: AI engine with the « À propos de Gemini API » box right under it, API key, script style, narration language, voice, speed; then « Historique » (auto audio, purge), « Application » (appearance, app language, Ko-fi, tips); the tools (Avancé, feedback, Nano Prompt Lab, Voice Lab) come last.
+
 - [x] 📝 - **Privacy policy matches what the app sends** (issue #535)
   - **Verified**: 2026-11-13 (PR #567)
   - **What was done**: the policy no longer claims that nothing leaves the phone in on-device mode: it describes the OpenStreetMap/Wikipedia/Wikidata lookups made in both modes, the Gemini voice and follow-up questions in cloud mode, and reports sent through Telegram. The in-app tip says the photo stays on the phone rather than « confidentialité maximale ».

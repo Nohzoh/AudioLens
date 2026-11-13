@@ -249,6 +249,8 @@
     }
   },
   "settingsVoiceSection": "Voix",
+  "settingsHistorySection": "Historique",
+  "settingsAppSection": "Application",
   "settingsVoiceFemale": "Féminine",
   "settingsVoiceMale": "Masculine",
   "settingsTestVoice": "Tester la voix",

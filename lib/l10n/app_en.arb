@@ -220,6 +220,8 @@
   "settingsAutoPurgeSubtitle": "Automatically delete photos, scripts, and audio older than the chosen duration. Off by default — deletion stays manual.",
   "settingsAutoPurgeDaysOption": "{days} days",
   "settingsVoiceSection": "Voice",
+  "settingsHistorySection": "History",
+  "settingsAppSection": "App",
   "settingsVoiceFemale": "Female",
   "settingsVoiceMale": "Male",
   "settingsTestVoice": "Test the voice",
