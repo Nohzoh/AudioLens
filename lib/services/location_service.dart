@@ -16,6 +16,10 @@ class LocationInfo {
   final String? neighbourhood;
   final String? country;
 
+  /// #547: ISO 3166-1 alpha-2 code from Nominatim (`de`, `fr`…), to query
+  /// the local Wikipedia.
+  final String? countryCode;
+
   /// #482: name of the feature the reverse geocoder landed on, when it
   /// is a named place a visitor could be looking at (a church, a museum,
   /// a monument) rather than a street or a house number. Nominatim
@@ -33,6 +37,7 @@ class LocationInfo {
     this.road,
     this.neighbourhood,
     this.country,
+    this.countryCode,
     this.placeName,
     this.placeCategory,
   });
@@ -58,6 +63,7 @@ class LocationInfo {
       neighbourhood:
           addr?['neighbourhood'] as String? ?? addr?['suburb'] as String?,
       country: addr?['country'] as String?,
+      countryCode: (addr?['country_code'] as String?)?.toLowerCase(),
       placeName: place?.name,
       placeCategory: place?.category,
     );

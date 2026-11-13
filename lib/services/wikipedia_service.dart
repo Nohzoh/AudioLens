@@ -7,54 +7,106 @@ class WikipediaResult {
   final String extract;
   final String? coordinates;
 
+  /// #547: Wikipedia edition the article comes from.
+  final String lang;
+
   const WikipediaResult({
     required this.title,
     required this.extract,
     this.coordinates,
+    this.lang = 'fr',
   });
 }
 
 class WikipediaService {
   /// Search Wikipedia articles near GPS coordinates
+  ///
+  /// #547: [localLanguage] (the language of the country, when it isn't
+  /// French) is searched too: abroad, the local edition often has many
+  /// more articles about the surroundings. Results of both editions are
+  /// merged closest first, [limit] in total.
   static Future<List<WikipediaResult>> searchNearby({
     required double lat,
     required double lon,
     int radius = 200, // meters
     int limit = 3,
     int extractChars = 1500,
+    String? localLanguage,
     http.Client? client,
   }) async {
+    final http.Client c = client ?? http.Client();
+    final languages = ['fr', if (localLanguage != null && localLanguage != 'fr') localLanguage];
+    final found = await Future.wait([
+      for (final lang in languages) _geosearch(c, lang, lat, lon, radius, limit),
+    ]);
+    final hits = [for (final list in found) ...list]
+      ..sort((a, b) => a.dist.compareTo(b.dist));
+    final kept = hits.take(limit).toList();
+    final results = <WikipediaResult>[];
+    for (final lang in languages) {
+      final ids = [for (final h in kept) if (h.lang == lang) h.pageId];
+      try {
+        results.addAll(await _fetchExtracts(c, lang, ids, extractChars));
+      } catch (_) {}
+    }
+    // Back in distance order.
+    final order = {for (var i = 0; i < kept.length; i++) '${kept[i].lang}:${kept[i].title}': i};
+    results.sort((a, b) => (order['${a.lang}:${a.title}'] ?? 99)
+        .compareTo(order['${b.lang}:${b.title}'] ?? 99));
+    return results;
+  }
+
+  static Future<List<({String lang, String pageId, String title, double dist})>> _geosearch(
+      http.Client c, String lang, double lat, double lon, int radius, int limit) async {
     try {
-      // GeoSearch: find articles near coordinates
-      final geoUri = Uri.parse(
-        'https://fr.wikipedia.org/w/api.php'
-        '?action=query'
-        '&list=geosearch'
-        '&gscoord=$lat|$lon'
-        '&gsradius=$radius'
-        '&gslimit=$limit'
-        '&format=json'
-        '&origin=*'
-      );
-
-      final http.Client c = client ?? http.Client();
-      final geoResp = await c.get(geoUri,
-        headers: {'User-Agent': NetworkConfig.userAgent})
+      final geoUri = Uri.https('$lang.wikipedia.org', '/w/api.php', {
+        'action': 'query',
+        'list': 'geosearch',
+        'gscoord': '$lat|$lon',
+        'gsradius': '$radius',
+        'gslimit': '$limit',
+        'format': 'json',
+        'origin': '*',
+      });
+      final geoResp = await c
+          .get(geoUri, headers: {'User-Agent': NetworkConfig.userAgent})
           .timeout(const Duration(seconds: 6));
-
-      if (geoResp.statusCode != 200) return [];
-
+      if (geoResp.statusCode != 200) return const [];
       final geoData = jsonDecode(geoResp.body) as Map<String, dynamic>;
       final pages = geoData['query']?['geosearch'] as List? ?? [];
-
-      if (pages.isEmpty) return [];
-
-      final pageIds = pages.map((p) => p['pageid'].toString()).toList();
-      return await _fetchExtracts(c, 'fr', pageIds, extractChars);
+      return [
+        for (final p in pages)
+          (
+            lang: lang,
+            pageId: p['pageid'].toString(),
+            title: p['title'] as String? ?? '',
+            dist: (p['dist'] as num?)?.toDouble() ?? 0,
+          ),
+      ];
     } catch (_) {
-      return [];
+      return const [];
     }
   }
+
+  /// #547: main language of the Wikipedia edition worth adding for a
+  /// country (ISO code from reverse geocoding); null when French or
+  /// unknown. Multilingual countries get their most-used edition.
+  static String? localLanguageFor(String? countryCode) => switch (countryCode?.toLowerCase()) {
+        'de' || 'at' || 'ch' || 'li' => 'de',
+        'it' || 'sm' || 'va' => 'it',
+        'es' => 'es',
+        'pt' || 'br' => 'pt',
+        'nl' || 'be' => 'nl',
+        'gb' || 'ie' || 'us' || 'ca' || 'au' || 'nz' => 'en',
+        'jp' => 'ja',
+        'pl' => 'pl',
+        'cz' => 'cs',
+        'se' => 'sv',
+        'dk' => 'da',
+        'no' => 'no',
+        'gr' => 'el',
+        _ => null,
+      };
 
   /// Full-text search by name (e.g. a POI name + city), complementing
   /// [searchNearby]'s geosearch — catches articles that exist but aren't
@@ -141,6 +193,7 @@ class WikipediaService {
         extract: cleaned.length > extractChars
             ? '${cleaned.substring(0, extractChars)}...'
             : cleaned,
+        lang: lang,
       );
     }).where((r) => r.extract.isNotEmpty).toList();
   }
@@ -190,7 +243,10 @@ class WikipediaService {
         "Lieux proches d'après Wikipedia (la photo peut montrer l'un d'eux, ou tout autre chose : "
         "ne t'en sers que s'ils correspondent à ce que montre l'image) :");
     for (final r in results) {
-      buffer.writeln('- ${r.title} : ${r.extract}');
+      // #547: articles from another edition stay in their language; the
+      // model writes in the narration language anyway.
+      final tag = r.lang == 'fr' ? '' : ' [${r.lang}]';
+      buffer.writeln('- ${r.title}$tag : ${r.extract}');
     }
     return buffer.toString();
   }

@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Local Wikipedia edition searched abroad** (issue #547)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: outside France, the nearby-articles search also queries the Wikipedia edition of the country's language (from the reverse-geocoded country code: de for Germany, Austria, Switzerland, it, es, nl…) and keeps the closest articles of both editions; non-French articles are tagged with their language in the context. Remote-config switch `wikipedia_local_language` (on by default).
+
 - [x] 🔒 - **Shared images: no more private-file reads through the share intent** (issue #536)
   - **Verified**: 2026-11-13 (PR #566)
   - **What was done**: the share target now accepts only another app's `content://` URI (not `file://`, not our own FileProvider), stops copying past 30 MB, checks the image signature (JPEG/PNG/WebP/GIF/HEIF) and keeps copies in `cache/shared/`, cleaned after a day.
