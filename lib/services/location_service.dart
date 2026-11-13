@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'shared_http_client.dart';
 import 'network_config.dart';
 import 'remote_config_service.dart';
 
@@ -259,7 +260,7 @@ class LocationService {
         'https://nominatim.openstreetmap.org/search'
         '?q=${Uri.encodeQueryComponent(query)}&format=json&limit=5&accept-language=fr',
       );
-      final c = client ?? http.Client();
+      final c = client ?? sharedHttpClient;
       final response = await c.get(
         uri,
         headers: {'User-Agent': NetworkConfig.userAgent},
@@ -319,7 +320,7 @@ class LocationService {
         'https://nominatim.openstreetmap.org/reverse'
         '?lat=$lat&lon=$lon&format=json&addressdetails=1&accept-language=fr',
       );
-      final c = client ?? http.Client();
+      final c = client ?? sharedHttpClient;
       final response = await c.get(
         uri,
         headers: {'User-Agent': NetworkConfig.userAgent},

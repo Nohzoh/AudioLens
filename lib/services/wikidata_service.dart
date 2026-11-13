@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'shared_http_client.dart';
 import 'network_config.dart';
 
 /// A short label + description pulled from a Wikidata entity (#276).
@@ -45,7 +46,7 @@ class WikidataService {
         'format': 'json',
         'origin': '*',
       });
-      final c = client ?? http.Client();
+      final c = client ?? sharedHttpClient;
       final response = await c
           .get(uri, headers: {'User-Agent': NetworkConfig.userAgent})
           .timeout(const Duration(seconds: 6));

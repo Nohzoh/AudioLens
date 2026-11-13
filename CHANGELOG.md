@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ♻️ - **One shared HTTP client** (issue #553)
+  - **Verified**: 2026-11-13 (PR #586)
+  - **What was done**: the location, Wikipedia, Wikidata, Overpass, remote config and feedback calls reuse a single app-wide HTTP client (connection reuse) instead of creating one per call that was never closed. Tests still inject their own.
 - [x] ✨ - **Home: « Prendre une photo » opens the camera directly** (issue #556)
   - **Verified**: 2026-11-13 (PR #584)
   - **What was done**: the main button now opens the camera right away; a gallery button next to it opens the other sources (gallery, capture for later). The source sheet is a Material so its rows show their touch feedback.
