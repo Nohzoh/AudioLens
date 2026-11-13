@@ -33,17 +33,18 @@ class WikidataService {
     String language = 'fr',
     http.Client? client,
   }) async {
-    if (qid.isEmpty) return null;
+    final id = normalizeQid(qid);
+    if (id == null) return null;
+    qid = id;
     try {
-      final uri = Uri.parse(
-        'https://www.wikidata.org/w/api.php'
-        '?action=wbgetentities'
-        '&ids=$qid'
-        '&props=labels|descriptions'
-        '&languages=$language|en'
-        '&format=json'
-        '&origin=*',
-      );
+      final uri = Uri.https('www.wikidata.org', '/w/api.php', {
+        'action': 'wbgetentities',
+        'ids': qid,
+        'props': 'labels|descriptions',
+        'languages': '$language|en',
+        'format': 'json',
+        'origin': '*',
+      });
       final c = client ?? http.Client();
       final response = await c
           .get(uri, headers: {'User-Agent': NetworkConfig.userAgent})
@@ -68,3 +69,18 @@ class WikidataService {
     }
   }
 }
+
+final _qidPattern = RegExp(r'^Q[1-9][0-9]{0,11}$');
+
+/// #542: a clean Wikidata id from an OSM `wikidata` tag (crowd-edited:
+/// it may hold several ids — `Q1;Q2` — spaces, or anything else), or
+/// null. The first valid id wins.
+String? normalizeQid(String? raw) {
+  if (raw == null) return null;
+  for (final part in raw.split(RegExp(r'[;,\s]+'))) {
+    final candidate = part.trim().toUpperCase();
+    if (_qidPattern.hasMatch(candidate)) return candidate;
+  }
+  return null;
+}
+

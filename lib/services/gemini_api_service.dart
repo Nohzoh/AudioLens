@@ -120,7 +120,7 @@ class GeminiApiService implements AIService {
 
     for (final model in modelsToTry) {
       final fullUrl =
-          '${cfg.geminiApiUrl}/models/$model:generateContent?key=$apiKey';
+          '${cfg.geminiApiUrl}/models/$model:generateContent';
 
       try {
         final resp = await _post(
@@ -274,7 +274,7 @@ class GeminiApiService implements AIService {
   Future<String> answerQuestion(String prompt, {CancelToken? cancelToken}) async {
     final cfg = RemoteConfigService.current;
     final resp = await _post(
-      Uri.parse('${cfg.geminiApiUrl}/models/${cfg.geminiModel}:generateContent?key=$apiKey'),
+      Uri.parse('${cfg.geminiApiUrl}/models/${cfg.geminiModel}:generateContent'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'contents': [
@@ -323,7 +323,7 @@ class GeminiApiService implements AIService {
 
     try {
       final resp = await _post(
-        Uri.parse('${cfg.geminiApiUrl}/models/${cfg.geminiModel}:generateContent?key=$apiKey'),
+        Uri.parse('${cfg.geminiApiUrl}/models/${cfg.geminiModel}:generateContent'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'contents': [
@@ -672,7 +672,9 @@ class GeminiApiService implements AIService {
             data: body,
             cancelToken: dioToken,
             options: dio.Options(
-              headers: headers,
+              // #540: the key travels in a header, never in the URL (URLs
+              // end up in exceptions and logs).
+              headers: {...headers, 'x-goog-api-key': apiKey},
               responseType: dio.ResponseType.plain,
               validateStatus: (_) => true,
             ),
