@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ♻️ - **One shared HTTP client** (issue #553)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: the location, Wikipedia, Wikidata, Overpass, remote config and feedback calls reuse a single app-wide HTTP client (connection reuse) instead of creating one per call that was never closed. Tests still inject their own.
+
 - [x] ♻️ - **History detail screen in its own file** (issue #553)
   - **Verified**: 2026-11-13 (PR #580)
   - **What was done**: `HistoryDetailScreen` and its menu (≈1,000 lines) move from `history_screen.dart` to `history_detail_screen.dart`, a `part` of the same library so the shared private helpers (relaunch, regenerate and collections sheets) stay private. No behavior change.
