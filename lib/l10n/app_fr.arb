@@ -250,6 +250,8 @@
     }
   },
   "settingsVoiceSection": "Voix",
+  "settingsHistorySection": "Historique",
+  "settingsAppSection": "Application",
   "settingsVoiceFemale": "Féminine",
   "settingsVoiceMale": "Masculine",
   "settingsTestVoice": "Tester la voix",
@@ -399,6 +401,9 @@
   "nanoLabWikipediaNone": "Aucun article Wikipedia trouvé",
   "nanoLabImageRequired": "Une image est requise pour le pipeline complet",
   "nanoLabRunPipeline": "Lancer le pipeline complet",
+  "nanoLabCompareModels": "Comparer les {count} modèles installés",
+  "@nanoLabCompareModels": {"placeholders": {"count": {"type": "int"}}},
+  "nanoLabComparing": "Comparaison en cours…",
   "nanoLabOptTitleLookup": "Faits Wikipedia sur le titre",
   "nanoLabOptLocationFirst": "Lieu en tête du prompt",
   "nanoLabOptFullPrevious": "Segment 1 complet pour la suite",
@@ -582,5 +587,16 @@
   "@homeBatchDone": {"placeholders": {"count": {"type": "int"}}},
   "homeBatchSkipped": "{count, plural, =1{1 photo sans position est à lancer depuis l'historique.} other{{count} photos sans position sont à lancer depuis l'historique.}}",
   "@homeBatchSkipped": {"placeholders": {"count": {"type": "int"}}},
-  "homeListenAgain": "Réécouter le dernier guide"
+  "homeListenAgain": "Réécouter le dernier guide",
+  "playlistPlayAll": "Tout écouter",
+  "playlistPosition": "{index} sur {count}",
+  "@playlistPosition": {"placeholders": {"index": {"type": "int"}, "count": {"type": "int"}}},
+  "playlistPrevious": "Précédente",
+  "playlistNext": "Suivante",
+  "playlistPause": "Pause",
+  "playlistResume": "Reprendre",
+  "playlistRestart": "Réécouter depuis le début",
+  "playlistNothingToPlay": "Aucune de ces analyses n'a d'audio enregistré.",
+  "playlistSkipped": "{count, plural, =1{1 analyse sans audio enregistré est laissée de côté.} other{{count} analyses sans audio enregistré sont laissées de côté.}}",
+  "@playlistSkipped": {"placeholders": {"count": {"type": "int"}}}
 }
