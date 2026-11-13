@@ -20,6 +20,12 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **Verified**: 2026-11-13 (PR #585)
   - **What was done**: once there is a history, the home screen shows, instead of « Pointez votre appareil… »: a card « N photos à analyser » with « Tout analyser » (analyzed one after another without opening the player and without audio, which can be generated later; suggested more strongly when the phone is on Wi-Fi), and a « Réécouter le dernier guide » card opening the last analysis with playback. Photos without a saved position are left for the history (they need the map).
 
+- [x] 🐛 - **Street filter works for German, English, Italian, Spanish and Dutch articles** (issue #587)
+  - **Verified**: 2026-11-13 (PR #588)
+  - **What was done**: the filter that drops street and district articles from the nearby Wikipedia results now knows the opening phrase of each edition the app queries (« ist eine Straße », « is a street », « è una via »…), not only the French one.
+- [x] ♻️ - **One shared HTTP client** (issue #553)
+  - **Verified**: 2026-11-13 (PR #586)
+  - **What was done**: the location, Wikipedia, Wikidata, Overpass, remote config and feedback calls reuse a single app-wide HTTP client (connection reuse) instead of creating one per call that was never closed. Tests still inject their own.
 - [x] ✨ - **Home: « Prendre une photo » opens the camera directly** (issue #556)
   - **Verified**: 2026-11-13 (PR #584)
   - **What was done**: the main button now opens the camera right away; a gallery button next to it opens the other sources (gallery, capture for later). The source sheet is a Material so its rows show their touch feedback.

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
+import 'shared_http_client.dart';
 import 'network_config.dart';
 
 /// Everything usable pulled from the closest tagged OSM element, not just
@@ -262,7 +263,7 @@ class PoiService {
   /// exception, timeout) for [findNearby] to decide whether to retry.
   Future<List<dynamic>?> _fetchElements(String query, Duration timeout) async {
     try {
-      final client = _client ?? http.Client();
+      final client = _client ?? sharedHttpClient;
       final response = await client
           .post(
             Uri.parse(_overpassUrl),

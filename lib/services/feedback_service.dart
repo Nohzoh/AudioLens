@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'shared_http_client.dart';
 import 'package:image/image.dart' as img;
 import 'network_config.dart';
 
@@ -181,7 +182,7 @@ class FeedbackService {
         : [prefix + messageChunks.first, ...messageChunks.skip(1)];
 
     try {
-      final client = _client ?? http.Client();
+      final client = _client ?? sharedHttpClient;
       var remaining = chunks;
       if (image != null) {
         await _sendPhoto(client, image, caption: chunks.first);

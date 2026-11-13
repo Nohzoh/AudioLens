@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
 import 'package:http/http.dart' as http;
+import 'shared_http_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_logger.dart';
 import '../utils/script_validation.dart';
@@ -303,7 +304,7 @@ class RemoteConfigService {
   /// [client] allows injecting a mock HTTP client in tests.
   static Future<void> load({http.Client? client}) async {
     final prefs = await SharedPreferences.getInstance();
-    final c = client ?? http.Client();
+    final c = client ?? sharedHttpClient;
 
     // Always try remote first (fast, tiny files)
     try {
