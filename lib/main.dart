@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'services/network_config.dart';
 import 'services/remote_config_service.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -17,6 +19,10 @@ import 'screens/history_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   AppLogger.nav('App starting');
+  // #554: the version in the User-Agent sent to OSM/Wikimedia.
+  try {
+    NetworkConfig.setAppVersion((await PackageInfo.fromPlatform()).version);
+  } catch (_) {}
   await RemoteConfigService.load();
   // Both supported locales' formatting data must be initialized up front —
   // DateFormat calls elsewhere (e.g. history_screen.dart) switch locale at
