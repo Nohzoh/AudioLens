@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Third-party CI actions pinned to commit SHAs** (issue #539)
+  - **Verified**: 2026-11-13 (PR #573)
+  - **What was done**: `subosito/flutter-action`, `android-actions/setup-android`, `dorny/paths-filter` and `r0adkll/upload-google-play` (which receives the Play service account) are pinned to the commit of their current release, with the version as a comment for Dependabot; the keystore step reads its secrets from `env` instead of having them interpolated into the script.
+
 - [x] 🔒 - **Legacy storage permissions capped, FileProvider narrowed** (issue #538)
   - **Verified**: 2026-11-13 (PR #572)
   - **What was done**: `READ_EXTERNAL_STORAGE` now stops at Android 12 and `WRITE_EXTERNAL_STORAGE` at Android 10 (still needed there to save to the gallery), and the app's FileProvider only covers `cache/share/` instead of all external storage and the whole cache (issue #537 too).
