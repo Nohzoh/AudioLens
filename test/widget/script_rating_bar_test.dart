@@ -91,7 +91,7 @@ void main() {
     await tester.tap(find.text("Envoyer l'analyse"));
     await tester.pumpAndSettle();
 
-    expect(find.text('Envoyer un feedback'), findsOneWidget);
+    expect(find.text('Envoyer un retour'), findsOneWidget);
     expect(find.text("Changer l'analyse"), findsOneWidget);
   });
 
@@ -106,7 +106,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(history.ratings, [1]);
-    expect(find.text('Envoyer un feedback'), findsNothing);
+    expect(find.text('Envoyer un retour'), findsNothing);
   });
 
   testWidgets('1 star on a build without feedback configured just saves', (tester) async {
