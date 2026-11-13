@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Entries record the style and language used at launch** (issue #544)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: the style and narration language saved with an entry are captured when the analysis starts, not read again from Settings when it ends.
+
 - [x] 💄 - **Player: the script uses the whole screen once shown** (issue #559)
   - **Verified**: 2026-11-13 (PR #560)
   - **What was done**: the empty band above the content folds away when the result appears (text mode), so the script scrolls over the full height; the photo gradient is darker from the top to keep the text readable. Unchanged while the pipeline runs and in photo mode.
