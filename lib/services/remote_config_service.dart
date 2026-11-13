@@ -213,8 +213,9 @@ class RemoteConfigService {
 
   /// Whether [url] is safe to use as the Gemini API base URL.
   static bool isAllowedApiUrl(String url) {
-    final host = Uri.tryParse(url)?.host;
-    return host != null && allowedApiHosts.contains(host);
+    final uri = Uri.tryParse(url);
+    // #540: https only — the key must never travel in clear.
+    return uri != null && uri.scheme == 'https' && allowedApiHosts.contains(uri.host);
   }
 
   // Public half of the Ed25519 keypair used to sign config.json — the

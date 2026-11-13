@@ -344,7 +344,9 @@
   "generativeVoiceOff": "Désactivée",
   "generativeVoiceFemale": "féminine",
   "generativeVoiceMale": "masculine",
-  "generativeVoiceMoreInLab": "D'autres voix peuvent être téléchargées depuis le Labo des voix (Outils).",
+  "generativeVoiceDownloadTitle": "À télécharger (connexion conseillée en Wi-Fi) :",
+  "generativeVoiceDownloadTooltip": "Télécharger cette voix",
+  "generativeVoiceDownloadFailed": "La voix n'a pas pu être téléchargée. Réessayez plus tard.",
   "voiceLabTitle": "Labo des voix",
   "voiceLabIntro": "Essai de la synthèse vocale générative de Google, exécutée sur le téléphone. Les guides ne l'utilisent pas encore : cet écran sert à vérifier ce qu'elle sait faire sur cet appareil.",
   "voiceLabLocale": "Langue (ex. fr-FR)",
@@ -469,7 +471,7 @@
       "email": {"type": "String"}
     }
   },
-  "startupTipLocalAi": "Astuce : passez en IA locale dans Réglages pour analyser vos photos hors connexion, avec une confidentialité maximale.",
+  "startupTipLocalAi": "Astuce : passez en IA locale dans Réglages pour analyser vos photos hors connexion, sans qu'elles quittent le téléphone.",
   "startupTipScriptStyle": "Astuce : choisissez le style de narration (immersif, académique, anecdotique, concis) dans Réglages.",
   "startupTipFeedbackAnalysis": "Astuce : vous pouvez joindre une analyse existante à votre retour pour signaler un problème précis.",
   "startupTipSkip": "Astuce : pendant la lecture, avancez ou reculez de 10 secondes avec les boutons de saut.",

@@ -163,7 +163,8 @@ class WikipediaService {
     final extractUri = Uri.parse(
       'https://$lang.wikipedia.org/w/api.php'
       '?action=query'
-      '&pageids=${pageIds.join('|')}'
+      // #542: page ids are numbers; anything else is dropped.
+      '&pageids=${pageIds.where((id) => RegExp(r'^[0-9]+$').hasMatch(id)).join('|')}'
       '&prop=extracts'
       '&exintro=true'
       '&explaintext=true'
