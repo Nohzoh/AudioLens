@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 - **History detail: the script follows the voice** (issue #555)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #558)
   - **What was done**: replaying an entry from the history now highlights the script as it is read (saved audio: real player position; phone's voice: its word progress), like the player screen, keeping the detail's text style.
 
 - [x] 🔍 - **Landmarks shown in « À propos de l'analyse » and the feedback report** (issue #498)
