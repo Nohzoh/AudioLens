@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Feedback photos sent without their metadata** (issue #541)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: a photo or screenshot attached to a report is decoded, turned upright, downscaled to 1600 px and re-encoded as a JPEG without EXIF (no GPS position, no device model) before it is sent; an undecodable file is sent as before.
+
 - [x] 🐛 - **Interrupted analyses no longer stay « en cours »** (issue #543)
   - **Verified**: 2026-11-13 (PR #564)
   - **What was done**: at startup, entries still pending (the app was killed or crashed mid-analysis) become failed entries titled « Analyse interrompue », retried on tap with their saved GPS, instead of spinning forever.
