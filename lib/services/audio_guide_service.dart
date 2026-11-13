@@ -787,12 +787,29 @@ class AudioGuideService extends ChangeNotifier {
     await _providerManager.geminiTtsService!.skipBack();
   }
 
+  /// #546: whether a long-pressed sentence can be jumped to — seekable
+  /// audio ([canSkip]), or a narration the phone's voice is speaking
+  /// (restarted from that sentence).
+  bool get canSeek =>
+      canSkip ||
+      ((_state == GuideState.speaking || _state == GuideState.paused) &&
+          _lastTtsModel != 'gemini-tts' &&
+          _lastResult != null);
+
   /// #228: jumps to [fraction] of the narration (a long-pressed sentence).
-  /// Same gating as the ±10 s buttons: only seekable audio.
+  /// #546: with the phone's voice, speech restarts from that point.
   Future<void> seekToFraction(double fraction) async {
-    if (!canSkip) return;
+    if (!canSeek) return;
     AppLogger.tts('Seek to ${(fraction * 100).round()}% of the narration');
-    await _providerManager.geminiTtsService!.seekToFraction(fraction);
+    if (canSkip) {
+      await _providerManager.geminiTtsService!.seekToFraction(fraction);
+      return;
+    }
+    await _nativeTtsService.speakFromFraction(fraction, speed: _playbackSpeed);
+    if (_state == GuideState.paused) {
+      _state = GuideState.speaking;
+      notifyListeners();
+    }
   }
 
   Future<void> cancelCurrentAction() async {

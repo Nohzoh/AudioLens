@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Long-press to jump also works with the phone's voice** (issue #546)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: on the player screen, long-pressing a sentence while the phone's voice (generative or usual) narrates restarts speech at that sentence, and the highlight continues from there; before, it only worked with the Gemini voice and saved audio.
+
 - [x] 🐛 - **Generative voice: pause/resume lands on the right sentence** (issue #545)
   - **Verified**: 2026-11-13 (PR #575)
   - **What was done**: resume now counts from where the current segment starts in the whole narration (a second pause after a resume no longer goes back to an earlier sentence), the reading highlight follows the whole text instead of restarting at 0, and the speaking rate is calibrated from each complete narration instead of a fixed 18 characters per second.
