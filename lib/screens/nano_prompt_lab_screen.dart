@@ -134,6 +134,37 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
     }
   }
 
+  /// #478: installed models, one per distinct model when names are known
+  /// (the default model loads the same as one of the variants).
+  List<NanoModelVariant?> get _installedVariants => [
+        for (final v in <NanoModelVariant?>[null, ...NanoModelVariant.all])
+          if (_statuses[v] == NanoDeviceStatus.available) v,
+      ];
+
+  /// #478: runs the same photo, location and settings through every
+  /// installed model in a row — the comparison the benchmark needs, in
+  /// one tap. Each run is added to the export like a manual one.
+  Future<void> _runAllModels() async {
+    final variants = _installedVariants;
+    if (variants.length < 2) return;
+    final previous = _variant;
+    setState(() => _comparing = true);
+    AppLogger.ai('Nano Lab: comparing ${variants.length} models');
+    for (final v in variants) {
+      if (!mounted || !_comparing) break;
+      setState(() => _variant = v);
+      await _runPipeline();
+    }
+    if (mounted) {
+      setState(() {
+        _comparing = false;
+        _variant = previous;
+      });
+    }
+  }
+
+  bool _comparing = false;
+
   bool get _variantReady =>
       _variant == null || _statuses[_variant] == NanoDeviceStatus.available;
 
@@ -676,6 +707,18 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         onPressed: (_runningPipeline || _image == null || !_variantReady) ? null : _runPipeline,
         style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
       ),
+      // #478
+      if (_installedVariants.length >= 2) ...[
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.compare_arrows, size: 18),
+          label: Text(_comparing
+              ? l10n.nanoLabComparing
+              : l10n.nanoLabCompareModels(_installedVariants.length)),
+          onPressed: (_runningPipeline || _comparing || _image == null) ? null : _runAllModels,
+          style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 44)),
+        ),
+      ],
       if (_pipelineRuns.isNotEmpty) ...[
         const SizedBox(height: 8),
         OutlinedButton.icon(
