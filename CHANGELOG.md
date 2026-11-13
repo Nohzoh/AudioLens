@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🔒 - **Wikidata/Wikipedia ids validated** (issue #542)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #571)
   - **What was done**: the OSM `wikidata` tag is reduced to its first valid `Q…` id (tags like `Q1;Q2` or junk no longer reach the URL), the Wikidata URL is built with `Uri.https` parameters, and only numeric Wikipedia page ids are sent.
 
 - [x] 🐛 - **Interrupted analyses no longer stay « en cours »** (issue #543)
