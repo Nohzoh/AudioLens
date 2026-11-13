@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Home: « Prendre une photo » opens the camera directly** (issue #556)
+  - **Verified**: 2026-11-13 (PR #584)
+  - **What was done**: the main button now opens the camera right away; a gallery button next to it opens the other sources (gallery, capture for later). The source sheet is a Material so its rows show their touch feedback.
 - [x] 🧪 - **Nano Prompt Lab: compare the installed models in one tap** (issue #478)
   - **Verified**: 2026-11-13 (PR #583)
   - **What was done**: a « Comparer les N modèles installés » button runs the same photo, location and settings through every installed model in a row (default model and each installed variant); each run joins the export like a manual one, so one export per photo covers the Nano 3 / Nano 4 comparison.
