@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🔒 - **Gemini API key sent in a header, https required** (issue #540)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #570)
   - **What was done**: Gemini requests (analysis, questions, quiz, TTS) carry the key in the `x-goog-api-key` header instead of `?key=` in the URL, and a remote-config API URL must be https on the allowed host.
 
 - [x] 💄 - **UI polish from screenshots** (issue #561)
