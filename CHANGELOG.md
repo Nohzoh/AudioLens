@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Street filter works for German, English, Italian, Spanish and Dutch articles** (issue #587)
+  - **Verified**: 2026-11-13 (PR #588)
+  - **What was done**: the filter that drops street and district articles from the nearby Wikipedia results now knows the opening phrase of each edition the app queries (« ist eine Straße », « is a street », « è una via »…), not only the French one.
 - [x] ♻️ - **One shared HTTP client** (issue #553)
   - **Verified**: 2026-11-13 (PR #586)
   - **What was done**: the location, Wikipedia, Wikidata, Overpass, remote config and feedback calls reuse a single app-wide HTTP client (connection reuse) instead of creating one per call that was never closed. Tests still inject their own.
