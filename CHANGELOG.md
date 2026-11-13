@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ♿ - **Home header icons have tooltips** (issue #557)
+  - **Verified**: 2026-11-13 (PR #569)
+  - **What was done**: the history and settings icons of the home header now have tooltips (long-press label, TalkBack name), like the quiz and Ko-fi ones.
 - [x] 🐛 - **Entries record the style and language used at launch** (issue #544)
   - **Verified**: 2026-11-13 (PR #568)
   - **What was done**: the style and narration language saved with an entry are captured when the analysis starts, not read again from Settings when it ends.
