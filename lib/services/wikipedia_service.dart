@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'shared_http_client.dart';
 import 'network_config.dart';
 
 class WikipediaResult {
@@ -34,7 +35,7 @@ class WikipediaService {
     String? localLanguage,
     http.Client? client,
   }) async {
-    final http.Client c = client ?? http.Client();
+    final http.Client c = client ?? sharedHttpClient;
     final languages = ['fr', if (localLanguage != null && localLanguage != 'fr') localLanguage];
     final found = await Future.wait([
       for (final lang in languages) _geosearch(c, lang, lat, lon, radius, limit),
@@ -119,7 +120,7 @@ class WikipediaService {
     http.Client? client,
   }) async {
     if (query.trim().isEmpty) return [];
-    final http.Client c = client ?? http.Client();
+    final http.Client c = client ?? sharedHttpClient;
 
     for (final lang in ['fr', 'en']) {
       try {

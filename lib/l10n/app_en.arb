@@ -48,6 +48,7 @@
   "homeImageNotFound": "Image not found",
   "homeImageTooLarge": "This file is too large to analyze.",
   "homeTakePhoto": "Take a photo",
+  "homeMoreSources": "Gallery or analyze later",
   "homeChooseFromGallery": "Choose from gallery",
   "homeCaptureOnly": "Capture without analyzing",
   "homeCaptureOnlySubtitle": "Photo + position saved, analysis to start later (saves data)",
@@ -368,6 +369,8 @@
   "nanoLabWikipediaNone": "No Wikipedia article found",
   "nanoLabImageRequired": "An image is required for the full pipeline",
   "nanoLabRunPipeline": "Run full pipeline",
+  "nanoLabCompareModels": "Compare the {count} installed models",
+  "nanoLabComparing": "Comparing…",
   "nanoLabOptTitleLookup": "Wikipedia facts on the title",
   "nanoLabOptLocationFirst": "Place first in the prompt",
   "nanoLabOptFullPrevious": "Full segment 1 for the rest",
@@ -514,5 +517,14 @@
   "homeVisitActive": "Visit: {name}",
   "homeVisitPhotos": "{count, plural, =0{no photo yet} =1{1 photo} other{{count} photos}}",
   "homeVisitEnd": "End",
-  "homeVisitEnded": "Visit ended. Its photos stay in the \"{name}\" collection."
+  "homeVisitEnded": "Visit ended. Its photos stay in the \"{name}\" collection.",
+  "playlistPlayAll": "Play all",
+  "playlistPosition": "{index} of {count}",
+  "playlistPrevious": "Previous",
+  "playlistNext": "Next",
+  "playlistPause": "Pause",
+  "playlistResume": "Resume",
+  "playlistRestart": "Play again from the start",
+  "playlistNothingToPlay": "None of these analyses has saved audio.",
+  "playlistSkipped": "{count, plural, =1{1 analysis without saved audio is left out.} other{{count} analyses without saved audio are left out.}}"
 }

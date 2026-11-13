@@ -724,19 +724,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _showImageSourceDialog() async {
+  /// #556: the main button opens the camera directly; the sheet (from
+  /// the button next to it) offers the gallery and « capture for later ».
+  Future<void> _showImageSourceDialog({bool includeCamera = true}) async {
     final l10n = AppLocalizations.of(context)!;
     final choice =
         await showModalBottomSheet<({ImageSource source, bool analyzeNow})>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
+      // A Material (not a decorated Container) so the ListTiles' ink shows.
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Material(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
@@ -750,12 +752,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         .withValues(alpha: 0.24),
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: Text(l10n.homeTakePhoto),
-              onTap: () => Navigator.pop(
-                  context, (source: ImageSource.camera, analyzeNow: true)),
-            ),
+            if (includeCamera)
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: Text(l10n.homeTakePhoto),
+                onTap: () => Navigator.pop(
+                    context, (source: ImageSource.camera, analyzeNow: true)),
+              ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: Text(l10n.homeChooseFromGallery),
@@ -772,6 +775,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 16),
           ],
+        ),
         ),
       ),
     );
@@ -1313,16 +1317,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   // pushed its own PlayerScreen straight into the
                   // service's existing "already in progress" guard.
                   Consumer<AudioGuideService>(
-                    builder: (context, guide, _) => FilledButton.icon(
-                      onPressed: guide.isBusy ? null : _showImageSourceDialog,
-                      icon: const Icon(Icons.camera_alt, size: 24),
-                      label: Text(l10n.homeTakePhoto,
-                          style: const TextStyle(fontSize: 18)),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 64),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
-                      ),
+                    builder: (context, guide, _) => Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            // #556: straight to the camera.
+                            onPressed: guide.isBusy
+                                ? null
+                                : () => _pickImage(ImageSource.camera, analyzeNow: true),
+                            icon: const Icon(Icons.camera_alt, size: 24),
+                            label: Text(l10n.homeTakePhoto,
+                                style: const TextStyle(fontSize: 18)),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 64),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        IconButton.filledTonal(
+                          tooltip: l10n.homeMoreSources,
+                          onPressed: guide.isBusy
+                              ? null
+                              : () => _showImageSourceDialog(includeCamera: false),
+                          icon: const Icon(Icons.photo_library_outlined),
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(64, 64),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20)),
+                          ),
+                        ),
+                      ],
                     ),
                   ).animate().scale(delay: 200.ms),
                   const SizedBox(height: 16),
