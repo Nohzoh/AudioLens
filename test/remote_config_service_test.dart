@@ -174,6 +174,13 @@ void main() {
       );
     });
 
+    test('rejects plain http, even on the right host (#540)', () {
+      expect(
+        RemoteConfigService.isAllowedApiUrl('http://generativelanguage.googleapis.com/v1'),
+        isFalse,
+      );
+    });
+
     test('rejects a lookalike host', () {
       expect(
         RemoteConfigService.isAllowedApiUrl(

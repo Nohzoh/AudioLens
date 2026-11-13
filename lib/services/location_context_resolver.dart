@@ -292,6 +292,9 @@ class LocationContextResolver {
           radius: cfg.wikipediaRadiusMeters,
           limit: cfg.wikipediaMaxResults,
           extractChars: cfg.wikipediaExtractChars,
+          localLanguage: cfg.wikipediaLocalLanguage
+              ? WikipediaService.localLanguageFor(locationResult.info!.countryCode)
+              : null,
           client: _httpClient,
         );
 

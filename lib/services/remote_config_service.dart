@@ -42,6 +42,9 @@ class RemoteConfig {
   /// high-rises) that can be photographed from afar; 0 turns it off.
   final int landmarkRadiusMeters;
 
+  /// #547: also geosearch the Wikipedia edition of the country's language.
+  final bool wikipediaLocalLanguage;
+
   /// #248: the free public Overpass instance enforces its own concurrent
   /// request "slot" limit — live testing against `/api/status` confirmed
   /// "Rate limit: 2", with queued requests taking 10+ seconds or
@@ -99,6 +102,7 @@ class RemoteConfig {
     this.wikipediaExtractChars = 1500,
     this.poiRadiusMeters = 75,
     this.landmarkRadiusMeters = 1500,
+    this.wikipediaLocalLanguage = true,
     this.poiTimeoutSeconds = 10,
     this.poiMaxAttempts = 2,
     this.ttsSpeed = 1.2,
@@ -133,6 +137,7 @@ class RemoteConfig {
       wikipediaExtractChars: json['wikipedia_extract_chars'] as int? ?? 1500,
       poiRadiusMeters: json['poi_radius_meters'] as int? ?? 75,
       landmarkRadiusMeters: json['landmark_radius_meters'] as int? ?? 1500,
+      wikipediaLocalLanguage: json['wikipedia_local_language'] as bool? ?? true,
       poiTimeoutSeconds: json['poi_timeout_seconds'] as int? ?? 10,
       poiMaxAttempts: json['poi_max_attempts'] as int? ?? 2,
       ttsSpeed: (json['tts_speed'] as num?)?.toDouble() ?? 1.2,
@@ -167,6 +172,7 @@ class RemoteConfig {
     'wikipedia_extract_chars': wikipediaExtractChars,
     'poi_radius_meters': poiRadiusMeters,
     'landmark_radius_meters': landmarkRadiusMeters,
+    'wikipedia_local_language': wikipediaLocalLanguage,
     'poi_timeout_seconds': poiTimeoutSeconds,
     'poi_max_attempts': poiMaxAttempts,
     'tts_speed': ttsSpeed,
@@ -207,8 +213,9 @@ class RemoteConfigService {
 
   /// Whether [url] is safe to use as the Gemini API base URL.
   static bool isAllowedApiUrl(String url) {
-    final host = Uri.tryParse(url)?.host;
-    return host != null && allowedApiHosts.contains(host);
+    final uri = Uri.tryParse(url);
+    // #540: https only — the key must never travel in clear.
+    return uri != null && uri.scheme == 'https' && allowedApiHosts.contains(uri.host);
   }
 
   // Public half of the Ed25519 keypair used to sign config.json — the
