@@ -471,7 +471,7 @@
       "email": {"type": "String"}
     }
   },
-  "startupTipLocalAi": "Astuce : passez en IA locale dans Réglages pour analyser vos photos hors connexion, avec une confidentialité maximale.",
+  "startupTipLocalAi": "Astuce : passez en IA locale dans Réglages pour analyser vos photos hors connexion, sans qu'elles quittent le téléphone.",
   "startupTipScriptStyle": "Astuce : choisissez le style de narration (immersif, académique, anecdotique, concis) dans Réglages.",
   "startupTipFeedbackAnalysis": "Astuce : vous pouvez joindre une analyse existante à votre retour pour signaler un problème précis.",
   "startupTipSkip": "Astuce : pendant la lecture, avancez ou reculez de 10 secondes avec les boutons de saut.",

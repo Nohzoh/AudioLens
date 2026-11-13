@@ -423,7 +423,7 @@
   "reportContentEmailSubject": "AudioLens content report",
   "reportContentEmailBody": "Reported content: {title}\nAI model: {aiModel}\nDate: {date}\n\nScript:\n{script}\n\nReason given by the user:\n{reason}",
   "reportContentNoEmailApp": "No email app found. Contact us at {email}",
-  "startupTipLocalAi": "Tip: switch to local AI in Settings to analyze photos offline, with maximum privacy.",
+  "startupTipLocalAi": "Tip: switch to local AI in Settings to analyze photos offline, without them leaving your phone.",
   "startupTipScriptStyle": "Tip: pick the narration style (immersive, academic, anecdotal, concise) in Settings.",
   "startupTipFeedbackAnalysis": "Tip: you can attach an existing analysis to your feedback to report a specific problem.",
   "startupTipSkip": "Tip: during playback, skip forward or back 10 seconds with the skip buttons.",

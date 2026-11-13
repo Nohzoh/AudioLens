@@ -113,7 +113,7 @@ jobs:
           echo "✅ mapping: $(stat -c%s "$MAPPING") bytes"
 
       - name: Publish to Play Store
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
           packageName: io.nohzoh.audiolens
