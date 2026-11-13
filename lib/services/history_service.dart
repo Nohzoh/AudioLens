@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import '../constants/analysis_provenance.dart';
 import '../models/guide_error.dart';
@@ -318,6 +319,135 @@ class HistoryService extends ChangeNotifier {
   Set<int> collectionIdsForEntry(int entryId) =>
       _entryCollectionIds[entryId] ?? const {};
 
+  // ── #429: visits ──────────────────────────────────────────────────
+  // A visit is a collection the user started explicitly from the home
+  // screen: every photo taken while it is active joins it, and each
+  // analysis is told what the previous ones of the visit were about.
+
+  static const _activeVisitKey = 'active_visit_collection_id';
+
+  /// A visit left untouched this long ends by itself at the next photo,
+  /// so a forgotten visit doesn't swallow the next day's photos.
+  static const visitIdleTimeout = Duration(hours: 12);
+
+  int? _activeVisitId;
+
+  /// Current time, replaceable in tests (visit idle timeout).
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
+
+  /// The visit in progress, if any.
+  Collection? get activeVisit {
+    final id = _activeVisitId;
+    if (id == null) return null;
+    for (final c in _collections) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  /// Photos in the visit in progress.
+  int get activeVisitEntryCount {
+    final id = _activeVisitId;
+    if (id == null) return 0;
+    return _entryCollectionIds.values.where((ids) => ids.contains(id)).length;
+  }
+
+  /// Starts a visit named [name] (a new collection holding its photos).
+  Future<Collection> startVisit(String name) async {
+    final visit = await createCollection(name);
+    await _setActiveVisit(visit.id);
+    AppLogger.info('Visit started');
+    notifyListeners();
+    return visit;
+  }
+
+  /// Ends the visit in progress; its collection stays.
+  Future<void> endVisit() async {
+    if (_activeVisitId == null) return;
+    await _setActiveVisit(null);
+    AppLogger.info('Visit ended');
+    notifyListeners();
+  }
+
+  Future<void> _setActiveVisit(int? id) async {
+    _activeVisitId = id;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (id == null) {
+        await prefs.remove(_activeVisitKey);
+      } else {
+        await prefs.setInt(_activeVisitKey, id);
+      }
+    } catch (_) {
+      // No preferences (tests): the visit lasts for the session only.
+    }
+  }
+
+  Future<void> _loadActiveVisit() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _activeVisitId = prefs.getInt(_activeVisitKey);
+    } catch (_) {
+      _activeVisitId = null;
+    }
+    // Its collection may have been deleted meanwhile.
+    if (_activeVisitId != null && activeVisit == null) await _setActiveVisit(null);
+  }
+
+  /// Adds a new photo to the visit in progress, unless the visit has been
+  /// idle longer than [visitIdleTimeout] — then it ends instead.
+  Future<void> _joinActiveVisit(int entryId) async {
+    final visit = activeVisit;
+    if (visit == null) return;
+    var lastActivity = visit.createdAt;
+    for (final e in _entries) {
+      if (e.id != entryId &&
+          (_entryCollectionIds[e.id]?.contains(visit.id) ?? false) &&
+          e.createdAt.isAfter(lastActivity)) {
+        lastActivity = e.createdAt;
+      }
+    }
+    if (clock().difference(lastActivity) > visitIdleTimeout) {
+      AppLogger.info('Visit ended after ${visitIdleTimeout.inHours} h without photos');
+      await _setActiveVisit(null);
+      return;
+    }
+    await _db!.insert(
+      'history_collections',
+      {'historyId': entryId, 'collectionId': visit.id},
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+    (_entryCollectionIds[entryId] ??= <int>{}).add(visit.id!);
+  }
+
+  /// The visit context to give the analysis of [entryId]: what the
+  /// previous analyses of the visit in progress were about. Null outside
+  /// a visit or for its first photo.
+  String? visitContextFor(int? entryId) {
+    final visit = activeVisit;
+    if (entryId == null || visit == null) return null;
+    if (!(_entryCollectionIds[entryId]?.contains(visit.id) ?? false)) return null;
+    HistoryEntry? entry;
+    for (final e in _entries) {
+      if (e.id == entryId) entry = e;
+    }
+    if (entry == null) return null;
+    final previous = [
+      for (final e in _entries)
+        if (e.id != entryId &&
+            e.status == AnalysisStatus.complete &&
+            e.script.trim().isNotEmpty &&
+            e.createdAt.isBefore(entry.createdAt) &&
+            (_entryCollectionIds[e.id]?.contains(visit.id) ?? false))
+          e,
+    ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return buildVisitContext(
+      visitName: visit.name,
+      previous: [for (final e in previous) (title: e.title, script: e.script)],
+    );
+  }
+
   /// [dbPath] allows pointing at an isolated database file in tests
   /// instead of the app's real one.
   Future<void> init({String? dbPath}) async {
@@ -464,6 +594,7 @@ class HistoryService extends ChangeNotifier {
     );
     await _loadEntries();
     await _loadCollectionsAndMemberships();
+    await _loadActiveVisit();
   }
 
   static const _createCollectionsTableSql = '''
@@ -540,6 +671,7 @@ class HistoryService extends ChangeNotifier {
       status: AnalysisStatus.pending,
     );
     _entries.insert(0, withId);
+    await _joinActiveVisit(id);
     notifyListeners();
     return withId;
   }
@@ -579,6 +711,7 @@ class HistoryService extends ChangeNotifier {
       gpsSource: gpsSource,
     );
     _entries.insert(0, withId);
+    await _joinActiveVisit(id);
     notifyListeners();
     return withId;
   }
@@ -1110,4 +1243,39 @@ class HistoryService extends ChangeNotifier {
   }
 }
 
+/// #429: how many previous analyses of a visit are recalled, and how much
+/// of each — kept small, Nano's context is tight.
+const visitContextMaxEntries = 4;
+const visitContextSummaryChars = 140;
+
+/// #429: the prompt block recalling the previous analyses of a visit
+/// (oldest first, the last [visitContextMaxEntries]), each as its title
+/// and the start of its script. Null when there is none.
+String? buildVisitContext({
+  required String visitName,
+  required List<({String title, String script})> previous,
+}) {
+  if (previous.isEmpty) return null;
+  final recent = previous.length > visitContextMaxEntries
+      ? previous.sublist(previous.length - visitContextMaxEntries)
+      : previous;
+  final lines = [for (final p in recent) '- ${p.title.trim()} : ${visitSummary(p.script)}'];
+  return 'Visite en cours « ${visitName.trim()} ». Déjà présenté pendant cette visite :\n'
+      '${lines.join('\n')}\n'
+      'Ne répète pas les informations générales déjà données. Ne fais un lien avec '
+      'une étape précédente que s\'il est réel (même artiste, même époque, même lieu) ; '
+      'sinon, n\'en parle pas.';
+}
+
+/// The first sentence of [script], cut at [visitContextSummaryChars].
+String visitSummary(String script) {
+  final text = script.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final end = RegExp(r'[.!?…](\s|$)').firstMatch(text);
+  var first = end == null ? text : text.substring(0, end.start + 1);
+  if (first.length > visitContextSummaryChars) {
+    final cut = first.lastIndexOf(' ', visitContextSummaryChars);
+    first = '${first.substring(0, cut > 40 ? cut : visitContextSummaryChars)}…';
+  }
+  return first;
+}
 

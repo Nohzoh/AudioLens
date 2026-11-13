@@ -80,6 +80,8 @@ Future<void> runAnalysisAndNavigate({
     nanoVariant: settings.nanoModelVariant,
     entryId: entryId,
     userHint: userHint,
+    // #429
+    visitContext: history.visitContextFor(entryId),
   );
 
   AppLogger.info('result: ${result?.title}');

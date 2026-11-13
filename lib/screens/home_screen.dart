@@ -23,6 +23,7 @@ import '../utils/app_logger.dart';
 import '../utils/error_sanitizer.dart';
 import '../utils/guide_error_localizer.dart';
 import '../utils/whats_new_parser.dart';
+import '../widgets/visit_bar.dart';
 import '../widgets/kofi_button.dart';
 import 'history_screen.dart';
 import 'map_picker_screen.dart';
@@ -1020,6 +1021,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                     ],
                   ),
+
+                  // #429
+                  const SizedBox(height: 12),
+                  const VisitBar(),
 
                   // History preview
                   Consumer<HistoryService>(
