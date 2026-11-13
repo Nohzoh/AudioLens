@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **History detail: the script follows the voice** (issue #555)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: replaying an entry from the history now highlights the script as it is read (saved audio: real player position; phone's voice: its word progress), like the player screen, keeping the detail's text style.
+
 - [x] 🔍 - **Landmarks shown in « À propos de l'analyse » and the feedback report** (issue #498)
   - **Verified**: 2026-11-12 (PR #532)
   - **What was done**: the location trace saved with each entry now lists the tall landmarks the model was told about, with their distance, in the analysis details, the copied debug info and the feedback report.
