@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 💄 - **UI polish from screenshots** (issue #561)
+  - **Verified**: 2026-11-13 (PR #562)
+  - **What was done**: « Envoyer en feedback » typo fixed and « feedback » replaced by « retour » in the French UI; the Gemini API box no longer states a free quota (it changes often and is much lower now); the « Suivre la langue de l'application » chip no longer draws its icon under the checkmark.
+
 - [x] 💄 - **Player: the script uses the whole screen once shown** (issue #559)
   - **Verified**: 2026-11-13 (PR #560)
   - **What was done**: the empty band above the content folds away when the result appears (text mode), so the script scrolls over the full height; the photo gradient is darker from the top to keep the text readable. Unchanged while the pipeline runs and in photo mode.

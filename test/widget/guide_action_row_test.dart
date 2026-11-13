@@ -117,7 +117,7 @@ void main() {
     expect(find.text('Partager le texte'), findsOneWidget);
     expect(find.text('Signaler un contenu inapproprié'), findsOneWidget);
     expect(find.text("Partager l'audio"), findsNothing);
-    expect(find.text('Envoyer en feedback'), findsNothing);
+    expect(find.text('Envoyer comme retour'), findsNothing);
   });
 
   testWidgets('"Partager le texte" shares the script', (tester) async {
@@ -170,7 +170,7 @@ void main() {
       )));
       await openSheet(tester);
 
-      expect(find.text('Envoyer en feedback'), findsOneWidget);
+      expect(find.text('Envoyer comme retour'), findsOneWidget);
     });
 
     testWidgets('not offered for an unfinished analysis', (tester) async {
@@ -180,14 +180,14 @@ void main() {
       )));
       await openSheet(tester);
 
-      expect(find.text('Envoyer en feedback'), findsNothing);
+      expect(find.text('Envoyer comme retour'), findsNothing);
     });
 
     testWidgets('not offered without a history entry', (tester) async {
       await tester.pumpWidget(wrap(row(feedbackService: configuredFeedback)));
       await openSheet(tester);
 
-      expect(find.text('Envoyer en feedback'), findsNothing);
+      expect(find.text('Envoyer comme retour'), findsNothing);
     });
 
     testWidgets('opens the feedback dialog with the analysis already attached',
@@ -198,10 +198,10 @@ void main() {
       )));
       await openSheet(tester);
 
-      await tester.tap(find.text('Envoyer en feedback'));
+      await tester.tap(find.text('Envoyer comme retour'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Envoyer un feedback'), findsOneWidget);
+      expect(find.text('Envoyer un retour'), findsOneWidget);
       expect(find.text("Changer l'analyse"), findsOneWidget);
       expect(find.text('Un commentaire ? (facultatif)'), findsOneWidget);
     });
