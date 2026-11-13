@@ -237,6 +237,25 @@ void main() {
       await service.stop();
     });
 
+    test('a long-pressed sentence restarts the generative voice there (#546)', () async {
+      final speaker = _TimedSpeaker();
+      final progress = <double>[];
+      final service = NativeTtsService()
+        ..generativeSpeaker = speaker
+        ..generativeVoiceFinder = ((_, __) async => 'fr-fr-x-star02')
+        ..onProgress = progress.add;
+      const text = 'Phrase un ici. Phrase deux ici. Phrase trois ici. Phrase quatre.';
+
+      await service.speak(text);
+      await pumpEventQueue();
+      await service.speakFromFraction(33 / text.length);
+      await pumpEventQueue();
+
+      expect(speaker.stopCalls, 1);
+      expect(speaker.spoken.last, 'Phrase trois ici. Phrase quatre.');
+      await service.stop();
+    });
+
     test('stop() stops ML Kit playback without a completion callback', () async {
       final speaker = _FakeSpeaker(waitForStop: true);
       var completed = 0;
@@ -372,4 +391,34 @@ void main() {
 
     expect(result, isFalse);
   });
+
+  test('sentenceStartAt snaps to the start of the sentence (#546)', () {
+    const text = 'Un. Deux trois. Quatre !';
+    expect(sentenceStartAt(text, 0), 0);
+    expect(sentenceStartAt(text, 2), 0);
+    expect(sentenceStartAt(text, 4), 4);
+    expect(sentenceStartAt(text, 10), 4);
+    expect(sentenceStartAt(text, 17), 16);
+    expect(sentenceStartAt('', 3), 0);
+  });
+
+  test('a long-pressed sentence restarts the usual voice there (#546)', () async {
+    final service = NativeTtsService();
+    final progress = <double>[];
+    service.onProgress = progress.add;
+    const text = 'Un. Deux trois. Quatre !';
+    await service.speak(text);
+    calls.clear();
+
+    await service.speakFromFraction(10 / text.length);
+
+    final spoken = calls.where((c) => c.method == 'speak').map((c) => c.arguments).toList();
+    expect(spoken, ['Deux trois. Quatre !']);
+    expect(calls.any((c) => c.method == 'stop'), isTrue);
+    // Progress reported by the engine on the rest maps onto the whole text.
+    await simulateNativeCallback('speak.onProgress',
+        {'text': 'Deux trois. Quatre !', 'start': 0, 'end': 4, 'word': 'Deux'});
+    expect(progress.last, closeTo(8 / text.length, 0.001));
+  });
 }
+

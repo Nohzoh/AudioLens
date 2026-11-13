@@ -121,6 +121,12 @@ class NativeTtsService {
     });
     _tts.setProgressHandler((text, start, end, word) {
       if (text.isEmpty) return;
+      // #546: after a jump, [text] is the rest of the narration.
+      final full = _nativeFullLength;
+      if (full != null && full > 0) {
+        onProgress?.call(((_nativeBase + end) / full).clamp(0.0, 1.0));
+        return;
+      }
       onProgress?.call((end / text.length).clamp(0.0, 1.0));
     });
     _initialized = true;
@@ -340,8 +346,58 @@ class NativeTtsService {
     await _applyPreferredVoiceInternal();
     await _tts.setSpeechRate(0.45 * speed);
     _lastSpokenText = text;
+    _nativeFullText = text;
+    _nativeBase = 0;
+    _nativeFullLength = null;
     _isPlaying = true;
     await _tts.speak(text);
+  }
+
+  /// #546: the narration being spoken with the usual voice, and where the
+  /// part handed to the engine starts in it after a jump.
+  String? _nativeFullText;
+  int _nativeBase = 0;
+  int? _nativeFullLength;
+
+  /// #546: jumps to [fraction] of the narration being spoken — snapped
+  /// to the start of that sentence — with whichever phone voice is
+  /// speaking it. No-op when nothing is being narrated.
+  Future<void> speakFromFraction(double fraction, {double speed = 1.0}) async {
+    final voice = activeVoiceName;
+    final generative = voice != null && _generativeVoiceCache.containsValue(voice);
+    final full = generative ? (_generativeFullText ?? _lastSpokenText) : (_nativeFullText ?? _lastSpokenText);
+    if (full == null || full.isEmpty) return;
+    await speakFrom(sentenceStartAt(full, (fraction * full.length).round()), speed: speed);
+  }
+
+  /// #546: jumps to [offset] of the narration being spoken.
+  Future<void> speakFrom(int offset, {double speed = 1.0}) async {
+    final voice = activeVoiceName;
+    final generative = voice != null && _generativeVoiceCache.containsValue(voice);
+    final full = generative ? (_generativeFullText ?? _lastSpokenText) : (_nativeFullText ?? _lastSpokenText);
+    if (full == null || full.isEmpty) return;
+    final start = offset.clamp(0, full.length - 1);
+    if (generative) {
+      if (_generativeActive) {
+        _generativeStopRequested = true;
+        await generativeSpeaker?.stopSpeaking();
+        // Let the stopped segment wind down before the next one starts.
+        for (var i = 0; i < 40 && _generativeActive; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+      }
+      unawaited(_speakGenerative(full.substring(start), voice, speed, base: start, fullText: full));
+      return;
+    }
+    await _tts.stop();
+    await _tts.setSpeechRate(0.45 * speed);
+    final rest = full.substring(start);
+    _lastSpokenText = rest;
+    _nativeFullText = full;
+    _nativeBase = start;
+    _nativeFullLength = full.length;
+    _isPlaying = true;
+    await _tts.speak(rest);
   }
 
   /// Speaks [text] and waits for the actual result — used by the Settings
@@ -434,3 +490,17 @@ int generativeResumeOffset(String text, int playedMs,
   final boundary = before.lastIndexOf(RegExp(r'[.!?…]\s'));
   return boundary == -1 ? 0 : boundary + 2;
 }
+
+/// #546: the start of the sentence containing [offset] in [text].
+int sentenceStartAt(String text, int offset) {
+  if (text.isEmpty) return 0;
+  final at = offset.clamp(0, text.length - 1);
+  final boundary = text.substring(0, at + 1).lastIndexOf(RegExp(r'[.!?…]\s'));
+  if (boundary == -1) return 0;
+  var start = boundary + 1;
+  while (start < text.length && text[start].trim().isEmpty) {
+    start++;
+  }
+  return start > at ? at : start;
+}
+
