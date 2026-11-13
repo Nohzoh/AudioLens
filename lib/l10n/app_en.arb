@@ -500,5 +500,15 @@
   "a11yTileFailed": "{title}, analysis failed, tap to retry",
   "a11yTilePending": "{title}, analysis in progress",
   "a11yTileCaptured": "{title}, not analyzed yet, tap to analyze",
-  "a11yMapMarker": "{count, plural, =1{1 analysis here} other{{count} analyses here}}"
+  "a11yMapMarker": "{count, plural, =1{1 analysis here} other{{count} analyses here}}",
+  "homeVisitStart": "Start a visit",
+  "homeVisitStartTitle": "New visit",
+  "homeVisitStartExplanation": "Photos taken during the visit are kept together, and the guide remembers what it already told you so it does not repeat it.",
+  "homeVisitNameLabel": "Visit name",
+  "homeVisitDefaultName": "Visit of {date}",
+  "homeVisitStartAction": "Start",
+  "homeVisitActive": "Visit: {name}",
+  "homeVisitPhotos": "{count, plural, =0{no photo yet} =1{1 photo} other{{count} photos}}",
+  "homeVisitEnd": "End",
+  "homeVisitEnded": "Visit ended. Its photos stay in the \"{name}\" collection."
 }

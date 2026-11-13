@@ -553,5 +553,19 @@
   "a11yTileCaptured": "{title}, pas encore analysée, toucher pour lancer l’analyse",
   "@a11yTileCaptured": {"placeholders": {"title": {"type": "String"}}},
   "a11yMapMarker": "{count, plural, =1{1 analyse ici} other{{count} analyses ici}}",
-  "@a11yMapMarker": {"placeholders": {"count": {"type": "int"}}}
+  "@a11yMapMarker": {"placeholders": {"count": {"type": "int"}}},
+  "homeVisitStart": "Commencer une visite",
+  "homeVisitStartTitle": "Nouvelle visite",
+  "homeVisitStartExplanation": "Les photos prises pendant la visite sont rangées ensemble, et le guide se souvient de ce qu'il vous a déjà présenté pour ne pas le répéter.",
+  "homeVisitNameLabel": "Nom de la visite",
+  "homeVisitDefaultName": "Visite du {date}",
+  "@homeVisitDefaultName": {"placeholders": {"date": {"type": "String"}}},
+  "homeVisitStartAction": "Commencer",
+  "homeVisitActive": "Visite : {name}",
+  "@homeVisitActive": {"placeholders": {"name": {"type": "String"}}},
+  "homeVisitPhotos": "{count, plural, =0{aucune photo pour l’instant} =1{1 photo} other{{count} photos}}",
+  "@homeVisitPhotos": {"placeholders": {"count": {"type": "int"}}},
+  "homeVisitEnd": "Terminer",
+  "homeVisitEnded": "Visite terminée. Ses photos restent dans la collection « {name} ».",
+  "@homeVisitEnded": {"placeholders": {"name": {"type": "String"}}}
 }

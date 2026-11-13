@@ -362,6 +362,7 @@ class AudioGuideService extends ChangeNotifier {
     NanoModelVariant? nanoVariant,
     int? entryId,
     String? userHint,
+    String? visitContext,
   }) async {
     final hint = normalizeUserHint(userHint);
     if (_analysisInProgress || _state == GuideState.cancelling) {
@@ -425,7 +426,12 @@ class AudioGuideService extends ChangeNotifier {
       _lastLocationStatus = locationContext.status;
       _lastWikipediaUsed = locationContext.wikipediaUsed;
       _lastLocationTrace = locationContext.trace.withUserHint(hint);
-      final promptContext = composePromptContext(locationContext.promptContext, hint);
+      final promptContext = composePromptContext(locationContext.promptContext, hint,
+          visitContext: visitContext);
+      if (visitContext != null) {
+        // #429: size only — the block holds titles and script excerpts.
+        AppLogger.ai('Visit context: ${visitContext.length} chars');
+      }
       _lastPromptContext = promptContext;
       _progressEstimator.recordGpsDuration(
           DateTime.now().difference(gpsStart).inMilliseconds / 1000.0);
@@ -880,11 +886,18 @@ String? normalizeUserHint(String? hint) {
 /// #467: the context sent to the model, with the user's hint first so it
 /// survives Nano's truncation of long contexts and is read as the
 /// subject before the nearby places.
-String? composePromptContext(String? locationContext, String? hint) {
-  if (hint == null) return locationContext;
-  final hintLine = "Indication de l'utilisateur sur ce que montre la photo : « $hint ». "
-      'Elle est fiable et prime sur la localisation et les lieux à proximité.';
-  if (locationContext == null || locationContext.isEmpty) return hintLine;
-  return '$hintLine\n\n$locationContext';
+///
+/// #429: [visitContext] (the previous analyses of the visit) comes right
+/// after the hint, before the location — short, and it shapes the whole
+/// script.
+String? composePromptContext(String? locationContext, String? hint, {String? visitContext}) {
+  final parts = [
+    if (hint != null)
+      "Indication de l'utilisateur sur ce que montre la photo : « $hint ». "
+          'Elle est fiable et prime sur la localisation et les lieux à proximité.',
+    if (visitContext != null && visitContext.isNotEmpty) visitContext,
+    if (locationContext != null && locationContext.isNotEmpty) locationContext,
+  ];
+  return parts.isEmpty ? null : parts.join('\n\n');
 }
 
