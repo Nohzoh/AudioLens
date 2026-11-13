@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 💄 - **Settings reorganized** (issue #563)
+  - **Verified**: 2026-11-13 (PR #579)
+  - **What was done**: Settings now read: AI engine with the « À propos de Gemini API » box right under it, API key, script style, narration language, voice, speed; then « Historique » (auto audio, purge), « Application » (appearance, app language, Ko-fi, tips); the tools (Avancé, feedback, Nano Prompt Lab, Voice Lab) come last.
+
 - [x] ✨ - **Local Wikipedia edition searched abroad** (issue #547)
   - **Verified**: 2026-11-13 (PR #578)
   - **What was done**: outside France, the nearby-articles search also queries the Wikipedia edition of the country's language (from the reverse-geocoded country code: de for Germany, Austria, Switzerland, it, es, nl…) and keeps the closest articles of both editions; non-French articles are tagged with their language in the context. Remote-config switch `wikipedia_local_language` (on by default).
