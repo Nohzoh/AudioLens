@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Generative voices downloadable from Settings** (issue #552)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: Settings > Voice lists the generative voices of the narration language that can be downloaded, as chips with a download icon (spinner while downloading); once installed, a voice becomes one of the choices. The block also appears when no voice is installed yet but some can be downloaded, and no longer sends the user to the Voice Lab.
+
 - [x] 🔒 - **Shared images: no more private-file reads through the share intent** (issue #536)
   - **Verified**: 2026-11-13 (PR #566)
   - **What was done**: the share target now accepts only another app's `content://` URI (not `file://`, not our own FileProvider), stops copying past 30 MB, checks the image signature (JPEG/PNG/WebP/GIF/HEIF) and keeps copies in `cache/shared/`, cleaned after a day.
