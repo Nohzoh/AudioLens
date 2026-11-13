@@ -378,7 +378,7 @@ void main() {
   group('startup tip', () {
     const firstTipText =
         'Astuce : passez en IA locale dans Réglages pour analyser vos photos '
-        'hors connexion, avec une confidentialité maximale.';
+        "hors connexion, sans qu'elles quittent le téléphone.";
     const kofiTipText = 'Si AudioLens vous est utile, un petit coup de pouce '
         'sur Ko-fi aide à faire vivre le projet.';
     const autoPurgeTipText = 'Astuce : activez la purge automatique de '
