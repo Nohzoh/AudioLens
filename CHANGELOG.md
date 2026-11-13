@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 - **Generative voice: pause/resume lands on the right sentence** (issue #545)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #575)
   - **What was done**: resume now counts from where the current segment starts in the whole narration (a second pause after a resume no longer goes back to an earlier sentence), the reading highlight follows the whole text instead of restarting at 0, and the speaking rate is calibrated from each complete narration instead of a fixed 18 characters per second.
 
 - [x] 🔧 - **User-Agent with version and contact for OSM and Wikimedia** (issue #554)
