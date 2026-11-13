@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ♿ - **Home header icons have tooltips** (issue #557)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #569)
   - **What was done**: the history and settings icons of the home header now have tooltips (long-press label, TalkBack name), like the quiz and Ko-fi ones.
 
 - [x] 💄 - **Player: the script uses the whole screen once shown** (issue #559)
