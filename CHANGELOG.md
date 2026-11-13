@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ♻️ - **One shared HTTP client** (issue #553)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #586)
   - **What was done**: the location, Wikipedia, Wikidata, Overpass, remote config and feedback calls reuse a single app-wide HTTP client (connection reuse) instead of creating one per call that was never closed. Tests still inject their own.
 
 - [x] ♻️ - **History detail screen in its own file** (issue #553)
