@@ -592,6 +592,7 @@ class HistoryService extends ChangeNotifier {
         }
       },
     );
+    await _failInterruptedAnalyses();
     await _loadEntries();
     await _loadCollectionsAndMemberships();
     await _loadActiveVisit();
@@ -629,6 +630,23 @@ class HistoryService extends ChangeNotifier {
       createdAt TEXT NOT NULL
     )
   ''';
+
+  /// #543: no analysis survives the app process, so an entry still
+  /// `pending` when the history opens was cut short (app killed, crash).
+  /// It becomes a failed entry — retry on tap, saved GPS kept — instead
+  /// of spinning forever.
+  Future<void> _failInterruptedAnalyses() async {
+    final count = await _db!.update(
+      'history',
+      {'status': AnalysisStatus.failed.name, 'title': interruptedAnalysisTitle},
+      where: 'status = ?',
+      whereArgs: [AnalysisStatus.pending.name],
+    );
+    if (count > 0) AppLogger.info('History: $count interrupted analysis(es) marked as failed');
+  }
+
+  /// Title of an entry whose analysis was cut short by the app closing.
+  static const interruptedAnalysisTitle = 'Analyse interrompue';
 
   Future<void> _loadEntries() async {
     final maps = await _db!.query('history', orderBy: 'createdAt DESC');
