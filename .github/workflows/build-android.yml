@@ -65,7 +65,7 @@ jobs:
       # platform/build-tools/NDK versions actually needed are installed
       # explicitly right below anyway.
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           packages: ''
 
@@ -81,7 +81,7 @@ jobs:
         run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "ndk;28.2.13676358"
 
       - name: Setup Flutter 3.47.9
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: '3.47.9'
           channel: 'stable'
@@ -139,14 +139,20 @@ jobs:
       # closed for Dependabot specifically (whose PRs can't see regular
       # Actions secrets at all) — but any other same-repo PR still had
       # normal access to the real key until now.
+      # #539: secrets reach the script through env, never interpolated
+      # into its text.
       - name: Setup keystore
+        env:
+          KEYSTORE_B64: ${{ github.event_name == 'pull_request' && secrets.CI_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ github.event_name == 'pull_request' && secrets.CI_KEYSTORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ github.event_name == 'pull_request' && secrets.CI_KEY_ALIAS || secrets.KEY_ALIAS }}
         run: |
-          echo "${{ github.event_name == 'pull_request' && secrets.CI_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/audiolens.jks
+          printf '%s' "$KEYSTORE_B64" | base64 -d > android/app/audiolens.jks
           cat > android/key.properties << EOF
           storeFile=audiolens.jks
-          storePassword=${{ github.event_name == 'pull_request' && secrets.CI_KEYSTORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
-          keyAlias=${{ github.event_name == 'pull_request' && secrets.CI_KEY_ALIAS || secrets.KEY_ALIAS }}
-          keyPassword=${{ github.event_name == 'pull_request' && secrets.CI_KEYSTORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$STORE_PASSWORD
           EOF
           echo "âœ… Keystore ready"
 

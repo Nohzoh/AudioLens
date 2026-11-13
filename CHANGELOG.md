@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Third-party CI actions pinned to commit SHAs** (issue #539)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: `subosito/flutter-action`, `android-actions/setup-android`, `dorny/paths-filter` and `r0adkll/upload-google-play` (which receives the Play service account) are pinned to the commit of their current release, with the version as a comment for Dependabot; the keystore step reads its secrets from `env` instead of having them interpolated into the script.
+
 - [x] 🐛 - **Interrupted analyses no longer stay « en cours »** (issue #543)
   - **Verified**: 2026-11-13 (PR #564)
   - **What was done**: at startup, entries still pending (the app was killed or crashed mid-analysis) become failed entries titled « Analyse interrompue », retried on tap with their saved GPS, instead of spinning forever.
