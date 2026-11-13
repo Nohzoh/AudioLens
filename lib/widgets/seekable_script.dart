@@ -98,10 +98,12 @@ class _SeekableScriptState extends State<SeekableScript> {
     final progress = widget.progress;
     final split = progress <= 0 ? 0 : (text.length * progress).round().clamp(0, text.length);
     final idle = widget.style ?? _base.copyWith(color: Colors.white70);
+    // #555: with a custom style, the highlight keeps its size and spacing.
+    final playing = widget.style ?? _base;
     final readStyle = progress <= 0
         ? idle
-        : _base.copyWith(color: Colors.white, fontWeight: FontWeight.w500);
-    final unreadStyle = progress <= 0 ? idle : _base.copyWith(color: Colors.white38);
+        : playing.copyWith(color: Colors.white, fontWeight: FontWeight.w500);
+    final unreadStyle = progress <= 0 ? idle : playing.copyWith(color: Colors.white38);
 
     final spans = <TextSpan>[];
     for (var i = 0; i < _starts.length; i++) {
