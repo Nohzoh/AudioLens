@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ✨ - **Long-press to jump also works with the phone's voice** (issue #546)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #576)
   - **What was done**: on the player screen, long-pressing a sentence while the phone's voice (generative or usual) narrates restarts speech at that sentence, and the highlight continues from there; before, it only worked with the Gemini voice and saved audio.
 
 - [x] 🐛 - **Generative voice: pause/resume lands on the right sentence** (issue #545)
