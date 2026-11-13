@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔧 - **User-Agent with version and contact for OSM and Wikimedia** (issue #554)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: requests to Nominatim, Overpass, Wikipedia, Wikidata (and Telegram) now send `AudioLens/<version> (+https://github.com/Nohzoh/AudioLens)` instead of a fixed `AudioLens/1.0`, as both services' usage policies ask.
+
 - [x] 🐛 - **History detail: the script follows the voice** (issue #555)
   - **Verified**: 2026-11-13 (PR #558)
   - **What was done**: replaying an entry from the history now highlights the script as it is read (saved audio: real player position; phone's voice: its word progress), like the player screen, keeping the detail's text style.
