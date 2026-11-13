@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 💄 - **UI polish from screenshots** (issue #561)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #562)
   - **What was done**: « Envoyer en feedback » typo fixed and « feedback » replaced by « retour » in the French UI; the Gemini API box no longer states a free quota (it changes often and is much lower now); the « Suivre la langue de l'application » chip no longer draws its icon under the checkmark.
 
 - [x] ✨ - **Visits: the guide remembers what it already presented** (issue #429)
