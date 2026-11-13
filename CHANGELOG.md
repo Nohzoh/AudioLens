@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 - **Street filter works for German, English, Italian, Spanish and Dutch articles** (issue #587)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #588)
   - **What was done**: the filter that drops street and district articles from the nearby Wikipedia results now knows the opening phrase of each edition the app queries (« ist eine Straße », « is a street », « è una via »…), not only the French one.
 
 - [x] ♻️ - **History detail screen in its own file** (issue #553)
