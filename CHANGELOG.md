@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Legacy storage permissions capped, FileProvider narrowed** (issue #538)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: `READ_EXTERNAL_STORAGE` now stops at Android 12 and `WRITE_EXTERNAL_STORAGE` at Android 10 (still needed there to save to the gallery), and the app's FileProvider only covers `cache/share/` instead of all external storage and the whole cache (issue #537 too).
+
 - [x] 🐛 - **Interrupted analyses no longer stay « en cours »** (issue #543)
   - **Verified**: 2026-11-13 (PR #564)
   - **What was done**: at startup, entries still pending (the app was killed or crashed mid-analysis) become failed entries titled « Analyse interrompue », retried on tap with their saved GPS, instead of spinning forever.

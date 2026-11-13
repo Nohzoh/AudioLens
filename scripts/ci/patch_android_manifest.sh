@@ -9,7 +9,7 @@ set -euo pipefail
 MANIFEST="android/app/src/main/AndroidManifest.xml"
 
 if ! grep -q 'ACCESS_FINE_LOCATION' "$MANIFEST"; then
-  sed -i 's/<application/<uses-permission android:name="android.permission.CAMERA"\/>\n    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"\/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"\/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"\/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"\/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"\/>\n    <application/' "$MANIFEST"
+  sed -i 's/<application/<uses-permission android:name="android.permission.CAMERA"\/>\n    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"\/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"\/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"\/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"\/>\n    <uses-feature android:name="android.hardware.camera" android:required="false"\/>\n    <application/' "$MANIFEST"
 fi
 sed -i 's/android:label="[^"]*"/android:label="AudioLens"/' "$MANIFEST"
 # allowBackup=false (T80): history contains GPS coordinates and
