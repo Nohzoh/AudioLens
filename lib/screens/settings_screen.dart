@@ -610,7 +610,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // (English/French) instead of a fixed pick — stays in sync
                 // whenever settings.appLocale changes.
                 ChoiceChip(
-                  avatar: const Icon(Icons.sync, size: 18),
+                  // #561: the checkmark replaces the icon when selected
+                  // (both at once overlapped).
+                  avatar: settings.outputLanguageFollowsApp
+                      ? null
+                      : const Icon(Icons.sync, size: 18),
                   label: Text(l10n.settingsOutputLanguageFollowApp),
                   selected: settings.outputLanguageFollowsApp,
                   onSelected: (_) => settings.setOutputLanguageFollowsApp(true),

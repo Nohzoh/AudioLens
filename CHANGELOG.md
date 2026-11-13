@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 💄 - **UI polish from screenshots** (issue #561)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: « Envoyer en feedback » typo fixed and « feedback » replaced by « retour » in the French UI; the Gemini API box no longer states a free quota (it changes often and is much lower now); the « Suivre la langue de l'application » chip no longer draws its icon under the checkmark.
+
 - [x] ✨ - **Visits: the guide remembers what it already presented** (issue #429)
   - **Verified**: 2026-11-13 (PR #534)
   - **What was done**: « Commencer une visite » on the home screen (optional name, default « Visite du 13 nov. »). Photos taken while it runs join a collection of that name; each analysis gets the titles and first sentences of the last 4 analyses of the visit, with the instruction not to repeat general facts and to link to an earlier step only when the link is real. « Terminer » ends it (the collection stays); it also ends by itself at the next photo after 12 h without any. Survives restarts; no DB migration (collections + a preference).
