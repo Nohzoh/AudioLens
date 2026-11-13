@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Legacy storage permissions capped, FileProvider narrowed** (issue #538)
+  - **Verified**: 2026-11-13 (PR #572)
+  - **What was done**: `READ_EXTERNAL_STORAGE` now stops at Android 12 and `WRITE_EXTERNAL_STORAGE` at Android 10 (still needed there to save to the gallery), and the app's FileProvider only covers `cache/share/` instead of all external storage and the whole cache (issue #537 too).
+
 - [x] 🔒 - **Wikidata/Wikipedia ids validated** (issue #542)
   - **Verified**: 2026-11-13 (PR #571)
   - **What was done**: the OSM `wikidata` tag is reduced to its first valid `Q…` id (tags like `Q1;Q2` or junk no longer reach the URL), the Wikidata URL is built with `Uri.https` parameters, and only numeric Wikipedia page ids are sent.
