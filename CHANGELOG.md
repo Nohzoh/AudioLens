@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Shared images: no more private-file reads through the share intent** (issue #536)
+  - **Verified**: 2026-11-13 (PR #566)
+  - **What was done**: the share target now accepts only another app's `content://` URI (not `file://`, not our own FileProvider), stops copying past 30 MB, checks the image signature (JPEG/PNG/WebP/GIF/HEIF) and keeps copies in `cache/shared/`, cleaned after a day.
 - [x] 🔧 - **User-Agent with version and contact for OSM and Wikimedia** (issue #554)
   - **Verified**: 2026-11-13 (PR #565)
   - **What was done**: requests to Nominatim, Overpass, Wikipedia, Wikidata (and Telegram) now send `AudioLens/<version> (+https://github.com/Nohzoh/AudioLens)` instead of a fixed `AudioLens/1.0`, as both services' usage policies ask.
