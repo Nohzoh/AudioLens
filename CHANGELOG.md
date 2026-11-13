@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Gemini API key sent in a header, https required** (issue #540)
+  - **Verified**: 2026-11-13 (PR #570)
+  - **What was done**: Gemini requests (analysis, questions, quiz, TTS) carry the key in the `x-goog-api-key` header instead of `?key=` in the URL, and a remote-config API URL must be https on the allowed host.
+
 - [x] ♿ - **Home header icons have tooltips** (issue #557)
   - **Verified**: 2026-11-13 (PR #569)
   - **What was done**: the history and settings icons of the home header now have tooltips (long-press label, TalkBack name), like the quiz and Ko-fi ones.
