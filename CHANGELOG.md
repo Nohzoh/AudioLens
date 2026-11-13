@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📝 - **Privacy policy matches what the app sends** (issue #535)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: the policy no longer claims that nothing leaves the phone in on-device mode: it describes the OpenStreetMap/Wikipedia/Wikidata lookups made in both modes, the Gemini voice and follow-up questions in cloud mode, and reports sent through Telegram. The in-app tip says the photo stays on the phone rather than « confidentialité maximale ».
+
 - [x] 💄 - **Player: the script uses the whole screen once shown** (issue #559)
   - **Verified**: 2026-11-13 (PR #560)
   - **What was done**: the empty band above the content folds away when the result appears (text mode), so the script scrolls over the full height; the photo gradient is darker from the top to keep the text readable. Unchanged while the pipeline runs and in photo mode.
