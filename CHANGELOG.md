@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ✨ - **Generative voices downloadable from Settings** (issue #552)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #577)
   - **What was done**: Settings > Voice lists the generative voices of the narration language that can be downloaded, as chips with a download icon (spinner while downloading); once installed, a voice becomes one of the choices. The block also appears when no voice is installed yet but some can be downloaded, and no longer sends the user to the Voice Lab.
 
 - [x] 🔒 - **Shared images: no more private-file reads through the share intent** (issue #536)
