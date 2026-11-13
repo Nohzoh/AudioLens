@@ -11,10 +11,13 @@ import '../services/settings_service.dart';
 /// voice is not available — automatic (by gender), one of the installed
 /// voices of the output language, or off. Hidden on phones without any.
 class GenerativeVoiceSetting extends StatefulWidget {
-  const GenerativeVoiceSetting({super.key, this.loadVoices});
+  const GenerativeVoiceSetting({super.key, this.loadVoices, this.downloadVoice});
 
   /// Lists the voices for a locale; injectable for tests.
   final Future<List<GenAiVoice>> Function(String locale)? loadVoices;
+
+  /// #552: downloads a voice, true when installed; injectable for tests.
+  final Future<bool> Function(String locale, String name)? downloadVoice;
 
   @override
   State<GenerativeVoiceSetting> createState() => _GenerativeVoiceSettingState();
@@ -23,6 +26,29 @@ class GenerativeVoiceSetting extends StatefulWidget {
 class _GenerativeVoiceSettingState extends State<GenerativeVoiceSetting> {
   Future<List<GenAiVoice>>? _voices;
   String? _locale;
+
+  /// #552: the voice being downloaded, if any.
+  String? _downloading;
+
+  Future<void> _download(String name) async {
+    final locale = _locale;
+    if (locale == null || _downloading != null) return;
+    setState(() => _downloading = name);
+    final download =
+        widget.downloadVoice ?? context.read<AudioGuideService>().downloadGenerativeVoice;
+    final ok = await download(locale, name);
+    if (!mounted) return;
+    setState(() {
+      _downloading = null;
+      _voices = null;
+      _locale = null; // reload the list
+    });
+    if (!ok) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.generativeVoiceDownloadFailed)),
+      );
+    }
+  }
 
   void _load(String locale) {
     if (_locale == locale && _voices != null) return;
@@ -44,8 +70,8 @@ class _GenerativeVoiceSettingState extends State<GenerativeVoiceSetting> {
       builder: (context, snapshot) {
         final voices = snapshot.data ?? const <GenAiVoice>[];
         final installed = voices.where((v) => v.status == 'available').toList();
-        if (installed.isEmpty) return const SizedBox.shrink();
-        final more = voices.length > installed.length;
+        final downloadable = voices.where((v) => v.status == 'downloadable').toList();
+        if (installed.isEmpty && downloadable.isEmpty) return const SizedBox.shrink();
         String gender(GenAiVoice v) => switch (v.gender) {
               'female' => l10n.generativeVoiceFemale,
               'male' => l10n.generativeVoiceMale,
@@ -89,9 +115,32 @@ class _GenerativeVoiceSettingState extends State<GenerativeVoiceSetting> {
                   ),
                 ],
               ),
-              if (more) ...[
+              // #552: other voices of the language, downloaded on tap.
+              if (downloadable.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(l10n.generativeVoiceDownloadTitle, style: theme.textTheme.bodySmall),
                 const SizedBox(height: 6),
-                Text(l10n.generativeVoiceMoreInLab, style: theme.textTheme.bodySmall),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final v in downloadable)
+                      ActionChip(
+                        avatar: _downloading == v.name
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.download, size: 18),
+                        label: Text([GenerativeVoiceSettingNames.short(v.name), gender(v)]
+                            .where((s) => s.isNotEmpty)
+                            .join(' · ')),
+                        tooltip: l10n.generativeVoiceDownloadTooltip,
+                        onPressed: _downloading == null ? () => _download(v.name) : null,
+                      ),
+                  ],
+                ),
               ],
             ],
           ),

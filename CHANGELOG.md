@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Generative voices downloadable from Settings** (issue #552)
+  - **Verified**: 2026-11-13 (PR #577)
+  - **What was done**: Settings > Voice lists the generative voices of the narration language that can be downloaded, as chips with a download icon (spinner while downloading); once installed, a voice becomes one of the choices. The block also appears when no voice is installed yet but some can be downloaded, and no longer sends the user to the Voice Lab.
+
 - [x] ✨ - **Long-press to jump also works with the phone's voice** (issue #546)
   - **Verified**: 2026-11-13 (PR #576)
   - **What was done**: on the player screen, long-pressing a sentence while the phone's voice (generative or usual) narrates restarts speech at that sentence, and the highlight continues from there; before, it only worked with the Gemini voice and saved audio.

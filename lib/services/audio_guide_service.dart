@@ -305,6 +305,25 @@ class AudioGuideService extends ChangeNotifier {
 
   /// #522: the generative voices of [locale] on this phone (empty when it
   /// has none, or the feature is missing).
+  /// #552: downloads the generative voice [name] for [locale]; true when
+  /// it ended up installed. The next narration looks for voices again.
+  Future<bool> downloadGenerativeVoice(String locale, String name) async {
+    final speaker = _nativeTtsService.generativeSpeaker ?? GenAiTtsService();
+    try {
+      AppLogger.tts('Generative voice download started ($name)');
+      await speaker.download(locale, name);
+      final voices = await speaker.voices(locale);
+      final ok = voices.any((v) => v.name == name && v.status == 'available');
+      AppLogger.tts('Generative voice download ${ok ? 'done' : 'not finished'} ($name)');
+      _nativeTtsService.resetGenerativeVoice();
+      notifyListeners();
+      return ok;
+    } catch (e) {
+      AppLogger.error('Generative voice download failed: ${sanitizeError(e.toString())}');
+      return false;
+    }
+  }
+
   Future<List<GenAiVoice>> generativeVoices(String locale) async {
     try {
       return await (_nativeTtsService.generativeSpeaker ?? GenAiTtsService()).voices(locale);
