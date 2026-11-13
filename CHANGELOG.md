@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Interrupted analyses no longer stay « en cours »** (issue #543)
+  - **Verified**: 2026-11-13 (PR #564)
+  - **What was done**: at startup, entries still pending (the app was killed or crashed mid-analysis) become failed entries titled « Analyse interrompue », retried on tap with their saved GPS, instead of spinning forever.
 - [x] 💄 - **UI polish from screenshots** (issue #561)
   - **Verified**: 2026-11-13 (PR #562)
   - **What was done**: « Envoyer en feedback » typo fixed and « feedback » replaced by « retour » in the French UI; the Gemini API box no longer states a free quota (it changes often and is much lower now); the « Suivre la langue de l'application » chip no longer draws its icon under the checkmark.
