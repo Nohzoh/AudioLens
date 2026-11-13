@@ -451,7 +451,7 @@ void main() {
 
       expect(
         find.text(
-            "La photo de l'analyse jointe est introuvable. Retirez-la pour pouvoir envoyer votre feedback."),
+            "La photo de l'analyse jointe est introuvable. Retirez-la pour pouvoir envoyer votre retour."),
         findsOneWidget,
       );
       expect(requests, isEmpty);
