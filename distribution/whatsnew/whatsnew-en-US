@@ -1,3 +1,6 @@
-New: after listening to a guide, ask it a question (Actions menu → "Ask a question"). The answer relies on the guide and on what was found about the place, and says when it doesn't know.
-
-Older analyses have less information to answer from.
+New:
+• Listen to the answers to your questions (speaker button).
+• Long-press a sentence of the script to jump playback there.
+• Settings > Voice: pick the phone's speech voice; Gemini Nano models shown by their real names.
+• The guide spots tall towers visible from afar.
+• Better screen-reader labels.
