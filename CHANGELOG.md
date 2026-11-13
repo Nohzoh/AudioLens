@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 💄 - **Settings reorganized** (issue #563)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #579)
   - **What was done**: Settings now read: AI engine with the « À propos de Gemini API » box right under it, API key, script style, narration language, voice, speed; then « Historique » (auto audio, purge), « Application » (appearance, app language, Ko-fi, tips); the tools (Avancé, feedback, Nano Prompt Lab, Voice Lab) come last.
 
 - [x] 📝 - **Privacy policy matches what the app sends** (issue #535)
