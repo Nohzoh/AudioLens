@@ -48,6 +48,19 @@ class _FakeSpeaker extends GenAiTtsService {
   }
 }
 
+/// #545: a generative voice stopped (paused) after a chosen duration.
+class _TimedSpeaker extends _FakeSpeaker {
+  _TimedSpeaker() : super(waitForStop: true);
+  int playedMsAtStop = 0;
+
+  @override
+  Future<void> stopSpeaking() async {
+    stopCalls++;
+    _pending?.complete(GenAiSpeakResult(
+        started: true, completed: false, stopped: true, playedMs: playedMsAtStop));
+  }
+}
+
 /// T68 — NativeTtsService had zero real coverage before this: every other
 /// test that touches it fakes it via a subclass overriding speak()
 /// entirely, so this service's own logic (voice-availability safeguard,
@@ -197,6 +210,31 @@ void main() {
         expect(speaker.spoken, isEmpty);
         expect(calls.where((c) => c.method == 'speak').single.arguments, 'Bonjour.');
       }
+    });
+
+    test('a second pause resumes within the rest, not the whole text (#545)', () async {
+      final speaker = _TimedSpeaker();
+      final service = NativeTtsService()
+        ..generativeSpeaker = speaker
+        ..generativeVoiceFinder = ((_, __) async => 'fr-fr-x-star02');
+      const text = 'Phrase un ici. Phrase deux ici. Phrase trois ici. Phrase quatre.';
+
+      await service.speak(text);
+      await pumpEventQueue();
+      speaker.playedMsAtStop = 2000; // ~36 characters: inside sentence 3
+      await service.pause();
+      await pumpEventQueue();
+      await service.resume();
+      await pumpEventQueue();
+      expect(speaker.spoken.last, 'Phrase trois ici. Phrase quatre.');
+
+      speaker.playedMsAtStop = 1000; // ~18 characters into that rest
+      await service.pause();
+      await pumpEventQueue();
+      await service.resume();
+      await pumpEventQueue();
+      expect(speaker.spoken.last, 'Phrase quatre.');
+      await service.stop();
     });
 
     test('stop() stops ML Kit playback without a completion callback', () async {
