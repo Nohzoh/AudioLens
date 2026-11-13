@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Entries record the style and language used at launch** (issue #544)
+  - **Verified**: 2026-11-13 (PR #568)
+  - **What was done**: the style and narration language saved with an entry are captured when the analysis starts, not read again from Settings when it ends.
 - [x] 📝 - **Privacy policy matches what the app sends** (issue #535)
   - **Verified**: 2026-11-13 (PR #567)
   - **What was done**: the policy no longer claims that nothing leaves the phone in on-device mode: it describes the OpenStreetMap/Wikipedia/Wikidata lookups made in both modes, the Gemini voice and follow-up questions in cloud mode, and reports sent through Telegram. The in-app tip says the photo stays on the phone rather than « confidentialité maximale ».
