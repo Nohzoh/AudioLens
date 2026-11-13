@@ -19,6 +19,20 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 - [x] ✨ - **Home: « Prendre une photo » opens the camera directly** (issue #556)
   - **Verified**: 2026-11-13 (PR #584)
   - **What was done**: the main button now opens the camera right away; a gallery button next to it opens the other sources (gallery, capture for later). The source sheet is a Material so its rows show their touch feedback.
+- [x] 🧪 - **Nano Prompt Lab: compare the installed models in one tap** (issue #478)
+  - **Verified**: 2026-11-13 (PR #583)
+  - **What was done**: a « Comparer les N modèles installés » button runs the same photo, location and settings through every installed model in a row (default model and each installed variant); each run joins the export like a manual one, so one export per photo covers the Nano 3 / Nano 4 comparison.
+- [x] ✨ - **« Tout écouter » for a collection or the favorites** (issue #550)
+  - **Verified**: 2026-11-13 (PR #581)
+  - **What was done**: when the history is filtered on a collection (a finished visit, say) or the favorites, a « Tout écouter » button opens a playlist: the saved audio of each analysis plays one after the other, oldest first, with the current photo and title, previous / pause / next, and the list to jump to any entry. Analyses without saved audio are left out (a snackbar says how many).
+
+- [x] ♻️ - **History detail screen in its own file** (issue #553)
+  - **Verified**: 2026-11-13 (PR #580)
+  - **What was done**: `HistoryDetailScreen` and its menu (≈1,000 lines) move from `history_screen.dart` to `history_detail_screen.dart`, a `part` of the same library so the shared private helpers (relaunch, regenerate and collections sheets) stay private. No behavior change.
+
+- [x] 💄 - **Settings reorganized** (issue #563)
+  - **Verified**: 2026-11-13 (PR #579)
+  - **What was done**: Settings now read: AI engine with the « À propos de Gemini API » box right under it, API key, script style, narration language, voice, speed; then « Historique » (auto audio, purge), « Application » (appearance, app language, Ko-fi, tips); the tools (Avancé, feedback, Nano Prompt Lab, Voice Lab) come last.
 
 - [x] ✨ - **Local Wikipedia edition searched abroad** (issue #547)
   - **Verified**: 2026-11-13 (PR #578)
