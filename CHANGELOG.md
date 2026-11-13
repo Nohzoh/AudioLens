@@ -20,6 +20,49 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **Verified**: 2026-11-13 (PR #580)
   - **What was done**: `HistoryDetailScreen` and its menu (≈1,000 lines) move from `history_screen.dart` to `history_detail_screen.dart`, a `part` of the same library so the shared private helpers (relaunch, regenerate and collections sheets) stay private. No behavior change.
 
+- [x] 💄 - **Settings reorganized** (issue #563)
+  - **Verified**: 2026-11-13 (PR #579)
+  - **What was done**: Settings now read: AI engine with the « À propos de Gemini API » box right under it, API key, script style, narration language, voice, speed; then « Historique » (auto audio, purge), « Application » (appearance, app language, Ko-fi, tips); the tools (Avancé, feedback, Nano Prompt Lab, Voice Lab) come last.
+
+- [x] ✨ - **Local Wikipedia edition searched abroad** (issue #547)
+  - **Verified**: 2026-11-13 (PR #578)
+  - **What was done**: outside France, the nearby-articles search also queries the Wikipedia edition of the country's language (from the reverse-geocoded country code: de for Germany, Austria, Switzerland, it, es, nl…) and keeps the closest articles of both editions; non-French articles are tagged with their language in the context. Remote-config switch `wikipedia_local_language` (on by default).
+
+- [x] ✨ - **Generative voices downloadable from Settings** (issue #552)
+  - **Verified**: 2026-11-13 (PR #577)
+  - **What was done**: Settings > Voice lists the generative voices of the narration language that can be downloaded, as chips with a download icon (spinner while downloading); once installed, a voice becomes one of the choices. The block also appears when no voice is installed yet but some can be downloaded, and no longer sends the user to the Voice Lab.
+
+- [x] ✨ - **Long-press to jump also works with the phone's voice** (issue #546)
+  - **Verified**: 2026-11-13 (PR #576)
+  - **What was done**: on the player screen, long-pressing a sentence while the phone's voice (generative or usual) narrates restarts speech at that sentence, and the highlight continues from there; before, it only worked with the Gemini voice and saved audio.
+
+- [x] 🐛 - **Generative voice: pause/resume lands on the right sentence** (issue #545)
+  - **Verified**: 2026-11-13 (PR #575)
+  - **What was done**: resume now counts from where the current segment starts in the whole narration (a second pause after a resume no longer goes back to an earlier sentence), the reading highlight follows the whole text instead of restarting at 0, and the speaking rate is calibrated from each complete narration instead of a fixed 18 characters per second.
+
+- [x] 🔒 - **Feedback photos sent without their metadata** (issue #541)
+  - **Verified**: 2026-11-13 (PR #574)
+  - **What was done**: a photo or screenshot attached to a report is decoded, turned upright, downscaled to 1600 px and re-encoded as a JPEG without EXIF (no GPS position, no device model) before it is sent; an undecodable file is sent as before.
+
+- [x] 🔒 - **Third-party CI actions pinned to commit SHAs** (issue #539)
+  - **Verified**: 2026-11-13 (PR #573)
+  - **What was done**: `subosito/flutter-action`, `android-actions/setup-android`, `dorny/paths-filter` and `r0adkll/upload-google-play` (which receives the Play service account) are pinned to the commit of their current release, with the version as a comment for Dependabot; the keystore step reads its secrets from `env` instead of having them interpolated into the script.
+
+- [x] 🔒 - **Legacy storage permissions capped, FileProvider narrowed** (issue #538)
+  - **Verified**: 2026-11-13 (PR #572)
+  - **What was done**: `READ_EXTERNAL_STORAGE` now stops at Android 12 and `WRITE_EXTERNAL_STORAGE` at Android 10 (still needed there to save to the gallery), and the app's FileProvider only covers `cache/share/` instead of all external storage and the whole cache (issue #537 too).
+
+- [x] 🔒 - **Wikidata/Wikipedia ids validated** (issue #542)
+  - **Verified**: 2026-11-13 (PR #571)
+  - **What was done**: the OSM `wikidata` tag is reduced to its first valid `Q…` id (tags like `Q1;Q2` or junk no longer reach the URL), the Wikidata URL is built with `Uri.https` parameters, and only numeric Wikipedia page ids are sent.
+
+- [x] 🔒 - **Gemini API key sent in a header, https required** (issue #540)
+  - **Verified**: 2026-11-13 (PR #570)
+  - **What was done**: Gemini requests (analysis, questions, quiz, TTS) carry the key in the `x-goog-api-key` header instead of `?key=` in the URL, and a remote-config API URL must be https on the allowed host.
+
+- [x] ♿ - **Home header icons have tooltips** (issue #557)
+  - **Verified**: 2026-11-13 (PR #569)
+  - **What was done**: the history and settings icons of the home header now have tooltips (long-press label, TalkBack name), like the quiz and Ko-fi ones.
 - [x] 🐛 - **Entries record the style and language used at launch** (issue #544)
   - **Verified**: 2026-11-13 (PR #568)
   - **What was done**: the style and narration language saved with an entry are captured when the analysis starts, not read again from Settings when it ends.

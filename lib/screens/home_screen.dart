@@ -843,6 +843,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                       IconButton(
                         icon: const Icon(Icons.history),
+                        // #557
+                        tooltip: AppLocalizations.of(context)!.historyTitle,
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -851,6 +853,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                       IconButton(
                         icon: const Icon(Icons.settings_outlined),
+                        tooltip: AppLocalizations.of(context)!.settingsTitle,
                         onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(

@@ -305,6 +305,25 @@ class AudioGuideService extends ChangeNotifier {
 
   /// #522: the generative voices of [locale] on this phone (empty when it
   /// has none, or the feature is missing).
+  /// #552: downloads the generative voice [name] for [locale]; true when
+  /// it ended up installed. The next narration looks for voices again.
+  Future<bool> downloadGenerativeVoice(String locale, String name) async {
+    final speaker = _nativeTtsService.generativeSpeaker ?? GenAiTtsService();
+    try {
+      AppLogger.tts('Generative voice download started ($name)');
+      await speaker.download(locale, name);
+      final voices = await speaker.voices(locale);
+      final ok = voices.any((v) => v.name == name && v.status == 'available');
+      AppLogger.tts('Generative voice download ${ok ? 'done' : 'not finished'} ($name)');
+      _nativeTtsService.resetGenerativeVoice();
+      notifyListeners();
+      return ok;
+    } catch (e) {
+      AppLogger.error('Generative voice download failed: ${sanitizeError(e.toString())}');
+      return false;
+    }
+  }
+
   Future<List<GenAiVoice>> generativeVoices(String locale) async {
     try {
       return await (_nativeTtsService.generativeSpeaker ?? GenAiTtsService()).voices(locale);
@@ -787,12 +806,29 @@ class AudioGuideService extends ChangeNotifier {
     await _providerManager.geminiTtsService!.skipBack();
   }
 
+  /// #546: whether a long-pressed sentence can be jumped to — seekable
+  /// audio ([canSkip]), or a narration the phone's voice is speaking
+  /// (restarted from that sentence).
+  bool get canSeek =>
+      canSkip ||
+      ((_state == GuideState.speaking || _state == GuideState.paused) &&
+          _lastTtsModel != 'gemini-tts' &&
+          _lastResult != null);
+
   /// #228: jumps to [fraction] of the narration (a long-pressed sentence).
-  /// Same gating as the ±10 s buttons: only seekable audio.
+  /// #546: with the phone's voice, speech restarts from that point.
   Future<void> seekToFraction(double fraction) async {
-    if (!canSkip) return;
+    if (!canSeek) return;
     AppLogger.tts('Seek to ${(fraction * 100).round()}% of the narration');
-    await _providerManager.geminiTtsService!.seekToFraction(fraction);
+    if (canSkip) {
+      await _providerManager.geminiTtsService!.seekToFraction(fraction);
+      return;
+    }
+    await _nativeTtsService.speakFromFraction(fraction, speed: _playbackSpeed);
+    if (_state == GuideState.paused) {
+      _state = GuideState.speaking;
+      notifyListeners();
+    }
   }
 
   Future<void> cancelCurrentAction() async {
