@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🧪 - **Nano Prompt Lab: compare the installed models in one tap** (issue #478)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: a « Comparer les N modèles installés » button runs the same photo, location and settings through every installed model in a row (default model and each installed variant); each run joins the export like a manual one, so one export per photo covers the Nano 3 / Nano 4 comparison.
+
 - [x] ✨ - **Long-press to jump also works with the phone's voice** (issue #546)
   - **Verified**: 2026-11-13 (PR #576)
   - **What was done**: on the player screen, long-pressing a sentence while the phone's voice (generative or usual) narrates restarts speech at that sentence, and the highlight continues from there; before, it only worked with the Gemini voice and saved audio.
