@@ -487,4 +487,16 @@ void main() {
       expect(settings.tipIndex, 7);
     });
   });
+
+  testWidgets('header icons have tooltips (#557)', (tester) async {
+    await tester.runAsync(() => tester.pumpWidget(wrapWithProviders(
+          const HomeScreen(),
+          settings: settings,
+          guide: guide,
+          history: history,
+        )));
+    await tester.pump();
+    expect(find.byTooltip('Historique'), findsOneWidget);
+    expect(find.byTooltip('Paramètres'), findsOneWidget);
+  });
 }
