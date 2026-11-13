@@ -378,7 +378,7 @@ void main() {
   group('startup tip', () {
     const firstTipText =
         'Astuce : passez en IA locale dans Réglages pour analyser vos photos '
-        'hors connexion, avec une confidentialité maximale.';
+        "hors connexion, sans qu'elles quittent le téléphone.";
     const kofiTipText = 'Si AudioLens vous est utile, un petit coup de pouce '
         'sur Ko-fi aide à faire vivre le projet.';
     const autoPurgeTipText = 'Astuce : activez la purge automatique de '
@@ -486,5 +486,17 @@ void main() {
       expect(find.text(autoPurgeTipText), findsOneWidget);
       expect(settings.tipIndex, 7);
     });
+  });
+
+  testWidgets('header icons have tooltips (#557)', (tester) async {
+    await tester.runAsync(() => tester.pumpWidget(wrapWithProviders(
+          const HomeScreen(),
+          settings: settings,
+          guide: guide,
+          history: history,
+        )));
+    await tester.pump();
+    expect(find.byTooltip('Historique'), findsOneWidget);
+    expect(find.byTooltip('Paramètres'), findsOneWidget);
   });
 }

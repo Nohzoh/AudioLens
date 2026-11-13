@@ -56,15 +56,66 @@ class MainActivity : FlutterActivity() {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra(Intent.EXTRA_STREAM)
         }) ?: return null
+        if (!isAcceptableSharedUri(uri)) return null
         return try {
             val inputStream = contentResolver.openInputStream(uri) ?: return null
-            val destFile = File(cacheDir, "shared_${System.currentTimeMillis()}.jpg")
+            val shareDir = File(cacheDir, "shared").apply { mkdirs() }
+            cleanOldShares(shareDir)
+            val destFile = File(shareDir, "shared_${System.currentTimeMillis()}.jpg")
+            var copied = 0L
+            var tooLarge = false
             inputStream.use { input ->
-                FileOutputStream(destFile).use { out -> input.copyTo(out) }
+                FileOutputStream(destFile).use { out ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        copied += n
+                        if (copied > MAX_SHARED_BYTES) { tooLarge = true; break }
+                        out.write(buffer, 0, n)
+                    }
+                }
             }
-            destFile.absolutePath
+            if (tooLarge || !looksLikeImage(destFile)) {
+                destFile.delete()
+                null
+            } else destFile.absolutePath
         } catch (e: Exception) {
             null
         }
+    }
+
+    /// #536: only another app's content:// URI. A file:// URI, or one from
+    /// our own FileProvider, would be opened with *our* permissions and
+    /// could hand a private file (database, preferences) to the pipeline
+    /// as if it were a photo.
+    private fun isAcceptableSharedUri(uri: Uri): Boolean {
+        if (uri.scheme != "content") return false
+        val authority = uri.authority ?: return false
+        return !authority.startsWith(packageName)
+    }
+
+    /// JPEG, PNG, WebP, GIF or HEIF/HEIC signature in the first bytes.
+    private fun looksLikeImage(file: File): Boolean {
+        val head = ByteArray(12)
+        val n = try { file.inputStream().use { it.read(head) } } catch (e: Exception) { -1 }
+        if (n < 12) return false
+        fun at(i: Int, vararg b: Int) = b.withIndex().all { (k, v) -> head[i + k] == v.toByte() }
+        return at(0, 0xFF, 0xD8, 0xFF) ||
+            at(0, 0x89, 0x50, 0x4E, 0x47) ||
+            (at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50)) ||
+            at(0, 0x47, 0x49, 0x46, 0x38) ||
+            at(4, 0x66, 0x74, 0x79, 0x70)
+    }
+
+    /// Shared copies are only needed until Dart has stored the photo.
+    private fun cleanOldShares(dir: File) {
+        val cutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        dir.listFiles()?.forEach { if (it.lastModified() < cutoff) it.delete() }
+    }
+
+    companion object {
+        /// #536: a photo is a few MB; anything this big isn't one.
+        private const val MAX_SHARED_BYTES = 30L * 1024 * 1024
     }
 }
