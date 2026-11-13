@@ -193,7 +193,7 @@ void main() {
     await tester.pumpWidget(wrapScreen());
     await tester.pumpAndSettle();
 
-    expect(find.text('Envoyer un feedback'), findsNothing);
+    expect(find.text('Envoyer un retour'), findsNothing);
   });
 
   group('feedback dialog (#294)', () {
@@ -213,7 +213,7 @@ void main() {
       await tester.pumpWidget(wrapConfiguredScreen(client));
       await tester.pumpAndSettle();
 
-      final button = find.text('Envoyer un feedback');
+      final button = find.text('Envoyer un retour');
       await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
       await tester.tap(button);
       await tester.pumpAndSettle();
@@ -232,7 +232,7 @@ void main() {
       await tester.pumpWidget(wrapConfiguredScreen(client));
       await tester.pumpAndSettle();
 
-      final button = find.text('Envoyer un feedback');
+      final button = find.text('Envoyer un retour');
       await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
       expect(button, findsOneWidget);
       await tester.tap(button);
@@ -251,7 +251,7 @@ void main() {
       await tester.pump();
 
       expect(sentFields?['text'], contains('Ça plante au lancement'));
-      expect(find.text('Feedback envoyé, merci !'), findsOneWidget);
+      expect(find.text('Retour envoyé, merci !'), findsOneWidget);
     });
 
     testWidgets('shows an inline error and keeps the dialog open on failure',
@@ -261,7 +261,7 @@ void main() {
       await tester.pumpWidget(wrapConfiguredScreen(client));
       await tester.pumpAndSettle();
 
-      final button = find.text('Envoyer un feedback');
+      final button = find.text('Envoyer un retour');
       await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
       await tester.tap(button);
       await tester.pumpAndSettle();
@@ -307,7 +307,7 @@ void main() {
       await tester.pumpWidget(wrapConfiguredScreen(client));
       await tester.pumpAndSettle();
 
-      final button = find.text('Envoyer un feedback');
+      final button = find.text('Envoyer un retour');
       await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
       await tester.tap(button);
       await tester.pumpAndSettle();
@@ -377,7 +377,7 @@ void main() {
       await tester.pumpWidget(wrapConfiguredScreen(client));
       await tester.pumpAndSettle();
 
-      final button = find.text('Envoyer un feedback');
+      final button = find.text('Envoyer un retour');
       await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
       await tester.tap(button);
       await tester.pumpAndSettle();
@@ -435,7 +435,7 @@ void main() {
       await tester.pumpWidget(wrapConfiguredScreen(client));
       await tester.pumpAndSettle();
 
-      final button = find.text('Envoyer un feedback');
+      final button = find.text('Envoyer un retour');
       await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
       await tester.tap(button);
       await tester.pumpAndSettle();
@@ -451,7 +451,7 @@ void main() {
 
       expect(
         find.text(
-            "La photo de l'analyse jointe est introuvable. Retirez-la pour pouvoir envoyer votre feedback."),
+            "La photo de l'analyse jointe est introuvable. Retirez-la pour pouvoir envoyer votre retour."),
         findsOneWidget,
       );
       expect(requests, isEmpty);
@@ -494,7 +494,7 @@ void main() {
       await tester.pumpWidget(wrapConfiguredScreen(client));
       await tester.pumpAndSettle();
 
-      final button = find.text('Envoyer un feedback');
+      final button = find.text('Envoyer un retour');
       await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
       await tester.tap(button);
       await tester.pumpAndSettle();
@@ -515,7 +515,7 @@ void main() {
       await tester.pumpWidget(wrapConfiguredScreen(client));
       await tester.pumpAndSettle();
 
-      final button = find.text('Envoyer un feedback');
+      final button = find.text('Envoyer un retour');
       await tester.scrollUntilVisible(button, 300, scrollable: find.byType(Scrollable).first);
       await tester.tap(button);
       await tester.pumpAndSettle();
