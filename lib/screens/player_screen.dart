@@ -124,6 +124,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // that leading block renders. Offsetting by its measured height keeps
   // the same "0% -> just past the header, 100% -> bottom" feel the plain
   // `maxScroll * progress` gave before that block existed.
+  /// #559: the result is on screen in text mode.
+  bool _textShown(AudioGuideService guide) => guide.lastResult != null && !_photoMode;
+
   void _scrollToProgress(double progress) {
     if (!_scrollController.hasClients) return;
     final maxScroll = _scrollController.position.maxScrollExtent;
@@ -187,11 +190,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   file: widget.imageFile,
                   rotationQuarters: widget.rotationQuarters,
                   photoMode: _photoMode,
-                  readingGradientColors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.95),
-                  ],
-                  readingGradientStops: const [0.25, 0.75],
+                  // #559: darker from the top once the text fills the
+                  // screen, so it stays readable over the photo.
+                  readingGradientColors: _textShown(guide)
+                      ? [
+                          Colors.black.withValues(alpha: 0.55),
+                          Colors.black.withValues(alpha: 0.95),
+                        ]
+                      : [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.95),
+                        ],
+                  readingGradientStops: _textShown(guide) ? const [0.0, 0.5] : const [0.25, 0.75],
                 ),
 
                 SafeArea(
@@ -276,7 +286,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
 
-                      const Spacer(),
+                      // #559: centered while the pipeline runs; once the
+                      // text is there, the gap folds away so the script
+                      // can use the whole height.
+                      if (!_textShown(guide)) const Spacer(),
 
                       // Content area
                       Expanded(

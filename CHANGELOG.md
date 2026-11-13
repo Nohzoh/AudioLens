@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 💄 - **Player: the script uses the whole screen once shown** (issue #559)
+  - **Verified**: 2026-11-13 (PR #560)
+  - **What was done**: the empty band above the content folds away when the result appears (text mode), so the script scrolls over the full height; the photo gradient is darker from the top to keep the text readable. Unchanged while the pipeline runs and in photo mode.
+
 - [x] 🐛 - **History detail: the script follows the voice** (issue #555)
   - **Verified**: 2026-11-13 (PR #558)
   - **What was done**: replaying an entry from the history now highlights the script as it is read (saved audio: real player position; phone's voice: its word progress), like the player screen, keeping the detail's text style.
