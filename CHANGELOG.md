@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📝 - **Privacy policy matches what the app sends** (issue #535)
+  - **Verified**: 2026-11-13 (PR #567)
+  - **What was done**: the policy no longer claims that nothing leaves the phone in on-device mode: it describes the OpenStreetMap/Wikipedia/Wikidata lookups made in both modes, the Gemini voice and follow-up questions in cloud mode, and reports sent through Telegram. The in-app tip says the photo stays on the phone rather than « confidentialité maximale ».
 - [x] 🔒 - **Shared images: no more private-file reads through the share intent** (issue #536)
   - **Verified**: 2026-11-13 (PR #566)
   - **What was done**: the share target now accepts only another app's `content://` URI (not `file://`, not our own FileProvider), stops copying past 30 MB, checks the image signature (JPEG/PNG/WebP/GIF/HEIF) and keeps copies in `cache/shared/`, cleaned after a day.
