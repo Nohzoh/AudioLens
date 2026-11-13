@@ -48,6 +48,7 @@
   "homeImageNotFound": "Image not found",
   "homeImageTooLarge": "This file is too large to analyze.",
   "homeTakePhoto": "Take a photo",
+  "homeMoreSources": "Gallery or analyze later",
   "homeChooseFromGallery": "Choose from gallery",
   "homeCaptureOnly": "Capture without analyzing",
   "homeCaptureOnlySubtitle": "Photo + position saved, analysis to start later (saves data)",

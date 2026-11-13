@@ -53,6 +53,7 @@
   "homeImageNotFound": "Image introuvable",
   "homeImageTooLarge": "Ce fichier est trop volumineux pour être analysé.",
   "homeTakePhoto": "Prendre une photo",
+  "homeMoreSources": "Galerie ou analyser plus tard",
   "homeChooseFromGallery": "Choisir depuis la galerie",
   "homeCaptureOnly": "Capturer sans analyser",
   "homeCaptureOnlySubtitle": "Photo + position enregistrées, analyse à lancer plus tard (économise data)",

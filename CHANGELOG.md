@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Home: « Prendre une photo » opens the camera directly** (issue #556)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: the main button now opens the camera right away; a gallery button next to it opens the other sources (gallery, capture for later). The source sheet is a Material so its rows show their touch feedback.
+
 - [x] ✨ - **Local Wikipedia edition searched abroad** (issue #547)
   - **Verified**: 2026-11-13 (PR #578)
   - **What was done**: outside France, the nearby-articles search also queries the Wikipedia edition of the country's language (from the reverse-geocoded country code: de for Germany, Austria, Switzerland, it, es, nl…) and keeps the closest articles of both editions; non-French articles are tagged with their language in the context. Remote-config switch `wikipedia_local_language` (on by default).

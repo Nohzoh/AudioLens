@@ -499,4 +499,28 @@ void main() {
     expect(find.byTooltip('Historique'), findsOneWidget);
     expect(find.byTooltip('Paramètres'), findsOneWidget);
   });
+
+  testWidgets('the gallery button opens the other sources, without the camera (#556)',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 3200); // 800 x 1600, test fonts are wide
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() => tester.pumpWidget(wrapWithProviders(
+          const HomeScreen(),
+          settings: settings,
+          guide: guide,
+          history: history,
+        )));
+    await tester.pump(const Duration(seconds: 1)); // entrance animation
+    expect(find.byTooltip('Galerie ou analyser plus tard'), findsOneWidget);
+    // Invoked directly: the startup dialogs may cover the screen here.
+    tester
+        .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.photo_library_outlined))
+        .onPressed!();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Choisir depuis la galerie'), findsOneWidget);
+    expect(find.text('Prendre une photo'), findsOneWidget, reason: 'only the main button');
+  });
 }
+
