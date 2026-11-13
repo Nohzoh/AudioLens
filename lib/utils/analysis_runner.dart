@@ -71,12 +71,16 @@ Future<void> runAnalysisAndNavigate({
     ),
   ));
 
+  // #544: what the script is written with, saved with the entry as is
+  // (Settings may change during a long analysis).
+  final style = settings.scriptStyle;
+  final language = settings.outputLanguage;
   final result = await guide.analyzeAndPlay(
     imageFile,
     generateAudio: settings.autoGenerateAudio,
     knownCoordinates: knownCoordinates,
-    style: settings.scriptStyle,
-    language: settings.outputLanguage,
+    style: style,
+    language: language,
     nanoVariant: settings.nanoModelVariant,
     entryId: entryId,
     userHint: userHint,
@@ -114,8 +118,8 @@ Future<void> runAnalysisAndNavigate({
       gpsAddress: guide.lastGpsAddress,
       aiFallback: guide.aiModelWasFallback,
       ttsFallback: guide.ttsWasFallback,
-      scriptStyle: settings.scriptStyle,
-      outputLanguage: settings.outputLanguage,
+      scriptStyle: style,
+      outputLanguage: language,
     );
     final audioPath = guide.lastAudioPath;
     if (audioPath != null) {
