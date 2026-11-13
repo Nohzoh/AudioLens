@@ -23,6 +23,7 @@ import '../utils/app_logger.dart';
 import '../utils/error_sanitizer.dart';
 import '../utils/guide_error_localizer.dart';
 import '../utils/whats_new_parser.dart';
+import '../widgets/home_suggestions.dart';
 import '../widgets/visit_bar.dart';
 import '../widgets/kofi_button.dart';
 import 'history_screen.dart';
@@ -1286,7 +1287,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                   Expanded(
                     child: Center(
-                      child: Column(
+                      // #556: with a history, suggestions instead of the hint.
+                      child: context.watch<HistoryService>().entries.isNotEmpty
+                          ? const SingleChildScrollView(child: HomeSuggestions())
+                          : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.camera_alt_outlined,

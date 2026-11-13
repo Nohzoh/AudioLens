@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Home: photos waiting and last guide, in place of the hint** (issue #551)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: once there is a history, the home screen shows, instead of « Pointez votre appareil… »: a card « N photos à analyser » with « Tout analyser » (analyzed one after another without opening the player and without audio, which can be generated later; suggested more strongly when the phone is on Wi-Fi), and a « Réécouter le dernier guide » card opening the last analysis with playback. Photos without a saved position are left for the history (they need the map).
+
 - [x] ✨ - **Home: « Prendre une photo » opens the camera directly** (issue #556)
   - **Verified**: 2026-11-13 (PR #584)
   - **What was done**: the main button now opens the camera right away; a gallery button next to it opens the other sources (gallery, capture for later). The source sheet is a Material so its rows show their touch feedback.

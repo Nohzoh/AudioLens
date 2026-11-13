@@ -513,5 +513,13 @@
   "homeVisitActive": "Visit: {name}",
   "homeVisitPhotos": "{count, plural, =0{no photo yet} =1{1 photo} other{{count} photos}}",
   "homeVisitEnd": "End",
-  "homeVisitEnded": "Visit ended. Its photos stay in the \"{name}\" collection."
+  "homeVisitEnded": "Visit ended. Its photos stay in the \"{name}\" collection.",
+  "homePendingCount": "{count, plural, =1{1 photo to analyze} other{{count} photos to analyze}}",
+  "homePendingOnWifi": "You are on Wi-Fi: a good time to analyze them.",
+  "homePendingHint": "Set aside for later.",
+  "homeAnalyzeAll": "Analyze all",
+  "homeBatchProgress": "Analyzing {index} of {count}…",
+  "homeBatchDone": "{count, plural, =0{No analysis completed.} =1{1 analysis completed.} other{{count} analyses completed.}}",
+  "homeBatchSkipped": "{count, plural, =1{1 photo without a location must be launched from the history.} other{{count} photos without a location must be launched from the history.}}",
+  "homeListenAgain": "Listen to the last guide again"
 }

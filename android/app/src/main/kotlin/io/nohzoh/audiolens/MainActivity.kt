@@ -1,6 +1,10 @@
 package io.nohzoh.audiolens
 
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import io.flutter.plugin.common.MethodChannel
 import android.net.Uri
 import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
@@ -18,6 +22,22 @@ class MainActivity : FlutterActivity() {
         flutterEngine.plugins.add(SharePlugin())
         flutterEngine.plugins.add(QuickCapturePlugin())
         flutterEngine.plugins.add(GenAiTtsPlugin())
+        // #551: whether the current connection is unmetered (Wi-Fi), so the
+        // home screen can suggest analyzing the photos set aside.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "audio_guide/network")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "isUnmetered") {
+                    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                    val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+                    result.success(
+                        caps != null &&
+                            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                    )
+                } else {
+                    result.notImplemented()
+                }
+            }
         // Cold start (T97): the app was launched directly by a share
         // intent — extract now so getInitialSharedImage (called right
         // after the engine attaches, from Dart) already has it ready.

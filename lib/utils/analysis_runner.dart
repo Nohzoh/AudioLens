@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../screens/map_picker_screen.dart';
 import '../screens/player_screen.dart';
+import '../services/ai_service.dart';
 import '../services/audio_guide_service.dart';
 import '../services/history_service.dart';
 import '../services/settings_service.dart';
@@ -101,26 +102,7 @@ Future<void> runAnalysisAndNavigate({
   AppLogger.info('duration: ${guide.lastAnalysisDurationMs}');
 
   if (result != null) {
-    await history.completeEntry(
-      entryId: entryId,
-      title: result.title,
-      script: result.script,
-      locationName: result.locationName,
-      aiModel: guide.actualAiModel ?? guide.lastAiModel,
-      analysisSource: source,
-      gpsSource: guide.lastGpsSource,
-      wikipediaUsed: guide.lastWikipediaUsed,
-      locationTrace: guide.lastLocationTrace,
-      promptContext: guide.lastPromptContext,
-      analysisDurationMs: guide.lastAnalysisDurationMs,
-      gpsLatitude: guide.lastGpsLatitude,
-      gpsLongitude: guide.lastGpsLongitude,
-      gpsAddress: guide.lastGpsAddress,
-      aiFallback: guide.aiModelWasFallback,
-      ttsFallback: guide.ttsWasFallback,
-      scriptStyle: style,
-      outputLanguage: language,
-    );
+    await _saveAnalysis(guide, history, entryId, result, source, style, language);
     final audioPath = guide.lastAudioPath;
     if (audioPath != null) {
       try {
@@ -145,16 +127,87 @@ Future<void> runAnalysisAndNavigate({
       await history.saveTtsModel(entryId, guide.lastTtsModel, ttsFallback: guide.ttsWasFallback);
     }
   } else {
-    // Persist whatever location was actually resolved for this attempt
-    // (even though the analysis itself failed) so a retry can reuse it —
-    // see HistoryService.failEntry's doc.
-    await history.failEntry(
+    await _saveFailure(guide, history, entryId);
+  }
+}
+
+/// Saves a successful analysis to its entry (shared by the interactive
+/// runner and the #551 batch).
+Future<void> _saveAnalysis(AudioGuideService guide, HistoryService history, int entryId,
+    AudioGuideResult result, String source, String? style, String? language) async {
+  await history.completeEntry(
+    entryId: entryId,
+    title: result.title,
+    script: result.script,
+    locationName: result.locationName,
+    aiModel: guide.actualAiModel ?? guide.lastAiModel,
+    analysisSource: source,
+    gpsSource: guide.lastGpsSource,
+    wikipediaUsed: guide.lastWikipediaUsed,
+    locationTrace: guide.lastLocationTrace,
+    promptContext: guide.lastPromptContext,
+    analysisDurationMs: guide.lastAnalysisDurationMs,
+    gpsLatitude: guide.lastGpsLatitude,
+    gpsLongitude: guide.lastGpsLongitude,
+    gpsAddress: guide.lastGpsAddress,
+    aiFallback: guide.aiModelWasFallback,
+    ttsFallback: guide.ttsWasFallback,
+    scriptStyle: style,
+    outputLanguage: language,
+  );
+}
+
+/// Persist whatever location was actually resolved for this attempt
+/// (even though the analysis itself failed) so a retry can reuse it —
+/// see HistoryService.failEntry's doc.
+Future<void> _saveFailure(AudioGuideService guide, HistoryService history, int entryId) =>
+    history.failEntry(
       entryId,
       gpsLatitude: guide.lastGpsLatitude,
       gpsLongitude: guide.lastGpsLongitude,
       gpsSource: guide.lastGpsSource,
     );
+
+/// #551: analyzes captured entries one after another, without opening the
+/// player and without generating audio (it can be made later from the
+/// history — and a batch must not eat the voice quota). Entries without
+/// saved coordinates are skipped: they need the map picker. [onProgress]
+/// gets (done, total). Returns how many succeeded.
+Future<int> analyzeCapturedEntries({
+  required AudioGuideService guide,
+  required HistoryService history,
+  required SettingsService settings,
+  required List<HistoryEntry> entries,
+  void Function(int done, int total)? onProgress,
+}) async {
+  final todo = [for (final e in entries) if (knownCoordinatesFromEntry(e) != null) e];
+  var ok = 0;
+  for (var i = 0; i < todo.length; i++) {
+    onProgress?.call(i, todo.length);
+    final entry = todo[i];
+    if (guide.isBusy) break;
+    final style = settings.scriptStyle;
+    final language = settings.outputLanguage;
+    final result = await guide.analyzeAndPlay(
+      File(entry.imagePath),
+      generateAudio: false,
+      knownCoordinates: knownCoordinatesFromEntry(entry),
+      style: style,
+      language: language,
+      nanoVariant: settings.nanoModelVariant,
+      entryId: entry.id,
+      visitContext: history.visitContextFor(entry.id),
+    );
+    if (result != null) {
+      await _saveAnalysis(guide, history, entry.id!, result, 'captured', style, language);
+      ok++;
+    } else {
+      await _saveFailure(guide, history, entry.id!);
+    }
   }
+  onProgress?.call(todo.length, todo.length);
+  AppLogger.info('Batch analysis: $ok/${todo.length} done');
+  return ok;
 }
 
 /// Builds [AudioGuideService.analyzeAndPlay]'s `knownCoordinates` param
