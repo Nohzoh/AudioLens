@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] ✨ - **Home: « Prendre une photo » opens the camera directly** (issue #556)
-  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **Verified**: 2026-11-13 (PR #584)
   - **What was done**: the main button now opens the camera right away; a gallery button next to it opens the other sources (gallery, capture for later). The source sheet is a Material so its rows show their touch feedback.
 
 - [x] ✨ - **Local Wikipedia edition searched abroad** (issue #547)
