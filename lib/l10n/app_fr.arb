@@ -571,5 +571,16 @@
   "@homeVisitPhotos": {"placeholders": {"count": {"type": "int"}}},
   "homeVisitEnd": "Terminer",
   "homeVisitEnded": "Visite terminée. Ses photos restent dans la collection « {name} ».",
-  "@homeVisitEnded": {"placeholders": {"name": {"type": "String"}}}
+  "@homeVisitEnded": {"placeholders": {"name": {"type": "String"}}},
+  "playlistPlayAll": "Tout écouter",
+  "playlistPosition": "{index} sur {count}",
+  "@playlistPosition": {"placeholders": {"index": {"type": "int"}, "count": {"type": "int"}}},
+  "playlistPrevious": "Précédente",
+  "playlistNext": "Suivante",
+  "playlistPause": "Pause",
+  "playlistResume": "Reprendre",
+  "playlistRestart": "Réécouter depuis le début",
+  "playlistNothingToPlay": "Aucune de ces analyses n'a d'audio enregistré.",
+  "playlistSkipped": "{count, plural, =1{1 analyse sans audio enregistré est laissée de côté.} other{{count} analyses sans audio enregistré sont laissées de côté.}}",
+  "@playlistSkipped": {"placeholders": {"count": {"type": "int"}}}
 }

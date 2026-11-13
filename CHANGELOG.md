@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **« Tout écouter » for a collection or the favorites** (issue #550)
+  - **Verified**: 2026-11-13 (PR #581)
+  - **What was done**: when the history is filtered on a collection (a finished visit, say) or the favorites, a « Tout écouter » button opens a playlist: the saved audio of each analysis plays one after the other, oldest first, with the current photo and title, previous / pause / next, and the list to jump to any entry. Analyses without saved audio are left out (a snackbar says how many).
+
 - [x] ♻️ - **History detail screen in its own file** (issue #553)
   - **Verified**: 2026-11-13 (PR #580)
   - **What was done**: `HistoryDetailScreen` and its menu (≈1,000 lines) move from `history_screen.dart` to `history_detail_screen.dart`, a `part` of the same library so the shared private helpers (relaunch, regenerate and collections sheets) stay private. No behavior change.

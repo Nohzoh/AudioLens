@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'playlist_screen.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_sanitizer.dart';
 import '../utils/analysis_runner.dart';
@@ -415,6 +416,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  /// #550: the shown entries with saved audio, oldest first (the order
+  /// of a visit), in the playlist screen.
+  void _playAll(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final history = context.read<HistoryService>();
+    final shown = _filteredEntries(history).where((e) => e.status == AnalysisStatus.complete);
+    final playable = shown.where((e) => e.hasAudio).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final skipped = shown.length - playable.length;
+    final messenger = ScaffoldMessenger.of(context);
+    if (playable.isEmpty) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.playlistNothingToPlay)));
+      return;
+    }
+    String title = l10n.historyFavoritesFilter;
+    for (final c in history.collections) {
+      if (c.id == _selectedCollectionId) title = c.name;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlaylistScreen(title: title, entries: playable)),
+    );
+    if (skipped > 0) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.playlistSkipped(skipped))));
+    }
+  }
+
   List<HistoryEntry> _filteredEntries(HistoryService history) =>
       filterHistoryEntries(history,
           favoritesOnly: _favoritesOnly, collectionId: _selectedCollectionId);
@@ -558,6 +586,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 actions: [
+                  // #550: play a whole collection (or the favorites).
+                  if (_selectedCollectionId != null || _favoritesOnly)
+                    IconButton(
+                      icon: const Icon(Icons.playlist_play),
+                      tooltip: l10n.playlistPlayAll,
+                      onPressed: () => _playAll(context),
+                    ),
                   IconButton(
                     icon: const Icon(Icons.map_outlined),
                     tooltip: l10n.historyMapTooltip,
