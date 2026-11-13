@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Street filter works for German, English, Italian, Spanish and Dutch articles** (issue #587)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: the filter that drops street and district articles from the nearby Wikipedia results now knows the opening phrase of each edition the app queries (« ist eine Straße », « is a street », « è una via »…), not only the French one.
+
 - [x] ♻️ - **History detail screen in its own file** (issue #553)
   - **Verified**: 2026-11-13 (PR #580)
   - **What was done**: `HistoryDetailScreen` and its menu (≈1,000 lines) move from `history_screen.dart` to `history_detail_screen.dart`, a `part` of the same library so the shared private helpers (relaunch, regenerate and collections sheets) stay private. No behavior change.

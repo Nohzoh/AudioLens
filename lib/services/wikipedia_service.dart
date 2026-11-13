@@ -218,11 +218,27 @@ class WikipediaService {
   /// Wikipedia opens such articles with a stable phrase.
   static bool isStreetOrAdministrative(WikipediaResult r) {
     final head = r.extract.length > 200 ? r.extract.substring(0, 200) : r.extract;
-    return RegExp(
-      r'\best une (voie|impasse|circonscription|division administrative|subdivision)\b',
-      caseSensitive: false,
-    ).hasMatch(head);
+    final pattern = _streetPatterns[r.lang] ?? _streetPatterns['fr']!;
+    return pattern.hasMatch(head);
   }
+
+  /// #498/#587: the opening phrase of street and administrative articles,
+  /// per Wikipedia edition (#547 brought German, English… articles in).
+  static final _streetPatterns = <String, RegExp>{
+    'fr': RegExp(
+        r'\best une (voie|impasse|circonscription|division administrative|subdivision)\b',
+        caseSensitive: false),
+    'de': RegExp(
+        r'\b(ist|war) (eine|ein) ([A-Za-zäöüß-]*straße|[A-Za-zäöüß-]*gasse|Straße|Gasse|Allee|Platz|Weg|Stadtteil|Stadtbezirk|Ortsteil|Gemarkung|Gemeinde)\b',
+        caseSensitive: false),
+    'en': RegExp(
+        r'\bis an? (street|road|avenue|lane|district|ward|neighbourhood|neighborhood|borough|civil parish|electoral division)\b',
+        caseSensitive: false),
+    'it': RegExp(r"(^|\s)è una? (via|strada|piazza|quartiere|frazione|circoscrizione)\b",
+        caseSensitive: false),
+    'es': RegExp(r'\bes una? (calle|avenida|plaza|barrio|distrito)\b', caseSensitive: false),
+    'nl': RegExp(r'\bis een (straat|laan|plein|wijk|buurt|stadsdeel)\b', caseSensitive: false),
+  };
 
   /// #498: [results] without street and administrative articles — unless
   /// that would leave nothing, in which case they are kept: some context
