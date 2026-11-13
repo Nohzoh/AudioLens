@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import '../utils/app_logger.dart';
 import '../utils/error_sanitizer.dart';
@@ -1220,12 +1221,48 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     // context.read() at that point throws ("Looking up a deactivated
     // widget's ancestor is unsafe").
     _guide = context.read<AudioGuideService>();
+    // #555: follow the voice in the script, as the player screen does.
+    _previousNativeProgress = _guide.nativeTtsService.onProgress;
+    _guide.nativeTtsService.onProgress = (p) => _nativeProgress = p;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 250), (_) => _pollProgress());
     if (widget.autoPlay) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _toggleAudio());
     }
   }
 
   late final AudioGuideService _guide;
+
+  /// #555: how far the voice is through the script (0 when idle).
+  double _readingProgress = 0;
+  double? _nativeProgress;
+  Function(double)? _previousNativeProgress;
+  Timer? _progressTimer;
+
+  /// Audio files report their real position; the phone's voice reports
+  /// the offset of the word it speaks (kept in [_nativeProgress]).
+  Future<void> _pollProgress() async {
+    if (!mounted) return;
+    if (!_isPlaying) {
+      _nativeProgress = null;
+      if (_readingProgress != 0) setState(() => _readingProgress = 0);
+      return;
+    }
+    // The phone's voice first: an audio player that finished earlier
+    // keeps reporting its end position.
+    double? progress = _nativeProgress;
+    if (progress == null) {
+      try {
+        final result = await channel.invokeMethod<Map>('getPosition');
+        final position = (result?['position'] as num?)?.toInt() ?? -1;
+        final duration = (result?['duration'] as num?)?.toInt() ?? -1;
+        if (position >= 0 && duration > 0) progress = (position / duration).clamp(0.0, 1.0);
+      } catch (_) {
+        // No audio player.
+      }
+    }
+    if (!mounted || !_isPlaying || progress == null || progress == _readingProgress) return;
+    setState(() => _readingProgress = progress!);
+  }
 
   /// Set only while this screen owns some TTS service's `onComplete` (see
   /// [_withTrackedCompletion]) — the callback it's about to restore once
@@ -1282,6 +1319,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     // Stop playback when leaving screen
     channel.invokeMethod('stop');
     _guide.nativeTtsService.stop();
+    _progressTimer?.cancel();
+    _guide.nativeTtsService.onProgress = _previousNativeProgress;
     // If speech is still in flight, our tracking closure above is still
     // installed — put the previous handler back so a completion firing
     // after this screen is gone doesn't touch a disposed State or leave
@@ -1687,7 +1726,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                                 // there while seekable audio plays.
                                 child: SeekableScript(
                                   text: live.script,
-                                  progress: 0,
+                                  progress: _readingProgress,
                                   padding: EdgeInsets.zero,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: Colors.white.withValues(alpha: 0.85),

@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **History detail: the script follows the voice** (issue #555)
+  - **Verified**: 2026-11-13 (PR #558)
+  - **What was done**: replaying an entry from the history now highlights the script as it is read (saved audio: real player position; phone's voice: its word progress), like the player screen, keeping the detail's text style.
 - [x] ✨ - **Visits: the guide remembers what it already presented** (issue #429)
   - **Verified**: 2026-11-13 (PR #534)
   - **What was done**: « Commencer une visite » on the home screen (optional name, default « Visite du 13 nov. »). Photos taken while it runs join a collection of that name; each analysis gets the titles and first sentences of the last 4 analyses of the visit, with the instruction not to repeat general facts and to link to an earlier step only when the link is real. « Terminer » ends it (the collection stays); it also ends by itself at the next photo after 12 h without any. Survives restarts; no DB migration (collections + a preference).
