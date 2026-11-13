@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 import 'network_config.dart';
 
 /// #294: no backend — feedback is posted directly to a Telegram chat via
@@ -216,6 +218,20 @@ class FeedbackService {
     }
   }
 
+  /// #541: the photo is re-encoded without its metadata (EXIF GPS
+  /// position, device) and downscaled before leaving the phone. A file
+  /// that can't be decoded (screenshot in an unusual format) is sent as is.
+  Future<http.MultipartFile> _photoPart(File image) async {
+    try {
+      final bytes = await image.readAsBytes();
+      final clean = await compute(stripImageMetadata, bytes);
+      if (clean != null) {
+        return http.MultipartFile.fromBytes('photo', clean, filename: 'photo.jpg');
+      }
+    } catch (_) {}
+    return http.MultipartFile.fromPath('photo', image.path);
+  }
+
   Future<void> _sendPhoto(http.Client client, File image, {required String caption}) async {
     final request = http.MultipartRequest(
       'POST',
@@ -224,7 +240,7 @@ class FeedbackService {
       ..headers['User-Agent'] = NetworkConfig.userAgent
       ..fields['chat_id'] = chatId
       ..fields['caption'] = caption
-      ..files.add(await http.MultipartFile.fromPath('photo', image.path));
+      ..files.add(await _photoPart(image));
 
     final streamedResponse = await client.send(request).timeout(const Duration(seconds: 20));
     final response = await http.Response.fromStream(streamedResponse);
@@ -234,3 +250,20 @@ class FeedbackService {
     }
   }
 }
+
+/// #541: [bytes] decoded, upright (EXIF orientation applied), at most
+/// [maxSide] px on its longest side, and re-encoded as a JPEG with no
+/// metadata. Null when the bytes aren't a decodable image.
+Uint8List? stripImageMetadata(Uint8List bytes, {int maxSide = 1600}) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return null;
+  var image = img.bakeOrientation(decoded);
+  if (image.width > maxSide || image.height > maxSide) {
+    image = image.width >= image.height
+        ? img.copyResize(image, width: maxSide)
+        : img.copyResize(image, height: maxSide);
+  }
+  image.exif = img.ExifData();
+  return img.encodeJpg(image, quality: 85);
+}
+

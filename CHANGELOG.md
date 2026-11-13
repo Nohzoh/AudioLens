@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Feedback photos sent without their metadata** (issue #541)
+  - **Verified**: 2026-11-13 (PR #574)
+  - **What was done**: a photo or screenshot attached to a report is decoded, turned upright, downscaled to 1600 px and re-encoded as a JPEG without EXIF (no GPS position, no device model) before it is sent; an undecodable file is sent as before.
+
 - [x] 🔒 - **Third-party CI actions pinned to commit SHAs** (issue #539)
   - **Verified**: 2026-11-13 (PR #573)
   - **What was done**: `subosito/flutter-action`, `android-actions/setup-android`, `dorny/paths-filter` and `r0adkll/upload-google-play` (which receives the Play service account) are pinned to the commit of their current release, with the version as a comment for Dependabot; the keystore step reads its secrets from `env` instead of having them interpolated into the script.
