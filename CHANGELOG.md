@@ -20,6 +20,25 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
   - **Verified**: 2026-11-13 (PR #571)
   - **What was done**: the OSM `wikidata` tag is reduced to its first valid `Q…` id (tags like `Q1;Q2` or junk no longer reach the URL), the Wikidata URL is built with `Uri.https` parameters, and only numeric Wikipedia page ids are sent.
 
+- [x] 🔒 - **Gemini API key sent in a header, https required** (issue #540)
+  - **Verified**: 2026-11-13 (PR #570)
+  - **What was done**: Gemini requests (analysis, questions, quiz, TTS) carry the key in the `x-goog-api-key` header instead of `?key=` in the URL, and a remote-config API URL must be https on the allowed host.
+
+- [x] ♿ - **Home header icons have tooltips** (issue #557)
+  - **Verified**: 2026-11-13 (PR #569)
+  - **What was done**: the history and settings icons of the home header now have tooltips (long-press label, TalkBack name), like the quiz and Ko-fi ones.
+- [x] 🐛 - **Entries record the style and language used at launch** (issue #544)
+  - **Verified**: 2026-11-13 (PR #568)
+  - **What was done**: the style and narration language saved with an entry are captured when the analysis starts, not read again from Settings when it ends.
+- [x] 📝 - **Privacy policy matches what the app sends** (issue #535)
+  - **Verified**: 2026-11-13 (PR #567)
+  - **What was done**: the policy no longer claims that nothing leaves the phone in on-device mode: it describes the OpenStreetMap/Wikipedia/Wikidata lookups made in both modes, the Gemini voice and follow-up questions in cloud mode, and reports sent through Telegram. The in-app tip says the photo stays on the phone rather than « confidentialité maximale ».
+- [x] 🔒 - **Shared images: no more private-file reads through the share intent** (issue #536)
+  - **Verified**: 2026-11-13 (PR #566)
+  - **What was done**: the share target now accepts only another app's `content://` URI (not `file://`, not our own FileProvider), stops copying past 30 MB, checks the image signature (JPEG/PNG/WebP/GIF/HEIF) and keeps copies in `cache/shared/`, cleaned after a day.
+- [x] 🔧 - **User-Agent with version and contact for OSM and Wikimedia** (issue #554)
+  - **Verified**: 2026-11-13 (PR #565)
+  - **What was done**: requests to Nominatim, Overpass, Wikipedia, Wikidata (and Telegram) now send `AudioLens/<version> (+https://github.com/Nohzoh/AudioLens)` instead of a fixed `AudioLens/1.0`, as both services' usage policies ask.
 - [x] 🐛 - **Interrupted analyses no longer stay « en cours »** (issue #543)
   - **Verified**: 2026-11-13 (PR #564)
   - **What was done**: at startup, entries still pending (the app was killed or crashed mid-analysis) become failed entries titled « Analyse interrompue », retried on tap with their saved GPS, instead of spinning forever.
