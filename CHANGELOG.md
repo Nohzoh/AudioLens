@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔒 - **Gemini API key sent in a header, https required** (issue #540)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: Gemini requests (analysis, questions, quiz, TTS) carry the key in the `x-goog-api-key` header instead of `?key=` in the URL, and a remote-config API URL must be https on the allowed host.
+
 - [x] 💄 - **UI polish from screenshots** (issue #561)
   - **Verified**: 2026-11-13 (PR #562)
   - **What was done**: « Envoyer en feedback » typo fixed and « feedback » replaced by « retour » in the French UI; the Gemini API box no longer states a free quota (it changes often and is much lower now); the « Suivre la langue de l'application » chip no longer draws its icon under the checkmark.
