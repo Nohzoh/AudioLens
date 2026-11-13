@@ -497,4 +497,20 @@ void main() {
     expect(File(oldImagePath).existsSync(), isFalse);
     expect(File(recentEntry.imagePath).existsSync(), isTrue);
   });
+
+  test('an analysis left pending by a killed app is failed at the next start (#543)', () async {
+    final service = HistoryService();
+    await service.init(dbPath: dbPath);
+    final pending = await service.addPendingEntry(imagePath: sourceImagePath);
+    final done = await service.addPendingEntry(imagePath: sourceImagePath);
+    await service.completeEntry(entryId: done.id!, title: 't', script: 's');
+
+    final restarted = HistoryService();
+    await restarted.init(dbPath: dbPath);
+
+    final interrupted = restarted.entries.firstWhere((e) => e.id == pending.id);
+    expect(interrupted.status, AnalysisStatus.failed);
+    expect(interrupted.title, HistoryService.interruptedAnalysisTitle);
+    expect(restarted.entries.firstWhere((e) => e.id == done.id).status, AnalysisStatus.complete);
+  });
 }

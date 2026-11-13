@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Interrupted analyses no longer stay « en cours »** (issue #543)
+  - **Verified**: 2026-11-13 (PR #PRNUM)
+  - **What was done**: at startup, entries still pending (the app was killed or crashed mid-analysis) become failed entries titled « Analyse interrompue », retried on tap with their saved GPS, instead of spinning forever.
+
 - [x] 🐛 - **History detail: the script follows the voice** (issue #555)
   - **Verified**: 2026-11-13 (PR #558)
   - **What was done**: replaying an entry from the history now highlights the script as it is read (saved audio: real player position; phone's voice: its word progress), like the player screen, keeping the detail's text style.
