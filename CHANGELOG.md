@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] ✨ - **Local Wikipedia edition searched abroad** (issue #547)
+  - **Verified**: 2026-11-13 (PR #578)
+  - **What was done**: outside France, the nearby-articles search also queries the Wikipedia edition of the country's language (from the reverse-geocoded country code: de for Germany, Austria, Switzerland, it, es, nl…) and keeps the closest articles of both editions; non-French articles are tagged with their language in the context. Remote-config switch `wikipedia_local_language` (on by default).
+
 - [x] ✨ - **Generative voices downloadable from Settings** (issue #552)
   - **Verified**: 2026-11-13 (PR #577)
   - **What was done**: Settings > Voice lists the generative voices of the narration language that can be downloaded, as chips with a download icon (spinner while downloading); once installed, a voice becomes one of the choices. The block also appears when no voice is installed yet but some can be downloaded, and no longer sends the user to the Voice Lab.
