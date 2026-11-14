@@ -263,7 +263,7 @@ class _GroupSheet extends StatelessWidget {
                         ? RotatedBox(
                             quarterTurns: e.rotationQuarters,
                             child: Image.file(File(e.imagePath),
-                                fit: BoxFit.cover),
+                                cacheWidth: 240, fit: BoxFit.cover),
                           )
                         : Container(
                             color: theme.colorScheme.surfaceContainerHighest,

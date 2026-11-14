@@ -486,7 +486,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final xFile = await picker.pickImage(
       source: source,
       imageQuality: cfg.imageQuality,
-      maxWidth: cfg.imageMaxWidth.toDouble(),
+      // #601: kept at twice the upload size — a label or an inscription
+      // is unreadable at 1280 px once the on-device model has it.
+      maxWidth: cfg.captureMaxWidth.toDouble(),
     );
     if (xFile == null || !mounted) return;
 
@@ -1158,6 +1160,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                       entry.rotationQuarters,
                                                   child: Image.file(
                                                       File(entry.imagePath),
+                                                      // #601: thumbnail-size decode.
+                                                      cacheWidth: 480,
                                                       fit: BoxFit.cover),
                                                 )
                                               : Container(

@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 📷 - **Sharper photos for the on-device model** (issue #601)
+  - **Verified**: 2026-11-14 (PR #602)
+  - **What was done**: Photos are now kept at 2560 px wide (`capture_max_width`) instead of 1280; Gemini Nano receives an image of at most 1280 px on its longest side (`gemini_nano_image_max_side`) instead of a halved 640 px one; the Gemini API upload stays at 1280 px. The Nano lab gets an image-size setting (640 / 1280 / 2560) recorded in the export, and thumbnails are decoded at thumbnail size.
+
 - [x] 🐛 - **Nano: no more facts about another artwork, no invented objects** (issue #599)
   - **Verified**: 2026-11-14 (PR #600)
   - **What was done**: from the 2026-11-14 evening benchmark: the encyclopedia lookup on the title now requires the same words (a subset pulled in van der Weyden's « Portrait d'une femme » and a Louvre portrait, presented as the photographed painting), and its facts are framed as being about a name, never a source for the photographed work's author, date or museum. Segments 2 and 3, which don't see the photo, no longer get the museum instruction and are told to add no visual detail, no other object, no brackets or sound cues, in one paragraph. A sentence holding a template placeholder (« [si visible sur le panneau…] ») is dropped before reading. The lab comparison waits up to two minutes on AICore's quota and leaves the failed attempts out of the export.
