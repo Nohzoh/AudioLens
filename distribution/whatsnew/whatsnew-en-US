@@ -1,5 +1,5 @@
 New:
-• Home: "N photos to analyze" with "Analyze all", and "Listen to the last guide again".
-• Local AI: portrait photos are now seen upright, for more accurate descriptions.
-• Abroad, articles about plain streets are better kept out of the context.
-• Nano Lab: the model comparison keeps the screen on.
+• In a museum, the guide describes the photographed work rather than the town, and no longer invents an author.
+• Better-targeted Wikipedia context: no more distant namesakes or administrative articles.
+• Stray phrases removed from the spoken text.
+• Nano Lab: model comparison over 3 runs.
