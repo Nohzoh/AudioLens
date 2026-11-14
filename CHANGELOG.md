@@ -16,6 +16,9 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Gemini Nano sees portrait photos upright** (issue #592)
+  - **Verified**: 2026-11-14 (PR #593)
+  - **What was done**: the on-device model now receives photos with their EXIF orientation applied; before, portrait photos reached it lying on their side, which is why field runs described a painting as an « inverted portrait » and never read its label.
 - [x] 🐛 - **Nano Lab comparison survives screen timeout and AICore quota** (issue #590)
   - **Verified**: 2026-11-14 (PR #591)
   - **What was done**: during « Comparer les modèles installés » the screen stays on, models run 3 s apart, a quota error ([ErrorCode 9]) waits 30 s and retries once, and the comparison stops with a message when the app went to the background or the quota persists, instead of failing every remaining model.
