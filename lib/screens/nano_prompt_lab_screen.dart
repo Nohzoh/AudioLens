@@ -150,11 +150,14 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
     final previous = _variant;
     setState(() => _comparing = true);
     await _keepScreenOn(true);
-    AppLogger.ai('Nano Lab: comparing ${variants.length} models');
+    AppLogger.ai('Nano Lab: comparing ${variants.length} models, $_compareRounds round(s)');
     String? stopReason;
-    for (var i = 0; i < variants.length; i++) {
+    // #478: several rounds over the models (not the same model N times in
+    // a row), since two runs of one model differ a lot at this temperature.
+    final plan = [for (var r = 0; r < _compareRounds; r++) ...variants];
+    for (var i = 0; i < plan.length; i++) {
       if (!mounted || !_comparing) break;
-      setState(() => _variant = variants[i]);
+      setState(() => _variant = plan[i]);
       // Back-to-back requests run into AICore's per-app quota
       // ([ErrorCode 9]); a short pause between models avoids most of it.
       if (i > 0) await Future<void>.delayed(const Duration(seconds: 3));
@@ -201,6 +204,9 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       ));
     }
   }
+
+  /// #478: how many times the comparison goes over the installed models.
+  int _compareRounds = 1;
 
   static const _screenChannel = MethodChannel('audio_guide/screen');
 
@@ -764,6 +770,22 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
               : l10n.nanoLabCompareModels(_installedVariants.length)),
           onPressed: (_runningPipeline || _comparing || _image == null) ? null : _runAllModels,
           style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 44)),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(child: Text(l10n.nanoLabCompareRounds, style: theme.textTheme.bodySmall)),
+            SegmentedButton<int>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 1, label: Text('1×')),
+                ButtonSegment(value: 3, label: Text('3×')),
+              ],
+              selected: {_compareRounds},
+              onSelectionChanged:
+                  _comparing ? null : (s) => setState(() => _compareRounds = s.first),
+            ),
+          ],
         ),
       ],
       if (_pipelineRuns.isNotEmpty) ...[
