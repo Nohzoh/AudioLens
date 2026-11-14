@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🧪 - **Nano Lab: 3 runs per model in one comparison** (issue #478)
-  - **Verified**: 2026-11-14 (PR #PRNUM)
+  - **Verified**: 2026-11-14 (PR #597)
   - **What was done**: the model comparison can go three times over the installed models (1× / 3× switch), in rounds rather than the same model three times in a row: a single run per model was too noisy to choose a default model (two runs of one model gave different eras and titles).
 
 - [x] 🐛 - **Museum photos: the guide describes the exhibit, not the town** (issue #595)
