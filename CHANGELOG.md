@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 - **Nano Lab comparison survives screen timeout and AICore quota** (issue #590)
-  - **Verified**: 2026-11-14 (PR #PRNUM)
+  - **Verified**: 2026-11-14 (PR #591)
   - **What was done**: during « Comparer les modèles installés » the screen stays on, models run 3 s apart, a quota error ([ErrorCode 9]) waits 30 s and retries once, and the comparison stops with a message when the app went to the background or the quota persists, instead of failing every remaining model.
 
 - [x] ✨ - **Home: photos waiting and last guide, in place of the hint** (issue #551)
