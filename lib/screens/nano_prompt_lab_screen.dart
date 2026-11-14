@@ -163,16 +163,21 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       if (i > 0) await Future<void>.delayed(const Duration(seconds: 3));
       await _runPipeline();
       var error = _pipelineRuns.isEmpty ? null : _pipelineRuns.last.error;
-      if (error != null && error.contains('ErrorCode 9')) {
-        AppLogger.ai('Nano Lab: quota hit, waiting before one retry');
-        await Future<void>.delayed(const Duration(seconds: 30));
+      // #599: AICore's quota refills slowly — in the field, 30 s was not
+      // always enough after two long runs. Up to two waits of a minute.
+      for (var attempt = 0;
+          attempt < 2 && error != null && error.contains('ErrorCode 9');
+          attempt++) {
+        AppLogger.ai('Nano Lab: quota hit, waiting 60 s (retry ${attempt + 1}/2)');
+        if (_pipelineRuns.isNotEmpty) setState(() => _pipelineRuns.removeLast());
+        await Future<void>.delayed(const Duration(seconds: 60));
         if (!mounted || !_comparing) break;
         await _runPipeline();
         error = _pipelineRuns.isEmpty ? null : _pipelineRuns.last.error;
-        if (error != null && error.contains('ErrorCode 9')) {
-          stopReason = 'quota';
-          break;
-        }
+      }
+      if (error != null && error.contains('ErrorCode 9')) {
+        stopReason = 'quota';
+        break;
       }
       if (error != null && error.contains('COMPUTE_ERROR')) {
         // #595: AICore sometimes fails right after a model switch

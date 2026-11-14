@@ -305,8 +305,21 @@ void main() {
         expect(GeminiNanoService.titlesMatch('Le Prêteur et sa femme', 'Le Prêteur et sa femme (Metsys)'), isTrue);
       });
 
-      test('accepts a shorter title contained in the article title', () {
-        expect(GeminiNanoService.titlesMatch('Colisée de Rome', 'Colisée de Rome antique'), isTrue);
+      test('accepts a complement after a comma, a colon or a dash (#599)', () {
+        expect(GeminiNanoService.titlesMatch('Marie-Madeleine, contemplation', 'Marie Madeleine'), isTrue);
+        expect(GeminiNanoService.titlesMatch('Tour Eiffel : la dame de fer', 'Tour Eiffel'), isTrue);
+      });
+
+      test('a subset of words is not a match (#599)', () {
+        // Field cases: facts about another painting were presented as
+        // the photographed one's.
+        expect(
+            GeminiNanoService.titlesMatch(
+                "Portrait d'une femme en noir et blanc", "Portrait d'une femme"),
+            isFalse);
+        expect(GeminiNanoService.titlesMatch('Portrait de Marie Madeleine', 'Portrait de Madeleine'),
+            isFalse);
+        expect(GeminiNanoService.titlesMatch('Colisée de Rome', 'Colisée de Rome antique'), isFalse);
       });
 
       test('rejects a different subject', () {
