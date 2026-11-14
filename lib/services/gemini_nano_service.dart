@@ -130,16 +130,22 @@ class NanoPromptOptions {
   /// remote configuration, as production does.
   final bool? titleLookup;
 
+  /// #601: longest side (px) of the image given to the model. Null =
+  /// follow the remote configuration, as production does.
+  final int? imageMaxSide;
+
   const NanoPromptOptions({
     this.locationFirst = false,
     this.fullPreviousText = false,
     this.titleLookup,
+    this.imageMaxSide,
   });
 
   Map<String, dynamic> toJson() => {
         'location_first': locationFirst,
         'full_previous_text': fullPreviousText,
         'title_lookup': titleLookup,
+        'image_max_side': imageMaxSide,
       };
 }
 
@@ -443,6 +449,8 @@ class GeminiNanoService implements AIService {
         'maxOutputTokens': config.geminiNanoMaxTokens,
         'temperature': config.geminiNanoTemperature,
         'titleLookup': config.geminiNanoTitleLookup,
+        // #601
+        'imageMaxSide': config.geminiNanoImageMaxSide,
       };
       if (locationContext != null) {
         args['locationContext'] = _truncateLocationContext(locationContext);
@@ -599,6 +607,7 @@ class GeminiNanoService implements AIService {
       args['titleLookup'] = options.titleLookup ?? config.geminiNanoTitleLookup;
       args['locationFirst'] = options.locationFirst;
       args['fullPrevious'] = options.fullPreviousText;
+      args['imageMaxSide'] = options.imageMaxSide ?? config.geminiNanoImageMaxSide;
 
       final result =
           await _channel.invokeMapMethod<String, dynamic>('describeImageDebug', args);

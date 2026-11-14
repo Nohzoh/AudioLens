@@ -194,4 +194,16 @@ void main() {
       expect(RemoteConfigService.isAllowedApiUrl(''), isFalse);
     });
   });
+
+  // #601
+  test('photo sizes: 2560 px kept, 1280 px for Nano and the API by default', () {
+    final cfg = RemoteConfig.fromJson(const {});
+    expect(cfg.captureMaxWidth, 2560);
+    expect(cfg.geminiNanoImageMaxSide, 1280);
+    expect(cfg.imageMaxWidth, 1280);
+    final custom = RemoteConfig.fromJson(
+        const {'capture_max_width': 1920, 'gemini_nano_image_max_side': 2560});
+    expect(custom.captureMaxWidth, 1920);
+    expect(custom.geminiNanoImageMaxSide, 2560);
+  });
 }

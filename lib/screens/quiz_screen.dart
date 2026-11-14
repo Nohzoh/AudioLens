@@ -215,7 +215,7 @@ class _QuizScreenState extends State<QuizScreen> {
             borderRadius: BorderRadius.circular(16),
             child: AspectRatio(
               aspectRatio: 4 / 3,
-              child: Image.file(File(entry.imagePath), fit: BoxFit.cover),
+              child: Image.file(File(entry.imagePath), cacheWidth: 1080, fit: BoxFit.cover),
             ),
           ),
           const SizedBox(height: 16),

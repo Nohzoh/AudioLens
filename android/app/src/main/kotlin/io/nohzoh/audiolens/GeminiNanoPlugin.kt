@@ -597,6 +597,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val nanoMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val nanoTemperature = call.argument<Double>("temperature")?.toFloat()
                 val titleLookup = call.argument<Boolean>("titleLookup") ?: false
+                val imageMaxSide = call.argument<Int>("imageMaxSide") ?: DEFAULT_IMAGE_MAX_SIDE
                 // #462: optional model variant picked in Settings; none =
                 // the shared default client, as before.
                 val config = variantConfig(call)
@@ -620,8 +621,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 scope.launch {
                     val model = if (config != null) newClient(config) else sharedModel!!
                     try {
-                        val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
-                        val bitmap = decodeUpright(imagePath, opts)
+                        val bitmap = decodeForModel(imagePath, imageMaxSide)
                             ?: throw Exception("Cannot decode image")
 
                         // Segment 1: Visual description with image
@@ -742,6 +742,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // describeImage never sets them.
                 val locationFirst = call.argument<Boolean>("locationFirst") ?: false
                 val fullPrevious = call.argument<Boolean>("fullPrevious") ?: false
+                val imageMaxSide = call.argument<Int>("imageMaxSide") ?: DEFAULT_IMAGE_MAX_SIDE
                 // #431: optional model variant (Nano Prompt Lab selector).
                 val config = variantConfig(call)
 
@@ -772,8 +773,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                                 delay(100)
                             }
                         }
-                        val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
-                        val bitmap = decodeUpright(imagePath, opts)
+                        val bitmap = decodeForModel(imagePath, imageMaxSide)
                             ?: throw Exception("Cannot decode image")
 
                         currentSegment = 1
@@ -907,6 +907,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     return
                 }
                 val imagePath = call.argument<String>("imagePath")
+                val imageMaxSide = call.argument<Int>("imageMaxSide") ?: DEFAULT_IMAGE_MAX_SIDE
                 val rawMaxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 256
                 val rawTemperature = call.argument<Double>("temperature")?.toFloat()
 
@@ -915,8 +916,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     try {
                         var bitmap: android.graphics.Bitmap? = null
                         val req = if (imagePath != null) {
-                            val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
-                            bitmap = decodeUpright(imagePath, opts)
+                            bitmap = decodeForModel(imagePath, imageMaxSide)
                                 ?: throw Exception("Cannot decode image")
                             generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
                                 this.maxOutputTokens = rawMaxOutputTokens
@@ -982,6 +982,38 @@ private fun decodeUpright(path: String, opts: BitmapFactory.Options): Bitmap? {
         val upright = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
         if (upright !== bitmap) bitmap.recycle()
         upright
+    } catch (e: OutOfMemoryError) {
+        bitmap
+    }
+}
+
+/** #601: longest side, in pixels, of the image handed to the model. */
+private const val DEFAULT_IMAGE_MAX_SIDE = 1280
+
+/**
+ * #601: the photo, upright, with its longest side at most [maxSide] px.
+ * It used to be halved whatever its size: the app's 1280 px photos
+ * reached the model at 640 px, too small to read a museum label.
+ */
+private fun decodeForModel(path: String, maxSide: Int): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    val longest = maxOf(bounds.outWidth, bounds.outHeight)
+    var sample = 1
+    // Largest power of two that keeps the longest side at or above maxSide.
+    while (longest / (sample * 2) >= maxSide) sample *= 2
+    val bitmap = decodeUpright(path, BitmapFactory.Options().apply { inSampleSize = sample })
+        ?: return null
+    val side = maxOf(bitmap.width, bitmap.height)
+    if (side <= maxSide) return bitmap
+    val scale = maxSide.toFloat() / side
+    return try {
+        val scaled = Bitmap.createScaledBitmap(
+            bitmap, (bitmap.width * scale).toInt().coerceAtLeast(1),
+            (bitmap.height * scale).toInt().coerceAtLeast(1), true
+        )
+        if (scaled !== bitmap) bitmap.recycle()
+        scaled
     } catch (e: OutOfMemoryError) {
         bitmap
     }

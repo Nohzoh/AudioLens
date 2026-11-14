@@ -169,9 +169,19 @@ void main() {
 
     final results = export['results'] as List;
     expect(results[0]['prompt_options'],
-        {'location_first': false, 'full_previous_text': false, 'title_lookup': null});
+        {
+      'location_first': false,
+      'full_previous_text': false,
+      'title_lookup': null,
+      'image_max_side': null,
+    });
     expect(results[1]['prompt_options'],
-        {'location_first': true, 'full_previous_text': true, 'title_lookup': false});
+        {
+      'location_first': true,
+      'full_previous_text': true,
+      'title_lookup': false,
+      'image_max_side': null,
+    });
   });
 
   test('a failed run keeps its error and settings, with no measurements', () {

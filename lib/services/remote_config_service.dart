@@ -27,6 +27,13 @@ class RemoteConfig {
   /// Wikipedia to ground segments 2-3 — a remote kill switch.
   final bool geminiNanoTitleLookup;
 
+  /// #601: longest side (px) of the image given to Gemini Nano.
+  final int geminiNanoImageMaxSide;
+
+  /// #601: width (px) asked of the camera / gallery and kept in the
+  /// history. [imageMaxWidth] stays the size uploaded to the Gemini API.
+  final int captureMaxWidth;
+
   /// #485: whether the native voice may pick one of Google's on-device
   /// generative voices when the phone has one — a remote kill switch.
   final bool nativeGenerativeVoice;
@@ -97,6 +104,8 @@ class RemoteConfig {
     this.geminiNanoCascadeSegments = 3,
     this.geminiNanoTemperature = 0.7,
     this.geminiNanoTitleLookup = true,
+    this.geminiNanoImageMaxSide = 1280,
+    this.captureMaxWidth = 2560,
     this.nativeGenerativeVoice = true,
     this.wikipediaRadiusMeters = 500,
     this.wikipediaMaxResults = 3,
@@ -132,6 +141,8 @@ class RemoteConfig {
       geminiNanoCascadeSegments: json['gemini_nano_cascade_segments'] as int? ?? 3,
       geminiNanoTemperature: (json['gemini_nano_temperature'] as num?)?.toDouble() ?? 0.7,
       geminiNanoTitleLookup: json['gemini_nano_title_lookup'] as bool? ?? true,
+      geminiNanoImageMaxSide: json['gemini_nano_image_max_side'] as int? ?? 1280,
+      captureMaxWidth: json['capture_max_width'] as int? ?? 2560,
       nativeGenerativeVoice: json['native_generative_voice'] as bool? ?? true,
       wikipediaRadiusMeters: json['wikipedia_radius_meters'] as int? ?? 500,
       wikipediaMaxResults: json['wikipedia_max_results'] as int? ?? 3,
@@ -167,6 +178,8 @@ class RemoteConfig {
     'gemini_nano_cascade_segments': geminiNanoCascadeSegments,
     'gemini_nano_temperature': geminiNanoTemperature,
     'gemini_nano_title_lookup': geminiNanoTitleLookup,
+    'gemini_nano_image_max_side': geminiNanoImageMaxSide,
+    'capture_max_width': captureMaxWidth,
     'native_generative_voice': nativeGenerativeVoice,
     'wikipedia_radius_meters': wikipediaRadiusMeters,
     'wikipedia_max_results': wikipediaMaxResults,

@@ -117,6 +117,9 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   // Prompt experiments for the next pipeline run (#466, #468, #470).
   bool _optLocationFirst = false;
   bool _optFullPrevious = false;
+
+  /// #601: image size given to the model; null = production's.
+  int? _optImageMaxSide;
   bool _optTitleLookup = RemoteConfigService.current.geminiNanoTitleLookup;
   bool _exporting = false;
 
@@ -385,6 +388,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       locationFirst: _optLocationFirst,
       fullPreviousText: _optFullPrevious,
       titleLookup: _optTitleLookup,
+      imageMaxSide: _optImageMaxSide,
     );
     // #460: same style/language production passes (analysis_runner.dart),
     // so the lab runs the prompts a real analysis would.
@@ -734,6 +738,23 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
             label: Text(l10n.nanoLabOptFullPrevious),
             selected: _optFullPrevious,
             onSelected: (v) => setState(() => _optFullPrevious = v),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      // #601
+      Row(
+        children: [
+          Expanded(child: Text(l10n.nanoLabImageSize, style: theme.textTheme.bodySmall)),
+          SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: 640, label: Text('640')),
+              ButtonSegment(value: 1280, label: Text('1280')),
+              ButtonSegment(value: 2560, label: Text('2560')),
+            ],
+            selected: {_optImageMaxSide ?? RemoteConfigService.current.geminiNanoImageMaxSide},
+            onSelectionChanged: (s) => setState(() => _optImageMaxSide = s.first),
           ),
         ],
       ),

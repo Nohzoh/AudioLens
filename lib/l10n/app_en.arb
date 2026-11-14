@@ -377,6 +377,7 @@
   "nanoLabOptTitleLookup": "Wikipedia facts on the title",
   "nanoLabOptLocationFirst": "Place first in the prompt",
   "nanoLabOptFullPrevious": "Full segment 1 for the rest",
+  "nanoLabImageSize": "Image size given to the model (px)",
   "nanoLabCaseId": "Benchmark case id (optional)",
   "nanoLabCaseIdHint": "Id from benchmark/dataset/manifest.json, saved with the run",
   "nanoLabExportRuns": "Export runs ({count})",
