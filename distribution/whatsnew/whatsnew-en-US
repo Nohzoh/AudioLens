@@ -1,7 +1,5 @@
 New:
-• "Take a photo" opens the camera directly.
-• "Play all" for a collection or the favorites.
-• Long-press a sentence to jump playback there, also with the phone's voice.
-• Phone voice: pick and download it in Settings; resume after pause at the right sentence.
-• Abroad, the guide also draws on the country's Wikipedia.
-• Settings reorganized.
+• Home: "N photos to analyze" with "Analyze all", and "Listen to the last guide again".
+• Local AI: portrait photos are now seen upright, for more accurate descriptions.
+• Abroad, articles about plain streets are better kept out of the context.
+• Nano Lab: the model comparison keeps the screen on.
