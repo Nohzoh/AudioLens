@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 - **Nano: no more facts about another artwork, no invented objects** (issue #599)
-  - **Verified**: 2026-11-14 (PR #PRNUM)
+  - **Verified**: 2026-11-14 (PR #600)
   - **What was done**: from the 2026-11-14 evening benchmark: the encyclopedia lookup on the title now requires the same words (a subset pulled in van der Weyden's « Portrait d'une femme » and a Louvre portrait, presented as the photographed painting), and its facts are framed as being about a name, never a source for the photographed work's author, date or museum. Segments 2 and 3, which don't see the photo, no longer get the museum instruction and are told to add no visual detail, no other object, no brackets or sound cues, in one paragraph. A sentence holding a template placeholder (« [si visible sur le panneau…] ») is dropped before reading. The lab comparison waits up to two minutes on AICore's quota and leaves the failed attempts out of the export.
 
 - [x] 🧪 - **Nano Lab: 3 runs per model in one comparison** (issue #478)
