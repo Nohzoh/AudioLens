@@ -404,6 +404,8 @@
   "nanoLabCompareModels": "Comparer les {count} modèles installés",
   "@nanoLabCompareModels": {"placeholders": {"count": {"type": "int"}}},
   "nanoLabComparing": "Comparaison en cours…",
+  "nanoLabCompareStoppedQuota": "Comparaison arrêtée : AICore limite le nombre de requêtes. Réessayez dans quelques minutes.",
+  "nanoLabCompareStoppedBackground": "Comparaison arrêtée : l'appli est passée en arrière-plan. Gardez-la ouverte pendant la comparaison.",
   "nanoLabOptTitleLookup": "Faits Wikipedia sur le titre",
   "nanoLabOptLocationFirst": "Lieu en tête du prompt",
   "nanoLabOptFullPrevious": "Segment 1 complet pour la suite",

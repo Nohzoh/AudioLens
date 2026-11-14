@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🐛 - **Nano Lab comparison survives screen timeout and AICore quota** (issue #590)
+  - **Verified**: 2026-11-14 (PR #591)
+  - **What was done**: during « Comparer les modèles installés » the screen stays on, models run 3 s apart, a quota error ([ErrorCode 9]) waits 30 s and retries once, and the comparison stops with a message when the app went to the background or the quota persists, instead of failing every remaining model.
+
 - [x] ✨ - **Home: photos waiting and last guide, in place of the hint** (issue #551)
   - **Verified**: 2026-11-13 (PR #585)
   - **What was done**: once there is a history, the home screen shows, instead of « Pointez votre appareil… »: a card « N photos à analyser » with « Tout analyser » (analyzed one after another without opening the player and without audio, which can be generated later; suggested more strongly when the phone is on Wi-Fi), and a « Réécouter le dernier guide » card opening the last analysis with playback. Photos without a saved position are left for the history (they need the map).
