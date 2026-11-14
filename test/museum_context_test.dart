@@ -93,7 +93,7 @@ void main() {
     expect(
         cleanMarkdown("L'éclairage met en valeur la peinture. Voici une suite possible, en adoptant "
             "le ton d'un guide audio culturel :\n\n\"Ces nuances chaudes et cette lumière douce "
-            'évoquent une période où l\'art et la spiritualité étaient intimement liés.\" Fin.'),
+            'évoquent une période où l\'art et la spiritualité étaient intimement liés." Fin.'),
         "L'éclairage met en valeur la peinture. Ces nuances chaudes et cette lumière douce "
         "évoquent une période où l'art et la spiritualité étaient intimement liés. Fin.");
     // A short quoted phrase and an ordinary « absolument » stay.
