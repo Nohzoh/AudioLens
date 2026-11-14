@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 📷 - **Sharper photos for the on-device model** (issue #601)
-  - **Verified**: 2026-11-14 (PR #PRNUM)
+  - **Verified**: 2026-11-14 (PR #602)
   - **What was done**: Photos are now kept at 2560 px wide (`capture_max_width`) instead of 1280; Gemini Nano receives an image of at most 1280 px on its longest side (`gemini_nano_image_max_side`) instead of a halved 640 px one; the Gemini API upload stays at 1280 px. The Nano lab gets an image-size setting (640 / 1280 / 2560) recorded in the export, and thumbnails are decoded at thumbnail size.
 
 - [x] 🐛 - **Nano: no more facts about another artwork, no invented objects** (issue #599)
