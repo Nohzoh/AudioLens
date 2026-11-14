@@ -361,7 +361,9 @@ class GeminiNanoService implements AIService {
       extractChars: _maxTitleFactsChars,
     ).timeout(const Duration(seconds: 8), onTimeout: () => const []);
     for (final r in results) {
-      if (titlesMatch(title, r.title)) return r.extract;
+      // #599: the article's own title leads, so the model can tell what
+      // the facts are about.
+      if (titlesMatch(title, r.title)) return '« ${r.title} » : ${r.extract}';
     }
     return null;
   }
@@ -384,20 +386,28 @@ class GeminiNanoService implements AIService {
         .toSet();
   }
 
-  /// #466: true when every meaningful word of the shorter title (at
-  /// least two) is in the other one, accents, case, articles and a
-  /// disambiguation suffix like "(Metsys)" aside.
+  /// #466: true when the two titles have the same meaningful words —
+  /// accents, case, articles and a disambiguation suffix like "(Metsys)"
+  /// aside. The model's title may carry a complement after a comma, a
+  /// colon or a dash (« Marie-Madeleine, contemplation »): its first
+  /// part alone may match.
+  ///
+  /// #599: a subset is no longer enough. In the field, « Portrait d'une
+  /// femme en noir et blanc » pulled in Rogier van der Weyden's « Portrait
+  /// d'une femme » (Berlin, 1435) and « Portrait de Marie Madeleine » a
+  /// Louvre painting of someone else — and the guide then presented the
+  /// photographed painting as those.
   @visibleForTesting
   static bool titlesMatch(String nanoTitle, String articleTitle) {
-    final a = _titleWords(nanoTitle);
     final b = _titleWords(articleTitle.replaceAll(RegExp(r'\s*\(.*\)\s*$'), ''));
-    if (a.isEmpty || b.isEmpty) return false;
-    // A single word ("Tableau", "Marche") is too generic to trust as a
-    // subset match: only an exact match counts.
-    if (a.length < 2 || b.length < 2) return a.length == b.length && a.containsAll(b);
-    final shorter = a.length <= b.length ? a : b;
-    final longer = identical(shorter, a) ? b : a;
-    return shorter.every(longer.contains);
+    if (b.isEmpty) return false;
+    bool same(String s) {
+      final a = _titleWords(s);
+      return a.length == b.length && a.containsAll(b);
+    }
+
+    final head = nanoTitle.split(RegExp(r'\s*[,:;]\s+|\s+[-–—]\s+')).first;
+    return same(nanoTitle) || same(head);
   }
 
   @override

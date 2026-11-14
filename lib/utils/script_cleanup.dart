@@ -42,6 +42,7 @@ String cleanMarkdown(String text) {
       .replaceAllMapped(RegExp(r'"([^"\n]{80,})"'), (m) => m.group(1)!)
       .replaceAll(RegExp(r'\n{3,}'), '\n\n')
       .trim();
+  result = _dropPlaceholderSentences(result);
   // Remove English thinking/meta lines.
   final lines = result.split('\n');
   final filtered = lines.where((line) {
@@ -88,3 +89,31 @@ bool looksLikeModelMetaText(String text) {
   final steps = RegExp(r'(?:^|[\n.!?]\s*)\d{1,2}\.\s+[A-Za-zÀ-ÿ]').allMatches(text);
   return steps.length >= 2;
 }
+
+final _placeholder = RegExp(r'\[[^\]\n]{12,}\]');
+
+/// #599: a sentence holding a template placeholder — « Cette œuvre,
+/// probablement d'époque [si visible sur le panneau, sinon indiquer
+/// "d'époque inconnue"], présente… » — is the model handing back a form to
+/// fill in: the whole sentence goes. A bracket that opens the text is the
+/// title convention and is left alone.
+String _dropPlaceholderSentences(String text) {
+  var result = text;
+  while (true) {
+    RegExpMatch? hit;
+    for (final m in _placeholder.allMatches(result)) {
+      if (result.substring(0, m.start).trim().isNotEmpty) {
+        hit = m;
+        break;
+      }
+    }
+    if (hit == null) return result;
+    final before = result.substring(0, hit.start);
+    final startMatches = RegExp(r'[.!?…]\s+|\n').allMatches(before);
+    final start = startMatches.isEmpty ? 0 : startMatches.last.end;
+    final endMatch = RegExp(r'[.!?…](?=\s|$)').firstMatch(result.substring(hit.end));
+    final end = endMatch == null ? result.length : hit.end + endMatch.end;
+    result = (result.substring(0, start) + result.substring(end).trimLeft()).trim();
+  }
+}
+

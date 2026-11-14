@@ -193,8 +193,24 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         // #466: a Wikipedia extract matching segment 1's title (looked up
         // on the Dart side, see GeminiNanoService), placed before the
         // location so the subject's own facts come first.
+        // #599: framed as facts about a name, not about the photographed
+        // object — a homonymous artwork's author or museum must not be
+        // transferred to it.
         private fun factsHint(facts: String?): String =
-            if (!facts.isNullOrBlank()) " Faits verifies sur le sujet : $facts." else ""
+            if (!facts.isNullOrBlank()) " Faits d'encyclopedie sur ce nom (ne t'en sers que s'ils concernent bien le sujet du texte precedent ; n'en tire ni auteur, ni date, ni lieu de conservation pour l'oeuvre photographiee) : $facts." else ""
+
+        // #599: segments 2 and 3 don't see the photo. Instructions about
+        // "what the photo shows" (the museum hint) made them describe
+        // objects that aren't there (a stone sculpture, a ceramic shard).
+        private fun followUpLocationHint(locationContext: String?): String {
+            if (locationContext.isNullOrBlank()) return ""
+            val kept = locationContext.split("\n\n")
+                .filterNot { it.trimStart().startsWith("Ce lieu est un musée") }
+                .joinToString("\n\n")
+            return if (kept.isBlank()) "" else " Contexte du lieu : $kept."
+        }
+
+        private const val NO_PHOTO_RULE = " Tu ne vois pas la photo : n'ajoute aucun detail visuel nouveau, ne decris aucun autre objet, n'ecris ni crochets ni indications de voix ou de son."
 
         private val bracketTitle = Regex("""^\s*\[([^\]]{1,80})\]""")
 
@@ -222,7 +238,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 else -> "le contexte historique et culturel"
             }
             val sentences = if (style == "concise") "1 phrase" else "2-3 phrases qui s'enchainent naturellement"
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${locationHint(locationContext)} Continue avec $focus en $sentences, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${followUpLocationHint(locationContext)}$NO_PHOTO_RULE Continue avec $focus en $sentences, en un seul paragraphe, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
         }
 
         fun buildSeg3Prompt(
@@ -244,7 +260,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // "Ce lieu…".
                 "sur ce qui rend unique le sujet dont tu parles (l'oeuvre, le monument ou le lieu) et l'emotion qu'il inspire, en le nommant par ce qu'il est"
             }
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${locationHint(locationContext)} Conclus en $sentences $ending, sans repeter ce qui a deja ete dit."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${followUpLocationHint(locationContext)}$NO_PHOTO_RULE Conclus en $sentences $ending, en un seul paragraphe, sans repeter ce qui a deja ete dit."
         }
     }
 

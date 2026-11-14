@@ -100,4 +100,16 @@ void main() {
     expect(cleanMarkdown('On l\'appelle "la capitale des Cévennes". Elle est absolument unique.'),
         'On l\'appelle "la capitale des Cévennes". Elle est absolument unique.');
   });
+
+  test('a sentence holding a template placeholder is dropped (#599)', () {
+    expect(
+        cleanMarkdown("On peut admirer des pièces de céramique. Cette œuvre, probablement d'époque "
+            "[si visible sur le panneau, sinon indiquer 'époque inconnue'], présente un motif "
+            "répétitif de [Décrivez brièvement le motif : fleurs, spirales, animaux, etc.]. "
+            "La finesse du travail témoigne d'un savoir-faire."),
+        "On peut admirer des pièces de céramique. La finesse du travail témoigne d'un savoir-faire.");
+    // The title convention at the start of the text is left alone.
+    expect(cleanMarkdown('[Panorama majestueux de Heidelberg] En suivant le chemin.'),
+        '[Panorama majestueux de Heidelberg] En suivant le chemin.');
+  });
 }
