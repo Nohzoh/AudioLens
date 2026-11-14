@@ -50,7 +50,7 @@ void main() {
       if (uri.host.endsWith('wikipedia.org')) {
         final action = uri.queryParameters['action'];
         if (action == 'query' && uri.queryParameters['list'] == 'geosearch') {
-          // Broad, generic-proximity result — the town itself.
+          // Broad, generic-proximity result (not the town's own article, which #595 drops when a place is identified).
           return http.Response(
             jsonEncode({
               'query': {
@@ -84,7 +84,7 @@ void main() {
                   'pages': {
                     '1': {
                       'title': 'Vincennes',
-                      'extract': 'Vincennes est une commune du Val-de-Marne.',
+                      'extract': 'Le bois de Vincennes est un espace vert de Paris.',
                     },
                   },
                 },
@@ -128,14 +128,14 @@ void main() {
     final promptContext = ctx.promptContext!;
     // Both extracts should be present...
     expect(promptContext, contains('Église catholique construite au XIXe siècle.'));
-    expect(promptContext, contains('Vincennes est une commune du Val-de-Marne.'));
+    expect(promptContext, contains('Le bois de Vincennes est un espace vert de Paris.'));
     // ...but the name-matched (specific) one must come first, so a
     // downstream character budget can't truncate it away in favor of the
     // broader, less relevant one.
     final churchExtractIndex =
         promptContext.indexOf('Église catholique construite au XIXe siècle.');
     final townExtractIndex =
-        promptContext.indexOf('Vincennes est une commune du Val-de-Marne.');
+        promptContext.indexOf('Le bois de Vincennes est un espace vert de Paris.');
     expect(churchExtractIndex, lessThan(townExtractIndex));
   });
 
