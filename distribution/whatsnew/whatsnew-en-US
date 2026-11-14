@@ -1,5 +1,3 @@
-New:
-• In a museum, the guide describes the photographed work rather than the town, and no longer invents an author.
-• Better-targeted Wikipedia context: no more distant namesakes or administrative articles.
-• Stray phrases removed from the spoken text.
-• Nano Lab: model comparison over 3 runs.
+• Sharper photos: stored at 2560 px, and the on-device model (Gemini Nano) gets an image twice as detailed to better read labels and inscriptions.
+• Nano: Wikipedia facts are only used when the title exactly matches the work; later parts no longer invent objects missing from the photo.
+• Nano lab: image-size setting (640 / 1280 / 2560), automatic pause on quota.
