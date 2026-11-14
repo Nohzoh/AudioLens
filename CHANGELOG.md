@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 - **Gemini Nano sees portrait photos upright** (issue #592)
-  - **Verified**: 2026-11-14 (PR #PRNUM)
+  - **Verified**: 2026-11-14 (PR #593)
   - **What was done**: the on-device model now receives photos with their EXIF orientation applied; before, portrait photos reached it lying on their side, which is why field runs described a painting as an « inverted portrait » and never read its label.
 
 - [x] ✨ - **Home: photos waiting and last guide, in place of the hint** (issue #551)
