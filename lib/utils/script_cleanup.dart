@@ -25,6 +25,21 @@ String cleanMarkdown(String text) {
       // after such a note) reads as a glitch.
       .replaceAll(RegExp(r'^[ \t]*(?:…|\.{3})[ \t]*', multiLine: true), '')
       .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
+      // #595: a model answering the prompt instead of continuing the
+      // guide — « Absolument. », « Voici une suite possible, en adoptant
+      // le ton d'un guide audio culturel : » — would be read aloud.
+      .replaceAll(
+          RegExp(
+              r"(?<=^|[.!?…»]\s)(Absolument|Bien sûr|Certainement|D['’]accord|Avec plaisir|Très bien)\s?[.!]\s*",
+              multiLine: true),
+          '')
+      .replaceAll(
+          RegExp(r"Voici (une|la|ma) (suite|continuation|conclusion)\b[^:\n]{0,120}:\s*",
+              caseSensitive: false),
+          '')
+      // #595: a whole passage wrapped in straight quotes (the model
+      // "quoting" its own continuation); a short quoted phrase is kept.
+      .replaceAllMapped(RegExp(r'"([^"\n]{80,})"'), (m) => m.group(1)!)
       .replaceAll(RegExp(r'\n{3,}'), '\n\n')
       .trim();
   // Remove English thinking/meta lines.
