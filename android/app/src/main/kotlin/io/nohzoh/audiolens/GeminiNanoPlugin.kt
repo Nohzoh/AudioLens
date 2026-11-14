@@ -216,7 +216,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             val excerpt = if (fullPrevious) previousText else previousText.takeLast(200)
             val focus = when (style) {
                 "academic" -> "le contexte historique precis (dates, faits averes, contexte culturel)"
-                "anecdotal" -> "une anecdote ou curiosite peu connue liee a ce lieu"
+                "anecdotal" -> "une anecdote ou curiosite peu connue liee au sujet dont tu parles"
                 "concise" -> "l'information essentielle"
                 "kids" -> "un fait etonnant explique simplement, compare a la vie de tous les jours d'un enfant, en le tutoyant"
                 else -> "le contexte historique et culturel"
@@ -240,7 +240,9 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             val ending = if (style == "kids") {
                 "sur une question qui invite l'enfant a observer un detail, en le tutoyant"
             } else {
-                "sur ce qui rend ce lieu unique et l'emotion qu'il inspire"
+                // #595: "ce lieu" made every script about a painting end on
+                // "Ce lieu…".
+                "sur ce qui rend unique le sujet dont tu parles (l'oeuvre, le monument ou le lieu) et l'emotion qu'il inspire, en le nommant par ce qu'il est"
             }
             return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${locationHint(locationContext)} Conclus en $sentences $ending, sans repeter ce qui a deja ete dit."
         }

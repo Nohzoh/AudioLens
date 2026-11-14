@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'shared_http_client.dart';
 import 'network_config.dart';
@@ -11,11 +12,17 @@ class WikipediaResult {
   /// #547: Wikipedia edition the article comes from.
   final String lang;
 
+  /// #595: where the article is geotagged, when it is.
+  final double? latitude;
+  final double? longitude;
+
   const WikipediaResult({
     required this.title,
     required this.extract,
     this.coordinates,
     this.lang = 'fr',
+    this.latitude,
+    this.longitude,
   });
 }
 
@@ -113,10 +120,18 @@ class WikipediaService {
   /// [searchNearby]'s geosearch — catches articles that exist but aren't
   /// geotagged (T74). Falls back to English Wikipedia if the French search
   /// finds nothing.
+  ///
+  /// #595: with [nearLat]/[nearLon], an article geotagged farther than
+  /// [maxDistanceKm] is dropped — a text search on « Musée du Colombier
+  /// Alès » returned the Colombier of Neuchâtel and its château, 400 km
+  /// away. Articles without coordinates are kept.
   static Future<List<WikipediaResult>> searchByName({
     required String query,
     int limit = 2,
     int extractChars = 1500,
+    double? nearLat,
+    double? nearLon,
+    double maxDistanceKm = 15,
     http.Client? client,
   }) async {
     if (query.trim().isEmpty) return [];
@@ -144,7 +159,15 @@ class WikipediaService {
         if (hits.isEmpty) continue;
 
         final pageIds = hits.map((h) => h['pageid'].toString()).toList();
-        final results = await _fetchExtracts(c, lang, pageIds, extractChars);
+        final results = [
+          for (final r in await _fetchExtracts(c, lang, pageIds, extractChars))
+            if (nearLat == null ||
+                nearLon == null ||
+                r.latitude == null ||
+                r.longitude == null ||
+                distanceKm(nearLat, nearLon, r.latitude!, r.longitude!) <= maxDistanceKm)
+              r,
+        ];
         if (results.isNotEmpty) return results;
       } catch (_) {
         continue;
@@ -166,7 +189,8 @@ class WikipediaService {
       '?action=query'
       // #542: page ids are numbers; anything else is dropped.
       '&pageids=${pageIds.where((id) => RegExp(r'^[0-9]+$').hasMatch(id)).join('|')}'
-      '&prop=extracts'
+      '&prop=extracts%7Ccoordinates'
+      '&colimit=max'
       '&exintro=true'
       '&explaintext=true'
       '&exsectionformat=plain'
@@ -190,12 +214,16 @@ class WikipediaService {
           .replaceAll(RegExp(r'\n+'), ' ')
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
+      final coords = page['coordinates'];
+      final first = coords is List && coords.isNotEmpty && coords.first is Map ? coords.first as Map : null;
       return WikipediaResult(
         title: page['title'] as String? ?? '',
         extract: cleaned.length > extractChars
             ? '${cleaned.substring(0, extractChars)}...'
             : cleaned,
         lang: lang,
+        latitude: (first?['lat'] as num?)?.toDouble(),
+        longitude: (first?['lon'] as num?)?.toDouble(),
       );
     }).where((r) => r.extract.isNotEmpty).toList();
   }
@@ -244,9 +272,49 @@ class WikipediaService {
   /// #498: [results] without street and administrative articles — unless
   /// that would leave nothing, in which case they are kept: some context
   /// is better than none.
-  static List<WikipediaResult> withoutStreets(List<WikipediaResult> results) {
-    final kept = results.where((r) => !isStreetOrAdministrative(r)).toList();
-    return kept.isEmpty ? results : kept;
+  ///
+  /// #595: statistical areas (aire urbaine, unité urbaine…) always go;
+  /// with [placeIdentified] (a named place was found at the spot), the
+  /// article about the whole town goes too — it is long, and a small
+  /// model then narrates the town instead of what the photo shows.
+  static List<WikipediaResult> withoutStreets(List<WikipediaResult> results,
+      {bool placeIdentified = false}) {
+    final kept = results
+        .where((r) =>
+            !isStreetOrAdministrative(r) &&
+            !isStatisticalArea(r) &&
+            !(placeIdentified && isTownArticle(r)))
+        .toList();
+    return kept.isEmpty && !placeIdentified ? results : kept;
+  }
+
+  static String _head(WikipediaResult r) =>
+      r.extract.length > 200 ? r.extract.substring(0, 200) : r.extract;
+
+  /// #595: « L'aire urbaine d'Alès est une aire urbaine française… ».
+  static bool isStatisticalArea(WikipediaResult r) => RegExp(
+        r"\best une (aire urbaine|unité urbaine|aire d['’]attraction|agglomération|intercommunalité|communauté (de communes|d['’]agglomération|urbaine))\b",
+        caseSensitive: false,
+      ).hasMatch(_head(r));
+
+  /// #595: « Alès est une commune française… », « … est une localité et
+  /// une ancienne commune suisse… ».
+  static bool isTownArticle(WikipediaResult r) => RegExp(
+        r'\best une (commune|ville|localité|ancienne commune)\b|\b(ist eine (Stadt|Gemeinde|Großstadt))\b|\bis a (city|town|commune|municipality)\b',
+        caseSensitive: false,
+      ).hasMatch(_head(r));
+
+  /// Great-circle distance, in km.
+  static double distanceKm(double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371.0;
+    final dLat = (lat2 - lat1) * math.pi / 180;
+    final dLon = (lon2 - lon1) * math.pi / 180;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    return 2 * r * math.asin(math.sqrt(a));
   }
 
   /// Build context string for AI prompt

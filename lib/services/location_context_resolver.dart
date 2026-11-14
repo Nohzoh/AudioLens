@@ -328,6 +328,9 @@ class LocationContextResolver {
                 query: nameQuery,
                 limit: cfg.wikipediaMaxResults,
                 extractChars: cfg.wikipediaExtractChars,
+                // #595: not a namesake elsewhere in the world.
+                nearLat: lat,
+                nearLon: lon,
                 client: _httpClient,
               )
             : Future<List<WikipediaResult>>.value(const []);
@@ -360,7 +363,18 @@ class LocationContextResolver {
       }
 
       // #498: applied after the cache, so cached entries benefit too.
-      wikiResults = WikipediaService.withoutStreets(wikiResults);
+      // #595: with a named place at the spot, the town's own article and
+      // statistics go; in a museum, only articles about the museum stay.
+      final placeName = poi?.name ?? locationResult.info?.placeName;
+      final placeCategory = poi?.category ?? locationResult.info?.placeCategory;
+      wikiResults =
+          WikipediaService.withoutStreets(wikiResults, placeIdentified: placeName != null);
+      if (isExhibitionPlace(placeCategory) && placeName != null) {
+        wikiResults = [
+          for (final r in wikiResults)
+            if (titleMatchesPlace(r.title, placeName)) r,
+        ];
+      }
       if (wikiResults.isNotEmpty) {
         wikiContext = WikipediaService.buildContext(wikiResults);
         wikipediaUsed = true;
@@ -376,6 +390,8 @@ class LocationContextResolver {
       geocodedPlace != null
           ? 'Lieu identifié à cet emplacement (OpenStreetMap) : $geocodedPlace'
           : null,
+      // #595
+      exhibitHint(poi?.category ?? (geocodedPlace != null ? locationResult.info?.placeCategory : null)),
       wikidataInfo != null ? 'Selon Wikidata : ${wikidataInfo.summary}' : null,
       landmarksContext(landmarks, exclude: poi?.name),
       locationResult.info?.contextForPrompt,
@@ -448,3 +464,35 @@ String? landmarksContext(List<Landmark> landmarks, {String? exclude}) {
   return 'Grands édifices visibles de loin depuis cet endroit (peut-être sur la photo, '
       'peut-être pas) : ${kept.map((l) => l.promptLine).join(' ; ')}.';
 }
+
+/// #595: OSM categories of places where the photo most likely shows an
+/// exhibit rather than the building or the town.
+bool isExhibitionPlace(String? category) => const {
+      'tourism=museum',
+      'tourism=gallery',
+      'amenity=arts_centre',
+      'amenity=exhibition_centre',
+    }.contains(category);
+
+/// #595: what to tell the model in a museum. Field case (Musée du
+/// Colombier, Alès): with the place and the town's article as context,
+/// Nano narrated the town and invented an artist for the painting.
+String? exhibitHint(String? category) => isExhibitionPlace(category)
+    ? "Ce lieu est un musée ou un lieu d'exposition : la photo montre très probablement "
+        "une œuvre ou un objet exposé. Décris cette œuvre et ce qu'on y voit, pas la ville "
+        "ni son histoire. Ne donne un titre, un auteur ou une date que s'ils sont lisibles "
+        "sur la photo (cartel) ; sinon n'en invente pas."
+    : null;
+
+/// #595: whether a Wikipedia [title] is about the place named [placeName]
+/// — they share a distinctive word (« Musée du Colombier » ↔ « Musée du
+/// Colombier (Alès) »; not « Alès », not « Siège d'Alès »).
+bool titleMatchesPlace(String title, String placeName) {
+  Set<String> words(String s) => {
+        for (final w in s.toLowerCase().split(RegExp(r"[^a-zà-ÿ0-9]+")))
+          if (w.length > 3 && !const {'musée', 'museum', 'museo', 'galerie', 'gallery', 'saint', 'sainte'}.contains(w)) w,
+      };
+  final place = words(placeName);
+  return place.isNotEmpty && words(title).intersection(place).isNotEmpty;
+}
+

@@ -171,6 +171,15 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
           break;
         }
       }
+      if (error != null && error.contains('COMPUTE_ERROR')) {
+        // #595: AICore sometimes fails right after a model switch
+        // (memory still held by the previous one); once more, later.
+        AppLogger.ai('Nano Lab: compute error, one retry');
+        await Future<void>.delayed(const Duration(seconds: 10));
+        if (!mounted || !_comparing) break;
+        await _runPipeline();
+        error = _pipelineRuns.isEmpty ? null : _pipelineRuns.last.error;
+      }
       if (error != null && error.contains('arrière-plan')) {
         // The app lost the foreground: every next model would fail too.
         stopReason = 'background';
