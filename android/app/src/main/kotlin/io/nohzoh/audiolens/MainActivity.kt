@@ -24,6 +24,22 @@ class MainActivity : FlutterActivity() {
         flutterEngine.plugins.add(GenAiTtsPlugin())
         // #551: whether the current connection is unmetered (Wi-Fi), so the
         // home screen can suggest analyzing the photos set aside.
+        // Nano Prompt Lab: AICore refuses an app whose screen went off
+        // ("Background usage is blocked"), and a model comparison runs for
+        // minutes — the lab keeps the screen on while it works.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "audio_guide/screen")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "keepOn") {
+                    if (call.argument<Boolean>("on") == true) {
+                        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                    result.success(null)
+                } else {
+                    result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "audio_guide/network")
             .setMethodCallHandler { call, result ->
                 if (call.method == "isUnmetered") {

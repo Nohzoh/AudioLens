@@ -371,6 +371,8 @@
   "nanoLabRunPipeline": "Run full pipeline",
   "nanoLabCompareModels": "Compare the {count} installed models",
   "nanoLabComparing": "Comparing…",
+  "nanoLabCompareStoppedQuota": "Comparison stopped: AICore limits the number of requests. Try again in a few minutes.",
+  "nanoLabCompareStoppedBackground": "Comparison stopped: the app went to the background. Keep it open during the comparison.",
   "nanoLabOptTitleLookup": "Wikipedia facts on the title",
   "nanoLabOptLocationFirst": "Place first in the prompt",
   "nanoLabOptFullPrevious": "Full segment 1 for the rest",

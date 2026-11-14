@@ -149,18 +149,56 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
     if (variants.length < 2) return;
     final previous = _variant;
     setState(() => _comparing = true);
+    await _keepScreenOn(true);
     AppLogger.ai('Nano Lab: comparing ${variants.length} models');
-    for (final v in variants) {
+    String? stopReason;
+    for (var i = 0; i < variants.length; i++) {
       if (!mounted || !_comparing) break;
-      setState(() => _variant = v);
+      setState(() => _variant = variants[i]);
+      // Back-to-back requests run into AICore's per-app quota
+      // ([ErrorCode 9]); a short pause between models avoids most of it.
+      if (i > 0) await Future<void>.delayed(const Duration(seconds: 3));
       await _runPipeline();
+      var error = _pipelineRuns.isEmpty ? null : _pipelineRuns.last.error;
+      if (error != null && error.contains('ErrorCode 9')) {
+        AppLogger.ai('Nano Lab: quota hit, waiting before one retry');
+        await Future<void>.delayed(const Duration(seconds: 30));
+        if (!mounted || !_comparing) break;
+        await _runPipeline();
+        error = _pipelineRuns.isEmpty ? null : _pipelineRuns.last.error;
+        if (error != null && error.contains('ErrorCode 9')) {
+          stopReason = 'quota';
+          break;
+        }
+      }
+      if (error != null && error.contains('arrière-plan')) {
+        // The app lost the foreground: every next model would fail too.
+        stopReason = 'background';
+        break;
+      }
     }
-    if (mounted) {
-      setState(() {
-        _comparing = false;
-        _variant = previous;
-      });
+    await _keepScreenOn(false);
+    if (!mounted) return;
+    setState(() {
+      _comparing = false;
+      _variant = previous;
+    });
+    if (stopReason != null) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+        content: Text(stopReason == 'quota'
+            ? l10n.nanoLabCompareStoppedQuota
+            : l10n.nanoLabCompareStoppedBackground),
+      ));
     }
+  }
+
+  static const _screenChannel = MethodChannel('audio_guide/screen');
+
+  Future<void> _keepScreenOn(bool on) async {
+    try {
+      await _screenChannel.invokeMethod('keepOn', {'on': on});
+    } catch (_) {}
   }
 
   bool _comparing = false;
