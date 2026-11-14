@@ -603,7 +603,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     val model = if (config != null) newClient(config) else sharedModel!!
                     try {
                         val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
-                        val bitmap = BitmapFactory.decodeFile(imagePath, opts)
+                        val bitmap = decodeUpright(imagePath, opts)
                             ?: throw Exception("Cannot decode image")
 
                         // Segment 1: Visual description with image
@@ -755,7 +755,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             }
                         }
                         val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
-                        val bitmap = BitmapFactory.decodeFile(imagePath, opts)
+                        val bitmap = decodeUpright(imagePath, opts)
                             ?: throw Exception("Cannot decode image")
 
                         currentSegment = 1
@@ -898,7 +898,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         var bitmap: android.graphics.Bitmap? = null
                         val req = if (imagePath != null) {
                             val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
-                            bitmap = BitmapFactory.decodeFile(imagePath, opts)
+                            bitmap = decodeUpright(imagePath, opts)
                                 ?: throw Exception("Cannot decode image")
                             generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
                                 this.maxOutputTokens = rawMaxOutputTokens
@@ -930,5 +930,41 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
             else -> result.notImplemented()
         }
+    }
+}
+
+/**
+ * Decodes a photo the way a viewer shows it. BitmapFactory ignores the
+ * EXIF orientation, so a portrait photo (stored sideways by most cameras)
+ * reached the model lying on its side: field runs described a painting
+ * as an "inverted portrait" and never read its label.
+ */
+private fun decodeUpright(path: String, opts: BitmapFactory.Options): Bitmap? {
+    val bitmap = BitmapFactory.decodeFile(path, opts) ?: return null
+    val orientation = try {
+        android.media.ExifInterface(path).getAttributeInt(
+            android.media.ExifInterface.TAG_ORIENTATION,
+            android.media.ExifInterface.ORIENTATION_NORMAL
+        )
+    } catch (e: Exception) {
+        android.media.ExifInterface.ORIENTATION_NORMAL
+    }
+    val matrix = android.graphics.Matrix()
+    when (orientation) {
+        android.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        android.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        android.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        android.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+        android.media.ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+        android.media.ExifInterface.ORIENTATION_TRANSPOSE -> { matrix.postRotate(90f); matrix.postScale(-1f, 1f) }
+        android.media.ExifInterface.ORIENTATION_TRANSVERSE -> { matrix.postRotate(270f); matrix.postScale(-1f, 1f) }
+        else -> return bitmap
+    }
+    return try {
+        val upright = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (upright !== bitmap) bitmap.recycle()
+        upright
+    } catch (e: OutOfMemoryError) {
+        bitmap
     }
 }
