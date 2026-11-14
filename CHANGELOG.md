@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🐛 - **Museum photos: the guide describes the exhibit, not the town** (issue #595)
-  - **Verified**: 2026-11-14 (PR #PRNUM)
+  - **Verified**: 2026-11-14 (PR #596)
   - **What was done**: from the 2026-11-14 field benchmark (Musée du Colombier): Wikipedia name-search results geotagged more than 15 km away are dropped (a Swiss « Colombier » had come in), statistical-area articles always go and the town's own article goes when a named place is identified; in a museum or gallery only articles about the place itself stay, and the model is told the photo most likely shows an exhibit, to describe it rather than the town, and not to give a title, author or date it cannot read on the label. Parasite phrases (« Absolument. », « Voici une suite possible… : », a passage wrapped in straight quotes) are removed before reading; the Nano conclusion no longer says « ce lieu » for an artwork; the lab comparison retries once on an AICore compute error.
 
 - [x] 🐛 - **Gemini Nano sees portrait photos upright** (issue #592)
