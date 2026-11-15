@@ -1,3 +1,3 @@
-• Cartels et inscriptions : le texte de la photo est désormais lu par reconnaissance de texte sur l'appareil, puis transmis au modèle embarqué (Gemini Nano), qui n'invente plus titre, auteur ou date.
-• Labo Nano : les derniers réglages (photo, position, modèle, options) sont mémorisés ; bouton « Effacer les résultats » ; l'export indique le texte lu et la taille d'image envoyée.
-• Guillemets des titres mieux préservés.
+• Cartels : le modèle embarqué distingue l'auteur du titre de l'œuvre ; chaque ligne lue est vérifiée sur Wikipédia, même avec quelques lettres mal lues, pour corriger l'orthographe et apporter des faits.
+• Œuvres de musée sans information fiable : le guide s'arrête après la description au lieu d'inventer un contexte.
+• Nano : nouvel essai automatique avec une image plus petite si le modèle échoue.

@@ -1,3 +1,3 @@
-• Labels and inscriptions: text on the photo is now read by on-device text recognition and passed to the on-device model (Gemini Nano), which no longer makes up a title, author or date.
-• Nano lab: last settings (photo, position, model, options) are remembered; "Clear results" button; the export records the text read and the image size sent.
-• Quotation marks around titles are better preserved.
+• Labels: the on-device model tells the author from the work's title; each line read is checked on Wikipedia, even with a few misread letters, to fix the spelling and bring facts.
+• Museum works with no reliable information: the guide stops after the description instead of making up context.
+• Nano: automatic retry with a smaller image when the model fails.
