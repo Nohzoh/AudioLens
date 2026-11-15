@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🏷️ - **Labels read by text recognition** (issue #608)
-  - **Verified**: 2026-11-15 (PR #PRNUM)
+  - **Verified**: 2026-11-15 (PR #611)
   - **What was done**: On-device text recognition (ML Kit) now reads the photo's label or inscription and gives that text to Gemini Nano, which may only take a title, author or date from it (`gemini_nano_label_ocr`). The lab gets an OCR toggle; the export records `label_text`, `label_ocr_ms`, the image size really sent (`image_sent_size`, #604) and the effective `image_max_side`. Quoted titles are no longer mangled when segments are joined (#606).
 
 - [x] 🧪 - **Nano lab remembers its settings** (issue #609)
