@@ -39,7 +39,10 @@ String cleanMarkdown(String text) {
           '')
       // #595: a whole passage wrapped in straight quotes (the model
       // "quoting" its own continuation); a short quoted phrase is kept.
-      .replaceAllMapped(RegExp(r'"([^"\n]{80,})"'), (m) => m.group(1)!)
+      // #606: quotes are paired in order, so the gap between two short
+      // quoted titles is not mistaken for a long quoted passage.
+      .replaceAllMapped(RegExp(r'"([^"\n]*)"'),
+          (m) => m.group(1)!.length >= 80 ? m.group(1)! : m.group(0)!)
       .replaceAll(RegExp(r'\n{3,}'), '\n\n')
       .trim();
   result = _dropPlaceholderSentences(result);

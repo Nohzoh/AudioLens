@@ -125,6 +125,10 @@ Map<String, dynamic> _runToJson(NanoLabRun run) {
     'max_output_tokens': run.maxOutputTokens,
     'temperature': r?.temperatureUsed ?? run.temperature,
     'prompt_options': run.options.toJson(),
+    // #604, #608
+    'image_sent_size': r?.imageSentSize,
+    'label_text': r?.labelText,
+    'label_ocr_ms': r?.labelOcrMs,
     'gps': run.latitude != null && run.longitude != null
         ? {'latitude': run.latitude, 'longitude': run.longitude}
         : null,

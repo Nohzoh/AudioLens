@@ -122,6 +122,8 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   /// #601: image size given to the model; null = production's.
   int? _optImageMaxSide;
   bool _optTitleLookup = RemoteConfigService.current.geminiNanoTitleLookup;
+  // #608
+  bool _optLabelOcr = RemoteConfigService.current.geminiNanoLabelOcr;
   bool _exporting = false;
 
   @override
@@ -149,6 +151,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       _optLocationFirst = p.locationFirst;
       _optFullPrevious = p.fullPrevious;
       _optTitleLookup = p.titleLookup ?? _optTitleLookup;
+      _optLabelOcr = p.labelOcr ?? _optLabelOcr;
       _optImageMaxSide = p.imageMaxSide;
       _compareRounds = p.compareRounds;
       _image = image ?? _image;
@@ -167,6 +170,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
         locationFirst: _optLocationFirst,
         fullPrevious: _optFullPrevious,
         titleLookup: _optTitleLookup,
+        labelOcr: _optLabelOcr,
         imageMaxSide: _optImageMaxSide,
         compareRounds: _compareRounds,
         imagePath: _image?.path,
@@ -455,7 +459,10 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       locationFirst: _optLocationFirst,
       fullPreviousText: _optFullPrevious,
       titleLookup: _optTitleLookup,
-      imageMaxSide: _optImageMaxSide,
+      // #604: the value really used, not "unset".
+      imageMaxSide:
+          _optImageMaxSide ?? RemoteConfigService.current.geminiNanoImageMaxSide,
+      labelOcr: _optLabelOcr,
     );
     // #460: same style/language production passes (analysis_runner.dart),
     // so the lab runs the prompts a real analysis would.
@@ -795,6 +802,11 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
             label: Text(l10n.nanoLabOptTitleLookup),
             selected: _optTitleLookup,
             onSelected: (v) => setState(() => _optTitleLookup = v),
+          ),
+          FilterChip(
+            label: Text(l10n.nanoLabOptLabelOcr),
+            selected: _optLabelOcr,
+            onSelected: (v) => setState(() => _optLabelOcr = v),
           ),
           FilterChip(
             label: Text(l10n.nanoLabOptLocationFirst),

@@ -37,6 +37,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   share_plus: ^13.3.0
+  google_mlkit_text_recognition: ^1.0.3
 
 dev_dependencies:
   flutter_test:
