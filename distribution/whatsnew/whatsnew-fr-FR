@@ -1,3 +1,3 @@
-• Photos plus nettes : enregistrées en 2560 px, et le modèle embarqué (Gemini Nano) reçoit une image deux fois plus détaillée pour mieux lire cartels et inscriptions.
-• Nano : les faits Wikipédia ne sont repris que si le titre correspond exactement à l'œuvre ; les parties suivantes n'inventent plus d'objets absents de la photo.
-• Labo Nano : réglage de la taille d'image (640 / 1280 / 2560), pause automatique en cas de quota.
+• Cartels et inscriptions : le texte de la photo est désormais lu par reconnaissance de texte sur l'appareil, puis transmis au modèle embarqué (Gemini Nano), qui n'invente plus titre, auteur ou date.
+• Labo Nano : les derniers réglages (photo, position, modèle, options) sont mémorisés ; bouton « Effacer les résultats » ; l'export indique le texte lu et la taille d'image envoyée.
+• Guillemets des titres mieux préservés.
