@@ -152,6 +152,7 @@ Map<String, dynamic> _runToJson(NanoLabRun run) {
     'low_memory_after': r?.lowMemoryAfter,
     'seg1_mode': r?.seg1Mode,
     'seg1_finish_reason': r?.seg1FinishReason,
+    'seg1_fallback_reason': r?.seg1FallbackReason,
     'segments': r == null ? null : [r.seg1Output, r.seg2Output, r.seg3Output],
     'error': run.error,
   };

@@ -391,10 +391,11 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         temperature: Float?,
         locationFirst: Boolean = false,
         labelText: String? = null,
+        structured: Boolean = true,
     ): Seg1Result {
-        var fallbackReason: String? = null
+        var fallbackReason: String? = if (structured) null else "structured skipped after a compute error"
         var finishReason: String? = null
-        val structuredAvailable = try {
+        val structuredAvailable = structured && try {
             model.isStructuredOutputFeatureAvailable()
         } catch (e: Exception) {
             fallbackReason = "availability check failed: ${e.javaClass.simpleName}"
@@ -432,9 +433,43 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             this.maxOutputTokens = maxTokens
             temperature?.let { this.temperature = it }
         }
-        val text = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req) }
-            .candidates.firstOrNull()?.text?.trim() ?: ""
+        val text = try {
+            withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req) }
+                .candidates.firstOrNull()?.text?.trim() ?: ""
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // #607: say which call failed and what came before it.
+            throw Exception("${e.message} [segment 1, text call; before: ${fallbackReason ?: "nothing"}]", e)
+        }
         return Seg1Result(prompt, null, text, "text", finishReason, fallbackReason)
+    }
+
+    /**
+     * #607: nano-v4-full answers a plain image prompt but the cascade's
+     * first segment failed at once with COMPUTE_ERROR, at any image size:
+     * the typed (structured) call fails and the text call that follows on
+     * the same client fails too. On that error, segment 1 is run again
+     * without the typed call, on a fresh client when the variant has its
+     * own. Returns the result and the client to go on with.
+     */
+    private suspend fun runSeg1Resilient(
+        model: GenerativeModel,
+        config: GenerationConfig?,
+        run: suspend (GenerativeModel, Boolean) -> Seg1Result,
+    ): Pair<Seg1Result, GenerativeModel> {
+        try {
+            return run(model, true) to model
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (e.message?.contains("COMPUTE_ERROR") != true) throw e
+        }
+        val retryModel = if (config != null) {
+            model.close()
+            newClient(config)
+        } else model
+        return run(retryModel, false) to retryModel
     }
 
     // #466: asks the Dart side for verified facts about segment 1's
@@ -642,7 +677,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 var currentSegment = 0
 
                 scope.launch {
-                    val model = if (config != null) newClient(config) else sharedModel!!
+                    var model = if (config != null) newClient(config) else sharedModel!!
                     try {
                         val bitmap = decodeForModel(imagePath, imageMaxSide)
                             ?: throw Exception("Cannot decode image")
@@ -650,12 +685,14 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 1: Visual description with image
                         // (#434: typed title/text when available).
                         currentSegment = 1
-                        val (seg1Result, _) = withSmallerImageOnComputeError(bitmap) {
+                        val (seg1Result, liveModel) = runSeg1Resilient(model, config) { m, structured ->
                             runSeg1(
-                                model, it, locationContext, style, language,
-                                nanoMaxOutputTokens, nanoTemperature, labelText = labelText
+                                m, bitmap, locationContext, style, language,
+                                nanoMaxOutputTokens, nanoTemperature,
+                                labelText = labelText, structured = structured
                             )
                         }
+                        model = liveModel
                         val seg1 = seg1Result.text
 
                         bitmap.recycle()
@@ -788,7 +825,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 var currentSegment = 0
 
                 scope.launch {
-                    val model = if (config != null) newClient(config) else sharedModel!!
+                    var model = if (config != null) newClient(config) else sharedModel!!
                     // #477: sample available system memory while the
                     // cascade runs; the lowest reading gives the peak cost.
                     val availMemBefore = availMemMb()
@@ -807,13 +844,15 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                         currentSegment = 1
                         val seg1Start = System.nanoTime()
-                        // #604, #607: the size the model really accepted.
-                        val (seg1Result, imageSentSize) = withSmallerImageOnComputeError(bitmap) {
+                        // #604: what the model was given.
+                        val imageSentSize = "${bitmap.width}x${bitmap.height}"
+                        val (seg1Result, liveModel) = runSeg1Resilient(model, config) { m, structured ->
                             runSeg1(
-                                model, it, locationContext, style, language,
-                                nanoMaxOutputTokens, nanoTemperature, locationFirst, labelText
+                                m, bitmap, locationContext, style, language,
+                                nanoMaxOutputTokens, nanoTemperature, locationFirst, labelText, structured
                             )
                         }
+                        model = liveModel
                         val seg1Ms = (System.nanoTime() - seg1Start) / 1_000_000
                         val seg1Prompt = seg1Result.prompt
                         val seg1 = seg1Result.text
@@ -1051,30 +1090,5 @@ private fun decodeForModel(path: String, maxSide: Int): Bitmap? {
         scaled
     } catch (e: OutOfMemoryError) {
         bitmap
-    }
-}
-
-/**
- * #607: nano-v4-full fails at once with COMPUTE_ERROR on a 1280 px image
- * it accepted at 640 px. On that error, [block] is retried once with the
- * image at half size. Returns the block's result and the "WxH" used.
- */
-private suspend fun <T> withSmallerImageOnComputeError(
-    bitmap: Bitmap,
-    block: suspend (Bitmap) -> T,
-): Pair<T, String> {
-    try {
-        return block(bitmap) to "${bitmap.width}x${bitmap.height}"
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        val side = maxOf(bitmap.width, bitmap.height)
-        if (e.message?.contains("COMPUTE_ERROR") != true || side <= 640) throw e
-    }
-    val half = Bitmap.createScaledBitmap(bitmap, bitmap.width / 2, bitmap.height / 2, true)
-    try {
-        return block(half) to "${half.width}x${half.height}"
-    } finally {
-        if (half !== bitmap) half.recycle()
     }
 }
