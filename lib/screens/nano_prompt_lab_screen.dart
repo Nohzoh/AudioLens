@@ -174,7 +174,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
 
   void _savePrefs() {
     _currentPrefs().save().catchError((Object e) {
-      AppLogger.ai('Nano Lab: settings not saved (${sanitizeError(e)})');
+      AppLogger.ai('Nano Lab: settings not saved (${sanitizeError(e.toString())})');
     });
   }
 
@@ -328,7 +328,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
       final ext = xFile.path.contains('.') ? xFile.path.split('.').last : 'jpg';
       file = await file.copy('${dir.path}/photo_${DateTime.now().millisecondsSinceEpoch}.$ext');
     } catch (e) {
-      AppLogger.ai('Nano Lab: photo not kept for next time (${sanitizeError(e)})');
+      AppLogger.ai('Nano Lab: photo not kept for next time (${sanitizeError(e.toString())})');
     }
     if (!mounted) return;
     setState(() => _image = file);
