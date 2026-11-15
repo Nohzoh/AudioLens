@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🧪 - **Nano lab remembers its settings** (issue #609)
-  - **Verified**: 2026-11-15 (PR #PRNUM)
+  - **Verified**: 2026-11-15 (PR #610)
   - **What was done**: The Nano lab restores its last settings when reopened (mode, model, prompt, photo, coordinates, options, image size, rounds); results are not kept, and a "Clear results" button empties them so the next export only holds new runs.
 
 - [x] 📷 - **Sharper photos for the on-device model** (issue #601)
