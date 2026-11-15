@@ -8,6 +8,7 @@ import '../utils/error_sanitizer.dart';
 import '../utils/script_cleanup.dart';
 import '../utils/script_validation.dart';
 import 'ai_service.dart';
+import 'label_text_reader.dart';
 import 'remote_config_service.dart';
 import 'wikipedia_service.dart';
 
@@ -134,11 +135,16 @@ class NanoPromptOptions {
   /// follow the remote configuration, as production does.
   final int? imageMaxSide;
 
+  /// #608: read the photo's text (label, plaque) with text recognition
+  /// and give it to the model. Null = follow the remote configuration.
+  final bool? labelOcr;
+
   const NanoPromptOptions({
     this.locationFirst = false,
     this.fullPreviousText = false,
     this.titleLookup,
     this.imageMaxSide,
+    this.labelOcr,
   });
 
   Map<String, dynamic> toJson() => {
@@ -146,6 +152,7 @@ class NanoPromptOptions {
         'full_previous_text': fullPreviousText,
         'title_lookup': titleLookup,
         'image_max_side': imageMaxSide,
+        'label_ocr': labelOcr,
       };
 }
 
@@ -201,6 +208,14 @@ class NanoDebugCascadeResult {
   /// the caller passed none).
   final double? temperatureUsed;
 
+  /// #608: text recognised on the photo and given to the model (null:
+  /// recognition off, empty: nothing readable), and the time it took.
+  final String? labelText;
+  final int? labelOcrMs;
+
+  /// #604: size of the image the model received, "WIDTHxHEIGHT".
+  final String? imageSentSize;
+
   int? get peakMemoryDropMb => availMemBeforeMb != null && minAvailMemMb != null
       ? availMemBeforeMb! - minAvailMemMb!
       : null;
@@ -228,6 +243,9 @@ class NanoDebugCascadeResult {
     this.lowMemoryAfter,
     this.productionText,
     this.temperatureUsed,
+    this.labelText,
+    this.labelOcrMs,
+    this.imageSentSize,
   });
 }
 
@@ -331,6 +349,10 @@ class GeminiNanoService implements AIService {
   /// tests; defaults to [lookupWikipediaFacts].
   @visibleForTesting
   static Future<String?> Function(String title) titleFactsLookup = lookupWikipediaFacts;
+
+  /// #608: text visible on the photo, or null. Replaceable in tests.
+  @visibleForTesting
+  static Future<String?> Function(File image) readLabelText = LabelTextReader().read;
 
   /// #466: calls from the native side into Dart (only `lookupTitleFacts`,
   /// between segments 1 and 2). Never throws: no facts is a normal
@@ -459,6 +481,12 @@ class GeminiNanoService implements AIService {
       if (language != null) args['language'] = language;
       // #467: look up what the user named rather than Nano's own guess.
       if (userHint != null && userHint.isNotEmpty) args['lookupQuery'] = userHint;
+      // #608: empty = recognition ran and read nothing.
+      if (config.geminiNanoLabelOcr) {
+        final label = await readLabelText(imageFile);
+        AppLogger.ai('Nano: label text ${label != null ? 'read (${label.length} chars)' : 'not found'}');
+        args['labelText'] = label ?? '';
+      }
 
       // The 3 segments (visual description, historical context,
       // conclusion) run sequentially inside one native describeImage
@@ -608,6 +636,12 @@ class GeminiNanoService implements AIService {
       args['locationFirst'] = options.locationFirst;
       args['fullPrevious'] = options.fullPreviousText;
       args['imageMaxSide'] = options.imageMaxSide ?? config.geminiNanoImageMaxSide;
+      int? labelOcrMs;
+      if (options.labelOcr ?? config.geminiNanoLabelOcr) {
+        final watch = Stopwatch()..start();
+        args['labelText'] = await readLabelText(imageFile) ?? '';
+        labelOcrMs = watch.elapsedMilliseconds;
+      }
 
       final result =
           await _channel.invokeMapMethod<String, dynamic>('describeImageDebug', args);
@@ -639,6 +673,9 @@ class GeminiNanoService implements AIService {
             ? cleanMarkdown(result['productionText'] as String)
             : null,
         temperatureUsed: (args['temperature'] as num?)?.toDouble(),
+        labelText: args['labelText'] as String?,
+        labelOcrMs: labelOcrMs,
+        imageSentSize: result['imageSentSize'] as String?,
       );
     } on PlatformException catch (e) {
       if (e.message?.contains('Background usage is blocked') ?? false) {

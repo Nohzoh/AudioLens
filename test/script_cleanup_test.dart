@@ -68,6 +68,16 @@ void main() {
       }
     });
 
+    // #606
+    test('short quoted titles keep their quotes even when far apart', () {
+      const text = 'Le cartel indique "Madame Méduse" par un artiste contemporain, '
+          'une œuvre récente que le musée présente ici au public sous le nom de "Madame Méduse", '
+          'dans la grande salle.';
+      expect(cleanMarkdown(text), text);
+      final long = 'a' * 90;
+      expect(cleanMarkdown('Il dit "$long" puis "court".'), 'Il dit $long puis "court".');
+    });
+
     test('trims leading/trailing whitespace', () {
       expect(cleanMarkdown('   Texte avec espaces.   '), 'Texte avec espaces.');
     });

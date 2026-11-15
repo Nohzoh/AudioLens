@@ -18,6 +18,7 @@ class NanoLabPrefs {
   final bool locationFirst;
   final bool fullPrevious;
   final bool? titleLookup;
+  final bool? labelOcr;
   final int? imageMaxSide;
   final int compareRounds;
 
@@ -36,6 +37,7 @@ class NanoLabPrefs {
     this.locationFirst = false,
     this.fullPrevious = false,
     this.titleLookup,
+    this.labelOcr,
     this.imageMaxSide,
     this.compareRounds = 1,
     this.imagePath,
@@ -53,6 +55,7 @@ class NanoLabPrefs {
         'location_first': locationFirst,
         'full_previous': fullPrevious,
         'title_lookup': titleLookup,
+        'label_ocr': labelOcr,
         'image_max_side': imageMaxSide,
         'compare_rounds': compareRounds,
         'image_path': imagePath,
@@ -77,6 +80,7 @@ class NanoLabPrefs {
       locationFirst: json['location_first'] == true,
       fullPrevious: json['full_previous'] == true,
       titleLookup: json['title_lookup'] as bool?,
+      labelOcr: json['label_ocr'] as bool?,
       imageMaxSide: json['image_max_side'] as int?,
       compareRounds: rounds is int && rounds >= 1 ? rounds : 1,
       imagePath: json['image_path'] as String?,

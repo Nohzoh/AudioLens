@@ -174,6 +174,7 @@ void main() {
       'full_previous_text': false,
       'title_lookup': null,
       'image_max_side': null,
+      'label_ocr': null,
     });
     expect(results[1]['prompt_options'],
         {
@@ -181,6 +182,7 @@ void main() {
       'full_previous_text': true,
       'title_lookup': false,
       'image_max_side': null,
+      'label_ocr': null,
     });
   });
 

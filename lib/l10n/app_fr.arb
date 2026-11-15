@@ -408,6 +408,7 @@
   "nanoLabCompareStoppedQuota": "Comparaison arrêtée : AICore limite le nombre de requêtes. Réessayez dans quelques minutes.",
   "nanoLabCompareStoppedBackground": "Comparaison arrêtée : l'appli est passée en arrière-plan. Gardez-la ouverte pendant la comparaison.",
   "nanoLabOptTitleLookup": "Faits Wikipedia sur le titre",
+  "nanoLabOptLabelOcr": "Lecture du cartel (OCR)",
   "nanoLabOptLocationFirst": "Lieu en tête du prompt",
   "nanoLabOptFullPrevious": "Segment 1 complet pour la suite",
   "nanoLabImageSize": "Taille de l'image donnée au modèle (px)",

@@ -24,3 +24,11 @@
 # #434: ML Kit structured output reads the @Generable classes (and the
 # schema KSP generates next to them) by reflection — keep them whole.
 -keep class io.nohzoh.audiolens.nano.** { *; }
+
+# #608: google_mlkit_text_recognition references the optional script
+# recognizers (not bundled; only Latin is used) — without these R8 fails
+# the release build on missing classes.
+-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**

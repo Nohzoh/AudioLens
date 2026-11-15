@@ -119,6 +119,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // #470 (lab-only for now): state the place as its own leading
             // sentence instead of a parenthetical inside the instruction.
             locationFirst: Boolean = false,
+            // #608: text read on the photo by on-device text recognition.
+            labelText: String? = null,
         ): String {
             // #171: locationContext already arrives pre-truncated for
             // Nano's budget (see GeminiNanoService._maxLocationContextChars
@@ -156,7 +158,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             } else {
                 "Commence par un titre court entre crochets (3 a 6 mots, ex: [Le Colisee de Rome]), sur sa propre ligne. Si tu reconnais une oeuvre, un monument ou un lieu precis, le titre est son nom exact. Puis,"
             }
-            return "${leadingLocation}Tu es un guide audio culturel. $titleDirective sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain. $sentences.$languageDirective"
+            return "${leadingLocation}Tu es un guide audio culturel. $titleDirective sans phrase d'introduction, decris ce que tu vois sur cette image$loc avec ${styleTone(style)}. Ne mentionne pas de dates ou chiffres precis dont tu n'es pas certain.${seg1LabelHint(labelText)} $sentences.$languageDirective"
         }
 
         // #434: typed finish reasons, named for the Dart-side logs.
@@ -210,6 +212,16 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             return if (kept.isBlank()) "" else " Contexte du lieu : $kept."
         }
 
+        // #608: Nano's own reading of a label changes from run to run
+        // and is stated with confidence when wrong; this text comes from
+        // text recognition instead.
+        // null: recognition off; blank: it ran and found nothing.
+        private fun seg1LabelHint(labelText: String?): String =
+            if (labelText == null) "" else if (labelText.isNotBlank()) " Texte lu automatiquement sur la photo (cartel ou inscription ; la lecture peut contenir des erreurs) : \"$labelText\". Si c'est le cartel du sujet, reprends-en le titre et l'auteur tels quels ; ne donne aucun titre, auteur ni date qui n'y figure pas." else " Aucun texte n'a ete lu sur la photo : ne pretends pas lire un cartel, un panneau ou une inscription."
+
+        private fun followUpLabelHint(labelText: String?): String =
+            if (!labelText.isNullOrBlank()) " Texte lu sur la photo (cartel ou inscription) : \"$labelText\"." else ""
+
         private const val NO_PHOTO_RULE = " Tu ne vois pas la photo : n'ajoute aucun detail visuel nouveau, ne decris aucun autre objet, n'ecris ni crochets ni indications de voix ou de son."
 
         private val bracketTitle = Regex("""^\s*\[([^\]]{1,80})\]""")
@@ -228,6 +240,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // #468 (lab-only for now): pass [previousText] whole instead
             // of its last 200 characters; the caller decides what it holds.
             fullPrevious: Boolean = false,
+            labelText: String? = null,
         ): String {
             val excerpt = if (fullPrevious) previousText else previousText.takeLast(200)
             val focus = when (style) {
@@ -238,7 +251,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 else -> "le contexte historique et culturel"
             }
             val sentences = if (style == "concise") "1 phrase" else "2-3 phrases qui s'enchainent naturellement"
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${followUpLocationHint(locationContext)}$NO_PHOTO_RULE Continue avec $focus en $sentences, en un seul paragraphe, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${followUpLabelHint(labelText)}${followUpLocationHint(locationContext)}$NO_PHOTO_RULE Continue avec $focus en $sentences, en un seul paragraphe, en te basant sur les faits reels ci-dessus plutot que de rester generique. Pas de repetition."
         }
 
         fun buildSeg3Prompt(
@@ -249,6 +262,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             // #468 (lab-only for now): pass [previousText] whole instead
             // of its last 200 characters; the caller decides what it holds.
             fullPrevious: Boolean = false,
+            labelText: String? = null,
         ): String {
             val excerpt = if (fullPrevious) previousText else previousText.takeLast(200)
             val sentences = if (style == "concise") "1 phrase" else "2 phrases"
@@ -260,7 +274,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // "Ce lieu…".
                 "sur ce qui rend unique le sujet dont tu parles (l'oeuvre, le monument ou le lieu) et l'emotion qu'il inspire, en le nommant par ce qu'il est"
             }
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${followUpLocationHint(locationContext)}$NO_PHOTO_RULE Conclus en $sentences $ending, en un seul paragraphe, sans repeter ce qui a deja ete dit."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${followUpLabelHint(labelText)}${followUpLocationHint(locationContext)}$NO_PHOTO_RULE Conclus en $sentences $ending, en un seul paragraphe, sans repeter ce qui a deja ete dit."
         }
     }
 
@@ -370,6 +384,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         maxTokens: Int,
         temperature: Float?,
         locationFirst: Boolean = false,
+        labelText: String? = null,
     ): Seg1Result {
         var fallbackReason: String? = null
         var finishReason: String? = null
@@ -380,7 +395,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             false
         }
         if (structuredAvailable) {
-            val prompt = buildSeg1Prompt(locationContext, style, language, structured = true, locationFirst = locationFirst)
+            val prompt = buildSeg1Prompt(locationContext, style, language, structured = true, locationFirst = locationFirst, labelText = labelText)
             try {
                 val base = generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
                     this.maxOutputTokens = maxTokens
@@ -406,7 +421,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             fallbackReason = "structured output unavailable"
         }
 
-        val prompt = buildSeg1Prompt(locationContext, style, language, locationFirst = locationFirst)
+        val prompt = buildSeg1Prompt(locationContext, style, language, locationFirst = locationFirst, labelText = labelText)
         val req = generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
             this.maxOutputTokens = maxTokens
             temperature?.let { this.temperature = it }
@@ -583,6 +598,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // #467: a name the user gave, looked up instead of
                 // segment 1's guessed title.
                 val lookupQuery = call.argument<String>("lookupQuery")
+                val labelText = call.argument<String>("labelText")
                 val language = call.argument<String>("language")
                 // #170: previously hardcoded (256, no temperature at all —
                 // ML Kit GenAI's own unstated default applied). Now sent
@@ -629,7 +645,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         currentSegment = 1
                         val seg1Result = runSeg1(
                             model, bitmap, locationContext, style, language,
-                            nanoMaxOutputTokens, nanoTemperature
+                            nanoMaxOutputTokens, nanoTemperature, labelText = labelText
                         )
                         val seg1 = seg1Result.text
 
@@ -643,7 +659,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 2: Historical context (text only, faster)
                         currentSegment = 2
                         val req2 = generateContentRequest(
-                            TextPart(buildSeg2Prompt(seg1, style, locationContext, facts))
+                            TextPart(buildSeg2Prompt(seg1, style, locationContext, facts, labelText = labelText))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -654,7 +670,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 3: Conclusion
                         currentSegment = 3
                         val req3 = generateContentRequest(
-                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext, facts))
+                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext, facts, labelText = labelText))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -742,6 +758,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // describeImage never sets them.
                 val locationFirst = call.argument<Boolean>("locationFirst") ?: false
                 val fullPrevious = call.argument<Boolean>("fullPrevious") ?: false
+                val labelText = call.argument<String>("labelText")
                 val imageMaxSide = call.argument<Int>("imageMaxSide") ?: DEFAULT_IMAGE_MAX_SIDE
                 // #431: optional model variant (Nano Prompt Lab selector).
                 val config = variantConfig(call)
@@ -780,11 +797,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val seg1Start = System.nanoTime()
                         val seg1Result = runSeg1(
                             model, bitmap, locationContext, style, language,
-                            nanoMaxOutputTokens, nanoTemperature, locationFirst
+                            nanoMaxOutputTokens, nanoTemperature, locationFirst, labelText
                         )
                         val seg1Ms = (System.nanoTime() - seg1Start) / 1_000_000
                         val seg1Prompt = seg1Result.prompt
                         val seg1 = seg1Result.text
+                        // #604: what the model was really given.
+                        val imageSentSize = "${bitmap.width}x${bitmap.height}"
 
                         bitmap.recycle()
 
@@ -797,7 +816,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         val titleLookupMs = (System.nanoTime() - lookupStart) / 1_000_000
 
                         currentSegment = 2
-                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext, facts, fullPrevious)
+                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext, facts, fullPrevious, labelText)
                         val req2 = generateContentRequest(TextPart(seg2Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -811,7 +830,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // With fullPrevious: all of segment 1 (it names the
                         // subject) plus the tail of segment 2.
                         val seg3Previous = if (fullPrevious) "$seg1 ${seg2.takeLast(200)}" else "$seg1 $seg2"
-                        val seg3Prompt = buildSeg3Prompt(seg3Previous, style, locationContext, facts, fullPrevious)
+                        val seg3Prompt = buildSeg3Prompt(seg3Previous, style, locationContext, facts, fullPrevious, labelText)
                         val req3 = generateContentRequest(TextPart(seg3Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -865,7 +884,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             "availMemBeforeMb" to availMemBefore,
                             "minAvailMemMb" to minAvailMem,
                             "lowMemoryAfter" to lowMemoryAfter,
-                            "productionText" to productionText
+                            "productionText" to productionText,
+                            "imageSentSize" to imageSentSize
                         )
                         withContext(Dispatchers.Main) { result.success(payload) }
                     } catch (e: TimeoutCancellationException) {

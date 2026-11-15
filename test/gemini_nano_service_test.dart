@@ -694,4 +694,38 @@ void main() {
 
     expect(calls.where((c) => c.method == 'initialize'), hasLength(2));
   });
+
+  // #608
+  group('label text', () {
+    final original = GeminiNanoService.readLabelText;
+    tearDown(() => GeminiNanoService.readLabelText = original);
+
+    test('the text read on the photo is passed to the native cascade', () async {
+      GeminiNanoService.readLabelText = (_) async => 'Luis ALVAREZ / Marie-Madeleine';
+      Object? sent;
+      handler = (call) async {
+        if (call.method == 'describeImage') {
+          sent = (call.arguments as Map)['labelText'];
+          return 'Une description generee.';
+        }
+        return true;
+      };
+      await GeminiNanoService().analyzeImage(tempImage());
+      expect(sent, 'Luis ALVAREZ / Marie-Madeleine');
+    });
+
+    test('nothing readable is passed as an empty text', () async {
+      GeminiNanoService.readLabelText = (_) async => null;
+      Object? sent = 'unset';
+      handler = (call) async {
+        if (call.method == 'describeImage') {
+          sent = (call.arguments as Map)['labelText'];
+          return 'Une description generee.';
+        }
+        return true;
+      };
+      await GeminiNanoService().analyzeImage(tempImage());
+      expect(sent, '');
+    });
+  });
 }
