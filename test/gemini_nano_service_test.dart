@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:audiolens/services/label_lookup.dart';
 import 'package:audiolens/services/gemini_nano_service.dart';
 import 'package:audiolens/services/remote_config_service.dart';
 import 'package:audiolens/utils/cancel_token.dart';
@@ -702,6 +703,9 @@ void main() {
 
     test('the text read on the photo is passed to the native cascade', () async {
       GeminiNanoService.readLabelText = (_) async => 'Luis ALVAREZ / Marie-Madeleine';
+      final originalResolve = GeminiNanoService.resolveLabelText;
+      addTearDown(() => GeminiNanoService.resolveLabelText = originalResolve);
+      GeminiNanoService.resolveLabelText = (t) async => ResolvedLabel(t);
       Object? sent;
       handler = (call) async {
         if (call.method == 'describeImage') {
@@ -712,6 +716,26 @@ void main() {
       };
       await GeminiNanoService().analyzeImage(tempImage());
       expect(sent, 'Luis ALVAREZ / Marie-Madeleine');
+    });
+
+    // #614
+    test('confirmed spelling and label facts are passed along', () async {
+      final originalResolve = GeminiNanoService.resolveLabelText;
+      addTearDown(() => GeminiNanoService.resolveLabelText = originalResolve);
+      GeminiNanoService.readLabelText = (_) async => 'Marie Mludeleine';
+      GeminiNanoService.resolveLabelText =
+          (_) async => const ResolvedLabel('Marie Madeleine', '« Marie Madeleine » : disciple.');
+      Map? sent;
+      handler = (call) async {
+        if (call.method == 'describeImage') {
+          sent = call.arguments as Map;
+          return 'Une description generee.';
+        }
+        return true;
+      };
+      await GeminiNanoService().analyzeImage(tempImage());
+      expect(sent?['labelText'], 'Marie Madeleine');
+      expect(sent?['labelFacts'], '« Marie Madeleine » : disciple.');
     });
 
     test('nothing readable is passed as an empty text', () async {

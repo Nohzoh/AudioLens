@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🏷️ - **Labels understood, not just read** (issue #613)
+  - **Verified**: 2026-11-15 (PR #615)
+  - **What was done**: Gemini Nano is told what a label holds (one author, then the work's title); each label line is looked up on Wikipedia with tolerance for misread letters, and a confirmed line gets its correct spelling and facts (#614); for a museum work with no facts the guide stops after the description instead of padding (#605); on COMPUTE_ERROR the first segment is retried with the image at half size (#607).
+
 - [x] 🏷️ - **Labels read by text recognition** (issue #608)
   - **Verified**: 2026-11-15 (PR #611)
   - **What was done**: On-device text recognition (ML Kit) now reads the photo's label or inscription and gives that text to Gemini Nano, which may only take a title, author or date from it (`gemini_nano_label_ocr`). The lab gets an OCR toggle; the export records `label_text`, `label_ocr_ms`, the image size really sent (`image_sent_size`, #604) and the effective `image_max_side`. Quoted titles are no longer mangled when segments are joined (#606).

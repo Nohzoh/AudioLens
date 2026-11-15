@@ -217,10 +217,16 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         // text recognition instead.
         // null: recognition off; blank: it ran and found nothing.
         private fun seg1LabelHint(labelText: String?): String =
-            if (labelText == null) "" else if (labelText.isNotBlank()) " Texte lu automatiquement sur la photo (cartel ou inscription ; la lecture peut contenir des erreurs) : \"$labelText\". Si c'est le cartel du sujet, reprends-en le titre et l'auteur tels quels ; ne donne aucun titre, auteur ni date qui n'y figure pas." else " Aucun texte n'a ete lu sur la photo : ne pretends pas lire un cartel, un panneau ou une inscription."
+            if (labelText == null) "" else if (labelText.isNotBlank()) " Texte lu automatiquement sur la photo (cartel ou inscription, lignes separees par / ; la lecture peut contenir des fautes) : \"$labelText\". Un cartel donne en general l'auteur, puis le titre de l'oeuvre, puis la date et la technique : il n'y a qu'un seul auteur, et le titre n'est pas une personne. Reprends l'auteur et le titre tels quels, ton titre est le titre de l'oeuvre seul ; ne donne aucun titre, auteur ni date qui n'y figure pas et ne dis rien de la vie de l'auteur." else " Aucun texte n'a ete lu sur la photo : ne pretends pas lire un cartel, un panneau ou une inscription."
 
         private fun followUpLabelHint(labelText: String?): String =
-            if (!labelText.isNullOrBlank()) " Texte lu sur la photo (cartel ou inscription) : \"$labelText\"." else ""
+            if (!labelText.isNullOrBlank()) " Cartel lu sur la photo (en general l'auteur, puis le titre de l'oeuvre ; un seul auteur) : \"$labelText\". N'affirme rien sur la vie, l'epoque ou les autres oeuvres de l'auteur qui ne figure pas dans les faits donnes." else ""
+
+        // #605: in a museum, with no encyclopedia facts, the text-only
+        // segments 2 and 3 have nothing true to add and made up a history
+        // for the museum and the artist: the guide stops after segment 1.
+        fun followUpsWouldPad(locationContext: String?, facts: String?): Boolean =
+            facts.isNullOrBlank() && locationContext?.contains("Ce lieu est un musée") == true
 
         private const val NO_PHOTO_RULE = " Tu ne vois pas la photo : n'ajoute aucun detail visuel nouveau, ne decris aucun autre objet, n'ecris ni crochets ni indications de voix ou de son."
 
@@ -599,6 +605,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // segment 1's guessed title.
                 val lookupQuery = call.argument<String>("lookupQuery")
                 val labelText = call.argument<String>("labelText")
+                val labelFacts = call.argument<String>("labelFacts")
                 val language = call.argument<String>("language")
                 // #170: previously hardcoded (256, no temperature at all —
                 // ML Kit GenAI's own unstated default applied). Now sent
@@ -643,18 +650,22 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 1: Visual description with image
                         // (#434: typed title/text when available).
                         currentSegment = 1
-                        val seg1Result = runSeg1(
-                            model, bitmap, locationContext, style, language,
-                            nanoMaxOutputTokens, nanoTemperature, labelText = labelText
-                        )
+                        val (seg1Result, _) = withSmallerImageOnComputeError(bitmap) {
+                            runSeg1(
+                                model, it, locationContext, style, language,
+                                nanoMaxOutputTokens, nanoTemperature, labelText = labelText
+                            )
+                        }
                         val seg1 = seg1Result.text
 
                         bitmap.recycle()
 
                         // #466: facts about what segment 1 named, if any.
-                        val facts = if (titleLookup) {
+                        // #614: facts found from the label come first.
+                        val facts = labelFacts?.takeIf { it.isNotBlank() } ?: if (titleLookup) {
                             lookupTitleFacts(lookupQuery ?: seg1Title(seg1Result.title, seg1))
                         } else null
+                        val skipFollowUps = followUpsWouldPad(locationContext, facts)
 
                         // Segment 2: Historical context (text only, faster)
                         currentSegment = 2
@@ -664,7 +675,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
                         }
-                        val seg2 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
+                        val seg2 = if (skipFollowUps) "" else withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         // Segment 3: Conclusion
@@ -675,7 +686,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
                         }
-                        val seg3 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
+                        val seg3 = if (skipFollowUps) "" else withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         // #286: cleaned+de-duplicated at each step, not
@@ -759,6 +770,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val locationFirst = call.argument<Boolean>("locationFirst") ?: false
                 val fullPrevious = call.argument<Boolean>("fullPrevious") ?: false
                 val labelText = call.argument<String>("labelText")
+                val labelFacts = call.argument<String>("labelFacts")
                 val imageMaxSide = call.argument<Int>("imageMaxSide") ?: DEFAULT_IMAGE_MAX_SIDE
                 // #431: optional model variant (Nano Prompt Lab selector).
                 val config = variantConfig(call)
@@ -795,24 +807,26 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                         currentSegment = 1
                         val seg1Start = System.nanoTime()
-                        val seg1Result = runSeg1(
-                            model, bitmap, locationContext, style, language,
-                            nanoMaxOutputTokens, nanoTemperature, locationFirst, labelText
-                        )
+                        // #604, #607: the size the model really accepted.
+                        val (seg1Result, imageSentSize) = withSmallerImageOnComputeError(bitmap) {
+                            runSeg1(
+                                model, it, locationContext, style, language,
+                                nanoMaxOutputTokens, nanoTemperature, locationFirst, labelText
+                            )
+                        }
                         val seg1Ms = (System.nanoTime() - seg1Start) / 1_000_000
                         val seg1Prompt = seg1Result.prompt
                         val seg1 = seg1Result.text
-                        // #604: what the model was really given.
-                        val imageSentSize = "${bitmap.width}x${bitmap.height}"
 
                         bitmap.recycle()
 
                         // #477: timed apart from the segments — it is
                         // network time, not inference time.
                         val lookupStart = System.nanoTime()
-                        val facts = if (titleLookup) {
+                        val facts = labelFacts?.takeIf { it.isNotBlank() } ?: if (titleLookup) {
                             lookupTitleFacts(seg1Title(seg1Result.title, seg1))
                         } else null
+                        val skipFollowUps = followUpsWouldPad(locationContext, facts)
                         val titleLookupMs = (System.nanoTime() - lookupStart) / 1_000_000
 
                         currentSegment = 2
@@ -822,7 +836,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             nanoTemperature?.let { this.temperature = it }
                         }
                         val seg2Start = System.nanoTime()
-                        val seg2 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
+                        val seg2 = if (skipFollowUps) "" else withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req2) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
                         val seg2Ms = (System.nanoTime() - seg2Start) / 1_000_000
 
@@ -836,7 +850,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             nanoTemperature?.let { this.temperature = it }
                         }
                         val seg3Start = System.nanoTime()
-                        val seg3 = withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
+                        val seg3 = if (skipFollowUps) "" else withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
                         val seg3Ms = (System.nanoTime() - seg3Start) / 1_000_000
 
@@ -885,7 +899,8 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             "minAvailMemMb" to minAvailMem,
                             "lowMemoryAfter" to lowMemoryAfter,
                             "productionText" to productionText,
-                            "imageSentSize" to imageSentSize
+                            "imageSentSize" to imageSentSize,
+                            "followUpsSkipped" to skipFollowUps
                         )
                         withContext(Dispatchers.Main) { result.success(payload) }
                     } catch (e: TimeoutCancellationException) {
@@ -1036,5 +1051,30 @@ private fun decodeForModel(path: String, maxSide: Int): Bitmap? {
         scaled
     } catch (e: OutOfMemoryError) {
         bitmap
+    }
+}
+
+/**
+ * #607: nano-v4-full fails at once with COMPUTE_ERROR on a 1280 px image
+ * it accepted at 640 px. On that error, [block] is retried once with the
+ * image at half size. Returns the block's result and the "WxH" used.
+ */
+private suspend fun <T> withSmallerImageOnComputeError(
+    bitmap: Bitmap,
+    block: suspend (Bitmap) -> T,
+): Pair<T, String> {
+    try {
+        return block(bitmap) to "${bitmap.width}x${bitmap.height}"
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        val side = maxOf(bitmap.width, bitmap.height)
+        if (e.message?.contains("COMPUTE_ERROR") != true || side <= 640) throw e
+    }
+    val half = Bitmap.createScaledBitmap(bitmap, bitmap.width / 2, bitmap.height / 2, true)
+    try {
+        return block(half) to "${half.width}x${half.height}"
+    } finally {
+        if (half !== bitmap) half.recycle()
     }
 }
