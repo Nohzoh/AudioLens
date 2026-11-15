@@ -180,9 +180,6 @@ class NanoDebugCascadeResult {
   /// #434: `structured` or `text`.
   final String? seg1Mode;
   final String? seg1FinishReason;
-
-  /// #607: why segment 1 did not use the typed call, when it did not.
-  final String? seg1FallbackReason;
   final String? seg1FallbackReason;
 
   /// #477: time spent in each segment's inference, measured natively.
@@ -236,7 +233,6 @@ class NanoDebugCascadeResult {
     this.seg1Title,
     this.seg1Mode,
     this.seg1FinishReason,
-    this.seg1FallbackReason,
     this.seg1FallbackReason,
     required this.seg2Prompt,
     required this.seg2Output,
@@ -689,7 +685,6 @@ class GeminiNanoService implements AIService {
         seg1Title: result['seg1Title'] as String?,
         seg1Mode: result['seg1Mode'] as String?,
         seg1FinishReason: result['seg1FinishReason'] as String?,
-        seg1FallbackReason: result['seg1FallbackReason'] as String?,
         seg1FallbackReason: result['seg1FallbackReason'] as String?,
         seg2Prompt: result['seg2Prompt'] as String? ?? '',
         seg2Output: result['seg2Output'] as String? ?? '',
