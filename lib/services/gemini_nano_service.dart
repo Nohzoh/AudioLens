@@ -8,6 +8,7 @@ import '../utils/error_sanitizer.dart';
 import '../utils/script_cleanup.dart';
 import '../utils/script_validation.dart';
 import 'ai_service.dart';
+import 'label_lookup.dart';
 import 'label_text_reader.dart';
 import 'remote_config_service.dart';
 import 'wikipedia_service.dart';
@@ -213,6 +214,12 @@ class NanoDebugCascadeResult {
   final String? labelText;
   final int? labelOcrMs;
 
+  /// #614: the label as first read, before spellings were confirmed.
+  final String? labelTextRaw;
+
+  /// #605: segments 2 and 3 were not run (museum work, no facts).
+  final bool? followUpsSkipped;
+
   /// #604: size of the image the model received, "WIDTHxHEIGHT".
   final String? imageSentSize;
 
@@ -245,6 +252,8 @@ class NanoDebugCascadeResult {
     this.temperatureUsed,
     this.labelText,
     this.labelOcrMs,
+    this.labelTextRaw,
+    this.followUpsSkipped,
     this.imageSentSize,
   });
 }
@@ -353,6 +362,27 @@ class GeminiNanoService implements AIService {
   /// #608: text visible on the photo, or null. Replaceable in tests.
   @visibleForTesting
   static Future<String?> Function(File image) readLabelText = LabelTextReader().read;
+
+  /// #614: label lines checked against Wikipedia. Replaceable in tests.
+  @visibleForTesting
+  static Future<ResolvedLabel> Function(String labelText) resolveLabelText = resolveLabel;
+
+  /// #608, #614: fills `labelText` (empty: nothing readable) and, when
+  /// the title lookup is on, `labelFacts`. Returns the text as first read.
+  static Future<String?> _addLabelArgs(
+      Map<String, dynamic> args, File image, bool lookup) async {
+    final raw = await readLabelText(image);
+    args['labelText'] = raw ?? '';
+    if (raw == null || !lookup) return raw;
+    try {
+      final resolved = await resolveLabelText(raw);
+      args['labelText'] = resolved.labelText;
+      if (resolved.facts != null) args['labelFacts'] = resolved.facts;
+    } catch (e) {
+      AppLogger.ai('Nano: label lookup failed: ${sanitizeError(e.toString())}');
+    }
+    return raw;
+  }
 
   /// #466: calls from the native side into Dart (only `lookupTitleFacts`,
   /// between segments 1 and 2). Never throws: no facts is a normal
@@ -483,9 +513,9 @@ class GeminiNanoService implements AIService {
       if (userHint != null && userHint.isNotEmpty) args['lookupQuery'] = userHint;
       // #608: empty = recognition ran and read nothing.
       if (config.geminiNanoLabelOcr) {
-        final label = await readLabelText(imageFile);
-        AppLogger.ai('Nano: label text ${label != null ? 'read (${label.length} chars)' : 'not found'}');
-        args['labelText'] = label ?? '';
+        final label = await _addLabelArgs(args, imageFile, config.geminiNanoTitleLookup);
+        AppLogger.ai('Nano: label text ${label != null ? 'read (${label.length} chars)' : 'not found'}'
+            '${args.containsKey('labelFacts') ? ', facts found' : ''}');
       }
 
       // The 3 segments (visual description, historical context,
@@ -637,9 +667,10 @@ class GeminiNanoService implements AIService {
       args['fullPrevious'] = options.fullPreviousText;
       args['imageMaxSide'] = options.imageMaxSide ?? config.geminiNanoImageMaxSide;
       int? labelOcrMs;
+      String? labelTextRaw;
       if (options.labelOcr ?? config.geminiNanoLabelOcr) {
         final watch = Stopwatch()..start();
-        args['labelText'] = await readLabelText(imageFile) ?? '';
+        labelTextRaw = await _addLabelArgs(args, imageFile, args['titleLookup'] == true);
         labelOcrMs = watch.elapsedMilliseconds;
       }
 
@@ -674,6 +705,8 @@ class GeminiNanoService implements AIService {
             : null,
         temperatureUsed: (args['temperature'] as num?)?.toDouble(),
         labelText: args['labelText'] as String?,
+        labelTextRaw: labelTextRaw,
+        followUpsSkipped: result['followUpsSkipped'] as bool?,
         labelOcrMs: labelOcrMs,
         imageSentSize: result['imageSentSize'] as String?,
       );

@@ -128,7 +128,9 @@ Map<String, dynamic> _runToJson(NanoLabRun run) {
     // #604, #608
     'image_sent_size': r?.imageSentSize,
     'label_text': r?.labelText,
+    'label_text_raw': r?.labelTextRaw,
     'label_ocr_ms': r?.labelOcrMs,
+    'follow_ups_skipped': r?.followUpsSkipped,
     'gps': run.latitude != null && run.longitude != null
         ? {'latitude': run.latitude, 'longitude': run.longitude}
         : null,

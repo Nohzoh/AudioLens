@@ -145,6 +145,9 @@ class WikipediaService {
           '&list=search'
           '&srsearch=${Uri.encodeQueryComponent(query)}'
           '&srlimit=$limit'
+          // #614: a query with no result is retried on the engine's own
+          // spelling suggestion.
+          '&srenablerewrites=1'
           '&format=json'
           '&origin=*'
         );
