@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🧩 - **nano-v4-full in the cascade** (issue #607)
+  - **Verified**: 2026-11-15 (PR #619)
+  - **What was done**: After a COMPUTE_ERROR, segment 1 is run again without the typed (structured) call, on a fresh client for a model variant, instead of at half image size; the error now says which call failed, and the lab export records `seg1_fallback_reason`.
+
 - [x] 🏷️ - **Labels understood, not just read** (issue #613)
   - **Verified**: 2026-11-15 (PR #615)
   - **What was done**: Gemini Nano is told what a label holds (one author, then the work's title); each label line is looked up on Wikipedia with tolerance for misread letters, and a confirmed line gets its correct spelling and facts (#614); for a museum work with no facts the guide stops after the description instead of padding (#605); on COMPUTE_ERROR the first segment is retried with the image at half size (#607).
