@@ -17,7 +17,7 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 ## ✅ Done
 
 - [x] 🧩 - **nano-v4-full in the cascade** (issue #607)
-  - **Verified**: 2026-11-15 (PR #PRNUM)
+  - **Verified**: 2026-11-15 (PR #619)
   - **What was done**: After a COMPUTE_ERROR, segment 1 is run again without the typed (structured) call, on a fresh client for a model variant, instead of at half image size; the error now says which call failed, and the lab export records `seg1_fallback_reason`.
 
 - [x] 🏷️ - **Labels understood, not just read** (issue #613)
