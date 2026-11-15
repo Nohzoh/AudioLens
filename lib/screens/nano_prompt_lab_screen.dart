@@ -15,6 +15,7 @@ import '../services/settings_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/error_sanitizer.dart';
 import '../utils/nano_lab_export.dart';
+import '../utils/nano_lab_prefs.dart';
 
 /// One past call, kept in memory only (session-scoped) so recent attempts
 /// can be reloaded into the form for quick side-by-side comparison without
@@ -127,6 +128,54 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   void initState() {
     super.initState();
     _refreshStatuses();
+    _restorePrefs();
+  }
+
+  /// #609: bring back the last session's settings (never its results).
+  Future<void> _restorePrefs() async {
+    final p = await NanoLabPrefs.load();
+    final path = p.imagePath;
+    final image = path != null && await File(path).exists() ? File(path) : null;
+    if (!mounted) return;
+    setState(() {
+      _mode = p.pipelineMode ? _LabMode.pipeline : _LabMode.raw;
+      _variant = NanoModelVariant.fromKey(p.variantKey);
+      _maxTokensController.text = p.maxTokens;
+      _temperatureController.text = p.temperature;
+      _promptController.text = p.prompt;
+      _latController.text = p.latitude;
+      _lonController.text = p.longitude;
+      _caseIdController.text = p.caseId;
+      _optLocationFirst = p.locationFirst;
+      _optFullPrevious = p.fullPrevious;
+      _optTitleLookup = p.titleLookup ?? _optTitleLookup;
+      _optImageMaxSide = p.imageMaxSide;
+      _compareRounds = p.compareRounds;
+      _image = image ?? _image;
+    });
+  }
+
+  NanoLabPrefs _currentPrefs() => NanoLabPrefs(
+        pipelineMode: _mode == _LabMode.pipeline,
+        variantKey: _variant?.key,
+        maxTokens: _maxTokensController.text,
+        temperature: _temperatureController.text,
+        prompt: _promptController.text,
+        latitude: _latController.text,
+        longitude: _lonController.text,
+        caseId: _caseIdController.text,
+        locationFirst: _optLocationFirst,
+        fullPrevious: _optFullPrevious,
+        titleLookup: _optTitleLookup,
+        imageMaxSide: _optImageMaxSide,
+        compareRounds: _compareRounds,
+        imagePath: _image?.path,
+      );
+
+  void _savePrefs() {
+    _currentPrefs().save().catchError((Object e) {
+      AppLogger.ai('Nano Lab: settings not saved (${sanitizeError(e.toString())})');
+    });
   }
 
   Future<void> _refreshStatuses() async {
@@ -254,6 +303,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
 
   @override
   void dispose() {
+    _savePrefs();
     _promptController.dispose();
     _maxTokensController.dispose();
     _temperatureController.dispose();
@@ -267,12 +317,28 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   Future<void> _pickImage() async {
     final xFile = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
     if (xFile == null || !mounted) return;
-    setState(() => _image = File(xFile.path));
+    // #609: the picker's file lives in the cache and can vanish; keep a
+    // copy so the same photo is still there next time. A new name each
+    // time, or the image cache would keep showing the previous photo.
+    var file = File(xFile.path);
+    try {
+      final dir = Directory('${(await getApplicationSupportDirectory()).path}/nano_lab');
+      if (await dir.exists()) await dir.delete(recursive: true);
+      await dir.create(recursive: true);
+      final ext = xFile.path.contains('.') ? xFile.path.split('.').last : 'jpg';
+      file = await file.copy('${dir.path}/photo_${DateTime.now().millisecondsSinceEpoch}.$ext');
+    } catch (e) {
+      AppLogger.ai('Nano Lab: photo not kept for next time (${sanitizeError(e.toString())})');
+    }
+    if (!mounted) return;
+    setState(() => _image = file);
+    _savePrefs();
   }
 
   Future<void> _send() async {
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty || _sending) return;
+    _savePrefs();
 
     final maxTokens = int.tryParse(_maxTokensController.text) ?? 256;
     final temperature = double.tryParse(_temperatureController.text);
@@ -370,6 +436,7 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
   Future<void> _runPipeline() async {
     final image = _image;
     if (image == null || _runningPipeline || _resolvingLocation) return;
+    _savePrefs();
 
     // #460: coordinates typed but not (or no longer) resolved used to be
     // silently ignored — the run went out with no location at all.
@@ -821,6 +888,19 @@ class _NanoPromptLabScreenState extends State<NanoPromptLabScreen> {
           label: Text(l10n.nanoLabExportRuns(_pipelineRuns.length)),
           onPressed: _exporting ? null : _exportRuns,
           style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 44)),
+        ),
+        // #609: start a fresh export without leaving the screen.
+        TextButton.icon(
+          icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+          label: Text(l10n.nanoLabClearRuns),
+          onPressed: _runningPipeline || _comparing || _exporting
+              ? null
+              : () => setState(() {
+                    _pipelineRuns.clear();
+                    _debugResult = null;
+                    _pipelineError = null;
+                    _pipelineElapsed = null;
+                  }),
         ),
       ],
       const SizedBox(height: 20),

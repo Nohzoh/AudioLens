@@ -382,6 +382,7 @@
   "nanoLabCaseIdHint": "Id from benchmark/dataset/manifest.json, saved with the run",
   "nanoLabExportRuns": "Export runs ({count})",
   "nanoLabExportFailed": "Could not export the runs",
+  "nanoLabClearRuns": "Clear results",
   "nanoLabMemoryDrop": "memory −{mb} MB",
   "nanoLabRunningPipeline": "Analyzing...",
   "nanoLabSegment1": "Segment 1 · visual analysis",

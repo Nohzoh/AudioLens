@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🧪 - **Nano lab remembers its settings** (issue #609)
+  - **Verified**: 2026-11-15 (PR #610)
+  - **What was done**: The Nano lab restores its last settings when reopened (mode, model, prompt, photo, coordinates, options, image size, rounds); results are not kept, and a "Clear results" button empties them so the next export only holds new runs.
+
 - [x] 📷 - **Sharper photos for the on-device model** (issue #601)
   - **Verified**: 2026-11-14 (PR #602)
   - **What was done**: Photos are now kept at 2560 px wide (`capture_max_width`) instead of 1280; Gemini Nano receives an image of at most 1280 px on its longest side (`gemini_nano_image_max_side`) instead of a halved 640 px one; the Gemini API upload stays at 1280 px. The Nano lab gets an image-size setting (640 / 1280 / 2560) recorded in the export, and thumbnails are decoded at thumbnail size.

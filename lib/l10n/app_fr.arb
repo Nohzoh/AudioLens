@@ -416,6 +416,7 @@
   "nanoLabExportRuns": "Exporter les runs ({count})",
   "@nanoLabExportRuns": {"placeholders": {"count": {"type": "int"}}},
   "nanoLabExportFailed": "Impossible d'exporter les runs",
+  "nanoLabClearRuns": "Effacer les résultats",
   "nanoLabMemoryDrop": "mémoire −{mb} Mo",
   "@nanoLabMemoryDrop": {"placeholders": {"mb": {"type": "int"}}},
   "nanoLabRunningPipeline": "Analyse en cours...",
