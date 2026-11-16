@@ -1,3 +1,2 @@
-• Cartels : le modèle embarqué distingue l'auteur du titre de l'œuvre ; chaque ligne lue est vérifiée sur Wikipédia, même avec quelques lettres mal lues, pour corriger l'orthographe et apporter des faits.
-• Œuvres de musée sans information fiable : le guide s'arrête après la description au lieu d'inventer un contexte.
-• Nano : nouvel essai automatique avec une image plus petite si le modèle échoue.
+• Gemini Nano 4 (Full, préversion) : après une erreur de calcul, la première partie de l'analyse est relancée sans sortie structurée sur une session neuve.
+• Labo Nano : le message d'erreur précise quel appel a échoué ; l'export indique pourquoi la sortie structurée n'a pas été utilisée.
