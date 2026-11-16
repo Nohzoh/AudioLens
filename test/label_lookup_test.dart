@@ -63,4 +63,26 @@ void main() {
     expect(resolved.labelText, 'Lais Alvarcz');
     expect(resolved.facts, isNull);
   });
+
+  // #617
+  test('a confirmed line loses its uncertain mark, an unconfirmed one keeps it', () async {
+    const mark = ' (lecture incertaine)';
+    final asked = <String>[];
+    final resolved = await resolveLabel('Lais Alvarcz$mark / Marie Mludeleine$mark', search: (q) async {
+      asked.add(q);
+      if (!q.startsWith('Marie')) return const [];
+      return [_article('Marie Madeleine', 'Marie Madeleine est une disciple de Jésus dans les Évangiles.')];
+    });
+    expect(asked, containsAll(['Lais Alvarcz', 'Marie Mludeleine']));
+    expect(resolved.labelText, 'Lais Alvarcz$mark / Marie Madeleine');
+  });
+
+  // #618
+  test('an extract cut mid-word keeps its whole sentences', () {
+    final cut = 'Marie Madeleine est une disciple de Jésus de Nazareth qui le suit jusqu\'à ses derniers jours. '
+        'Cette importante figure est mentionnée au moins douze fois, plus que la plu...';
+    expect(wholeSentences(cut), endsWith('ses derniers jours.'));
+    expect(wholeSentences('Une phrase entière.'), 'Une phrase entière.');
+    expect(wholeSentences('Trop court pour couper...'), 'Trop court pour couper...');
+  });
 }

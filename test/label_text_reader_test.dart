@@ -31,7 +31,21 @@ void main() {
   test('a failing recognition gives no text instead of an error', () async {
     final reader = LabelTextReader(recognizeLines: (_) async => throw StateError('no model'));
     expect(await reader.read(File('missing.jpg')), isNull);
-    final ok = LabelTextReader(recognizeLines: (_) async => ['Marie-Madeleine']);
+    final ok = LabelTextReader(
+        recognizeLines: (_) async => const [RecognizedLine('Marie-Madeleine')]);
     expect(await ok.read(File('missing.jpg')), 'Marie-Madeleine');
+  });
+
+  // #617
+  test('a low-confidence line is marked as possibly misread', () async {
+    final reader = LabelTextReader(
+        recognizeLines: (_) async => const [
+              RecognizedLine('Lais Alvarcz', 0.52),
+              RecognizedLine('Marie Madeleine', 0.93),
+              RecognizedLine('Huile sur toile'),
+            ]);
+    expect(await reader.read(File('missing.jpg')),
+        'Lais Alvarcz$uncertainMark / Marie Madeleine / Huile sur toile');
+    expect(reader.lastConfidences, '0.52 / 0.93 / ?');
   });
 }

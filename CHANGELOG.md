@@ -16,6 +16,10 @@ by referencing it (`Closes #<n>`) in the PR that resolves it.
 
 ## ✅ Done
 
+- [x] 🔎 - **Uncertain label lines, facts shared between segments** (issue #617)
+  - **Verified**: 2026-11-17 (PR #PRNUM)
+  - **What was done**: A label line the text recogniser is unsure of (confidence below 0.75) and that no article confirms is marked as possibly misread, and Gemini Nano is told not to pronounce it (#617); label facts are longer, cut on a sentence end, and shared between segments 2 and 3 instead of given twice, and segment 3 is skipped for a museum work when nothing is left for it (#618). The lab export records `label_confidences`.
+
 - [x] 🧩 - **nano-v4-full in the cascade** (issue #607)
   - **Verified**: 2026-11-15 (PR #619)
   - **What was done**: After a COMPUTE_ERROR, segment 1 is run again without the typed (structured) call, on a fresh client for a model variant, instead of at half image size; the error now says which call failed, and the lab export records `seg1_fallback_reason`.
