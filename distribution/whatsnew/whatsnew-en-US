@@ -1,3 +1,2 @@
-• Labels: the on-device model tells the author from the work's title; each line read is checked on Wikipedia, even with a few misread letters, to fix the spelling and bring facts.
-• Museum works with no reliable information: the guide stops after the description instead of making up context.
-• Nano: automatic retry with a smaller image when the model fails.
+• Gemini Nano 4 (Full, preview): after a compute error, the first part of the analysis is run again without structured output on a fresh session.
+• Nano lab: the error message says which call failed; the export records why structured output was not used.
