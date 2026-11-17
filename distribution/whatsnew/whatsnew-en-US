@@ -1,2 +1,3 @@
-• Gemini Nano 4 (Full, preview): after a compute error, the first part of the analysis is run again without structured output on a fresh session.
-• Nano lab: the error message says which call failed; the export records why structured output was not used.
+• Labels: a hard-to-read line is no longer spoken as a sure name; the guide simply says the mention is hard to read.
+• Less repetition: Wikipedia information is more complete and shared between the parts of the commentary instead of being repeated.
+• Nano lab: the export records the reading confidence of each label line.
