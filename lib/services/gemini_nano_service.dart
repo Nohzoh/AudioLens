@@ -217,6 +217,9 @@ class NanoDebugCascadeResult {
   /// #614: the label as first read, before spellings were confirmed.
   final String? labelTextRaw;
 
+  /// #617: the recogniser's confidence per label line.
+  final String? labelConfidences;
+
   /// #605: segments 2 and 3 were not run (museum work, no facts).
   final bool? followUpsSkipped;
 
@@ -253,6 +256,7 @@ class NanoDebugCascadeResult {
     this.labelText,
     this.labelOcrMs,
     this.labelTextRaw,
+    this.labelConfidences,
     this.followUpsSkipped,
     this.imageSentSize,
   });
@@ -361,7 +365,8 @@ class GeminiNanoService implements AIService {
 
   /// #608: text visible on the photo, or null. Replaceable in tests.
   @visibleForTesting
-  static Future<String?> Function(File image) readLabelText = LabelTextReader().read;
+  static Future<String?> Function(File image) readLabelText = _labelReader.read;
+  static final _labelReader = LabelTextReader();
 
   /// #614: label lines checked against Wikipedia. Replaceable in tests.
   @visibleForTesting
@@ -706,6 +711,7 @@ class GeminiNanoService implements AIService {
         temperatureUsed: (args['temperature'] as num?)?.toDouble(),
         labelText: args['labelText'] as String?,
         labelTextRaw: labelTextRaw,
+        labelConfidences: labelTextRaw == null ? null : _labelReader.lastConfidences,
         followUpsSkipped: result['followUpsSkipped'] as bool?,
         labelOcrMs: labelOcrMs,
         imageSentSize: result['imageSentSize'] as String?,

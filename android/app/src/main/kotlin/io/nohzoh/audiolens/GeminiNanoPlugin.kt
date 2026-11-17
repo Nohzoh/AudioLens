@@ -217,16 +217,33 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         // text recognition instead.
         // null: recognition off; blank: it ran and found nothing.
         private fun seg1LabelHint(labelText: String?): String =
-            if (labelText == null) "" else if (labelText.isNotBlank()) " Texte lu automatiquement sur la photo (cartel ou inscription, lignes separees par / ; la lecture peut contenir des fautes) : \"$labelText\". Un cartel donne en general l'auteur, puis le titre de l'oeuvre, puis la date et la technique : il n'y a qu'un seul auteur, et le titre n'est pas une personne. Reprends l'auteur et le titre tels quels, ton titre est le titre de l'oeuvre seul ; ne donne aucun titre, auteur ni date qui n'y figure pas et ne dis rien de la vie de l'auteur." else " Aucun texte n'a ete lu sur la photo : ne pretends pas lire un cartel, un panneau ou une inscription."
+            if (labelText == null) "" else if (labelText.isNotBlank()) " Texte lu automatiquement sur la photo (cartel ou inscription, lignes separees par / ; la lecture peut contenir des fautes) : \"$labelText\". Un cartel donne en general l'auteur, puis le titre de l'oeuvre, puis la date et la technique : il n'y a qu'un seul auteur, et le titre n'est pas une personne. Reprends l'auteur et le titre tels quels, ton titre est le titre de l'oeuvre seul ; ne donne aucun titre, auteur ni date qui n'y figure pas et ne dis rien de la vie de l'auteur.$UNCERTAIN_LINE_RULE" else " Aucun texte n'a ete lu sur la photo : ne pretends pas lire un cartel, un panneau ou une inscription."
 
         private fun followUpLabelHint(labelText: String?): String =
-            if (!labelText.isNullOrBlank()) " Cartel lu sur la photo (en general l'auteur, puis le titre de l'oeuvre ; un seul auteur) : \"$labelText\". N'affirme rien sur la vie, l'epoque ou les autres oeuvres de l'auteur qui ne figure pas dans les faits donnes." else ""
+            if (!labelText.isNullOrBlank()) " Cartel lu sur la photo (en general l'auteur, puis le titre de l'oeuvre ; un seul auteur) : \"$labelText\". N'affirme rien sur la vie, l'epoque ou les autres oeuvres de l'auteur qui ne figure pas dans les faits donnes.$UNCERTAIN_LINE_RULE" else ""
 
         // #605: in a museum, with no encyclopedia facts, the text-only
         // segments 2 and 3 have nothing true to add and made up a history
         // for the museum and the artist: the guide stops after segment 1.
         fun followUpsWouldPad(locationContext: String?, facts: String?): Boolean =
             facts.isNullOrBlank() && locationContext?.contains("Ce lieu est un musée") == true
+
+        // #617: a misread name (« Lais Alvarcz ») was spoken as fact.
+        private const val UNCERTAIN_LINE_RULE =
+            " Une ligne suivie de (lecture incertaine) est peut-etre mal lue : ne prononce pas ce nom, dis seulement que cette mention du cartel est peu lisible sur la photo."
+
+        // #618: segments 2 and 3 were given the same facts and said the
+        // same thing twice. The sentences are shared out: first half to
+        // segment 2, the rest to segment 3 (null when there is only one).
+        fun splitFacts(facts: String?): Pair<String?, String?> {
+            if (facts.isNullOrBlank()) return null to null
+            val sentences = facts.trim().split(Regex("(?<=[.!?…])\\s+")).filter { it.isNotBlank() }
+            if (sentences.size < 2) return facts to null
+            val head = (sentences.size + 1) / 2
+            val prefix = Regex("^« [^»]+ » : ").find(facts)?.value ?: ""
+            return sentences.take(head).joinToString(" ") to
+                prefix + sentences.drop(head).joinToString(" ")
+        }
 
         private const val NO_PHOTO_RULE = " Tu ne vois pas la photo : n'ajoute aucun detail visuel nouveau, ne decris aucun autre objet, n'ecris ni crochets ni indications de voix ou de son."
 
@@ -280,7 +297,7 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 // "Ce lieu…".
                 "sur ce qui rend unique le sujet dont tu parles (l'oeuvre, le monument ou le lieu) et l'emotion qu'il inspire, en le nommant par ce qu'il est"
             }
-            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${followUpLabelHint(labelText)}${followUpLocationHint(locationContext)}$NO_PHOTO_RULE Conclus en $sentences $ending, en un seul paragraphe, sans repeter ce qui a deja ete dit."
+            return "Tu es un guide audio culturel. Suite de ton commentaire. Texte precedent : $excerpt.${factsHint(facts)}${followUpLabelHint(labelText)}${followUpLocationHint(locationContext)}$NO_PHOTO_RULE Ne repete pas ce que le texte precedent dit deja. Conclus en $sentences $ending, en un seul paragraphe, sans repeter ce qui a deja ete dit."
         }
     }
 
@@ -703,11 +720,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             lookupTitleFacts(lookupQuery ?: seg1Title(seg1Result.title, seg1))
                         } else null
                         val skipFollowUps = followUpsWouldPad(locationContext, facts)
+                        val (facts2, facts3) = splitFacts(facts)
+                        val skipSeg3 = skipFollowUps || followUpsWouldPad(locationContext, facts3)
 
                         // Segment 2: Historical context (text only, faster)
                         currentSegment = 2
                         val req2 = generateContentRequest(
-                            TextPart(buildSeg2Prompt(seg1, style, locationContext, facts, labelText = labelText))
+                            TextPart(buildSeg2Prompt(seg1, style, locationContext, facts2, labelText = labelText))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -718,12 +737,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // Segment 3: Conclusion
                         currentSegment = 3
                         val req3 = generateContentRequest(
-                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext, facts, labelText = labelText))
+                            TextPart(buildSeg3Prompt("$seg1 $seg2", style, locationContext, facts3, labelText = labelText))
                         ) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
                         }
-                        val seg3 = if (skipFollowUps) "" else withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
+                        val seg3 = if (skipSeg3) "" else withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
 
                         // #286: cleaned+de-duplicated at each step, not
@@ -866,10 +885,12 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                             lookupTitleFacts(seg1Title(seg1Result.title, seg1))
                         } else null
                         val skipFollowUps = followUpsWouldPad(locationContext, facts)
+                        val (facts2, facts3) = splitFacts(facts)
+                        val skipSeg3 = skipFollowUps || followUpsWouldPad(locationContext, facts3)
                         val titleLookupMs = (System.nanoTime() - lookupStart) / 1_000_000
 
                         currentSegment = 2
-                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext, facts, fullPrevious, labelText)
+                        val seg2Prompt = buildSeg2Prompt(seg1, style, locationContext, facts2, fullPrevious, labelText)
                         val req2 = generateContentRequest(TextPart(seg2Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
@@ -883,13 +904,13 @@ class GeminiNanoPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         // With fullPrevious: all of segment 1 (it names the
                         // subject) plus the tail of segment 2.
                         val seg3Previous = if (fullPrevious) "$seg1 ${seg2.takeLast(200)}" else "$seg1 $seg2"
-                        val seg3Prompt = buildSeg3Prompt(seg3Previous, style, locationContext, facts, fullPrevious, labelText)
+                        val seg3Prompt = buildSeg3Prompt(seg3Previous, style, locationContext, facts3, fullPrevious, labelText)
                         val req3 = generateContentRequest(TextPart(seg3Prompt)) {
                             this.maxOutputTokens = nanoMaxOutputTokens
                             nanoTemperature?.let { this.temperature = it }
                         }
                         val seg3Start = System.nanoTime()
-                        val seg3 = if (skipFollowUps) "" else withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
+                        val seg3 = if (skipSeg3) "" else withTimeout(SEGMENT_TIMEOUT_MS) { model.generateContent(req3) }
                             .candidates.firstOrNull()?.text?.trim() ?: ""
                         val seg3Ms = (System.nanoTime() - seg3Start) / 1_000_000
 

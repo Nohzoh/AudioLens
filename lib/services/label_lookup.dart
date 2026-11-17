@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'label_text_reader.dart' show uncertainMark;
 import 'wikipedia_service.dart';
 
 /// #614: a label as read on the photo, with the spelling of the lines an
@@ -12,7 +13,16 @@ class ResolvedLabel {
 typedef LabelSearch = Future<List<WikipediaResult>> Function(String query);
 
 Future<List<WikipediaResult>> _wikipediaSearch(String query) =>
-    WikipediaService.searchByName(query: query, limit: 3, extractChars: 320);
+    WikipediaService.searchByName(query: query, limit: 3, extractChars: 700);
+
+/// #618: an extract cut by the API ends mid-word (« plus que la plu... »);
+/// keep whole sentences when there are any.
+String wholeSentences(String extract) {
+  final text = extract.trim();
+  if (!text.endsWith('...') && !text.endsWith('…')) return text;
+  final end = text.lastIndexOf(RegExp(r'[.!?](?=\s)'));
+  return end > 80 ? text.substring(0, end + 1) : text;
+}
 
 const _techniqueStart = [
   'huile', 'acrylique', 'aquarelle', 'gouache', 'pastel', 'encre', 'fusain',
@@ -88,15 +98,18 @@ Future<ResolvedLabel> resolveLabel(String labelText, {LabelSearch? search}) asyn
   final lines = labelText.split(' / ');
   final facts = <int, String>{};
   Future<void> resolve(int i) async {
-    final norm = normalizeLabelName(lines[i]);
+    // #617: a possibly misread line is searched without its mark, and
+    // loses it once an article confirms the spelling.
+    final line = lines[i].replaceAll(uncertainMark, '');
+    final norm = normalizeLabelName(line);
     if (norm.length < 6 || RegExp(r'^[0-9 ]+$').hasMatch(norm)) return;
     if (_techniqueStart.contains(norm.split(' ').first)) return;
     try {
-      final results = await find(lines[i]).timeout(const Duration(seconds: 6));
+      final results = await find(line).timeout(const Duration(seconds: 6));
       for (final r in results) {
-        if (!labelLineMatches(lines[i], r.title) || !_usableArticle(r)) continue;
+        if (!labelLineMatches(line, r.title) || !_usableArticle(r)) continue;
         lines[i] = r.title.replaceAll(RegExp(r'\s*\(.*\)\s*$'), '');
-        facts[i] = '« ${r.title} » : ${r.extract.trim()}';
+        facts[i] = '« ${r.title} » : ${wholeSentences(r.extract)}';
         return;
       }
     } catch (_) {
